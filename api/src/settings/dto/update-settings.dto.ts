@@ -62,18 +62,12 @@ export class UpdateTemplatesDto {
 }
 
 // export: та же причина, что у UpdateTemplatesDto выше. Ни одно поле не
-// nullable: «сбросить в ничто» у включателя, дня, времени и текста смысла не
+// nullable: «сбросить в ничто» у включателя, времени и текста смысла не
 // имеет, только заменить другим значением.
 export class UpdatePaymentReminderDto implements Partial<PaymentReminderSettings> {
   @OptionalNotNull()
   @IsBoolean()
   enabled?: boolean;
-
-  @OptionalNotNull()
-  @IsInt()
-  @Min(SETTINGS_LIMITS.paymentReminderDayMin)
-  @Max(SETTINGS_LIMITS.paymentReminderDayMax)
-  dayOfMonth?: number;
 
   // Продолжение фразы «Время: …» (validation-messages.ts), как в
   // schedule-rule.dto.ts.

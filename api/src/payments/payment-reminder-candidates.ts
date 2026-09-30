@@ -21,16 +21,15 @@ export interface CandidateDeps {
   logger: Logger;
 }
 
-/** Какие числа месяца сейчас открыты (`openReminderDays`) и какой день у
- * школы — для тех, кто своего дня не выбирал (ADR-0161). */
+/** Какие числа месяца сейчас открыты (`openReminderDays`). Общего дня школы
+ * нет: кто своего дня не выбрал, напоминания не получает (ADR-0161). */
 export interface ReminderDays {
   open: ReadonlySet<number>;
-  schoolDay: number;
 }
 
-/** Вид включён, день ученика (свой, а нет — школы) сейчас открыт, месяц не
- * оплачен и напоминание не уходило — по одной выборке `notification_prefs` и
- * `payments` на всех, не по человеку в цикле. */
+/** Вид включён, свой день ученика сейчас открыт, месяц не оплачен и
+ * напоминание не уходило — по одной выборке `notification_prefs` и `payments`
+ * на всех, не по человеку в цикле. */
 export async function findReminderCandidates(
   deps: CandidateDeps,
   month: string,
@@ -49,9 +48,11 @@ export async function findReminderCandidates(
   const ownDays = await deps.notificationPrefsService.getPaymentReminderDays(
     enabled.map((s) => s.id),
   );
-  const wanted = enabled.filter((s) =>
-    days.open.has(ownDays.get(s.id) ?? days.schoolDay),
-  );
+  // Без своего дня — никогда: `Map.get` даёт undefined, и `has(undefined)` ложно.
+  const wanted = enabled.filter((s) => {
+    const ownDay = ownDays.get(s.id);
+    return ownDay !== undefined && days.open.has(ownDay);
+  });
   if (wanted.length === 0) return [];
 
   const docs = await deps.paymentModel
@@ -70,7 +71,7 @@ export async function findReminderCandidates(
   deps.logger.debug(
     `напоминание об оплате ${month}: учеников ${students.length}, ` +
       `вид выключили ${students.length - enabled.length}, ` +
-      `день не сегодня ${enabled.length - wanted.length}, ` +
+      `день не выбран или не сегодня ${enabled.length - wanted.length}, ` +
       `оплатили или уже получили ${skipIds.size}`,
   );
   return wanted.filter((s) => !skipIds.has(s.id)).slice(0, PAYMENT_REMINDER_BATCH_LIMIT);

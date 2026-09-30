@@ -29,7 +29,6 @@ const NOW = DateTime.fromISO('2026-09-18T10:00:00Z', { zone: 'utc' });
 const SCHOOL: PaymentReminderSettings = {
   ...DEFAULT_PAYMENT_REMINDER,
   enabled: true,
-  dayOfMonth: 5,
   time: '10:00',
 };
 
@@ -38,20 +37,16 @@ describe('toMyReminderDto', () => {
     expect(toMyReminderDto({ ...SCHOOL, enabled: false }, 12)).toBeUndefined();
   });
 
-  it('свой день не выбран — день школы, isOwnDay: false', () => {
+  it('свой день не выбран — dayOfMonth: null, дня школы нет', () => {
     expect(toMyReminderDto(SCHOOL, undefined)).toEqual({
-      dayOfMonth: 5,
-      isOwnDay: false,
-      schoolDayOfMonth: 5,
+      dayOfMonth: null,
       time: '10:00',
     });
   });
 
-  it('свой день выбран — он, isOwnDay: true, день школы рядом', () => {
+  it('свой день выбран — он и час школы', () => {
     expect(toMyReminderDto(SCHOOL, 20)).toEqual({
       dayOfMonth: 20,
-      isOwnDay: true,
-      schoolDayOfMonth: 5,
       time: '10:00',
     });
   });
@@ -113,41 +108,27 @@ describe('PaymentReminderDayService', () => {
     expect(await prefsModel.countDocuments({})).toBe(0);
   });
 
-  it('школа включила, ученик ничего не выбирал — день школы', async () => {
+  it('школа включила, ученик ничего не выбирал — день не выбран (null)', async () => {
     const page = await payments.listMine(STUDENT_A, NOW);
 
-    expect(page.reminder).toEqual({
-      dayOfMonth: 5,
-      isOwnDay: false,
-      schoolDayOfMonth: 5,
-      time: '10:00',
-    });
+    expect(page.reminder).toEqual({ dayOfMonth: null, time: '10:00' });
   });
 
   it('PUT → GET: свой день виден, а другой ученик его не видит (владение по userId)', async () => {
     const written = await days.set(STUDENT_A, 20);
 
-    expect(written).toEqual({
-      dayOfMonth: 20,
-      isOwnDay: true,
-      schoolDayOfMonth: 5,
-      time: '10:00',
-    });
+    expect(written).toEqual({ dayOfMonth: 20, time: '10:00' });
     expect((await payments.listMine(STUDENT_A, NOW)).reminder).toEqual(written);
-    expect((await payments.listMine(STUDENT_B, NOW)).reminder?.isOwnDay).toBe(false);
+    expect((await payments.listMine(STUDENT_B, NOW)).reminder?.dayOfMonth).toBeNull();
   });
 
-  it('null сбрасывает на день школы; школа сменила день — ученик без своего следует за ней', async () => {
+  it('null снимает выбор: в ответе записи и в GET день null', async () => {
     await days.set(STUDENT_A, 20);
 
     const reset = await days.set(STUDENT_A, null);
-    school = { ...SCHOOL, dayOfMonth: 8 };
 
-    expect(reset.isOwnDay).toBe(false);
-    expect((await payments.listMine(STUDENT_A, NOW)).reminder).toMatchObject({
-      dayOfMonth: 8,
-      isOwnDay: false,
-    });
+    expect(reset).toEqual({ dayOfMonth: null, time: '10:00' });
+    expect((await payments.listMine(STUDENT_A, NOW)).reminder).toEqual(reset);
   });
 
   it('школа выключила и снова включила — выбор ученика сохранился', async () => {

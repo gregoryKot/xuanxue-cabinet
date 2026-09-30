@@ -28,18 +28,9 @@ const PAGE: MyPaymentsPageDto = {
 };
 
 const DAY_PATH = '/me/payments/reminder-day';
-const SCHOOL_REMINDER: MyPaymentReminderDto = {
-  dayOfMonth: 5,
-  isOwnDay: false,
-  schoolDayOfMonth: 5,
-  time: '10:00',
-};
-const PAGE_WITH_REMINDER: MyPaymentsPageDto = { ...PAGE, reminder: SCHOOL_REMINDER };
-const OWN_REMINDER: MyPaymentReminderDto = {
-  ...SCHOOL_REMINDER,
-  dayOfMonth: 12,
-  isOwnDay: true,
-};
+const NOT_CHOSEN_REMINDER: MyPaymentReminderDto = { dayOfMonth: null, time: '10:00' };
+const PAGE_WITH_REMINDER: MyPaymentsPageDto = { ...PAGE, reminder: NOT_CHOSEN_REMINDER };
+const OWN_REMINDER: MyPaymentReminderDto = { ...NOT_CHOSEN_REMINDER, dayOfMonth: 12 };
 const DAY_LABEL = 'Напоминать об оплате';
 
 /** Конкретный путь первым: mockApiByPath берёт первый подходящий префикс, а
@@ -56,32 +47,36 @@ describe('PaymentContactNote — свой день напоминания (ADR-0
     await screen.findByRole('link', { name: '@marievyazova' });
 
     expect(screen.queryByLabelText(DAY_LABEL)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Напомним в/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/по времени школы/)).not.toBeInTheDocument();
   });
 
-  it('напоминание включено — select «как у школы» выбран, число школы в подписи, час жирным', async () => {
+  it('напоминание включено, день не выбран — «Не напоминать», просьба выбрать день, час жирным', async () => {
     mockApiByPath({ [PATH]: PAGE_WITH_REMINDER });
     render(<PaymentContactNote />);
 
     const select = await screen.findByLabelText(DAY_LABEL);
 
     expect(select).toHaveValue('');
-    expect(
-      screen.getByRole('option', { name: 'Как у школы — 5-го' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Не напоминать' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '31-го числа' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Как у школы/ })).not.toBeInTheDocument();
     const time = screen.getByText('10:00');
     expect(time.tagName).toBe('STRONG');
     expect(time.parentElement).toHaveTextContent(
-      'Напомним в 10:00 по времени школы. Если в месяце нет такого числа — в последний день.',
+      'Выберите день — напомним об оплате в 10:00 по времени школы.',
     );
   });
 
-  it('свой день уже выбран — он и стоит в select', async () => {
+  it('свой день уже выбран — он и стоит в select, в подсказке день и час жирным', async () => {
     mockApiByPath({ [PATH]: { ...PAGE, reminder: OWN_REMINDER } });
     render(<PaymentContactNote />);
 
     expect(await screen.findByLabelText(DAY_LABEL)).toHaveValue('12');
+    const day = screen.getByText('12-го');
+    expect(day.tagName).toBe('STRONG');
+    expect(day.parentElement).toHaveTextContent(
+      'Напомним 12-го в 10:00 по времени школы. Если в месяце нет такого числа — в последний день.',
+    );
   });
 
   it('выбор дня → PUT, ответ вписан без второго GET страницы', async () => {
@@ -99,8 +94,8 @@ describe('PaymentContactNote — свой день напоминания (ADR-0
     expect(pageLoads).toHaveLength(1);
   });
 
-  it('«Как у школы» после своего дня — PUT с null, в select снова пустое значение', async () => {
-    mockPageAndDay({ ...PAGE, reminder: OWN_REMINDER }, SCHOOL_REMINDER);
+  it('«Не напоминать» после своего дня — PUT с null, в select снова пустое значение', async () => {
+    mockPageAndDay({ ...PAGE, reminder: OWN_REMINDER }, NOT_CHOSEN_REMINDER);
     render(<PaymentContactNote />);
 
     await userEvent.selectOptions(await screen.findByLabelText(DAY_LABEL), '');

@@ -23,8 +23,6 @@ resetApiFetchBetweenTests();
 const PATH = '/me/payments/reminder-day';
 const SAVED: MyPaymentReminderDto = {
   dayOfMonth: 12,
-  isOwnDay: true,
-  schoolDayOfMonth: 5,
   time: '10:00',
 };
 
@@ -45,8 +43,8 @@ describe('usePaymentReminderDay', () => {
     expect(result.current.pending).toBe(false);
   });
 
-  it('«как у школы» (пустое значение) → PUT с null', async () => {
-    mockApiByPath({ [PATH]: { ...SAVED, isOwnDay: false, dayOfMonth: 5 } });
+  it('«Не напоминать» (пустое значение) → PUT с null', async () => {
+    mockApiByPath({ [PATH]: { ...SAVED, dayOfMonth: null } });
     const { result } = renderHook(() => usePaymentReminderDay(vi.fn()));
 
     await act(() => result.current.choose(''));

@@ -1,5 +1,6 @@
 // Свой день напоминания об оплате (ADR-0161): «там у всех по-разному», поэтому
-// день выбирает ученик, а час и включённость остаются за школой. Хранение —
+// день выбирает только ученик, общего дня у школы нет, а час и включённость
+// остаются за школой. Не выбрал день — напоминание не приходит. Хранение —
 // `notification_prefs.paymentReminderDay`, планировщик читает его в
 // payment-reminder-candidates.ts. Владение — только по userId из сессии.
 import { Injectable } from '@nestjs/common';
@@ -12,17 +13,16 @@ import { ConflictError } from '../common/errors';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { SettingsService } from '../settings/settings.service';
 
-/** Что видит ученик. Школа напоминание не включила — `undefined`: экран не
- * покажет выбор дня, который ничего не делает (ADR-0069). */
+/** Что видит ученик: свой день (`null` — не выбран) и час школы. Школа
+ * напоминание не включила — `undefined`: экран не покажет выбор дня, который
+ * ничего не делает (ADR-0069). */
 export function toMyReminderDto(
   school: PaymentReminderSettings,
   ownDay: number | undefined,
 ): MyPaymentReminderDto | undefined {
   if (!school.enabled) return undefined;
   return {
-    dayOfMonth: ownDay ?? school.dayOfMonth,
-    isOwnDay: ownDay !== undefined,
-    schoolDayOfMonth: school.dayOfMonth,
+    dayOfMonth: ownDay ?? null,
     time: school.time,
   };
 }
@@ -44,7 +44,7 @@ export class PaymentReminderDayService {
     return toMyReminderDto(school, await this.prefs.getPaymentReminderDay(userId));
   }
 
-  /** Записывает день (или сбрасывает `null`) и возвращает то, что теперь
+  /** Записывает день (или снимает его `null` — «не напоминать») и возвращает то, что теперь
    * увидит ученик: кабинет вписывает ответ без второго GET (ADR-0087). */
   async set(userId: string, dayOfMonth: number | null): Promise<MyPaymentReminderDto> {
     const { paymentReminder } = await this.settingsService.get();

@@ -2,7 +2,8 @@
 // PUT /me/payments/reminder-day → GET /me/payments (read-after-write), владение
 // по сессии (ученик Б чужого выбора не видит и не меняет), проверка тела (400),
 // школа выключила напоминание (409 и поля `reminder` в GET нет), и тик
-// планировщика шлёт в выбранный день, а не в день школы.
+// планировщика шлёт только в выбранный день: кто не выбрал, не получает
+// никогда, общего дня у школы нет.
 import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
@@ -26,8 +27,8 @@ import { sessionCookieFor, withCsrf } from './e2e-support/http';
 import { myPaymentsPage } from './e2e-support/my-payments';
 import { createUserWithSession } from './e2e-support/session';
 
-const SCHOOL_DAY = 5;
 const OWN_DAY = 12;
+const OTHER_DAY = 5;
 const REMINDER_TIME = '10:00';
 
 describe('Свой день напоминания об оплате (e2e)', () => {
@@ -63,14 +64,18 @@ describe('Свой день напоминания об оплате (e2e)', () 
     const res = await withCsrf(request(server()).patch('/api/settings'))
       .set('Cookie', adminCookie)
       .send({
-        paymentReminder: {
-          enabled,
-          dayOfMonth: SCHOOL_DAY,
-          time: REMINDER_TIME,
-        },
+        paymentReminder: { enabled, time: REMINDER_TIME },
       });
     expect(res.status).toBe(200);
     return (res.body as SettingsDto).tz;
+  }
+
+  /** 10:00 по часам школы в нужный день сентября 2026. */
+  function tickAt(tz: string, day: number): DateTime {
+    return DateTime.fromObject(
+      { year: 2026, month: 9, day, hour: 10, minute: 0 },
+      { zone: tz },
+    );
   }
 
   function putDay(cookie: string, body: unknown): request.Test {
@@ -87,7 +92,7 @@ describe('Свой день напоминания об оплате (e2e)', () 
     expect(res.status).toBe(401);
   });
 
-  it('школа включила: без выбора — день школы, PUT → GET показывает свой день, null сбрасывает', async () => {
+  it('школа включила: без выбора — день null, PUT → GET показывает свой день, null снимает его', async () => {
     await setSchoolReminder(true);
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик',
@@ -95,26 +100,19 @@ describe('Свой день напоминания об оплате (e2e)', () 
     });
 
     expect((await myPaymentsPage(testApp.app, cookie)).reminder).toEqual({
-      dayOfMonth: SCHOOL_DAY,
-      isOwnDay: false,
-      schoolDayOfMonth: SCHOOL_DAY,
+      dayOfMonth: null,
       time: REMINDER_TIME,
     });
 
     const put = await putDay(cookie, { dayOfMonth: OWN_DAY });
     expect(put.status).toBe(200);
     const written = put.body as MyPaymentReminderDto;
-    expect(written).toEqual({
-      dayOfMonth: OWN_DAY,
-      isOwnDay: true,
-      schoolDayOfMonth: SCHOOL_DAY,
-      time: REMINDER_TIME,
-    });
+    expect(written).toEqual({ dayOfMonth: OWN_DAY, time: REMINDER_TIME });
     expect((await myPaymentsPage(testApp.app, cookie)).reminder).toEqual(written);
 
     const reset = await putDay(cookie, { dayOfMonth: null });
     expect(reset.status).toBe(200);
-    expect(reset.body).toMatchObject({ dayOfMonth: SCHOOL_DAY, isOwnDay: false });
+    expect(reset.body).toEqual({ dayOfMonth: null, time: REMINDER_TIME });
     expect((await myPaymentsPage(testApp.app, cookie)).reminder).toEqual(reset.body);
   });
 
@@ -135,7 +133,7 @@ describe('Свой день напоминания об оплате (e2e)', () 
     const injected = await putDay(cookieB, { dayOfMonth: 20, userId: 'чужой' });
 
     expect(injected.status).toBe(400);
-    expect((await myPaymentsPage(testApp.app, cookieB)).reminder?.isOwnDay).toBe(false);
+    expect((await myPaymentsPage(testApp.app, cookieB)).reminder?.dayOfMonth).toBeNull();
     expect((await myPaymentsPage(testApp.app, cookieA)).reminder?.dayOfMonth).toBe(
       OWN_DAY,
     );
@@ -164,7 +162,7 @@ describe('Свой день напоминания об оплате (e2e)', () 
 
     expect(res.status).toBe(400);
     expect((res.body as ApiErrorBody).code).toBe('invalid_input');
-    expect((await myPaymentsPage(testApp.app, cookie)).reminder?.isOwnDay).toBe(false);
+    expect((await myPaymentsPage(testApp.app, cookie)).reminder?.dayOfMonth).toBeNull();
   });
 
   it('границы 1 и 31 принимаются', async () => {
@@ -195,26 +193,45 @@ describe('Свой день напоминания об оплате (e2e)', () 
     expect(await myPaymentsPage(testApp.app, cookie)).not.toHaveProperty('reminder');
   });
 
-  it('тик планировщика шлёт в выбранный день, а в день школы — нет', async () => {
+  it('тик планировщика шлёт в выбранный день, а в другой — нет', async () => {
     const tz = await setSchoolReminder(true);
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик',
       roles: [],
     });
     await putDay(cookie, { dayOfMonth: OWN_DAY });
-    const at = (day: number): DateTime =>
-      DateTime.fromObject(
-        { year: 2026, month: 9, day, hour: 10, minute: 0 },
-        { zone: tz },
-      );
     const service = testApp.app.get(PaymentReminderService, { strict: false });
 
-    expect(await service.remind(at(SCHOOL_DAY))).toEqual({ reminded: 0 });
-    expect(await service.remind(at(OWN_DAY))).toEqual({ reminded: 1 });
+    expect(await service.remind(tickAt(tz, OTHER_DAY))).toEqual({ reminded: 0 });
+    expect(await service.remind(tickAt(tz, OWN_DAY))).toEqual({ reminded: 1 });
 
     const inbox = await request(server()).get('/api/me/inbox').set('Cookie', cookie);
     const page = inbox.body as InboxPageDto;
     expect(page.items).toHaveLength(1);
     expect(page.items[0]?.kind).toBe('payment_due');
+  });
+
+  it('ученик без выбранного дня (и снявший его) не получает напоминания ни в один день', async () => {
+    const tz = await setSchoolReminder(true);
+    const { cookie: none } = await createUserWithSession(testApp.app, {
+      name: 'Не выбирал',
+      roles: [],
+    });
+    const { cookie: reset } = await createUserWithSession(testApp.app, {
+      name: 'Снял выбор',
+      roles: [],
+    });
+    await putDay(reset, { dayOfMonth: OWN_DAY });
+    await putDay(reset, { dayOfMonth: null });
+    const service = testApp.app.get(PaymentReminderService, { strict: false });
+
+    for (let day = 1; day <= 30; day += 1) {
+      expect(await service.remind(tickAt(tz, day))).toEqual({ reminded: 0 });
+    }
+
+    for (const cookie of [none, reset]) {
+      const inbox = await request(server()).get('/api/me/inbox').set('Cookie', cookie);
+      expect((inbox.body as InboxPageDto).items).toHaveLength(0);
+    }
   });
 });

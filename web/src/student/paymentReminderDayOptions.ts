@@ -1,38 +1,44 @@
 // Варианты выбора дня напоминания об оплате (ADR-0161) — чистая логика без DOM:
 // значение `<select>` — строка, а сервер ждёт число или `null`, и перевод туда и
-// обратно живёт в одном месте, а не в обработчике компонента.
+// обратно живёт в одном месте, а не в обработчике компонента. Общего дня у
+// школы нет: кто день не выбрал, напоминания не получает.
 import { SETTINGS_LIMITS, type MyPaymentReminderDto } from '@xuanxue/shared';
 
-/** Значение варианта «Как у школы»: пустая строка, чтобы не совпасть ни с
- * одним числом 1–31. Уходит на сервер как `null` — сброс личного выбора. */
-export const SCHOOL_DAY_VALUE = '';
+/** Значение варианта «Не напоминать»: пустая строка, чтобы не совпасть ни с
+ * одним числом 1–31. Уходит на сервер как `null` — выбор снимается. */
+export const NO_DAY_VALUE = '';
 
 export interface DayOption {
   value: string;
   label: string;
 }
 
-/** Какой вариант выбран сейчас: свой день или «как у школы». Когда своего дня
- * нет, `dayOfMonth` — это день школы, и подставлять его в select нельзя:
- * человек увидел бы «5-го числа» как свой выбор, которого не делал. */
+const DAYS = Array.from(
+  { length: SETTINGS_LIMITS.paymentReminderDayMax },
+  (_, index) => SETTINGS_LIMITS.paymentReminderDayMin + index,
+);
+
+/** «Не напоминать» и дальше 1..31 («12-го числа»). */
+export const DAY_OPTIONS: readonly DayOption[] = [
+  { value: NO_DAY_VALUE, label: 'Не напоминать' },
+  ...DAYS.map((day) => ({ value: String(day), label: `${day}-го числа` })),
+];
+
+/** Какой вариант выбран сейчас: свой день или «Не напоминать». */
 export function selectedDayValue(reminder: MyPaymentReminderDto): string {
-  return reminder.isOwnDay ? String(reminder.dayOfMonth) : SCHOOL_DAY_VALUE;
+  return reminder.dayOfMonth === null ? NO_DAY_VALUE : String(reminder.dayOfMonth);
 }
 
-/** Значение select → тело запроса: `null` — «как у школы». */
+/** Значение select → тело запроса: `null` — «Не напоминать». */
 export function dayFromValue(value: string): number | null {
-  return value === SCHOOL_DAY_VALUE ? null : Number(value);
+  return value === NO_DAY_VALUE ? null : Number(value);
 }
 
-/** «Как у школы — 5-го» и дальше 1..31 («12-го числа»). Число школы стоит в
- * первом варианте, чтобы человек видел, что получит, ничего не выбирая. */
-export function buildDayOptions(schoolDay: number): DayOption[] {
-  const days = Array.from(
-    { length: SETTINGS_LIMITS.paymentReminderDayMax },
-    (_, index) => SETTINGS_LIMITS.paymentReminderDayMin + index,
-  );
-  return [
-    { value: SCHOOL_DAY_VALUE, label: `Как у школы — ${schoolDay}-го` },
-    ...days.map((day) => ({ value: String(day), label: `${day}-го числа` })),
-  ];
+/** Подсказка под полем: что произойдёт при нынешнем выборе. Акцент — на
+ * факте, который ученик ищет глазами: день и час (`**` рисует RichText). */
+export function reminderHint(reminder: MyPaymentReminderDto): string {
+  if (reminder.dayOfMonth === null) {
+    return `Выберите день — напомним об оплате в **${reminder.time}** по времени школы.`;
+  }
+  return `Напомним **${reminder.dayOfMonth}-го** в **${reminder.time}** по времени школы. Если в месяце нет такого числа — в последний день.`;
 }

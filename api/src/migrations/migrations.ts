@@ -15,6 +15,7 @@ import { materialsWithoutPaidAccess } from './0014-materials-without-paid-access
 import { examItemsWithoutHintCriteriaTags } from './0015-exam-items-without-hint-criteria-tags.migration';
 import { paymentReminderTemplateWithoutSubscription } from './0016-payment-reminder-template-without-subscription.migration';
 import { paymentReminderTemplateContact } from './0017-payment-reminder-template-contact.migration';
+import { paymentReminderWithoutSchoolDay } from './0018-payment-reminder-without-school-day.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -54,4 +55,5 @@ export const MIGRATIONS: Migration[] = [
   examItemsWithoutHintCriteriaTags,
   paymentReminderTemplateWithoutSubscription,
   paymentReminderTemplateContact,
+  paymentReminderWithoutSchoolDay,
 ];

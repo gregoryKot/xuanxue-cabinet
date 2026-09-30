@@ -15,7 +15,7 @@ describe('SetPaymentReminderDayDto', () => {
     expect(await errorsFor({ dayOfMonth })).toBe(0);
   });
 
-  it('null принимается — «как у школы»', async () => {
+  it('null принимается — «не напоминать»', async () => {
     expect(await errorsFor({ dayOfMonth: null })).toBe(0);
   });
 

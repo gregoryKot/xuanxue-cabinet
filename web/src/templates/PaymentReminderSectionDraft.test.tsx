@@ -63,16 +63,19 @@ describe('PaymentReminderSection — набранное переживает с�
     );
 
     fireEvent.change(screen.getByLabelText('Время'), { target: { value: '09:30' } });
-    // Соседняя секция сохранилась, и в тех же настройках день уже другой.
+    // Соседняя секция сохранилась, и в тех же настройках текст уже другой.
     rerender(
       <PaymentReminderSection
-        settings={makeSettings({ dayOfMonth: 20 }, '2026-01-02T00:00:00Z')}
+        settings={makeSettings(
+          { template: 'Новый текст, {имя}' },
+          '2026-01-02T00:00:00Z',
+        )}
         update={update}
       />,
     );
 
     expect(screen.getByLabelText('Время')).toHaveValue('09:30');
-    expect(screen.getByLabelText('День по умолчанию')).toHaveValue('20');
+    expect(screen.getByLabelText('Текст напоминания')).toHaveValue('Новый текст, {имя}');
     expect(screen.getByRole('button', { name: SAVE })).toBeEnabled();
   });
 });

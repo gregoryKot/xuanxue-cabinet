@@ -37,7 +37,6 @@ function toPaymentReminder(
 ): PaymentReminderSettings {
   return {
     enabled: doc?.enabled ?? DEFAULT_PAYMENT_REMINDER.enabled,
-    dayOfMonth: doc?.dayOfMonth ?? DEFAULT_PAYMENT_REMINDER.dayOfMonth,
     time: doc?.time ?? DEFAULT_PAYMENT_REMINDER.time,
     template: doc?.template ?? DEFAULT_PAYMENT_REMINDER.template,
   };
