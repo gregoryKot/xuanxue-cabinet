@@ -53,7 +53,7 @@ describe('PaymentContactNote — свой день напоминания (ADR-0
     mockApiByPath({ [PATH]: PAGE });
     render(<PaymentContactNote />);
 
-    await screen.findByText('Маше @marievyazova');
+    await screen.findByRole('link', { name: '@marievyazova' });
 
     expect(screen.queryByLabelText(DAY_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText(/Напомним в/)).not.toBeInTheDocument();
