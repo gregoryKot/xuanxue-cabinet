@@ -6,10 +6,12 @@
 // (`defaultNotifications`, shared/src/notifications.ts): новый вид
 // уведомления подхватывается всеми молча, без миграции старых документов.
 // Срок хранения — пока жив аккаунт: `DELETE /users/:id` удаляет документ
-// целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4).
+// целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4). Кроме переключателей
+// здесь же выбор «о каких занятиях» (`lessonScopeMode`, `lessonClassIds`,
+// ADR-0162) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { NOTIFICATION_KINDS, SETTINGS_LIMITS } from '@xuanxue/shared';
-import type { NotificationKind } from '@xuanxue/shared';
+import { LESSON_SCOPE_MODES, NOTIFICATION_KINDS, SETTINGS_LIMITS } from '@xuanxue/shared';
+import type { LessonScopeMode, NotificationKind } from '@xuanxue/shared';
 import { plain, type FieldPolicy } from '../common/field-policy';
 
 // Подсхема одного переключателя — не Mixed (CLAUDE.md: Mixed только с
@@ -50,18 +52,36 @@ export class NotificationPrefsRecord {
     max: SETTINGS_LIMITS.paymentReminderDayMax,
   })
   paymentReminderDay?: number;
+
+  // О каких занятиях напоминать (ADR-0162). Два верхнеуровневых поля, а не
+  // вложенный объект: политика шифрования читает только верхний уровень
+  // (field-policy.ts). Нет `lessonScopeMode` — `all`: ученик ничего не
+  // выбирал, документ ему не нужен.
+  @Prop({ type: String, enum: LESSON_SCOPE_MODES })
+  lessonScopeMode?: LessonScopeMode;
+
+  // id занятий строками, как `userId`: сверяются с `classes._id.toString()`
+  // в напоминании, кастовать туда и обратно незачем. Режим `all` список не
+  // стирает — вернулся к `selected`, галочки на месте. `default: undefined`:
+  // Mongoose иначе подставил бы пустой массив каждому документу настроек.
+  @Prop({ type: [String], default: undefined })
+  lessonClassIds?: string[];
 }
 
 export const NotificationPrefsSchema = SchemaFactory.createForClass(
   NotificationPrefsRecord,
 );
 // Один документ настроек на человека — второй insert с тем же userId падает
-// с E11000 (NotificationPrefsService.ensureDoc ловит и не создаёт дубль).
+// с E11000 (ensurePrefsDoc ловит и не создаёт дубль).
 NotificationPrefsSchema.index({ userId: 1 }, { unique: true });
 
 export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
   userId: plain('id пользователя — признак владения, не свободный текст'),
   paymentReminderDay: plain(
     'число 1–31, выбранный день месяца, не свободный текст и не персональные данные',
+  ),
+  lessonScopeMode: plain('перечисление all/selected, не свободный текст'),
+  lessonClassIds: plain(
+    'id занятий расписания школы, не свободный текст и не персональные данные',
   ),
 };

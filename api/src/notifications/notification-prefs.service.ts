@@ -11,8 +11,8 @@ import {
   type NotificationPrefsDto,
   type UserRole,
 } from '@xuanxue/shared';
-import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { applyOverrides } from './apply-overrides';
+import { ensurePrefsDoc } from './ensure-prefs-doc';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
 
 // CAS-цикл set() ниже завершается за 1 итерацию почти всегда — второй виток
@@ -71,7 +71,7 @@ export class NotificationPrefsService {
    * дублей и без потери записи. */
   async set(userId: string, kind: NotificationKind, enabled: boolean): Promise<void> {
     for (let attempt = 0; attempt < SET_RETRY_LIMIT; attempt += 1) {
-      await this.ensureDoc(userId);
+      await ensurePrefsDoc(this.model, userId);
 
       const updated = await this.model.updateOne(
         { userId, 'overrides.kind': kind },
@@ -120,21 +120,7 @@ export class NotificationPrefsService {
       await this.model.updateOne({ userId }, { $unset: { paymentReminderDay: 1 } });
       return;
     }
-    await this.ensureDoc(userId);
+    await ensurePrefsDoc(this.model, userId);
     await this.model.updateOne({ userId }, { $set: { paymentReminderDay: day } });
-  }
-
-  /** Документ настроек почти всегда уже есть — создаём только при первом
-   * переключении человека (тот же приём, что `SettingsService.get()`:
-   * дешёвое чтение раньше записи, E11000 гонки двух первых кликов не роняет
-   * второй, просто ничего не создаёт — документ уже есть после первого). */
-  private async ensureDoc(userId: string): Promise<void> {
-    const exists = await this.model.exists({ userId });
-    if (exists) return;
-    try {
-      await this.model.create({ userId, overrides: [] });
-    } catch (err) {
-      if (!isDuplicateKeyError(err)) throw err;
-    }
   }
 }

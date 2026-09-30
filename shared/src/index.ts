@@ -437,6 +437,18 @@ export {
   isNotificationKind,
   rolesWithNotification,
 } from './notifications';
+export type {
+  LessonScope,
+  LessonScopeClassDto,
+  LessonScopeMode,
+  MyLessonNotificationsDto,
+  UpdateLessonScopeInput,
+} from './lesson-notifications';
+export {
+  LESSON_SCOPE_CLASS_IDS_MAX,
+  LESSON_SCOPE_MODES,
+  isLessonInScope,
+} from './lesson-notifications';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
 export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {

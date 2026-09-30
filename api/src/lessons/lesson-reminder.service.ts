@@ -2,23 +2,17 @@
 // баг-репорт 2026-09-27 «ученик включил push на iPhone, напоминаний о
 // занятиях не приходило» — вида не было вовсе (ADR-0069). Кандидаты: занятия
 // status 'scheduled', без studentReminderSentAt, startsAt в
-// (now, now + lessonReminderMinutes] (settings.lessonReminderMinutes,
-// ADR-0135) — условный апдейт ДО отправки (claimAndRun), тот же приём, что
-// RecordingPromptService рядом.
+// (now, now + lessonReminderMinutes] — условный апдейт ДО отправки
+// (claimAndRun), тот же приём, что RecordingPromptService рядом.
 //
 // Получатели — активные ученики (listActiveStudents, люди без единой роли,
 // ADR-0026) с включённым видом lesson_soon (NotificationPrefsService.
-// getManyEnabled). Модель пользователя — напрямую (UserModelModule), не через
-// UsersService: тот же приём, что у lessonModel/classModel ниже, и файл
-// UsersService не растёт лишним методом (CLAUDE.md «Храповики»). Групп у
-// ученика пока нет (my-lessons.service.ts, шапка файла) — напоминание уходит
-// о любом занятии школы всем активным ученикам, не только «своим»: то же
-// решение, что уже действует у GET /me/lessons, записано отдельно в
-// ADR-0135.
+// getManyEnabled), о занятиях по их выбору (LessonScopeService, ADR-0162):
+// по умолчанию обо всех, как в ADR-0135. Модель пользователя — напрямую
+// (UserModelModule), не через UsersService (CLAUDE.md «Храповики»).
 //
-// Доставка — лента кабинета (writeNotificationRow, in-app-staff-write.ts —
-// та же функция, что у трёх экзаменных уведомлений, не вторая копия) и push
-// (PushSenderService.sendToUser — никогда не бросает, best-effort, ADR-0092).
+// Доставка — лента кабинета (writeNotificationRow, in-app-staff-write.ts) и
+// push (PushSenderService.sendToUser — никогда не бросает, ADR-0092).
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
@@ -27,8 +21,10 @@ import { claimAndRun } from '../common/claim-once';
 import { errorMessage, errorStack } from '../common/error-info';
 import { ClassRecord } from '../classes/class.schema';
 import { writeNotificationRow } from '../notifications/in-app-staff-write';
+import { LessonScopeService } from '../notifications/lesson-scope.service';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { NotificationRecord } from '../notifications/notification.schema';
+import { recipientsInScope } from '../notifications/recipients-in-scope';
 import { PushSenderService } from '../push/push-sender.service';
 import { SettingsService } from '../settings/settings.service';
 import { listActiveStudents } from '../users/list-active-students';
@@ -62,6 +58,7 @@ export class LessonReminderService {
     private readonly notificationModel: Model<NotificationRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
     private readonly notificationPrefsService: NotificationPrefsService,
+    private readonly lessonScopeService: LessonScopeService,
     private readonly settingsService: SettingsService,
     private readonly pushSender: PushSenderService,
   ) {}
@@ -79,6 +76,8 @@ export class LessonReminderService {
       enabledByUser.get(s.id)?.includes(LESSON_SOON_KIND),
     );
     if (recipients.length === 0) return { reminded: 0 };
+    // Одна выборка на тик, не по ученику в цикле (ADR-0162).
+    const scopes = await this.lessonScopeService.getMany(recipients.map((r) => r.id));
 
     const { lessonReminderMinutes } = await this.settingsService.get();
     const candidates = await this.lessonModel
@@ -112,7 +111,8 @@ export class LessonReminderService {
         'studentReminderSentAt',
         now,
         async () => {
-          await this.notifyStudents(lesson, cls.title, recipients, now);
+          const audience = recipientsInScope(recipients, scopes, String(lesson.classId));
+          await this.notifyStudents(lesson, cls.title, audience, now);
           return true;
         },
         (error) =>
