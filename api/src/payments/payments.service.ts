@@ -16,6 +16,7 @@ import {
   type PaymentStatus,
 } from '@xuanxue/shared';
 import { SettingsService } from '../settings/settings.service';
+import { PaymentReminderDayService } from './payment-reminder-day.service';
 import { UserRecord } from '../users/user.schema';
 import { assertMonthKey, monthKeyOf } from './payment-month';
 import {
@@ -43,6 +44,7 @@ export class PaymentsService {
     @InjectModel(PaymentRecord.name) private readonly model: Model<PaymentRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
     private readonly settingsService: SettingsService,
+    private readonly reminderDays: PaymentReminderDayService,
   ) {}
 
   /** Месяц из query или текущий в поясе школы (ADR-0049) — строка на
@@ -125,10 +127,13 @@ export class PaymentsService {
       .sort({ month: -1 })
       .limit(limit ?? PAYMENT_LIMITS.listLimitDefault)
       .lean<RawLeanPayment[]>();
+    const reminder = await this.reminderDays.forUser(userId, settings.paymentReminder);
     return {
       month: monthKeyOf(now, settings.tz),
       rows: docs.map((doc) => toMyPaymentDto(decryptPayment(doc))),
       contact: settings.paymentContact,
+      // Поля нет, пока школа напоминание не включила (ADR-0160, ADR-0069).
+      ...(reminder && { reminder }),
     };
   }
 }

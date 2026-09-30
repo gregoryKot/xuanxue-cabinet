@@ -21,11 +21,20 @@ export interface CandidateDeps {
   logger: Logger;
 }
 
-/** Вид включён, месяц не оплачен и напоминание не уходило — одна выборка
+/** Какие числа месяца сейчас открыты (`openReminderDays`) и какой день у
+ * школы — для тех, кто своего дня не выбирал (ADR-0160). */
+export interface ReminderDays {
+  open: ReadonlySet<number>;
+  schoolDay: number;
+}
+
+/** Вид включён, день ученика (свой, а нет — школы) сейчас открыт, месяц не
+ * оплачен и напоминание не уходило — по одной выборке `notification_prefs` и
  * `payments` на всех, не по человеку в цикле. */
 export async function findReminderCandidates(
   deps: CandidateDeps,
   month: string,
+  days: ReminderDays,
 ): Promise<ActiveStudent[]> {
   const students = await listActiveStudents(deps.userModel);
   // Ученики без единой роли: `roles: []` для каждого — тот же приём, что у
@@ -33,8 +42,15 @@ export async function findReminderCandidates(
   const enabledByUser = await deps.notificationPrefsService.getManyEnabled(
     students.map((s) => ({ id: s.id, roles: [] })),
   );
-  const wanted = students.filter((s) =>
+  const enabled = students.filter((s) =>
     enabledByUser.get(s.id)?.includes(PAYMENT_DUE_KIND),
+  );
+  if (enabled.length === 0) return [];
+  const ownDays = await deps.notificationPrefsService.getPaymentReminderDays(
+    enabled.map((s) => s.id),
+  );
+  const wanted = enabled.filter((s) =>
+    days.open.has(ownDays.get(s.id) ?? days.schoolDay),
   );
   if (wanted.length === 0) return [];
 
@@ -49,10 +65,12 @@ export async function findReminderCandidates(
       .filter((d) => d.status === 'paid' || d.reminderSentAt)
       .map((d) => d.userId.toString()),
   );
-  // Выключил вид или уже оплатил — выбор человека, не сбой: debug, не warn.
+  // Выключил вид, ждёт своего дня или уже оплатил — выбор человека, не сбой:
+  // debug, не warn.
   deps.logger.debug(
     `напоминание об оплате ${month}: учеников ${students.length}, ` +
-      `вид выключили ${students.length - wanted.length}, ` +
+      `вид выключили ${students.length - enabled.length}, ` +
+      `день не сегодня ${enabled.length - wanted.length}, ` +
       `оплатили или уже получили ${skipIds.size}`,
   );
   return wanted.filter((s) => !skipIds.has(s.id)).slice(0, PAYMENT_REMINDER_BATCH_LIMIT);

@@ -4,9 +4,14 @@
 // «контроллер берёт userId из @CurrentUser(), а не откуда-то ещё».
 import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
-import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
+import type {
+  MyPaymentDto,
+  MyPaymentReminderDto,
+  MyPaymentsPageDto,
+} from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { MyPaymentsController } from './my-payments.controller';
+import { PaymentReminderDayService } from './payment-reminder-day.service';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentsService } from './payments.service';
 
@@ -29,12 +34,14 @@ const MY_PAGE: MyPaymentsPageDto = {
 async function buildController(
   service: Partial<PaymentsService> = {},
   screenshots: Partial<PaymentScreenshotsService> = {},
+  reminderDays: Partial<PaymentReminderDayService> = {},
 ): Promise<MyPaymentsController> {
   const module = await Test.createTestingModule({
     controllers: [MyPaymentsController],
     providers: [
       { provide: PaymentsService, useValue: service },
       { provide: PaymentScreenshotsService, useValue: screenshots },
+      { provide: PaymentReminderDayService, useValue: reminderDays },
     ],
   }).compile();
   return module.get(MyPaymentsController);
@@ -65,5 +72,31 @@ describe('MyPaymentsController', () => {
     // Имя нужно для подписи бухгалтеру (ADR-0156), id — для владения.
     expect(passedUser).toBe(STUDENT);
     expect(passedMonth).toBe('2026-09');
+  });
+
+  it('setReminderDay() берёт владельца из сессии, а день — из тела; ответ сервиса отдаёт как есть', async () => {
+    const reminder: MyPaymentReminderDto = {
+      dayOfMonth: 12,
+      isOwnDay: true,
+      schoolDayOfMonth: 5,
+      time: '10:00',
+    };
+    const set = jest.fn().mockResolvedValue(reminder);
+    const controller = await buildController({}, {}, { set });
+
+    await expect(controller.setReminderDay({ dayOfMonth: 12 }, STUDENT)).resolves.toEqual(
+      reminder,
+    );
+
+    expect(set).toHaveBeenCalledWith(STUDENT.id, 12);
+  });
+
+  it('setReminderDay() передаёт null сервису — сброс на день школы', async () => {
+    const set = jest.fn().mockResolvedValue({});
+    const controller = await buildController({}, {}, { set });
+
+    await controller.setReminderDay({ dayOfMonth: null }, STUDENT);
+
+    expect(set).toHaveBeenCalledWith(STUDENT.id, null);
   });
 });

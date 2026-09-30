@@ -80,6 +80,28 @@ export interface MyPaymentsPageDto {
    * Ученику вне роли штата `GET /settings` недоступен, поэтому контакт едет в
    * его же ответе, а не отдельным запросом. */
   contact: string;
+  /** День напоминания об оплате, как его видит ученик (ADR-0160). Поля нет,
+   * пока школа напоминание не включила: выбор дня, который ничего не делает,
+   * ученику не показываем (ADR-0069). */
+  reminder?: MyPaymentReminderDto;
+}
+
+/** Когда ученику придёт напоминание об оплате (ADR-0160). `dayOfMonth` — день,
+ * который сработает: свой (`isOwnDay`) или школы. Ответ `PUT
+ * /me/payments/reminder-day` — тот же тип, кабинет вписывает его без второго
+ * GET (ADR-0087). */
+export interface MyPaymentReminderDto {
+  dayOfMonth: number;
+  isOwnDay: boolean;
+  schoolDayOfMonth: number;
+  /** 'HH:mm' в поясе школы — час один для всех, выбирается только день. */
+  time: string;
+}
+
+/** Тело `PUT /me/payments/reminder-day`: 1–31 — свой день, `null` — «как у
+ * школы» (личный выбор сбрасывается). */
+export interface SetPaymentReminderDayInput {
+  dayOfMonth: number | null;
 }
 
 /** Сколько дней живёт снимок перевода (ADR-0050): после подтверждения и без
@@ -107,6 +129,11 @@ export interface ConfirmPaymentInput {
   amountMinor?: number;
   note?: string;
 }
+
+/** `PUT /me/payments/reminder-day` при выключенном школой напоминании (409,
+ * ADR-0160): выбирать нечего, пока оно не включено. */
+export const PAYMENT_REMINDER_DISABLED_MESSAGE =
+  'Напоминания об оплате сейчас выключены школой.';
 
 export const PAYMENT_MONTH_INVALID_MESSAGE =
   'Месяц должен быть в формате ГГГГ-ММ, например 2026-09.';

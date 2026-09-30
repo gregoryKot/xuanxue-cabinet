@@ -2,7 +2,7 @@
 // (CLAUDE.md «Тесты»): «сейчас» приходит параметром, день и час считаются в
 // поясе школы, только Luxon (CLAUDE.md «Время», ADR-0051, ADR-0150).
 import { DateTime } from 'luxon';
-import type { PaymentReminderSettings } from '@xuanxue/shared';
+import { SETTINGS_LIMITS } from '@xuanxue/shared';
 import { parseRuleTime } from '../lessons/lesson-occurrences';
 
 // Окно, в течение которого момент отправки ещё «текущий». Шаг тика идёт раз в
@@ -39,15 +39,26 @@ export function paymentReminderDueAt(
   );
 }
 
-/** Пора ли слать: включено и `now` внутри окна `[dueAt, dueAt + сутки)`.
- * Включили 20-го при дне 5 — окно этого месяца давно закрыто: это уже
- * прошлое напоминание, не текущее, и всем сразу оно не уйдёт. */
-export function isPaymentReminderDue(
-  now: DateTime,
-  tz: string,
-  reminder: PaymentReminderSettings,
-): boolean {
-  if (!reminder.enabled) return false;
-  const dueAt = paymentReminderDueAt(now, tz, reminder.dayOfMonth, reminder.time);
-  return now >= dueAt && now < dueAt.plus({ hours: PAYMENT_REMINDER_CATCH_UP_HOURS });
+/** Какие числа месяца 1..31 сейчас «открыты»: `now` внутри окна
+ * `[dueAt, dueAt + сутки)` этого дня (ADR-0160 — день выбирает ученик, поэтому
+ * «пора ли» больше не один ответ на всех, а набор чисел). Чисел бывает
+ * несколько сразу: 31-е в 30-дневном месяце — это 30-е, и открывшись, оно
+ * открывает 30 и 31 вместе. Окно, начатое вчера, ещё открыто утром сегодня.
+ * Пустой набор — тик выходит, не сделав ни одного запроса к базе. Включили
+ * 20-го при дне 5 — окно этого месяца давно закрыто: это прошлое напоминание,
+ * не текущее, и всем сразу оно не уйдёт. Месяц, как и в `paymentReminderDueAt`,
+ * по часам школы: окно не перетекает через границу месяца. */
+export function openReminderDays(now: DateTime, tz: string, time: string): Set<number> {
+  const open = new Set<number>();
+  for (
+    let day = SETTINGS_LIMITS.paymentReminderDayMin;
+    day <= SETTINGS_LIMITS.paymentReminderDayMax;
+    day += 1
+  ) {
+    const dueAt = paymentReminderDueAt(now, tz, day, time);
+    if (now >= dueAt && now < dueAt.plus({ hours: PAYMENT_REMINDER_CATCH_UP_HOURS })) {
+      open.add(day);
+    }
+  }
+  return open;
 }

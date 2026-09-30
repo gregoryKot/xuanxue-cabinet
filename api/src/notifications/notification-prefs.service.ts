@@ -88,6 +88,42 @@ export class NotificationPrefsService {
     throw new Error(SET_RETRY_EXHAUSTED_MESSAGE);
   }
 
+  /** Свой день напоминания об оплате (ADR-0160) или `undefined` — «как у
+   * школы». Отдельный метод, а не поле в `get()`: `NotificationPrefsDto` уходит
+   * в кабинет и в бот, и лишнее поле поехало бы туда же. */
+  async getPaymentReminderDay(userId: string): Promise<number | undefined> {
+    const doc = await this.model
+      .findOne({ userId }, { paymentReminderDay: 1 })
+      .lean<Pick<NotificationPrefsRecord, 'paymentReminderDay'> | null>();
+    return doc?.paymentReminderDay;
+  }
+
+  /** Дни целой пачки одним запросом (не по человеку в цикле, как
+   * `getManyEnabled`): в карте только те, кто выбрал свой день. */
+  async getPaymentReminderDays(userIds: readonly string[]): Promise<Map<string, number>> {
+    if (userIds.length === 0) return new Map();
+    const docs = await this.model
+      .find(
+        { userId: { $in: [...userIds] }, paymentReminderDay: { $exists: true } },
+        { userId: 1, paymentReminderDay: 1 },
+      )
+      .lean<Required<Pick<NotificationPrefsRecord, 'userId' | 'paymentReminderDay'>>[]>();
+    return new Map(docs.map((doc) => [doc.userId, doc.paymentReminderDay]));
+  }
+
+  /** Записать свой день; `null` — вернуть «как у школы» (`$unset`, а не 0:
+   * ноль в поле означал бы «выбрал день 0»). Сброс документ не заводит: нечего
+   * сбрасывать там, где ничего не выбирали. Запись идемпотентна — то же
+   * значение второй раз даёт тот же документ. */
+  async setPaymentReminderDay(userId: string, day: number | null): Promise<void> {
+    if (day === null) {
+      await this.model.updateOne({ userId }, { $unset: { paymentReminderDay: 1 } });
+      return;
+    }
+    await this.ensureDoc(userId);
+    await this.model.updateOne({ userId }, { $set: { paymentReminderDay: day } });
+  }
+
   /** Документ настроек почти всегда уже есть — создаём только при первом
    * переключении человека (тот же приём, что `SettingsService.get()`:
    * дешёвое чтение раньше записи, E11000 гонки двух первых кликов не роняет

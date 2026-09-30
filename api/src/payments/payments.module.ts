@@ -12,6 +12,7 @@
 // payment-screenshot-delivery.port.ts).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UserModelModule } from '../users/user-model.module';
 import { MyPaymentsController } from './my-payments.controller';
@@ -19,6 +20,7 @@ import {
   PaymentScreenshotRecord,
   PaymentScreenshotSchema,
 } from './payment-screenshot.schema';
+import { PaymentReminderDayService } from './payment-reminder-day.service';
 import { PaymentScreenshotDeliveryRegistry } from './payment-screenshot-delivery.registry';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentRecord, PaymentSchema } from './payment.schema';
@@ -33,11 +35,14 @@ import { PaymentsService } from './payments.service';
     ]),
     UserModelModule,
     SettingsModule,
+    // NotificationPrefsService — свой день напоминания (ADR-0160).
+    NotificationsModule,
   ],
   controllers: [PaymentsController, MyPaymentsController],
   providers: [
     PaymentsService,
     PaymentScreenshotsService,
+    PaymentReminderDayService,
     PaymentScreenshotDeliveryRegistry,
   ],
   exports: [MongooseModule, PaymentsService, PaymentScreenshotDeliveryRegistry],

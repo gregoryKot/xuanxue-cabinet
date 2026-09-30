@@ -1,5 +1,6 @@
 // Секция «Оплаты» экрана «Шаблоны» (docs/PLAN.md §15 п. 2.5, ADR-0051,
-// ADR-0150) — ежемесячная напоминалка ученику об оплате (ADR-0157). Логика
+// ADR-0150) — ежемесячная напоминалка ученику об оплате (ADR-0157). День здесь —
+// по умолчанию: свой день ученик выбирает в «Профиле» (ADR-0160). Логика
 // в usePaymentReminderSection.ts, компонент только рендерит (CLAUDE.md «Тесты»).
 // Раздел под волосяной линией, как «Школа» (SchoolSiteField.tsx); кнопка
 // вторичная: заливка терракотой на экране одна, у «Сохранить» под шаблонами
@@ -26,6 +27,7 @@ import { usePaymentReminderSection } from './usePaymentReminderSection';
 
 const EXPLANATION =
   'В выбранный день и час бот напомнит ученикам **об оплате за месяц**. ' +
+  'Свой день ученик выбирает сам в «Профиле», а день ниже — **для тех, кто не выбрал**. ' +
   'Нет чата с ботом — напоминание придёт в кабинет. ' +
   'Нет такого дня в месяце, например 31-го в феврале, — придёт **в последний день месяца**.';
 
@@ -74,7 +76,7 @@ export function PaymentReminderSection({
 
       <div style={rowStyle}>
         <Field
-          label="День месяца"
+          label="День по умолчанию"
           hint={`Число от ${SETTINGS_LIMITS.paymentReminderDayMin} до ${SETTINGS_LIMITS.paymentReminderDayMax}`}
           error={reminder.dayError ?? undefined}
         >

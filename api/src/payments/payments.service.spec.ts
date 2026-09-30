@@ -7,6 +7,8 @@ import { DEFAULT_PAYMENT_CONTACT } from '@xuanxue/shared';
 import { MONGO_DUPLICATE_KEY_CODE } from '../common/mongo-error-codes';
 import { ClassRecord } from '../classes/class.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
+import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { SettingsRecord } from '../settings/settings.schema';
 import { SettingsService } from '../settings/settings.service';
 import { UserRecord } from '../users/user.schema';
@@ -14,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { decryptPayment, type RawLeanPayment } from './payment.mapper';
 import { monthKeyOf } from './payment-month';
+import { PaymentReminderDayService } from './payment-reminder-day.service';
 import { PaymentRecord } from './payment.schema';
 import { PaymentsService } from './payments.service';
 
@@ -40,7 +43,15 @@ describe('PaymentsService', () => {
       classModel,
       usersService,
     );
-    service = new PaymentsService(paymentModel, userModel, settingsService);
+    const prefs = new NotificationPrefsService(
+      connection.model<NotificationPrefsRecord>(NotificationPrefsRecord.name),
+    );
+    service = new PaymentsService(
+      paymentModel,
+      userModel,
+      settingsService,
+      new PaymentReminderDayService(prefs, settingsService),
+    );
   }, 60_000);
 
   afterAll(async () => {
