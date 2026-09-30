@@ -440,8 +440,8 @@ export {
 export type {
   LessonScope,
   LessonScopeClassDto,
-  LessonScopeMode,
   LessonReminderDto,
+  LessonScopeMode,
   MyLessonNotificationsDto,
   UpdateLessonReminderInput,
   UpdateLessonScopeInput,

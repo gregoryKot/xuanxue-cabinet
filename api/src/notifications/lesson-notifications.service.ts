@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type {
+  LessonReminderDto,
   MyLessonNotificationsDto,
   UpdateLessonReminderInput,
   UpdateLessonScopeInput,
@@ -22,6 +23,14 @@ import { LessonScopeService } from './lesson-scope.service';
 // Чаще всего это учитель, удаливший занятие, пока экран был открыт.
 const CLASS_GONE_MESSAGE =
   'Такого занятия больше нет в расписании. Обновите страницу и отметьте занятия заново.';
+
+/** Нет своего выбора (`undefined`) — `null` на проводе: «как в школе». */
+function toReminderDto(
+  own: number | undefined,
+  schoolMinutes: number,
+): LessonReminderDto {
+  return { minutes: own ?? null, schoolMinutes };
+}
 
 @Injectable()
 export class LessonNotificationsService {
@@ -41,7 +50,7 @@ export class LessonNotificationsService {
     return {
       scope,
       classes,
-      reminder: { minutes: own ?? null, schoolMinutes: school.lessonReminderMinutes },
+      reminder: toReminderDto(own, school.lessonReminderMinutes),
     };
   }
 
