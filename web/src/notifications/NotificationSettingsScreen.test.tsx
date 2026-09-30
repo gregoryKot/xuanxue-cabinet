@@ -54,6 +54,7 @@ const TEACHER: MeDto = { ...STUDENT, id: 't1', roles: ['teacher'] };
 const LESSONS: MyLessonNotificationsDto = {
   scope: { mode: 'all', classIds: [] },
   classes: [],
+  reminder: { minutes: null, schoolMinutes: 60 },
 };
 
 function serve(me: MeDto, prefs: unknown = { enabled: [] }) {

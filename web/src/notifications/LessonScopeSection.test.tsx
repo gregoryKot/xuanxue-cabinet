@@ -69,7 +69,11 @@ const lessons = (
   mode: 'all' | 'selected',
   classIds: string[],
   classes: LessonScopeClassDto[] = [MORNING, EVENING],
-): MyLessonNotificationsDto => ({ scope: { mode, classIds }, classes });
+): MyLessonNotificationsDto => ({
+  scope: { mode, classIds },
+  classes,
+  reminder: { minutes: null, schoolMinutes: 60 },
+});
 
 function serve(me: MeDto, response: unknown, putResponse: unknown = response) {
   // Узкий путь раньше широкого: `mockApiByPath` берёт первое совпадение по
