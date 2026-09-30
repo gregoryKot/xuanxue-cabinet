@@ -14,10 +14,6 @@ import { useAbortableFetch } from '../hooks/useAbortableFetch';
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить занятия. Попробуйте ещё раз.';
 const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попробуйте ещё раз.';
 
-// Один и тот же пустой массив между рендерами: `useMemo` списка занятий
-// (LessonScopeClassList.tsx) не пересчитывается от того, что данных ещё нет.
-const NO_CLASSES: LessonScopeClassDto[] = [];
-
 export interface UseLessonScopeResult {
   scope: LessonScope | null;
   classes: LessonScopeClassDto[];
@@ -57,7 +53,7 @@ export function useLessonScope(): UseLessonScopeResult {
 
   return {
     scope: data?.scope ?? null,
-    classes: data?.classes ?? NO_CLASSES,
+    classes: data?.classes ?? [],
     loading,
     error,
     reload,

@@ -1,19 +1,19 @@
 // Список занятий галочками для режима «Только о выбранных» (ADR-0162). Строка —
 // нативный чекбокс из Toggle.tsx с подписью «название · подпись группы» и днями
-// со временем второй строкой. Время — по часам зрителя (classSlotsLabel.ts), а
-// пояс школы, если он другой, называется один раз над списком, не у каждой
-// строки: так решил владелец для «Расписания» и «Занятий» (schedule/
-// timezoneLabel.ts), частокол «Asia/Jerusalem» на каждой строке читался шумом.
-// Состояние и запись — у LessonScopeSection.tsx, здесь только рендер и тело
-// будущего PUT.
-import { useMemo, type CSSProperties } from 'react';
+// со временем второй строкой. Показаны правила расписания, а не даты, поэтому
+// время школьное, как в сетке «Расписания» штата (classSlotsLabel.ts), а пояс
+// школы, если он другой, назван один раз над списком (`ruleTzNote`), не у
+// каждой строки: частокол «Asia/Jerusalem» читался шумом (отзыв владельца
+// 2026-09-12, schedule/timezoneLabel.ts). Состояние и запись — у
+// LessonScopeSection.tsx, здесь только рендер и тело будущего PUT.
+import type { CSSProperties } from 'react';
 import type { LessonScope, LessonScopeClassDto } from '@xuanxue/shared';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { RichText } from '../components/RichText';
 import { noteStyle } from '../components/screenLayout';
 import { Toggle } from '../components/Toggle';
 import { classSlotsLabel } from '../lib/classSlotsLabel';
-import { planningTzNote } from '../schedule/timezoneLabel';
+import { ruleTzNote } from '../schedule/timezoneLabel';
 import { hasNoTicks, scopeWithTick, tickedClassIds } from './lessonScopeEdit';
 
 const EMPTY_CLASSES_MESSAGE = 'В расписании пока нет занятий.';
@@ -51,20 +51,10 @@ export function LessonScopeClassList({
   disabled,
   onChange,
 }: LessonScopeClassListProps) {
-  // Подписи считаются один раз на загрузку списка, а не на каждый рендер: на
-  // каждое занятие приходится по нескольку вызовов Intl (classSlotsLabel.ts).
-  // «Сейчас» берётся внутри — зависимостей у него нет и не будет.
-  const slotLabels = useMemo(() => {
-    const nowIso = new Date().toISOString();
-    return new Map(
-      classes.map((item) => [item.id, classSlotsLabel(item.slots, item.tz, nowIso)]),
-    );
-  }, [classes]);
-
   if (classes.length === 0) return <p style={noteStyle}>{EMPTY_CLASSES_MESSAGE}</p>;
 
   const ticked = new Set(tickedClassIds(scope, classes));
-  const tzNote = planningTzNote(classes.map((item) => item.tz));
+  const tzNote = ruleTzNote(classes.map((item) => item.tz));
 
   return (
     <div style={columnStyle}>
@@ -78,7 +68,7 @@ export function LessonScopeClassList({
           <li key={item.id} style={rowStyle(index === classes.length - 1)}>
             <Toggle
               label={classTitle(item)}
-              hint={slotLabels.get(item.id)}
+              hint={classSlotsLabel(item.slots)}
               checked={ticked.has(item.id)}
               disabled={disabled}
               onChange={(isTicked) =>

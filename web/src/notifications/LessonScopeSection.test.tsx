@@ -2,11 +2,11 @@
 // «только о выбранных» и галочки занятий. Запись — PUT с выбором целиком, экран
 // рисуется из его ответа (read-after-write без второго GET, ADR-0087).
 // Пояс зрителя задан явно (CLAUDE.md «Детерминизм»): по умолчанию — пояс школы,
-// чтобы подписи дней и времени не зависели от даты запуска теста.
+// чтобы подпись пояса не зависела от машины, на которой идёт тест.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
   LessonScopeClassDto,
   MeDto,
@@ -30,10 +30,6 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 stubViewerTimeZone('Asia/Jerusalem');
-
-afterEach(() => {
-  vi.useRealTimers();
-});
 
 const SCOPE_PATH = '/me/notifications/lessons/scope';
 const LESSONS_PATH = '/me/notifications/lessons';
@@ -150,7 +146,7 @@ describe('LessonScopeSection — список занятий', () => {
     expect(screen.getByText('пн, вт · 10:00')).toBeInTheDocument();
     expect(screen.getByText('ср · 19:00')).toBeInTheDocument();
     // Пояс школы совпал с поясом зрителя — подписывать нечего.
-    expect(screen.queryByText(/Школа живёт по/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/по часам школы/)).not.toBeInTheDocument();
   });
 
   it('вёрстка списка — один общий список, строки не слипаются (ADR-0088)', async () => {
@@ -195,20 +191,19 @@ describe('LessonScopeSection — список занятий', () => {
   });
 });
 
-describe('LessonScopeSection — часы зрителя', () => {
+describe('LessonScopeSection — пояс школы', () => {
   stubViewerTimeZone('Australia/Sydney');
 
-  it('время — по часам зрителя, пояс школы назван один раз над списком', async () => {
-    // Сидней к 5 октября на летнем времени: понедельник 10:00 в Иерусалиме —
-    // 18:00 у зрителя, вторник — тоже вечером, то есть те же «пн, вт».
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-09-30T09:00:00.000Z'));
+  it('зритель в другом поясе — время остаётся школьным, пояс школы назван один раз над списком', async () => {
+    // Правило повторяется каждую неделю и хранится в поясе школы; «Расписание»
+    // штата показывает его так же. Пересчёта на часы зрителя нет.
     serve(STUDENT, lessons('selected', []));
     renderSection();
 
     await screen.findByRole('checkbox', { name: 'Цигун' });
-    expect(screen.getByText('пн, вт · 18:00')).toBeInTheDocument();
-    expect(screen.getAllByText(/Школа живёт по/)).toHaveLength(1);
+    expect(screen.getByText('пн, вт · 10:00')).toBeInTheDocument();
+    expect(screen.getByText('ср · 19:00')).toBeInTheDocument();
+    expect(screen.getAllByText(/Время — по часам школы/)).toHaveLength(1);
     expect(screen.getByText('Asia/Jerusalem').tagName).toBe('STRONG');
   });
 });

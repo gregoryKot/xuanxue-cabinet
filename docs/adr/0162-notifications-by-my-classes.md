@@ -100,10 +100,12 @@
   переехал с «Профиля»), «О каких занятиях» (`LessonScopeSection`, только тому, у кого есть
   вид про занятие, `hasLessonScopedKinds`) и «Что присылать» (`NotificationPrefsSection`).
   Каждое изменение — `PUT` с выбором целиком и отрисовка из ответа (ADR-0087). Гейты: тесты
-  `LessonScopeSection`, `lessonScopeEdit`, `classSlotsLabel` (переход часов Сиднея и
-  Израиля), `NotificationSettingsScreen`, `ProfileScreen`, `NotificationsScreen`.
+  `LessonScopeSection`, `lessonScopeEdit`, `classSlotsLabel`, `ruleTzNote`,
+  `NotificationSettingsScreen`, `ProfileScreen`, `NotificationsScreen`.
 - В теле `PUT` только занятия, которые человек видит в списке. Удалённое позже занятие
   остаётся в сохранённых id, а сервер отвечает 400 на любой id, которого нет в расписании:
   если бы экран слал всё сохранённое, один такой id не дал бы сохранить вообще ничего.
-- Дни и время в списке — по часам зрителя (`classSlotsLabel`, считается по ближайшему
-  повторению правила, не по смещению «сейчас»), пояс школы подписан один раз над списком.
+- Дни и время в списке — по часам школы, как в сетке «Расписания» штата
+  (`classSlotsLabel`, пояс подписан один раз над списком, `ruleTzNote`): в списке правила,
+  а не даты, и пересчёт правила на чужие часы потребовал бы считать ближайшее повторение
+  во второй раз — это уже делает сервер (`planOccurrences`).
