@@ -67,7 +67,7 @@ function toStudentQuestion(question: AttemptQuestionRecord): AttemptQuestionDto 
   };
 }
 
-function toStudentBlock(block: AttemptBlockRecord): AttemptBlockDto {
+export function toStudentBlock(block: AttemptBlockRecord): AttemptBlockDto {
   return {
     id: block.id,
     title: block.title,
