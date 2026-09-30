@@ -2,12 +2,13 @@
 // без DOM: RichText.tsx только раскладывает результат по <a> и тексту, а
 // сам разбор проверяют юниты, без рендера (CLAUDE.md «Тесты»).
 //
-// Ссылкой признаём только http:// и https://: формулировку пишет учитель, а
+// Ссылкой признаём http://, https:// и Telegram-ник: формулировку пишет учитель, а
 // открывает её ученик, и превращать чужую строку в исполняемый переход по
 // схеме javascript:/data: нельзя — тот же принцип, что у CSP (SECURITY.md
 // §7, ADR-0093). Регулярное выражение ищет ровно эти два префикса, поэтому
 // остальные схемы попасть в него не могут вообще, без отдельного списка
-// запрещённых.
+// запрещённых. Ник (`@username`) ссылкой тоже становится, но href для него
+// собираем сами, см. TELEGRAM_HANDLE_RE ниже.
 const URL_RE = /\bhttps?:\/\/\S+/g;
 
 // Пунктуация конца предложения на конце найденного адреса — не часть
@@ -48,6 +49,20 @@ function trimTrailingPunctuation(rawUrl: string): string {
   return rawUrl.slice(0, end);
 }
 
+// Telegram-ник: 5–32 знака `[A-Za-z0-9_]` (правила самого Telegram). Ссылка
+// безопасна, потому что href мы не берём из текста, а собираем из ника,
+// прошедшего эту проверку, и схема всегда `https://t.me/` (ADR-0159): ни
+// javascript:, ни чужого хоста через ник не пронести. Общий механизм, а не
+// правка одной строки: любой ник в тексте учителя (подсказка, формулировка,
+// контакт школы) ведёт в тот же чат, отдельного компонента «ник» не нужно.
+// Перед `@` не должно быть буквы, цифры, `_`, `.`, `/` и `@`: так почта
+// `name@mail.ru` и путь в адресе остаются текстом. Хвостовая точка или
+// запятая в ник не входят — их нет в классе символов; за ником не должно
+// идти буквы или цифры, иначе это не ник, а начало другого слова.
+const TELEGRAM_HANDLE_RE =
+  /(?<![\p{L}\p{N}_./@])@([A-Za-z0-9_]{5,32})(?![\p{L}\p{N}_])/gu;
+const TELEGRAM_LINK_BASE = 'https://t.me/';
+
 export interface PromptTextPart {
   text: string;
   /** Задан только у распознанной ссылки — совпадает с текстом куска. */
@@ -64,9 +79,22 @@ function hasHost(url: string): boolean {
   return url.slice(url.indexOf('//') + 2).length > 0;
 }
 
-/** Делит строку формулировки на куски текста и ссылок по порядку строки;
- * склейка полей `text` всех кусков даёт исходную строку обратно. */
-export function splitPromptLinks(input: string): PromptTextPart[] {
+// Ники ищем только в кусках текста между адресами: `@` внутри http(s)-ссылки
+// (`https://t.me/@x`, `?u=@name`) остаётся частью адреса.
+function splitTelegramHandles(text: string): PromptTextPart[] {
+  const parts: PromptTextPart[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(TELEGRAM_HANDLE_RE)) {
+    const start = match.index;
+    if (start > cursor) parts.push({ text: text.slice(cursor, start) });
+    parts.push({ text: match[0], href: `${TELEGRAM_LINK_BASE}${match[1] ?? ''}` });
+    cursor = start + match[0].length;
+  }
+  if (cursor < text.length) parts.push({ text: text.slice(cursor) });
+  return parts;
+}
+
+function splitUrls(input: string): PromptTextPart[] {
   const parts: PromptTextPart[] = [];
   let cursor = 0;
   URL_RE.lastIndex = 0;
@@ -86,4 +114,13 @@ export function splitPromptLinks(input: string): PromptTextPart[] {
   }
   if (cursor < input.length) parts.push({ text: input.slice(cursor) });
   return parts;
+}
+
+/** Делит строку формулировки на куски текста и ссылок (http(s)-адрес,
+ * Telegram-ник) по порядку строки; склейка полей `text` всех кусков даёт
+ * исходную строку обратно. Адрес разбирается первым, ник — в остатке. */
+export function splitPromptLinks(input: string): PromptTextPart[] {
+  return splitUrls(input).flatMap((part) =>
+    part.href ? [part] : splitTelegramHandles(part.text),
+  );
 }

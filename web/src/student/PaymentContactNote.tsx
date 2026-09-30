@@ -30,9 +30,9 @@ export function PaymentContactNote() {
 
       {page && !error && (
         <p style={screenExplanationStyle}>
-          <RichText
-            text={`Скриншот перевода присылайте **${page.contact}** в Telegram.`}
-          />
+          {/* Без `**` вокруг контакта: ник внутри него ссылка, а ссылка сама
+              выделена; акцент разрывался бы на непарные маркеры. */}
+          <RichText text={`Скриншот перевода присылайте ${page.contact} в Telegram.`} />
         </p>
       )}
     </section>

@@ -28,13 +28,13 @@ const PAGE: MyPaymentsPageDto = {
 };
 
 describe('PaymentContactNote — контакт бухгалтера', () => {
-  it('контакт из настроек школы — жирным в строке, куда присылать скриншот', async () => {
+  it('контакт из настроек школы — ник ссылкой на чат в Telegram', async () => {
     mockApiByPath({ [PATH]: PAGE });
     render(<PaymentContactNote />);
 
-    const contact = await screen.findByText('Маше @marievyazova');
-    expect(contact.tagName).toBe('STRONG');
-    expect(contact.parentElement).toHaveTextContent(
+    const link = await screen.findByRole('link', { name: '@marievyazova' });
+    expect(link).toHaveAttribute('href', 'https://t.me/marievyazova');
+    expect(link.parentElement).toHaveTextContent(
       'Скриншот перевода присылайте Маше @marievyazova в Telegram.',
     );
     expect(screen.getByRole('heading', { name: 'Оплата' })).toBeInTheDocument();
@@ -59,7 +59,9 @@ describe('PaymentContactNote — контакт бухгалтера', () => {
     mockApiByPath({ [PATH]: PAGE });
     await userEvent.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
-    expect(await screen.findByText('Маше @marievyazova')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: '@marievyazova' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

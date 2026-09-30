@@ -322,7 +322,10 @@ describe('ProfileScreen — секция «Абонемент» спрятана
     expect(note).toHaveTextContent(
       'Скриншот перевода присылайте Маше @marievyazova в Telegram.',
     );
-    expect(within(note).getByText('Маше @marievyazova').tagName).toBe('STRONG');
+    expect(within(note).getByRole('link', { name: '@marievyazova' })).toHaveAttribute(
+      'href',
+      'https://t.me/marievyazova',
+    );
     expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
   });
 
