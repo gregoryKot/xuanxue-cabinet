@@ -5,7 +5,7 @@
 // NotificationPrefsService (не мок — иначе не поймать, что дефолт ученика
 // включён без единого переключения руками, ADR-0135).
 import { DateTime } from 'luxon';
-import type { Connection, Model } from 'mongoose';
+import type { Connection, Model, Types } from 'mongoose';
 import type { SettingsDto } from '@xuanxue/shared';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -13,6 +13,7 @@ import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
 } from '../notifications/notification-prefs.schema';
+import { LessonScopeService } from '../notifications/lesson-scope.service';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import {
   NotificationRecord,
@@ -99,6 +100,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       notificationModel,
       userModel,
       new NotificationPrefsService(prefsModel),
+      new LessonScopeService(prefsModel),
       settings,
       push as unknown as PushSenderService,
     );
@@ -127,6 +129,133 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     expect(row?.lessonId).toBe(lesson._id.toString());
     const updated = await lessonModel.findById(lesson._id).lean();
     expect(updated?.studentReminderSentAt).toBeInstanceOf(Date);
+  });
+
+  // ADR-0162: человек сам выбирает, о каких занятиях ему напоминать.
+  describe('выбор «о каких занятиях» (ADR-0162)', () => {
+    async function scheduleLesson(classId: Types.ObjectId) {
+      return lessonModel.create({
+        classId,
+        startsAt: NOW.plus({ minutes: 30 }).toJSDate(),
+        durationMin: 60,
+        topic: 'цигун',
+        status: 'scheduled',
+      });
+    }
+
+    function inboxRowsOf(userId: string) {
+      return notificationModel.find({ userId, kind: 'lesson_soon' }).lean();
+    }
+
+    it('выбрал другое занятие — по этому ни ленты, ни push, а второй ученик без выбора получает', async () => {
+      const picky = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
+      const plain = await userModel.create({ name: 'Маша', roles: [], status: 'active' });
+      const thisClass = await createClass({ title: 'Цигун для глаз' });
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await scheduleLesson(thisClass._id);
+      await new LessonScopeService(prefsModel).set(picky._id.toString(), {
+        mode: 'selected',
+        classIds: [otherClass._id.toString()],
+      });
+      const { service, push } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+      expect(await inboxRowsOf(picky._id.toString())).toEqual([]);
+      expect(await inboxRowsOf(plain._id.toString())).toHaveLength(1);
+      expect(push.sendToUser).toHaveBeenCalledTimes(1);
+      expect(push.sendToUser).toHaveBeenCalledWith(plain._id.toString(), NOW);
+    });
+
+    it('выбрал именно это занятие — напоминание приходит', async () => {
+      const student = await userModel.create({
+        name: 'Ваня',
+        roles: [],
+        status: 'active',
+      });
+      const thisClass = await createClass();
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await scheduleLesson(thisClass._id);
+      await new LessonScopeService(prefsModel).set(student._id.toString(), {
+        mode: 'selected',
+        classIds: [otherClass._id.toString(), thisClass._id.toString()],
+      });
+      const { service, push } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+      expect(await inboxRowsOf(student._id.toString())).toHaveLength(1);
+      expect(push.sendToUser).toHaveBeenCalledWith(student._id.toString(), NOW);
+    });
+
+    it('режим «все» со старыми галочками — напоминание приходит о любом занятии', async () => {
+      const student = await userModel.create({
+        name: 'Ваня',
+        roles: [],
+        status: 'active',
+      });
+      const thisClass = await createClass();
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await scheduleLesson(thisClass._id);
+      await new LessonScopeService(prefsModel).set(student._id.toString(), {
+        mode: 'all',
+        classIds: [otherClass._id.toString()],
+      });
+      const { service } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+      expect(await inboxRowsOf(student._id.toString())).toHaveLength(1);
+    });
+
+    it('«выбранные» без единой галочки — ни о каких; занятие при этом помечено как разобранное', async () => {
+      const student = await userModel.create({
+        name: 'Ваня',
+        roles: [],
+        status: 'active',
+      });
+      const cls = await createClass();
+      const lesson = await scheduleLesson(cls._id);
+      await new LessonScopeService(prefsModel).set(student._id.toString(), {
+        mode: 'selected',
+        classIds: [],
+      });
+      const { service, push } = build();
+
+      await service.remind(NOW);
+
+      expect(await inboxRowsOf(student._id.toString())).toEqual([]);
+      expect(push.sendToUser).not.toHaveBeenCalled();
+      const updated = await lessonModel.findById(lesson._id).lean();
+      expect(updated?.studentReminderSentAt).toBeInstanceOf(Date);
+    });
+
+    it('выбор одного ученика не влияет на второго: у каждого свой список', async () => {
+      const first = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
+      const second = await userModel.create({
+        name: 'Маша',
+        roles: [],
+        status: 'active',
+      });
+      const thisClass = await createClass();
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await scheduleLesson(thisClass._id);
+      const scopes = new LessonScopeService(prefsModel);
+      await scopes.set(first._id.toString(), {
+        mode: 'selected',
+        classIds: [thisClass._id.toString()],
+      });
+      await scopes.set(second._id.toString(), {
+        mode: 'selected',
+        classIds: [otherClass._id.toString()],
+      });
+      const { service } = build();
+
+      await service.remind(NOW);
+
+      expect(await inboxRowsOf(first._id.toString())).toHaveLength(1);
+      expect(await inboxRowsOf(second._id.toString())).toEqual([]);
+    });
   });
 
   it('занятие вне окна (позже lessonReminderMinutes) — не напоминает', async () => {

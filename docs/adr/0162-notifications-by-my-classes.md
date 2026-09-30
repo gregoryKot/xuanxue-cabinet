@@ -67,9 +67,10 @@
 
 ## Последствия
 
-- `NotificationPrefsService.getManyLessonScopes` — одна выборка на пачку людей, как
-  `getManyEnabled`. `LessonReminderService` пропускает ученика, чей выбор занятие не
-  включает.
+- `LessonScopeService.getMany` — одна выборка на пачку людей, как
+  `NotificationPrefsService.getManyEnabled` (отдельный сервис: `NotificationPrefsService`
+  стоит на границе храповика размера). `LessonReminderService` пропускает ученика, чей
+  выбор занятие не включает.
 - `PUT` отклоняет несуществующие id занятий (400): тихо выброшенная галочка — тот же
   тихий отказ. Удалённое позже занятие остаётся в списке id и ни на что не влияет.
 - Поля в выгрузке данных человека (`user-export.registry.ts`) и в политике шифрования
