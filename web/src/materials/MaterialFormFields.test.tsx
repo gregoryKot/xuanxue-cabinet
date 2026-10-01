@@ -36,6 +36,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     classIds: [],
     access: 'all',
     tagsText: '',
+    notifyStudents: true,
     ...overrides,
   };
 }

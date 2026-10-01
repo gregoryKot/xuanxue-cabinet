@@ -144,6 +144,7 @@ describe('MaterialEditorScreen — создание', () => {
 
     await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
     const body = callsWithMethod('POST')[0]?.[1] as { body: unknown };
+    // ADR-0162: у нового материала галочка «Сообщить ученикам» стоит сразу.
     expect(body.body).toEqual({
       title: 'Ван Пэйшэн — форма 24',
       url: 'https://example.com/book',
@@ -151,6 +152,7 @@ describe('MaterialEditorScreen — создание', () => {
       classIds: [],
       access: 'all',
       tags: [],
+      notifyStudents: true,
     });
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });

@@ -168,6 +168,26 @@ describe('NotificationSettingsScreen — «Что присылать» по ро
     expect(screen.getByRole('checkbox', { name: 'Запись занятия' })).not.toBeChecked();
   });
 
+  // ADR-0162: «Новый материал» — второй вид «по желанию», тем же способом.
+  it('ученик видит «Новый материал» с подсказкой и выключенным переключателем', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result', 'lesson_cancelled'] });
+
+    expect(await screen.findByText('Новый материал')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Придёт, когда учитель добавит в библиотеку материал к вашим занятиям, — в кабинет и push-уведомлением. Обычно выключено: включите, если следите за библиотекой.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Новый материал' })).not.toBeChecked();
+  });
+
+  it('учитель «Новый материал» не видит: у штата вида «по желанию» нет', async () => {
+    renderScreen(TEACHER, { enabled: [] });
+
+    expect(await screen.findByText('Черновик поста')).toBeInTheDocument();
+    expect(screen.queryByText('Новый материал')).not.toBeInTheDocument();
+  });
+
   it('учитель «Запись занятия» не видит: у штата вида «по желанию» нет', async () => {
     renderScreen(TEACHER, { enabled: [] });
 
@@ -269,6 +289,25 @@ describe('NotificationSettingsScreen — переключение вида (read
       expect.objectContaining({
         method: 'PATCH',
         body: { kind: 'recording_ready', enabled: true },
+      }),
+    );
+  });
+
+  it('«Новый материал» включается тем же PATCH и встаёт включённым из ответа', async () => {
+    const user = userEvent.setup();
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+    const toggle = await screen.findByRole('checkbox', { name: 'Новый материал' });
+    expect(toggle).not.toBeChecked();
+
+    serve(STUDENT, { enabled: ['exam_result', 'material_new'] });
+    await user.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      PREFS_PATH,
+      expect.objectContaining({
+        method: 'PATCH',
+        body: { kind: 'material_new', enabled: true },
       }),
     );
   });

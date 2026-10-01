@@ -4,7 +4,8 @@
 // оба ADR-0162). Все берут занятия у активных классов и ставят «уже сообщили»
 // строкой ленты с уникальным индексом (userId, kind, lessonId), поэтому
 // название класса и проверка «строка уже есть» у них одни, а не три похожих
-// копии (CLAUDE.md «Одна механика — один компонент»).
+// копии (CLAUDE.md «Одна механика — один компонент»). Окно повторов и проверка
+// «строка уже есть» нужны и шагу «Новый материал» (MaterialNewNoticeService).
 import type { DateTime } from 'luxon';
 import type { QueryFilter, Model, SortOrder, Types } from 'mongoose';
 import { LIST_LIMIT_MAX, type NotificationKind } from '@xuanxue/shared';
@@ -47,7 +48,8 @@ export interface LeanNoticeLesson {
   startsAt: Date;
 }
 
-/** Ключ пары «человек × занятие» для множества уже записанных строк. */
+/** Ключ пары «человек × занятие» (у «Нового материала» — «человек × материал»,
+ * ADR-0162: формат один) для множества уже записанных строк. */
 export function lessonRowKey(userId: string, lessonId: string): string {
   return `${userId}:${lessonId}`;
 }
@@ -88,22 +90,53 @@ export async function findNoticeLessons(
   return withActiveClassTitles(classModel, lessons);
 }
 
-/** Пары «человек × занятие», по которым строка этого вида уже есть, — одним
- * запросом по индексу (userId, kind, lessonId). Строку могли написать прошлый
- * тик, соседний инстанс или прежний код — во всех случаях «уже сообщили».
- * Вид в запросе обязателен: у одного занятия строки `lesson_soon` и
- * `lesson_cancelled` живут рядом и друг друга не отменяют. */
-export async function existingLessonRowKeys(
+/** Чем строка ленты закреплена за событием: занятием (`lessonId`) или материалом
+ * (`materialId`, ADR-0162) — поле, под которым стоит уникальный индекс вида. */
+type NoticeSubjectField = 'lessonId' | 'materialId';
+
+export interface ExistingRowsQuery {
+  kind: NotificationKind;
+  idField: NoticeSubjectField;
+  userIds: readonly string[];
+  /** id занятий или материалов — какие из них уже объявлены. */
+  ids: readonly string[];
+}
+
+/** Пары «человек × предмет строки», по которым строка этого вида уже есть, —
+ * одним запросом по индексу (userId, kind, lessonId | materialId). Строку могли
+ * написать прошлый тик, соседний инстанс или прежний код — во всех случаях
+ * «уже сообщили». Вид в запросе обязателен: у одного занятия строки `lesson_soon`
+ * и `lesson_cancelled` живут рядом и друг друга не отменяют. Ключ пары —
+ * `lessonRowKey` (для материала id в нём — материала). */
+export async function existingRowKeys(
+  notificationModel: Model<NotificationRecord>,
+  { kind, idField, userIds, ids }: ExistingRowsQuery,
+): Promise<Set<string>> {
+  const rows = await notificationModel
+    .find(
+      { userId: { $in: [...userIds] }, kind, [idField]: { $in: [...ids] } },
+      { userId: 1, [idField]: 1 },
+    )
+    .lean<({ userId: string } & { [K in NoticeSubjectField]?: string })[]>();
+  return new Set(
+    rows.flatMap((row) => {
+      const id = row[idField];
+      return id === undefined ? [] : [lessonRowKey(row.userId, id)];
+    }),
+  );
+}
+
+/** То же для занятий — вид и список занятий вместо объекта запроса. */
+export function existingLessonRowKeys(
   notificationModel: Model<NotificationRecord>,
   kind: NotificationKind,
   userIds: readonly string[],
   lessonIds: readonly string[],
 ): Promise<Set<string>> {
-  const rows = await notificationModel
-    .find(
-      { userId: { $in: [...userIds] }, kind, lessonId: { $in: [...lessonIds] } },
-      { userId: 1, lessonId: 1 },
-    )
-    .lean<{ userId: string; lessonId: string }[]>();
-  return new Set(rows.map((row) => lessonRowKey(row.userId, row.lessonId)));
+  return existingRowKeys(notificationModel, {
+    kind,
+    idField: 'lessonId',
+    userIds,
+    ids: lessonIds,
+  });
 }

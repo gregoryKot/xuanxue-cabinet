@@ -1,12 +1,11 @@
 // Чистая логика страницы материала — состояние, валидация, сборка тела
 // запроса (CLAUDE.md «Тесты»), по образцу channels/channelFormInput.ts.
-// `access` — контракт сервера как есть, три значения радиогруппой
-// (ADR-0058, MaterialAccessField.tsx), не два булевых флага: честное
-// состояние формы совпадает с тем, что уходит на сервер. Теги хранятся
-// строкой через запятую (tagsText), не массивом — та же причина, что у
-// exam-items/examItemFormInput.ts: набранная запятая или пробел в конце иначе
-// мгновенно теряются при разборе на каждое нажатие клавиши. Разбор — общий
-// `parseTagsText` (ADR-0058).
+// `access` — контракт сервера как есть, радиогруппой (ADR-0058,
+// MaterialAccessField.tsx), не булев флаг: состояние формы совпадает с тем,
+// что уходит на сервер. Теги хранятся строкой через запятую (tagsText), не
+// массивом: набранная запятая или пробел в конце иначе теряются при разборе
+// на каждое нажатие клавиши (как в exam-items/examItemFormInput.ts). Разбор —
+// общий `parseTagsText` (ADR-0058).
 import {
   MATERIAL_KINDS,
   MATERIAL_LIMITS,
@@ -28,6 +27,8 @@ export interface MaterialFormState {
   classIds: string[];
   access: MaterialAccess;
   tagsText: string;
+  /** «Сообщить ученикам» — только при создании (ADR-0162). */
+  notifyStudents: boolean;
 }
 
 /** `null` — форма валидна; иначе поле с ошибкой (MaterialFormFields рисует
@@ -63,6 +64,7 @@ export function initialMaterialFormState(
     classIds: materialDto?.classIds ?? [],
     access: materialDto?.access ?? 'all',
     tagsText: materialDto?.tags.join(', ') ?? '',
+    notifyStudents: true,
   };
 }
 
@@ -128,20 +130,19 @@ export function toCreateInput(state: MaterialFormState): CreateMaterialInput {
     classIds: [...state.classIds],
     access: state.access,
     tags: parseTagsText(state.tagsText),
+    // Служебный материал ученик не увидит — сообщать о нём нечего (ADR-0162).
+    ...(state.notifyStudents && state.access === 'all' ? { notifyStudents: true } : {}),
   };
 }
 
-/** Тело PATCH — те же поля, что у создания: материал не проходит статусы
- * (не draft/published/archived, как экзамен), менять можно что угодно сразу.
- * Переиспользуем сборку, а не повторяем её (CLAUDE.md «Одна механика — один
- * компонент», jscpd).
- *
- * Ссылка — исключение: `toCreateInput` просто опускает пустое поле (нет
- * ключа — не тронуто при создании, ему нечего трогать), а PATCH пустым полем
- * обязан явно СНЯТЬ ссылку — иначе «стёр текст и сохранил» молча не сработал
- * бы. Отсюда `url: null` (NULLABLE_MATERIAL_FIELDS), не пустая строка: пустая
- * строка доехала бы до базы значением и в ответе выглядела бы ссылкой,
- * которой нет. */
+/** Тело PATCH — те же поля, что у создания: материал не проходит статусы, менять
+ * можно что угодно сразу; сборка общая, не вторая копия (jscpd). Исключений два.
+ * Ссылка: `toCreateInput` опускает пустое поле, а PATCH пустым полем обязан явно
+ * СНЯТЬ ссылку — отсюда `url: null` (NULLABLE_MATERIAL_FIELDS), не пустая строка:
+ * та доехала бы до базы значением и в ответе выглядела бы ссылкой, которой нет.
+ * Галочка «Сообщить ученикам» (ADR-0162) — только создание: PATCH поля не знает
+ * (400), и правка материал не объявляет, поэтому в сборку она идёт снятой. */
 export function toUpdateInput(state: MaterialFormState): UpdateMaterialInput {
-  return { ...toCreateInput(state), url: state.url.trim() || null };
+  const create = toCreateInput({ ...state, notifyStudents: false });
+  return { ...create, url: state.url.trim() || null };
 }

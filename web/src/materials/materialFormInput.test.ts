@@ -35,6 +35,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     classIds: [],
     access: 'all',
     tagsText: '',
+    notifyStudents: false,
     ...overrides,
   };
 }
@@ -166,5 +167,37 @@ describe('toCreateInput / toUpdateInput', () => {
   it('toUpdateInput собирает то же тело, что и toCreateInput', () => {
     const state = makeState({ classIds: ['c1'], access: 'staff' });
     expect(toUpdateInput(state)).toEqual(toCreateInput(state));
+  });
+});
+
+// ADR-0162: «Сообщить ученикам» — только при создании и только для материала,
+// открытого ученикам.
+describe('«Сообщить ученикам» (ADR-0162)', () => {
+  it('новый материал — галочка стоит сразу: учитель снимает её, а не ставит', () => {
+    expect(initialMaterialFormState(null).notifyStudents).toBe(true);
+  });
+
+  it('создание с галочкой и «все ученики» — в теле notifyStudents: true', () => {
+    const input = toCreateInput(makeState({ notifyStudents: true, access: 'all' }));
+    expect(input.notifyStudents).toBe(true);
+  });
+
+  // Сервер читает отсутствие поля как «не сообщать»: ключа нет, а не false.
+  it('галочка снята — ключа notifyStudents в теле нет', () => {
+    expect(toCreateInput(makeState({ notifyStudents: false }))).not.toHaveProperty(
+      'notifyStudents',
+    );
+  });
+
+  it('служебный материал — ключа нет, даже если галочка осталась стоять', () => {
+    const input = toCreateInput(makeState({ notifyStudents: true, access: 'staff' }));
+    expect(input).not.toHaveProperty('notifyStudents');
+  });
+
+  // PATCH поля не знает: глобальный ValidationPipe с forbidNonWhitelisted ответил
+  // бы 400, а правка материал всё равно не объявляет.
+  it('тело PATCH поля notifyStudents не несёт, как бы ни стояла галочка', () => {
+    const body = toUpdateInput(makeState({ notifyStudents: true, access: 'all' }));
+    expect(body).not.toHaveProperty('notifyStudents');
   });
 });

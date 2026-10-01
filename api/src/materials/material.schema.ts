@@ -80,6 +80,16 @@ export class MaterialRecord {
   @Prop({ type: Date })
   fileUploadedAt?: Date;
 
+  // Момент, когда учитель при создании отметил «Сообщить ученикам» (UTC,
+  // ADR-0162): от него шаг тика «материал ученикам» сутки пробует сообщить тем,
+  // кто включил вид «Новый материал». Ставит только создание материала с
+  // `access: 'all'`; правка и перевод `staff` → `all` позже не объявляют — иначе
+  // любая опечатка в названии рассылала бы материал заново. Нет поля — не
+  // объявлять (материалы, созданные до него, и созданные без галочки). Наружу
+  // не уходит (MaterialDto его не несёт).
+  @Prop({ type: Date, required: false })
+  announceAt?: Date;
+
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
   createdBy!: Types.ObjectId;
@@ -96,6 +106,13 @@ MaterialSchema.index({ tags: 1 });
 // Фильтр по дате занятия (GET /api/materials?lessonId=…, ADR-0056) — тот же
 // приём, что у classIds.
 MaterialSchema.index({ lessonIds: 1 });
+// Шаг тика «материал ученикам» (ADR-0162) раз в минуту ищет материалы с недавним
+// `announceAt`; частичный — у почти всех материалов поля нет и в индекс они не
+// попадают (тот же приём, что у LessonSchema, `recordingReadyAt`).
+MaterialSchema.index(
+  { announceAt: 1 },
+  { partialFilterExpression: { announceAt: { $exists: true } } },
+);
 
 export const MATERIAL_FIELD_POLICY: FieldPolicy = {
   title: enc,

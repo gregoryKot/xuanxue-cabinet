@@ -47,6 +47,10 @@ describe('notificationTarget', () => {
     );
   });
 
+  it('material_new — «Библиотека» ученика, где лежит новый материал (ADR-0162)', () => {
+    expect(notificationTarget(item({ kind: 'material_new' }))).toBe('/library');
+  });
+
   it('payment_due — экрана оплаты у ученика ещё нет (слой 2.4), ссылки нет', () => {
     expect(
       notificationTarget(item({ kind: 'payment_due', text: 'Абонемент' })),

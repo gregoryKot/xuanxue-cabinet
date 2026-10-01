@@ -21,6 +21,10 @@ const LESSONS_PATH = '/lessons';
 // «Записи занятий» ученика (ROUTE_MODULES.archive, слой 3.3): запись, о которой
 // сообщила лента (`recording_ready`, ADR-0162), лежит там, не на «Занятиях».
 const ARCHIVE_PATH = '/archive';
+// «Библиотека» ученика (ROUTE_MODULES.library): новый материал (`material_new`,
+// ADR-0162) лежит там. К самому материалу строка не ведёт: у библиотеки нет адреса
+// на одну запись, а свежий материал идёт в списке первым.
+const LIBRARY_PATH = '/library';
 
 // payment_due (ADR-0150) сознательно без адреса: экран ученика с оплатой —
 // слой 2.4 PLAN §15, пока его нет, ссылка вела бы в никуда. Когда экран
@@ -36,6 +40,7 @@ export function notificationTarget(item: NotificationDto): string | undefined {
     return LESSONS_PATH;
   }
   if (item.kind === 'recording_ready') return ARCHIVE_PATH;
+  if (item.kind === 'material_new') return LIBRARY_PATH;
   if (item.kind === 'attempt_submitted' && item.attemptId) {
     return `${GRADING_PATH}/${item.attemptId}`;
   }

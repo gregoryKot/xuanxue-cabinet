@@ -189,6 +189,23 @@ describe('push', () => {
     );
   });
 
+  // ADR-0162: «Новый материал — {название}» приходит строкой ленты как есть: у
+  // материала даты занятия нет, и worker не дописывает скобки (вид не в списке).
+  it('новый материал — текст строки как есть, без скобок с датой', async () => {
+    stubInboxResponse([
+      { kind: 'material_new', text: 'Новый материал — Ван Пэйшэн, «Ба-гуа-чжан»' },
+    ]);
+
+    const { event, settle } = withWaitUntil();
+    getListener('push')(event);
+    await settle();
+
+    expect(fakeSelf.registration.showNotification).toHaveBeenCalledWith(
+      'Школа Сюань-Сюэ',
+      expect.objectContaining({ body: 'Новый материал — Ван Пэйшэн, «Ба-гуа-чжан»' }),
+    );
+  });
+
   it('отмена занятия с непонятной датой — текст строки без неё, а не запасная строка', async () => {
     stubInboxResponse([
       {

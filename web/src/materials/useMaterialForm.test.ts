@@ -70,6 +70,7 @@ describe('useMaterialForm — submit()', () => {
     });
 
     expect(ok).toBe(true);
+    // ADR-0162: у нового материала галочка «Сообщить ученикам» стоит сразу.
     expect(onCreate).toHaveBeenCalledWith({
       title: 'Ван Пэйшэн — форма 24',
       url: 'https://example.com/book',
@@ -77,6 +78,7 @@ describe('useMaterialForm — submit()', () => {
       classIds: [],
       access: 'all',
       tags: [],
+      notifyStudents: true,
     });
   });
 

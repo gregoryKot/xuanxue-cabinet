@@ -27,14 +27,17 @@ export type RawLeanNotification = Pick<NotificationRecord, keyof NotificationRec
   createdAt: Date;
 };
 
-// Третий «заголовок» строки — месяц оплаты: хранится ключом 'YYYY-MM', а
-// «сентябрь 2026» собирается здесь, на чтении (ADR-0150, тот же довод, что у
-// самого текста — шапка notification.schema.ts).
+// Заголовок строки: название формы, класса или материала (снимки), а у оплаты —
+// месяц: хранится ключом 'YYYY-MM', а «сентябрь 2026» собирается здесь, на чтении
+// (ADR-0150, тот же довод, что у самого текста — шапка notification.schema.ts).
 function titleOf(
-  doc: Pick<NotificationRecord, 'examTitle' | 'lessonTitle' | 'paymentMonth'>,
+  doc: Pick<
+    NotificationRecord,
+    'examTitle' | 'lessonTitle' | 'materialTitle' | 'paymentMonth'
+  >,
 ) {
   if (doc.paymentMonth !== undefined) return formatMonthRu(doc.paymentMonth);
-  return doc.examTitle ?? doc.lessonTitle;
+  return doc.examTitle ?? doc.lessonTitle ?? doc.materialTitle;
 }
 
 export function toNotificationDto(raw: RawLeanNotification): NotificationDto {

@@ -40,7 +40,7 @@ const TEACHER: MeDto = {
 describe('useNotificationPrefs — виды по роли', () => {
   // ADR-0162: «Запись занятия» доступна ученику, но включённой не приходит —
   // в списке видов она есть, в `enabled` нет, пока он сам её не включил.
-  it('ученику доступны пять видов, из них включены четыре: «Запись занятия» — по желанию (ADR-0135, ADR-0162, ADR-0150)', async () => {
+  it('ученику доступны шесть видов, из них включены четыре: «Запись занятия» и «Новый материал» — по желанию (ADR-0135, ADR-0162, ADR-0150)', async () => {
     const studentEnabled = [
       'exam_result',
       'lesson_soon',
@@ -56,10 +56,12 @@ describe('useNotificationPrefs — виды по роли', () => {
       'lesson_soon',
       'lesson_cancelled',
       'recording_ready',
+      'material_new',
       'payment_due',
     ]);
     expect(result.current.enabled).toEqual(studentEnabled);
     expect(result.current.enabled).not.toContain('recording_ready');
+    expect(result.current.enabled).not.toContain('material_new');
   });
 
   it('учителю доступны его виды, не ученические — «Записи занятия» среди них нет', async () => {
@@ -85,6 +87,7 @@ describe('useNotificationPrefs — виды по роли', () => {
       'lesson_soon',
       'lesson_cancelled',
       'recording_ready',
+      'material_new',
       'payment_due',
     ]);
   });

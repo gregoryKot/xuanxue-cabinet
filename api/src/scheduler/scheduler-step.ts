@@ -7,6 +7,14 @@ import type { DateTime } from 'luxon';
 import { errorMessage, errorStack } from '../common/error-info';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
 
+/** Как шаг запускается из помощников `scheduler-*-steps.ts`: тот же `runStep`,
+ * но с уже подставленными логгером и нотификатором (SchedulerService.step). */
+export type StepRunner = <T>(
+  name: string,
+  now: DateTime,
+  run: (now: DateTime) => Promise<T>,
+) => Promise<T | undefined>;
+
 interface StepDeps {
   logger: Logger;
   notifier: TeacherNotifier;

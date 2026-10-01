@@ -184,6 +184,32 @@ describe('NotificationRow — «Запись занятия»', () => {
   });
 });
 
+// ADR-0162: новый материал ведёт в «Библиотеку» ученика; даты в строке нет —
+// материал не про конкретное занятие.
+describe('NotificationRow — «Новый материал»', () => {
+  const FRESH = makeItem({
+    kind: 'material_new',
+    text: 'Новый материал — Ван Пэйшэн',
+  });
+
+  it('строка с названием материала, ссылка на «/library», без даты', () => {
+    renderRow(FRESH, { isLast: false, onRead: vi.fn() });
+
+    expect(screen.getByText('Новый материал — Ван Пэйшэн')).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/library');
+  });
+
+  it('«Убрать» называет ту же строку, что на экране', () => {
+    renderRow(FRESH, { isLast: false, onRead: vi.fn() });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Убрать уведомление: Новый материал — Ван Пэйшэн',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('NotificationRow — isLast', () => {
   it('последняя строка своей карточки — без линии снизу', () => {
     renderRow(makeItem(), { isLast: true, onRead: vi.fn() });

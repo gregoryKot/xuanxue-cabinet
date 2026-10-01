@@ -178,6 +178,25 @@ describe('NotificationPrefsService', () => {
       expect(result.get('u2')).not.toContain('recording_ready');
     });
 
+    // ADR-0162: «Новый материал» — второй вид «по желанию», тем же способом.
+    it('«Новый материал»: у ученика без переключения его нет, у включившего — есть', async () => {
+      await service.set('u1', 'material_new', true);
+
+      const result = await service.getManyEnabled([
+        { id: 'u1', roles: [] },
+        { id: 'u2', roles: [] },
+      ]);
+
+      expect(result.get('u1')).toEqual([
+        'exam_result',
+        'lesson_soon',
+        'lesson_cancelled',
+        'material_new',
+        'payment_due',
+      ]);
+      expect(result.get('u2')).not.toContain('material_new');
+    });
+
     it('«Запись занятия» включена и выключена обратно — снова нет (read-after-write)', async () => {
       await service.set('u1', 'recording_ready', true);
       await service.set('u1', 'recording_ready', false);

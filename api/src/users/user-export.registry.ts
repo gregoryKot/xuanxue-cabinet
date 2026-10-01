@@ -193,6 +193,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       'examTitle',
       'lessonTitle',
       'lessonStartsAt',
+      'materialTitle',
       'paymentMonth',
       'outcome',
       'readAt',
@@ -202,6 +203,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       examId: INTERNAL_LINK,
       attemptId: INTERNAL_LINK,
       lessonId: INTERNAL_LINK,
+      materialId: INTERNAL_LINK,
     },
   },
   ExamSeenMarkRecord: {
