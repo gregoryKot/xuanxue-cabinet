@@ -450,7 +450,9 @@ export {
   LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_CLASS_IDS_MAX,
   LESSON_SCOPE_MODES,
+  LESSON_SCOPED_KINDS,
   effectiveReminderMinutes,
+  hasLessonScopedKinds,
   isLessonInScope,
 } from './lesson-notifications';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';

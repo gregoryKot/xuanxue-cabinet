@@ -3,8 +3,9 @@
 // даёт установить программно) и для Android (кнопка через
 // `beforeinstallprompt`, pwa/useInstallPrompt.ts, плюс те же шаги на случай,
 // если кнопки нет). Открыт с телефона в браузере — карточка в оболочке
-// (InstallAppCard.tsx) и «Профиль» ведут сюда; с компьютера — только адрес и
-// обе инструкции, ставить на нём кабинету некуда.
+// (InstallAppCard.tsx) и «Профиль» ведут сюда, а отсюда — в «Настройки
+// уведомлений», где включается push; с компьютера — только адрес и обе
+// инструкции, ставить на нём кабинету некуда.
 import { Link } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { RichText } from '../components/RichText';
@@ -16,6 +17,7 @@ import {
 import { Button } from '../components/Button';
 import { detectInstallPlatform, isStandalone } from '../pwa/installEnvironment';
 import { useInstallPrompt } from '../pwa/useInstallPrompt';
+import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { InstallSteps } from './InstallSteps';
 import {
   ANDROID_HEADING,
@@ -29,12 +31,10 @@ import {
   IOS_RELOGIN,
   IOS_STEPS,
   NOTIFICATIONS_HINT,
-  NOTIFICATIONS_PROFILE_LINK_LABEL,
+  NOTIFICATIONS_SETTINGS_LINK_LABEL,
   TITLE,
   desktopHint,
 } from './installAppCopy';
-
-const PROFILE_PATH = '/profile';
 
 function NotificationsHint() {
   return (
@@ -42,8 +42,8 @@ function NotificationsHint() {
       <p style={screenExplanationStyle}>
         <RichText text={NOTIFICATIONS_HINT} />
       </p>
-      <Link to={PROFILE_PATH} style={textLinkHitAreaStyle}>
-        {NOTIFICATIONS_PROFILE_LINK_LABEL}
+      <Link to={NOTIFICATION_SETTINGS_PATH} style={textLinkHitAreaStyle}>
+        {NOTIFICATIONS_SETTINGS_LINK_LABEL}
       </Link>
     </>
   );
@@ -93,8 +93,8 @@ export default function InstallAppScreen() {
       {already && (
         <>
           <p style={screenExplanationStyle}>{INSTALL_ALREADY}</p>
-          <Link to={PROFILE_PATH} style={textLinkHitAreaStyle}>
-            {NOTIFICATIONS_PROFILE_LINK_LABEL}
+          <Link to={NOTIFICATION_SETTINGS_PATH} style={textLinkHitAreaStyle}>
+            {NOTIFICATIONS_SETTINGS_LINK_LABEL}
           </Link>
         </>
       )}

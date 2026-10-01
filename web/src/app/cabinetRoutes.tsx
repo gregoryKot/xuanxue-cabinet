@@ -42,6 +42,7 @@ const AttemptScreen = lazyRoute(ROUTE_MODULES.attempt.load);
 const ProfileScreen = lazyRoute(ROUTE_MODULES.profile.load);
 const InstallAppScreen = lazyRoute(ROUTE_MODULES.install.load);
 const NotificationsScreen = lazyRoute(ROUTE_MODULES.notifications.load);
+const NotificationSettingsScreen = lazyRoute(ROUTE_MODULES.notificationSettings.load);
 const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
@@ -122,6 +123,12 @@ export const cabinetRoutes = (
         (ADR-0025). Доступен любой роли: canSeeRoute (screenAccess.ts) не
         ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.notifications.path} element={<NotificationsScreen />} />
+    {/* «Настройки уведомлений» (ADR-0162) — подэкран ленты, вход с «Профиля» и
+        из ленты; доступен любой роли, как она. */}
+    <Route
+      path={ROUTE_MODULES.notificationSettings.path}
+      element={<NotificationSettingsScreen />}
+    />
     {/* «Задания» и «Занятия» — два маршрута ученика (решение владельца:
         экзамены — отдельный экран и первый после входа, docs/PLAN.md §11).
         Открыты любой роли, как «/profile» выше. */}

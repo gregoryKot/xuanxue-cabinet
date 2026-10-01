@@ -1,6 +1,7 @@
 // «О каких занятиях напоминать» (ADR-0162): человек сам выбирает занятия
 // расписания, о которых получает уведомления. Отдельный файл, а не дописанный
 // `notifications.ts`: тот стоит на границе храповика размера (150 строк).
+import type { NotificationKind } from './notifications';
 
 /** `all` — обо всех занятиях школы, как было до ADR-0162 (дефолт: ученик ничего
  * не выбирал). `selected` — только о занятиях из `classIds`. */
@@ -72,4 +73,18 @@ export function effectiveReminderMinutes(
  * честное «ни о каких» (ADR-0162): пустой список не превращается в «все». */
 export function isLessonInScope(scope: LessonScope, classId: string): boolean {
   return scope.mode === 'all' || scope.classIds.includes(classId);
+}
+
+/** Виды уведомлений, которые касаются занятия расписания, — только их и
+ * фильтрует выбор «о каких занятиях». Список растёт по мере появления новых
+ * видов про занятие («Занятие отменено», «Запись занятия», ADR-0162): вид без
+ * занятия (результат экзамена, оплата) выбор не трогает, и экрану выбора
+ * нечего делать у человека, у которого таких видов нет. */
+export const LESSON_SCOPED_KINDS: readonly NotificationKind[] = ['lesson_soon'];
+
+/** Есть ли среди видов человека хоть один про занятие — тогда экран
+ * настроек показывает выбор «о каких занятиях» (штат пока получает обо всех
+ * занятиях, решение владельца 2026-09-30, ADR-0162). */
+export function hasLessonScopedKinds(kinds: readonly NotificationKind[]): boolean {
+  return kinds.some((kind) => LESSON_SCOPED_KINDS.includes(kind));
 }

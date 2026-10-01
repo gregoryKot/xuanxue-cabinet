@@ -36,9 +36,9 @@ export const ANDROID_STEPS = [
 ];
 
 export const NOTIFICATIONS_HINT =
-  'Потом включите уведомления в **«Профиле»** — так вы узнаете о занятии, ' +
-  'даже когда кабинет закрыт.';
-export const NOTIFICATIONS_PROFILE_LINK_LABEL = 'Открыть профиль';
+  'Потом включите уведомления в **«Настройках уведомлений»** — так вы узнаете ' +
+  'о занятии, даже когда кабинет закрыт.';
+export const NOTIFICATIONS_SETTINGS_LINK_LABEL = 'Открыть настройки уведомлений';
 
 export const INSTALL_ALREADY = 'Кабинет уже стоит на этом телефоне.';
 

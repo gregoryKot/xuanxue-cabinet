@@ -50,8 +50,10 @@ import {
   attemptPath,
   attemptReviewPath,
 } from '../api/gradingPaths';
+import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
+import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -346,7 +348,6 @@ export const ROUTE_MODULES = {
     path: '/profile',
     load: () => import('../profile/ProfileScreen'),
     warm: true,
-    prefetch: () => [NOTIFICATION_PREFS_PATH],
   },
   // Как поставить кабинет на телефон (docs/PWA.md) — личное место, как
   // «/profile» выше: вход карточкой в оболочке (install/InstallAppCard.tsx) и
@@ -364,6 +365,15 @@ export const ROUTE_MODULES = {
     load: () => import('../notifications/NotificationsScreen'),
     warm: true,
     prefetch: () => [NOTIFICATIONS_FEED_PATH, MY_EXAMS_PATH],
+  },
+  // Подэкран ленты (ADR-0162): вход с «Профиля» и из ленты, открыт любой роли.
+  // Занятия греются только тому, кому блок «О каких занятиях» показывается, —
+  // это решает prefetchFirstScreen.ts, таблица от роли не зависит.
+  notificationSettings: {
+    path: NOTIFICATION_SETTINGS_PATH,
+    load: () => import('../notifications/NotificationSettingsScreen'),
+    warm: true,
+    prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
   },
   // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
   // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,

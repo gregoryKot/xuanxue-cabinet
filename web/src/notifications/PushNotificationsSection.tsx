@@ -1,8 +1,9 @@
 // Кнопка «Включить уведомления» (ADR-0092, ПР №5, последний из «Порядка
 // работ») — push как добавка к Telegram и ленте кабинета, не замена. Раздел
-// стоит сразу под NotificationPrefsSection.tsx на «Профиле» и ссылается на
-// её список («то же, что отмечено в списке выше»). Логика — usePushSubscription.ts
-// (CLAUDE.md «Логика вне компонентов»), здесь только рендер по состоянию.
+// стоит первым на экране «Настройки уведомлений» (NotificationSettingsScreen.tsx,
+// ADR-0162) и ссылается на список ниже («то же, что отмечено в разделе «Что
+// присылать»»). Логика — usePushSubscription.ts (CLAUDE.md «Логика вне
+// компонентов»), здесь только рендер по состоянию.
 import type { CSSProperties } from 'react';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { Link } from 'react-router-dom';

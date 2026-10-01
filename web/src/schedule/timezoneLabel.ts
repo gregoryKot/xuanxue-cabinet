@@ -47,3 +47,16 @@ export function planningTzNote(
   if (foreign.length === 0) return null;
   return `Время — по вашим часам. Школа живёт по **${foreign.join(', ')}**.`;
 }
+
+/** Подпись над списком правил занятий без конкретной даты («вс, ср · 08:00»,
+ * выбор занятий на «Настройках уведомлений», ADR-0162): правило повторяется
+ * каждую неделю и хранится в поясе школы, поэтому время остаётся школьным, как
+ * в сетке «Расписания», и пояс подписан один раз. */
+export function ruleTzNote(
+  classTzs: readonly string[],
+  browserTimeZone: string = browserTz(),
+): string | null {
+  const foreign = foreignTimezones(classTzs, browserTimeZone);
+  if (foreign.length === 0) return null;
+  return `Время — по часам школы (**${foreign.join(', ')}**).`;
+}

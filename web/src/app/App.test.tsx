@@ -475,10 +475,7 @@ describe('App', () => {
   // Личный экран человека — маршрут не за RequirePeopleAccess и открыт любой
   // роли в canSeeRoute (screenAccess.ts), доступен и ученику (ADR-0045).
   it('учитель на /profile — маршрут «Профиль» открывает ProfileScreen', async () => {
-    mockRoute(TEACHER, {
-      '/me/notifications': { enabled: [] },
-      '/push/public-key': { publicKey: null },
-    });
+    mockRoute(TEACHER);
 
     renderAt('/profile');
 
@@ -498,14 +495,64 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
     };
-    mockRoute(student, {
+    mockRoute(student);
+
+    renderAt('/profile');
+
+    // Переключатели видов переехали на свой экран (ADR-0162) — на «Профиле»
+    // остался вход в него.
+    // В оболочке есть и свой значок «Уведомления» (лента) — карточку называет
+    // её приписка.
+    expect(
+      await screen.findByRole('link', { name: /Что присылать, о каких занятиях/ }),
+    ).toHaveAttribute('href', '/notifications/settings');
+  });
+
+  // «Настройки уведомлений» (ADR-0162) — подэкран ленты, открыт любой роли:
+  // учитель не уходит с него редиректом на «/exams», ученик попадает на него,
+  // а не на «Задания». Узкий путь раньше широкого — mockRoute берёт первое
+  // совпадение по префиксу.
+  it('учитель на /notifications/settings — открывается экран настроек, а не редирект на «/exams»', async () => {
+    mockRoute(TEACHER, {
       '/me/notifications': { enabled: [] },
       '/push/public-key': { publicKey: null },
     });
 
-    renderAt('/profile');
+    renderAt('/notifications/settings');
 
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Настройки уведомлений' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Что присылать')).toBeInTheDocument();
+    expect(screen.queryByText('О каких занятиях')).not.toBeInTheDocument();
+  });
+
+  it('ученик на /notifications/settings — экран настроек с выбором занятий', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
+      needsProfile: false,
+      googleLinked: false,
+    };
+    mockRoute(student, {
+      '/me/notifications/lessons': { scope: { mode: 'all', classIds: [] }, classes: [] },
+      '/me/notifications': { enabled: [] },
+      '/push/public-key': { publicKey: null },
+    });
+
+    renderAt('/notifications/settings');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Настройки уведомлений' }),
+    ).toBeInTheDocument();
     expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
+    expect(await screen.findByText('О каких занятиях')).toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за

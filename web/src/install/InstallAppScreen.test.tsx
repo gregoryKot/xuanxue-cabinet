@@ -32,16 +32,15 @@ afterEach(() => {
 });
 
 describe('InstallAppScreen', () => {
-  it('standalone — только «уже стоит» и ссылка на профиль, без шагов', () => {
+  it('standalone — только «уже стоит» и ссылка на настройки уведомлений, без шагов', () => {
     stubEnvironment(IPHONE_UA, true);
 
     renderScreen();
 
     expect(screen.getByText('Кабинет уже стоит на этом телефоне.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Открыть профиль' })).toHaveAttribute(
-      'href',
-      '/profile',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Открыть настройки уведомлений' }),
+    ).toHaveAttribute('href', '/notifications/settings');
     expect(screen.queryByText('iPhone')).not.toBeInTheDocument();
   });
 
@@ -56,10 +55,9 @@ describe('InstallAppScreen', () => {
       p.textContent?.includes('на iPhone приложение не видит вход'),
     );
     expect(relogin).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Открыть профиль' })).toHaveAttribute(
-      'href',
-      '/profile',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Открыть настройки уведомлений' }),
+    ).toHaveAttribute('href', '/notifications/settings');
     expect(screen.queryByText('Android')).not.toBeInTheDocument();
   });
 

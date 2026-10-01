@@ -64,8 +64,8 @@ afterEach(() => {
 });
 
 // Ссылка «Как добавить» у состояния ios-install (InstallAppScreen, /install)
-// зовёт react-router-dom — раздел рендерится не только на «Профиле», но и в
-// изоляции здесь, поэтому обёртка своя, не из ProfileScreen.test.tsx.
+// зовёт react-router-dom — раздел рендерится не только на экране настроек, но
+// и в изоляции здесь, поэтому обёртка своя, не из NotificationSettingsScreen.test.tsx.
 function renderSection() {
   return render(
     <MemoryRouter>
@@ -156,7 +156,7 @@ describe('PushNotificationsSection — разрешение не спрашив�
 
     expect(await screen.findByText('Push-уведомления')).toBeInTheDocument();
     expect(
-      screen.getByText(/покажут то же, что отмечено в списке выше/),
+      screen.getByText(/покажут то, что отмечено в разделе «Что присылать»/),
     ).toBeInTheDocument();
     expect(screen.getByText(/Нажмёте «Запретить» в окне браузера/)).toBeInTheDocument();
 
