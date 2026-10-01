@@ -455,6 +455,7 @@ export {
   hasLessonScopedKinds,
   isLessonInScope,
 } from './lesson-notifications';
+export type { LessonPrefsStatsDto } from './lesson-prefs-stats';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
 export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {

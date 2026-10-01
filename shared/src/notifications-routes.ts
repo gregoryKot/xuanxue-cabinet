@@ -5,12 +5,14 @@
 // владельца 2026-09-21). Отписка — 204: endpoint клиент уже знает.
 // `/me/notifications/lessons` — «о каких занятиях» и «за сколько напомнить»
 // (ADR-0162): выбор, список активных занятий и своя минута; PUT отдаёт то же,
-// что GET, по той же причине, что PATCH.
+// что GET, по той же причине, что PATCH. `/notifications/lesson-prefs-stats` —
+// число для штата: сколько учеников этим воспользовались (ADR-0162, п. 5).
 import type {
   MyLessonNotificationsDto,
   UpdateLessonReminderInput,
   UpdateLessonScopeInput,
 } from './lesson-notifications';
+import type { LessonPrefsStatsDto } from './lesson-prefs-stats';
 import type { NotificationPrefsDto, UpdateNotificationPrefsInput } from './notifications';
 import type {
   PushPublicKeyDto,
@@ -45,6 +47,11 @@ export interface NotificationsRoutes {
     body: UpdateLessonReminderInput;
     response: MyLessonNotificationsDto;
   };
+  'GET /notifications/lesson-prefs-stats': {
+    query: undefined;
+    body: undefined;
+    response: LessonPrefsStatsDto;
+  };
   'GET /push/public-key': {
     query: undefined;
     body: undefined;
@@ -68,6 +75,7 @@ export const NOTIFICATIONS_ROUTE_KEYS: Record<keyof NotificationsRoutes, true> =
   'GET /me/notifications/lessons': true,
   'PUT /me/notifications/lessons/scope': true,
   'PUT /me/notifications/lessons/reminder-minutes': true,
+  'GET /notifications/lesson-prefs-stats': true,
   'GET /push/public-key': true,
   'POST /me/push-subscriptions': true,
   'DELETE /me/push-subscriptions': true,
