@@ -186,7 +186,7 @@ describe('buildNotificationsMenu', () => {
     );
 
     it('кнопок она не добавляет: ни у ученика, ни у учителя', () => {
-      expect(buildNotificationsMenu([], ['exam_result']).buttons).toHaveLength(5);
+      expect(buildNotificationsMenu([], ['exam_result']).buttons).toHaveLength(6);
       expect(buildNotificationsMenu(['teacher'], []).buttons).toHaveLength(4);
     });
 
