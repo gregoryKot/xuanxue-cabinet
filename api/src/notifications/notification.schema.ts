@@ -57,7 +57,7 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   examTitle?: string;
 
-  // Занятие `lesson_soon` (ADR-0135) и `lesson_cancelled` (ADR-0162) — строкой,
+  // Занятие видов про занятие (ADR-0135, ADR-0162: lesson_soon и др.) — строкой,
   // как examId; уникальный индекс ниже — идемпотентность повторной отправки
   // (второй тик, второй инстанс).
   @Prop({ type: String, required: false })
@@ -68,7 +68,7 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   lessonTitle?: string;
 
-  // Когда отменённое занятие (`lesson_cancelled`) должно было начаться, UTC:
+  // Когда занятие (`lesson_cancelled`, `recording_ready`) начиналось, UTC:
   // без числа не понять, какое отменили. Дата, не текст — не шифруется.
   @Prop({ type: Date, required: false })
   lessonStartsAt?: Date;
@@ -109,7 +109,7 @@ NotificationSchema.index(
 );
 // Идемпотентность напоминания и отмены занятия (ADR-0135, ADR-0162) — тот же
 // приём: одна строка на (человек, вид, занятие); вид в ключе, поэтому строки
-// `lesson_soon` и `lesson_cancelled` одного занятия друг друга не блокируют.
+// строки видов про занятие одного занятия друг друга не блокируют.
 // Частичный — attemptId и lessonId никогда не приходят вместе (разные виды).
 NotificationSchema.index(
   { userId: 1, kind: 1, lessonId: 1 },

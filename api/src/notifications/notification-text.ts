@@ -32,11 +32,10 @@ const TITLE_SEPARATOR = ' — ';
 interface NotificationTextInput {
   kind: NotificationKind;
   /** Название формы (exam_result/attempt_submitted), класса (lesson_soon,
-   * lesson_cancelled) или
-   * месяца (payment_due, payments) — ровно одно из трёх приходит на вид, но
-   * склеивание со строкой ниже одинаково для всех: второй заголовок в
-   * отдельном поле развёл бы логику показа на два похожих места (CLAUDE.md
-   * «Одна механика — один компонент»). */
+   * lesson_cancelled, recording_ready) или месяца (payment_due, payments) —
+   * ровно одно из трёх приходит на вид, но склеивание со строкой ниже
+   * одинаково для всех: второй заголовок в отдельном поле развёл бы логику
+   * показа на два похожих места (CLAUDE.md «Одна механика — один компонент»). */
   title?: string;
 }
 
