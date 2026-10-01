@@ -5,35 +5,20 @@
 //
 // `videoId` — файл в R2, отдаётся через `/api/exam-videos/:id` (302 на
 // подписанную ссылку, ADR-0133): нативный `<video controls>` перематывает и
-// переспрашивает адрес на каждый seek сам, отдельного плеера не нужно.
+// переспрашивает адрес на каждый seek сам, отдельного плеера не нужно. Сам
+// элемент и плашка «Загрузить снова» — в VideoFilePlayer.tsx.
 // `videoUrl` — ссылка (YouTube и т.п.), плеер — общий VideoEmbed.tsx (фасад,
 // ADR-0100): свой встроенный плеер сюда не пишем, чтобы не завести вторую
 // реализацию одного и того же.
-import type { CSSProperties } from 'react';
+//
+// Оборванную загрузку файла (слабая связь, телефон ушёл в фон) плеер чинит
+// сам — useVideoRecovery.ts зовёт `video.load()` на том же стабильном
+// `/api/...`, а не на запомненной подписанной ссылке: она живёт час, и после
+// сворачивания приложения на ночь это был бы уже протухший адрес. Ответ 302
+// без кеша — сервер подпишет свежую ссылку при каждой перезагрузке.
 import { answerVideoSrc, examVideoSrc } from '../api/examVideoPaths';
 import { VideoEmbed } from './VideoEmbed';
-
-type ExamVideoPlayerSize = 'thumb' | 'tile' | 'full';
-
-// 'thumb' — миниатюра в списке (тот же кегль, что OptionImage 'thumb');
-// 'tile' — вписывается в высоту плитки варианта (attempt/AttemptOptionTile.tsx,
-// класс `.xuanxue-option-tile-media` в index.css задаёт высоту коробки);
-// 'full' (по умолчанию) — во всю ширину колонки, естественная высота под
-// вопросом или в поле редактора.
-const MAX_HEIGHT: Record<ExamVideoPlayerSize, string> = {
-  thumb: '96px',
-  tile: '100%',
-  full: 'none',
-};
-
-const baseStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  maxWidth: '100%',
-  height: 'auto',
-  borderRadius: 'var(--radius-card)',
-  background: '#000',
-};
+import { VideoFilePlayer, type VideoFileSize } from './VideoFilePlayer';
 
 interface ExamVideoPlayerProps {
   videoId?: string;
@@ -45,7 +30,8 @@ interface ExamVideoPlayerProps {
   videoUrl?: string;
   /** Доступное имя видео — формулировка вопроса или подпись варианта. */
   title?: string;
-  size?: ExamVideoPlayerSize;
+  /** Размеры — в VideoFilePlayer.tsx; у ссылки (VideoEmbed) размера нет. */
+  size?: VideoFileSize;
 }
 
 export function ExamVideoPlayer({
@@ -61,25 +47,7 @@ export function ExamVideoPlayer({
       ? answerVideoSrc(answerVideoId)
       : null;
   if (src) {
-    return (
-      // Субтитров нет: у видео вопроса это короткий клип движения без речи
-      // (ADR-0133, «Контекст» — «референс учителя»), у видео-ответа —
-      // снятая учеником форма, тоже без слов (ADR-0137), не запись занятия.
-      // eslint-disable-next-line jsx-a11y/media-has-caption
-      <video
-        controls
-        preload="metadata"
-        playsInline
-        src={src}
-        aria-label={title}
-        style={{
-          ...baseStyle,
-          maxHeight: MAX_HEIGHT[size],
-          objectFit: size === 'tile' ? 'contain' : undefined,
-          height: size === 'tile' ? '100%' : 'auto',
-        }}
-      />
-    );
+    return <VideoFilePlayer src={src} title={title} size={size} />;
   }
   if (videoUrl) {
     return <VideoEmbed url={videoUrl} title={title} />;
