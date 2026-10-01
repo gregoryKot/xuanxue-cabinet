@@ -59,7 +59,12 @@ describe('AttemptDeadlineTimer', () => {
     expect(label.style.color).toBe('var(--ink-soft)');
   });
 
-  it('onExpired зовётся один раз при переходе через ноль, не на каждом тике', () => {
+  // Аудит 2026-10-01 (H): раньше onExpired звался один раз на монтирование,
+  // а родитель отвечал reload() со скелетоном — компонент размонтировался,
+  // монтировался заново и звал reload() снова: спешащие часы телефона
+  // запирали ученика в мигающем скелетоне. Теперь переспрос тихий и
+  // повторяется раз в 5 с, пока сервер не закроет попытку.
+  it('переход через ноль: onExpired сразу, «Время вышло» на экране, переспрос раз в 5 с, не на каждом тике', () => {
     const onExpired = vi.fn();
     render(<AttemptDeadlineTimer deadlineAt={deadlineIn(500)} onExpired={onExpired} />);
     expect(onExpired).not.toHaveBeenCalled();
@@ -68,11 +73,39 @@ describe('AttemptDeadlineTimer', () => {
       vi.advanceTimersByTime(1000);
     });
     expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Время вышло')).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(3000);
     });
     expect(onExpired).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(onExpired).toHaveBeenCalledTimes(2);
+  });
+
+  it('новая стрелка onExpired при перерисовке (ответ сервера) не зовётся заново сама по себе', () => {
+    const first = vi.fn();
+    const { rerender } = render(
+      <AttemptDeadlineTimer deadlineAt={deadlineIn(500)} onExpired={first} />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(first).toHaveBeenCalledTimes(1);
+
+    const second = vi.fn();
+    rerender(<AttemptDeadlineTimer deadlineAt={deadlineIn(500)} onExpired={second} />);
+    expect(second).not.toHaveBeenCalled();
+
+    // Следующий переспрос по таймеру идёт уже в свежую стрелку.
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(first).toHaveBeenCalledTimes(1);
   });
 
   it('скрытая строка для скринридера появляется только у порогов', () => {

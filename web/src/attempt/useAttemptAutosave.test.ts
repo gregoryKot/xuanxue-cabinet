@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ATTEMPT_EXPIRED_MESSAGE } from '@xuanxue/shared';
+import {
+  ATTEMPT_EXPIRED_MESSAGE,
+  ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
+} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
 import { useAttemptAutosave } from './useAttemptAutosave';
@@ -376,6 +379,80 @@ describe('useAttemptAutosave — дедлайн решает сервер', () =
     expect(mockedApiFetch).toHaveBeenCalledTimes(2);
     expect(result.current.status).toBe('saved');
     expect(onExpired).not.toHaveBeenCalled();
+  });
+});
+
+// Аудит 2026-10-01: повтор каждые 4 с шёл на любую ошибку — «уже сдана» из
+// другой вкладки, 429 троттлера с Retry-After в минуту, 400 на кривом ответе.
+describe('useAttemptAutosave — какой сбой повторять (attemptSaveError.ts)', () => {
+  it('«попытка уже сдана» (бот, другая вкладка) — без повтора, onExpired перечитывает попытку', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(ATTEMPT_NOT_IN_PROGRESS_MESSAGE, 400, 'invalid_input'),
+    );
+    const onExpired = vi.fn();
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [], onExpired));
+
+    act(() => result.current.setText('item-1', 'поздно'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('error');
+  });
+
+  it('429 с Retry-After: 60 — повтор через минуту, а не через 4 с', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(
+        'Слишком много запросов',
+        429,
+        'rate_limited',
+        undefined,
+        undefined,
+        60,
+      ),
+    );
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50_000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('400 на самом ответе — ошибка остаётся, повтора и перечитывания нет', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Слишком длинный ответ', 400, 'invalid_input'),
+    );
+    const onExpired = vi.fn();
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [], onExpired));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(onExpired).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('error');
   });
 });
 

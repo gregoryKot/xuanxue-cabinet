@@ -125,6 +125,20 @@ describe('classifyAnswerVideoError', () => {
     expect(classifyAnswerVideoError(err)).toEqual({ kind: 'retry', retryAfterSec: 10 });
   });
 
+  // Аудит 2026-10-01: 429 считался отказом навсегда — загрузка умирала с
+  // «Слишком много запросов» вместо паузы.
+  it('429 — повтор, с Retry-After сервера', () => {
+    const err = new ApiError(
+      'Слишком много',
+      429,
+      'rate_limited',
+      undefined,
+      undefined,
+      60,
+    );
+    expect(classifyAnswerVideoError(err)).toEqual({ kind: 'retry', retryAfterSec: 60 });
+  });
+
   it('5xx — повтор', () => {
     const err = new ApiError('Сбой', 500, 'unknown');
     expect(classifyAnswerVideoError(err)).toEqual({

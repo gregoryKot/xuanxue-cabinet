@@ -125,6 +125,7 @@ export default function AttemptScreen() {
     <AttemptInProgress
       attempt={attempt}
       reload={reload}
+      refresh={refresh}
       onSubmit={submit}
       submitting={submitting}
       submitError={submitError}

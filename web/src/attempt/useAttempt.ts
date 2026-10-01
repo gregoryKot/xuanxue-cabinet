@@ -6,8 +6,13 @@
 // дедлайну (closeIfExpiredAttempt) и на этом пути тоже, значит статус в
 // ответе — правда на момент запроса, а не то, что было при старте.
 import { useCallback, useState } from 'react';
-import type { ExamAttemptDto, ExamMediaDto } from '@xuanxue/shared';
+import {
+  ATTEMPT_EXPIRED_MESSAGE,
+  type ExamAttemptDto,
+  type ExamMediaDto,
+} from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { mergeAnswerVideoMedia } from './attemptMediaMerge';
@@ -87,11 +92,20 @@ export function useAttempt(
       // убирается целиком (attemptLocalDraft.ts, аудит 2026-09-21).
       clearAttemptDraft(attemptId);
     } catch (err) {
+      // Часы телефона отстают (аудит 2026-10-01): сервер уже закрыл попытку
+      // по дедлайну, а экран ещё показывал минуты запаса. «Время вышло» —
+      // не сбой отправки, а повод перечитать попытку: сервер отдаст её
+      // закрытой, и экран переключится на «Отправлено».
+      if (err instanceof ApiError && err.message === ATTEMPT_EXPIRED_MESSAGE) {
+        clearAttemptDraft(attemptId);
+        await reload();
+        return;
+      }
       setSubmitError(errorFrom(err, SUBMIT_ERROR_MESSAGE));
     } finally {
       setSubmitting(false);
     }
-  }, [attemptId, applyData, onSubmitted]);
+  }, [attemptId, applyData, onSubmitted, reload]);
 
   const applyMedia = useCallback(
     (media: ExamMediaDto) => {

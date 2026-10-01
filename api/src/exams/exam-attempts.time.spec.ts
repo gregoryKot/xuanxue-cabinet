@@ -106,6 +106,26 @@ describe('ExamAttemptsService — дедлайн', () => {
     expect(raw?.expired).toBe(true);
   });
 
+  // Мутационная проба аудита 2026-10-01: граница «ровно в момент дедлайна»
+  // тестами не держалась — `<` против `<=` в closeIfExpiredAttempt проходило.
+  it('сохранение ровно в момент дедлайна — уже отклонено, попытка закрыта', async () => {
+    const startedAt = DateTime.utc(2026, 10, 1, 12, 0, 0);
+    const started = await startTimedAttempt(40, startedAt);
+    const deadlineAt = startedAt.plus({ minutes: 40 });
+    const itemId = started.blocks[0]?.questions[0]?.itemId ?? '';
+
+    await expect(
+      ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId, text: 'ровно' }] },
+        deadlineAt,
+      ),
+    ).rejects.toThrow('Время экзамена вышло');
+    const closed = await ctx.service.getOwn(started.id, USER_A, deadlineAt);
+    expect(closed).toMatchObject({ status: 'submitted', expired: true });
+  });
+
   it('сдача точно до дедлайна — успех, expired: false', async () => {
     const started = await startTimedAttempt(30, NOW);
 

@@ -15,6 +15,7 @@ import {
   type ErrorEnvelope,
 } from './apiError';
 import { noteAppVersion } from './appVersion';
+import { noteServerDate } from './serverClock';
 import { takePrefetched } from './prefetchCache';
 
 export { ApiError, setUnauthorizedListener };
@@ -118,6 +119,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   // До проверок статуса: версия сборки (ADR-0101) едет и в ответе об ошибке,
   // а деплой не должен остаться незамеченным только потому, что запрос упал.
   noteAppVersion(response.headers.get(APP_VERSION_HEADER));
+  // Часы сервера для отсчёта дедлайна (serverClock.ts, аудит 2026-10-01):
+  // заголовок Date есть у каждого ответа, в том числе об ошибке.
+  noteServerDate(response.headers.get('date'), Date.now());
 
   if (response.status === 204) return undefined as T;
 

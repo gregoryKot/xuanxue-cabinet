@@ -65,6 +65,18 @@ describe('AuthProvider — статусы', () => {
     await waitFor(() => expect(result.current.status).toBe('offline'));
   });
 
+  // Аудит 2026-10-01: 429 троттлера и 5xx при блипе Atlas переводили в guest
+  // и уводили ученика на /login посреди экзамена — cookie при этом жив.
+  it('429 и 5xx — offline (кнопка «Повторить»), не guest', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError('Слишком много', 429, 'rate_limited'));
+    const limited = renderAuth();
+    await waitFor(() => expect(limited.result.current.status).toBe('offline'));
+
+    mockedApiFetch.mockRejectedValue(new ApiError('Сбой', 503, 'not_available'));
+    const failing = renderAuth();
+    await waitFor(() => expect(failing.result.current.status).toBe('offline'));
+  });
+
   // Задача 3: AuthGuard отвергает status: 'blocked' 403-м на каждый запрос
   // (SECURITY §2) — cookie при этом валиден, это не «сессии нет».
   it('403 — status blocked, me null', async () => {
