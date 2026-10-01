@@ -57,7 +57,13 @@ export function useMaterialForm({
   return useEntityForm({
     entity: material,
     getId: (m) => m.id,
-    initialState: initialMaterialFormState,
+    // Галочка «Сообщить ученикам» у нового материала стоит сразу (ADR-0162): учитель
+    // её снимает, а не вспоминает поставить. Короткая форма на странице даты
+    // (planning/useNewLessonMaterialForm.ts) берёт исходное состояние — без галочки.
+    initialState: (entity) => ({
+      ...initialMaterialFormState(entity),
+      notifyStudents: entity === null,
+    }),
     validate: (state) => validateMaterialForm(state, file),
     toCreateInput,
     toUpdateInput,

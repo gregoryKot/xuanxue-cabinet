@@ -55,6 +55,16 @@ describe('useMaterialForm — submit()', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
+  it('новый материал — галочка «Сообщить ученикам» стоит сразу, у существующего — нет (ADR-0162)', () => {
+    const created = renderHook(() => useMaterialForm(makeArgs()));
+    const edited = renderHook(() =>
+      useMaterialForm(makeArgs({ material: makeMaterial() })),
+    );
+
+    expect(created.result.current.state.notifyStudents).toBe(true);
+    expect(edited.result.current.state.notifyStudents).toBe(false);
+  });
+
   it('создание — валидная форма зовёт onCreate с собранным телом', async () => {
     const onCreate = vi.fn().mockResolvedValue(makeMaterial());
     const { result } = renderHook(() => useMaterialForm(makeArgs({ onCreate })));

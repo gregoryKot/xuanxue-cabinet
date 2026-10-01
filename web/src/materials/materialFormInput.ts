@@ -27,7 +27,8 @@ export interface MaterialFormState {
   classIds: string[];
   access: MaterialAccess;
   tagsText: string;
-  /** «Сообщить ученикам» — только при создании (ADR-0162). */
+  /** «Сообщить ученикам» — только при создании (ADR-0162). Исходно снята: короткая
+   * форма на странице даты галочки не показывает и молчит, ставит её useMaterialForm. */
   notifyStudents: boolean;
 }
 
@@ -64,7 +65,7 @@ export function initialMaterialFormState(
     classIds: materialDto?.classIds ?? [],
     access: materialDto?.access ?? 'all',
     tagsText: materialDto?.tags.join(', ') ?? '',
-    notifyStudents: true,
+    notifyStudents: false,
   };
 }
 
