@@ -7,7 +7,7 @@
 // (defaultNotifications), не гвардом маршрута. Переключение — сразу PATCH
 // без оптимистичной отрисовки: строка остаётся в прежнем состоянии, пока не
 // пришёл ответ, тем же приёмом, что PersonRow.tsx делает с ролями.
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import {
   NOTIFICATION_HINTS,
   NOTIFICATION_LABELS,
@@ -49,8 +49,21 @@ const hintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 const alertStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
+// Настройка вида стоит под его пояснением, с тем же отступом слева — под подписью
+// переключателя, а не под самой галочкой.
+const kindSettingsStyle: CSSProperties = { margin: '6px 0 0 32px' };
 
-export function NotificationPrefsSection() {
+interface NotificationPrefsSectionProps {
+  /** Настройка самого вида — под его строкой, пока вид включён: у выключенного
+   * вида настраивать нечего, а контрол, который ничего не делает, врал бы
+   * (ADR-0069). Раздел о виде ничего не знает — ни что за настройка, ни откуда её
+   * данные (сейчас «За сколько напомнить» у `lesson_soon`, ADR-0162). */
+  settingsForKind?: Partial<Record<NotificationKind, ReactNode>>;
+}
+
+export function NotificationPrefsSection({
+  settingsForKind,
+}: NotificationPrefsSectionProps) {
   const { me } = useAuth();
   const { kinds, enabled, loading, error, reload, setEnabled } = useNotificationPrefs(me);
   // Пока не пришёл первый ответ — enabled ещё null; список ниже рисуется
@@ -118,6 +131,9 @@ export function NotificationPrefsSection() {
                 onChange={(checked) => void toggle(kind, checked)}
               />
               <p style={hintStyle}>{NOTIFICATION_HINTS[kind]}</p>
+              {enabledKinds.includes(kind) && settingsForKind?.[kind] && (
+                <div style={kindSettingsStyle}>{settingsForKind[kind]}</div>
+              )}
             </li>
           ))}
         </ul>
