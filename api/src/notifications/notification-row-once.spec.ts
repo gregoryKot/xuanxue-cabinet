@@ -103,6 +103,62 @@ describe('insertNotificationRowOnce', () => {
     expect(await model.countDocuments({ userId: 'u1', lessonId: 'l1' })).toBe(2);
   });
 
+  // ADR-0162: «Новый материал» закреплён за материалом, а не за занятием —
+  // свой частичный индекс (userId, kind, materialId); строки видов про занятие с
+  // тем же текстом id ему не мешают, а название зашифровано, как lessonTitle.
+  describe('material_new — идентичность по материалу', () => {
+    const MATERIAL = {
+      userId: 'u1',
+      kind: 'material_new',
+      materialId: 'm1',
+      materialTitle: 'Ван Пэйшэн',
+    } as const;
+
+    it('первая вставка — true, повторная — false; другой материал и другой человек — независимые строки', async () => {
+      expect(await insertNotificationRowOnce(model, MATERIAL)).toBe(true);
+      expect(await insertNotificationRowOnce(model, MATERIAL)).toBe(false);
+      expect(
+        await insertNotificationRowOnce(model, { ...MATERIAL, materialId: 'm2' }),
+      ).toBe(true);
+      expect(await insertNotificationRowOnce(model, { ...MATERIAL, userId: 'u2' })).toBe(
+        true,
+      );
+
+      expect(await model.countDocuments({ kind: 'material_new' })).toBe(3);
+    });
+
+    it('название материала зашифровано в записи, lessonId у строки нет', async () => {
+      await insertNotificationRowOnce(model, MATERIAL);
+
+      const row = await model.findOne({ userId: 'u1' }).lean();
+      expect(row?.materialTitle).not.toBe('Ван Пэйшэн');
+      expect(row).not.toHaveProperty('lessonId');
+      expect(decryptRecord(row ?? {}, NOTIFICATION_ENCRYPT_SCHEMA)).toMatchObject({
+        materialTitle: 'Ван Пэйшэн',
+      });
+    });
+
+    it('пять вызовов разом — ровно один true и одна строка', async () => {
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => insertNotificationRowOnce(model, MATERIAL)),
+      );
+
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
+    });
+
+    it('строка про занятие с тем же id и видом `material_new` материал не блокирует', async () => {
+      expect(
+        await insertNotificationRowOnce(model, {
+          userId: 'u1',
+          kind: 'material_new',
+          lessonId: 'm1',
+        }),
+      ).toBe(true);
+      expect(await insertNotificationRowOnce(model, MATERIAL)).toBe(true);
+    });
+  });
+
   it('lessonStartsAt записывается датой и не шифруется', async () => {
     const lessonStartsAt = new Date('2026-09-10T16:00:00Z');
 

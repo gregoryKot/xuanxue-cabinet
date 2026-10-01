@@ -208,6 +208,8 @@ describe('LessonMaterialsSection — «Добавить ссылку»', () => {
 
     await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
     expect(callsWithMethod('POST')[0]?.[0]).toBe('/materials');
+    // ADR-0162: у короткой формы галочки «Сообщить ученикам» нет, материал из неё
+    // никого не оповещает — в теле нет ключа notifyStudents (нет поля — не сообщать).
     expect(bodyOfFirst('POST')).toEqual({
       title: 'Разбор формы 24',
       url: 'https://youtu.be/1',

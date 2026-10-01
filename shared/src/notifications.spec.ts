@@ -115,6 +115,18 @@ describe('defaultNotifications', () => {
     expect(NOTIFICATION_HINTS.recording_ready).not.toContain('**');
   });
 
+  // ADR-0162: «Новый материал» — второй вид «по желанию», тем же способом.
+  it('material_new — вид «по желанию»: не в дефолте ни у кого, подпись и подсказка есть', () => {
+    expect(defaultNotifications([])).not.toContain('material_new');
+    for (const role of USER_ROLES) {
+      expect(defaultNotifications([role])).not.toContain('material_new');
+    }
+    expect(rolesWithNotification('material_new')).toEqual([]);
+    expect(NOTIFICATION_LABELS.material_new).toBe('Новый материал');
+    expect(NOTIFICATION_HINTS.material_new).toContain('добавит в библиотеку материал');
+    expect(NOTIFICATION_HINTS.material_new).not.toContain('**');
+  });
+
   it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {
     expect(defaultNotifications(['teacher'])).toEqual([
       'post_draft',

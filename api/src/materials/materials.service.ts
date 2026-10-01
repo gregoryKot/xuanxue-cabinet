@@ -11,13 +11,12 @@
 // оплате больше нет, настройки школы здесь не нужны).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   MATERIAL_NOT_FOUND_MESSAGE,
   MATERIALS_LIMIT_DEFAULT,
   MY_MATERIALS_LIMIT_DEFAULT,
-  normalizeTags,
   type CreateMaterialInput,
   type ListMaterialsQuery,
   type ListMyMaterialsQuery,
@@ -29,7 +28,6 @@ import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
-import { encryptRecord } from '../utils/encryption';
 import { visibleForStudent } from './material-access';
 import { findMaterialClassTitles } from './material-classes.lookup';
 import {
@@ -38,7 +36,8 @@ import {
   toMyMaterialDto,
   type RawLeanMaterial,
 } from './material.mapper';
-import { MATERIAL_ENCRYPT_SCHEMA, MaterialRecord } from './material.schema';
+import { MaterialRecord } from './material.schema';
+import { buildMaterialCreateRecord } from './materials.create';
 import { buildMaterialsFilter, STUDENT_OPENABLE_FILTER } from './materials.queries';
 import { buildMaterialUpdateCommand } from './materials.update';
 
@@ -64,25 +63,17 @@ export class MaterialsService {
     return docs.map((doc) => toMaterialDto(decryptMaterial(doc)));
   }
 
-  async create(input: CreateMaterialInput, createdBy: string): Promise<MaterialDto> {
-    const payload = encryptRecord(
-      {
-        title: input.title,
-        // ADR-0134: ключа `url` в документе нет вовсе, если ссылку не
-        // прислали — не пустая строка. У материала может быть только файл.
-        ...(input.url !== undefined ? { url: input.url } : {}),
-        kind: input.kind,
-        classIds: input.classIds ?? [],
-        lessonIds: input.lessonIds ?? [],
-        access: input.access ?? 'all',
-        // Нормализация здесь, не в DTO: список — фильтр (ADR-0058), опечатка
-        // и дубль в базе разъехались бы с фильтром `tag` при чтении.
-        tags: normalizeTags(input.tags ?? []),
-        createdBy,
-      },
-      MATERIAL_ENCRYPT_SCHEMA,
+  /** `now` — момент, от которого шаг тика сутки пробует объявить материал
+   * (`announceAt`, только при `notifyStudents`, ADR-0162); без аргумента —
+   * часы сервера, как берёт их остальной код через `DateTime.utc()`. */
+  async create(
+    input: CreateMaterialInput,
+    createdBy: string,
+    now: DateTime = DateTime.utc(),
+  ): Promise<MaterialDto> {
+    const created = await this.model.create(
+      buildMaterialCreateRecord(input, createdBy, now),
     );
-    const created = await this.model.create(payload);
     return this.getById(created._id.toString());
   }
 

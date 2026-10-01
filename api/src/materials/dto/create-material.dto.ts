@@ -13,6 +13,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsMongoId,
   IsNotEmpty,
@@ -74,4 +75,11 @@ export class CreateMaterialDto implements ApiRouteBody<'POST /materials'> {
   @IsString({ each: true })
   @MaxLength(TAG_LIMITS.length, { each: true })
   tags?: string[];
+
+  // «Сообщить ученикам» (ADR-0162) — только при создании: у UpdateMaterialDto
+  // поля нет, правка материал не объявляет. Нет поля — не объявлять
+  // (shouldAnnounceMaterial, materials.create.ts).
+  @IsOptional()
+  @IsBoolean()
+  notifyStudents?: boolean;
 }

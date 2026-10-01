@@ -128,6 +128,17 @@ describe('notificationBody', () => {
     expect(notificationBody(recorded)).toBe('Запись занятия — Тайцзи');
   });
 
+  // ADR-0162: материал — не про занятие, дата в строке ему ни к чему, даже если у
+  // записи случайно оказалось начало занятия.
+  it('новый материал — текст сервера как есть, без даты', () => {
+    const fresh = cancelled({
+      kind: 'material_new',
+      text: 'Новый материал — Ван Пэйшэн',
+    });
+
+    expect(notificationBody(fresh)).toBe('Новый материал — Ван Пэйшэн');
+  });
+
   it('остальные виды — текст сервера как есть, даже если дата пришла', () => {
     const soon = cancelled({ kind: 'lesson_soon', text: 'Скоро занятие — Тайцзи' });
     expect(notificationBody(soon)).toBe('Скоро занятие — Тайцзи');

@@ -15,11 +15,10 @@
 // второй запрос за тем, что было в руках, — работа впустую; к тому же
 // удалённая или переименованная форма оставляет строку читаемой и честной о
 // том, что человеку отправляли. Название пишет учитель руками — `enc`
-// (CLAUDE.md «Безопасность»).
+// (CLAUDE.md «Безопасность»). Так же — `lessonTitle` и `materialTitle`.
 //
 // Комментарий учителя сюда НЕ копируется — он остаётся в `exam_gradings`,
-// зашифрованный там (exam-grading.schema.ts): второй копии персональных
-// данных в проекте не заводим.
+// зашифрованный: второй копии персональных данных в проекте не заводим.
 //
 // retention: TTL-индекс на createdAt, NOTIFICATION_RETENTION_DAYS (shared/, его называет /privacy).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
@@ -77,6 +76,14 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   paymentMonth?: string;
 
+  // Материал `material_new` (ADR-0162) — строкой, как lessonId; название —
+  // снимок, как lessonTitle, и тоже пишется учителем руками, поэтому `enc`.
+  @Prop({ type: String, required: false })
+  materialId?: string;
+
+  @Prop({ type: String, required: false })
+  materialTitle?: string;
+
   @Prop({ type: String, enum: GRADING_OUTCOMES, required: false })
   outcome?: GradingOutcome;
 
@@ -97,30 +104,20 @@ export class NotificationRecord {
 
 export const NotificationSchema = SchemaFactory.createForClass(NotificationRecord);
 
-// Идемпотентность записи (CLAUDE.md «Действие с побочным эффектом...
-// идемпотентно», InAppExamNotifier.write): одна строка на (человек, вид,
-// попытка) — тем же приёмом, каким deliveries упираются в
-// (broadcastId, channelId). partialFilterExpression — attemptId необязателен
-// в схеме (комментарий у поля выше), а частичный индекс с $exists не видит
-// документы без поля вовсе — они не мешают друг другу копиться свободно.
-NotificationSchema.index(
-  { userId: 1, kind: 1, attemptId: 1 },
-  { unique: true, partialFilterExpression: { attemptId: { $exists: true } } },
-);
-// Идемпотентность напоминания и отмены занятия (ADR-0135, ADR-0162) — тот же
-// приём: одна строка на (человек, вид, занятие); вид в ключе, поэтому строки
-// строки видов про занятие одного занятия друг друга не блокируют.
-// Частичный — attemptId и lessonId никогда не приходят вместе (разные виды).
-NotificationSchema.index(
-  { userId: 1, kind: 1, lessonId: 1 },
-  { unique: true, partialFilterExpression: { lessonId: { $exists: true } } },
-);
-// Идемпотентность напоминания об оплате (ADR-0150): (человек, вид, месяц),
-// частичный по тем же причинам, что индексы выше.
-NotificationSchema.index(
-  { userId: 1, kind: 1, paymentMonth: 1 },
-  { unique: true, partialFilterExpression: { paymentMonth: { $exists: true } } },
-);
+// Идемпотентность записи (CLAUDE.md «Действие с побочным эффектом идемпотентно»,
+// InAppExamNotifier.write): одна строка на (человек, вид, предмет события) — тем же
+// приёмом, каким deliveries упираются в (broadcastId, channelId). Предмет — попытка
+// экзамена, занятие (ADR-0135, ADR-0162), месяц оплаты (ADR-0150) или материал
+// (ADR-0162); у строки заполнен ровно один, а вид в ключе, поэтому строки разных
+// видов одного занятия друг друга не блокируют. Индексы частичные: поле необязательно,
+// а документы без него в индекс с $exists не попадают и копятся свободно.
+const IDENTITY_FIELDS = ['attemptId', 'lessonId', 'paymentMonth', 'materialId'] as const;
+for (const field of IDENTITY_FIELDS) {
+  NotificationSchema.index(
+    { userId: 1, kind: 1, [field]: 1 },
+    { unique: true, partialFilterExpression: { [field]: { $exists: true } } },
+  );
+}
 // Лента (`GET /me/inbox`) — свои записи, переоценённые (updatedAt) сверху:
 // строка «всплывает» при переставленном итоге, не тонет на прежнем месте.
 NotificationSchema.index({ userId: 1, updatedAt: -1 });
@@ -141,6 +138,8 @@ export const NOTIFICATION_FIELD_POLICY: FieldPolicy = {
   lessonId: plain('id занятия — ссылка для клиента, не свободный текст'),
   lessonTitle: enc,
   paymentMonth: plain('месяц YYYY-MM — ключ идемпотентности, не свободный текст'),
+  materialId: plain('id материала — ссылка для клиента, не свободный текст'),
+  materialTitle: enc,
 };
 
 /** Схема шифрования записи ленты — одна на запись и на чтение

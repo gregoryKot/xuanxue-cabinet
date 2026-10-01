@@ -1,6 +1,7 @@
 // Маппер ленты собирает строку для показа на чтении (ADR-0061): у payment_due
 // хранится ключ месяца 'YYYY-MM', а «сентябрь 2026» рождается здесь (ADR-0150).
 import { Types } from 'mongoose';
+import { encrypt } from '../utils/encryption';
 import { toNotificationDto, type RawLeanNotification } from './notification.mapper';
 
 const CREATED_AT = new Date('2026-09-05T07:00:00Z');
@@ -43,6 +44,22 @@ describe('toNotificationDto', () => {
     expect(dto.text).toBe('Занятие отменено');
     expect(dto.lessonId).toBe('l1');
     expect(dto.lessonStartsAt).toBe('2026-09-10T16:00:00.000Z');
+  });
+
+  // ADR-0162: название материала — снимок в записи (в базе зашифрован), на
+  // чтении оно уходит в `text`, а отдельным полем наружу не едет.
+  it('material_new — строка с названием материала, ни названия, ни id отдельно нет', () => {
+    const dto = toNotificationDto(
+      raw({
+        kind: 'material_new',
+        materialId: 'm1',
+        materialTitle: encrypt('Ван Пэйшэн, «Ба-гуа-чжан»') ?? undefined,
+      }),
+    );
+
+    expect(dto.text).toBe('Новый материал — Ван Пэйшэн, «Ба-гуа-чжан»');
+    expect(dto).not.toHaveProperty('materialTitle');
+    expect(dto).not.toHaveProperty('materialId');
   });
 
   it('у видов без занятия lessonStartsAt нет', () => {

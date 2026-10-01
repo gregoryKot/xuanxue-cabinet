@@ -96,6 +96,7 @@ export function MaterialEditorForm({
         error={form.validationError}
         classes={classes}
         urlOptional={fileStorageEnabled}
+        canNotifyStudents={!effectiveMaterial}
       />
       {fileStorageEnabled && effectiveMaterial && (
         <MaterialFileField

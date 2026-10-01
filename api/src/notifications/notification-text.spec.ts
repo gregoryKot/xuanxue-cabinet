@@ -36,6 +36,15 @@ describe('notificationText', () => {
     expect(notificationText({ kind: 'lesson_cancelled' })).toBe('Занятие отменено');
   });
 
+  // ADR-0162: у «Нового материала» нет отдельной формулировки события — это
+  // подпись вида, и строка читается «Новый материал — {название}».
+  it('material_new — «Новый материал» с названием материала (ADR-0162)', () => {
+    expect(notificationText({ kind: 'material_new', title: 'Ван Пэйшэн' })).toBe(
+      'Новый материал — Ван Пэйшэн',
+    );
+    expect(notificationText({ kind: 'material_new' })).toBe('Новый материал');
+  });
+
   it('payment_due — «Напоминание об оплате» с названием месяца (ADR-0150)', () => {
     expect(notificationText({ kind: 'payment_due', title: 'сентябрь 2026' })).toBe(
       'Напоминание об оплате — сентябрь 2026',

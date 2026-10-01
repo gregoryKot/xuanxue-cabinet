@@ -5,12 +5,7 @@
 // остальные шаги тика — вызывающий передаёт его как аргумент, метод
 // приватный у SchedulerService.
 import type { DateTime } from 'luxon';
-
-type StepRunner = <T>(
-  name: string,
-  now: DateTime,
-  run: (now: DateTime) => Promise<T>,
-) => Promise<T | undefined>;
+import type { StepRunner } from './scheduler-step';
 
 export interface SweepStepRunners {
   removeImageOrphans: (now: DateTime) => Promise<{ removed: number }>;

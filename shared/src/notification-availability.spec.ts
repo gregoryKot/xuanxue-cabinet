@@ -11,8 +11,8 @@ import {
 } from './notifications';
 
 describe('STUDENT_OPTIONAL_NOTIFICATIONS', () => {
-  it('«по желанию» — ровно «Запись занятия»', () => {
-    expect(STUDENT_OPTIONAL_NOTIFICATIONS).toEqual(['recording_ready']);
+  it('«по желанию» — «Запись занятия» и «Новый материал»', () => {
+    expect(STUDENT_OPTIONAL_NOTIFICATIONS).toEqual(['recording_ready', 'material_new']);
   });
 
   // Вид в обоих списках был бы включён сам и «по желанию» одновременно.
@@ -30,12 +30,13 @@ describe('STUDENT_OPTIONAL_NOTIFICATIONS', () => {
 });
 
 describe('availableNotifications', () => {
-  it('ученик — дефолт плюс «Запись занятия», в каноническом порядке', () => {
+  it('ученик — дефолт плюс виды «по желанию», в каноническом порядке', () => {
     expect(availableNotifications([])).toEqual([
       'exam_result',
       'lesson_soon',
       'lesson_cancelled',
       'recording_ready',
+      'material_new',
       'payment_due',
     ]);
   });
@@ -48,7 +49,9 @@ describe('availableNotifications', () => {
 
   it.each(USER_ROLES)('штат (%s) — ровно дефолт роли, вида «по желанию» нет', (role) => {
     expect(availableNotifications([role])).toEqual(defaultNotifications([role]));
-    expect(availableNotifications([role])).not.toContain('recording_ready');
+    for (const kind of STUDENT_OPTIONAL_NOTIFICATIONS) {
+      expect(availableNotifications([role])).not.toContain(kind);
+    }
   });
 
   it('несколько ролей — объединение дефолтов без видов «по желанию»', () => {

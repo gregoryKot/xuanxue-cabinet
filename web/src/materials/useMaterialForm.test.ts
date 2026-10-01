@@ -55,6 +55,16 @@ describe('useMaterialForm — submit()', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
+  it('новый материал — галочка «Сообщить ученикам» стоит сразу, у существующего — нет (ADR-0162)', () => {
+    const created = renderHook(() => useMaterialForm(makeArgs()));
+    const edited = renderHook(() =>
+      useMaterialForm(makeArgs({ material: makeMaterial() })),
+    );
+
+    expect(created.result.current.state.notifyStudents).toBe(true);
+    expect(edited.result.current.state.notifyStudents).toBe(false);
+  });
+
   it('создание — валидная форма зовёт onCreate с собранным телом', async () => {
     const onCreate = vi.fn().mockResolvedValue(makeMaterial());
     const { result } = renderHook(() => useMaterialForm(makeArgs({ onCreate })));
@@ -70,6 +80,7 @@ describe('useMaterialForm — submit()', () => {
     });
 
     expect(ok).toBe(true);
+    // ADR-0162: у нового материала галочка «Сообщить ученикам» стоит сразу.
     expect(onCreate).toHaveBeenCalledWith({
       title: 'Ван Пэйшэн — форма 24',
       url: 'https://example.com/book',
@@ -77,6 +88,7 @@ describe('useMaterialForm — submit()', () => {
       classIds: [],
       access: 'all',
       tags: [],
+      notifyStudents: true,
     });
   });
 

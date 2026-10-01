@@ -1,7 +1,7 @@
 // Единственная точка входа планировщика: здесь и только здесь строка `scheduler.tick`,
 // которую ждёт RUNBOOK §2 п.4. Шаги идут по порядку: рассылка не раньше своего занятия,
-// доставка и предпросмотр — не раньше рассылки. Ошибка шага не блокирует остальные (у
-// каждого свой try/catch), итоговая строка лога печатается всегда, с нулями у упавшего.
+// доставка и предпросмотр — не раньше рассылки. Ошибка шага остальных не блокирует (свой
+// try/catch), итоговая строка лога печатается всегда, с нулями у упавшего.
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
@@ -22,10 +22,12 @@ import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { RecordingReadyNoticeService } from '../lessons/recording-ready-notice.service';
+import { MaterialNewNoticeService } from '../materials/material-new-notice.service';
 import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { runStep } from './scheduler-step';
+import { formatNoticeResults, runNoticeSteps } from './scheduler-notice-steps';
 import { formatSweepResults, runSweepSteps } from './scheduler-sweep-steps';
 
 @Injectable()
@@ -44,6 +46,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly lessonReminderService: LessonReminderService,
     private readonly lessonCancelNoticeService: LessonCancelNoticeService,
     private readonly recordingReadyNoticeService: RecordingReadyNoticeService,
+    private readonly materialNewNoticeService: MaterialNewNoticeService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly paymentReminderService: PaymentReminderService,
@@ -91,15 +94,12 @@ export class SchedulerService implements OnApplicationShutdown {
     const { prompted: recordingsPrompted } = (await this.step('запись', now, (n) =>
       this.recordingPromptService.prompt(n),
     )) ?? { prompted: 0 };
-    const { reminded } = (await this.step('напоминание', now, (n) =>
-      this.lessonReminderService.remind(n),
-    )) ?? { reminded: 0 };
-    const { notified: cancelNotices } = (await this.step('отмена ученикам', now, (n) =>
-      this.lessonCancelNoticeService.announce(n),
-    )) ?? { notified: 0 };
-    const { notified: recordingNotices } = (await this.step('запись ученикам', now, (n) =>
-      this.recordingReadyNoticeService.announce(n),
-    )) ?? { notified: 0 };
+    const notice = await runNoticeSteps((name, n, run) => this.step(name, n, run), now, {
+      remind: (n) => this.lessonReminderService.remind(n),
+      announceCancelled: (n) => this.lessonCancelNoticeService.announce(n),
+      announceRecordings: (n) => this.recordingReadyNoticeService.announce(n),
+      announceMaterials: (n) => this.materialNewNoticeService.announce(n),
+    });
     const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
       this.manualPromptService.prompt(n),
     )) ?? { prompted: 0 };
@@ -129,7 +129,7 @@ export class SchedulerService implements OnApplicationShutdown {
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
-        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} cancelNotices=${cancelNotices} recordingNotices=${recordingNotices} ` +
+        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ${formatNoticeResults(notice)} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `paymentReminders=${paymentReminders} ${formatSweepResults(sweep)}`,
     );

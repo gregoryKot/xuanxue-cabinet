@@ -45,6 +45,7 @@ describe('buildNotificationsMenu', () => {
       [{ text: 'Выключить', callback_data: 'notif:lesson_soon' }],
       [{ text: 'Выключить', callback_data: 'notif:lesson_cancelled' }],
       [{ text: 'Включить', callback_data: 'notif:recording_ready' }],
+      [{ text: 'Включить', callback_data: 'notif:material_new' }],
       [{ text: 'Выключить', callback_data: 'notif:payment_due' }],
     ]);
   });
@@ -68,6 +69,24 @@ describe('buildNotificationsMenu', () => {
     ]);
     expect(teacher.text).not.toContain('Запись занятия');
     expect(teacher.buttons).toHaveLength(4);
+  });
+
+  // ADR-0162: «Новый материал» — второй вид «по желанию», тем же способом.
+  it('«Новый материал»: ученику — выключен и с подсказкой, включил — «включено», штату — нет', () => {
+    const off = buildNotificationsMenu([], ['exam_result']);
+    const on = buildNotificationsMenu([], ['material_new']);
+    const teacher = buildNotificationsMenu(['teacher'], ['post_draft']);
+
+    expect(off.text).toContain(
+      'Новый материал — выключено\n' +
+        'Придёт, когда учитель добавит в библиотеку материал к вашим занятиям, — в кабинет ' +
+        'и push-уведомлением. Обычно выключено: включите, если следите за библиотекой.',
+    );
+    expect(on.text).toContain('Новый материал — включено');
+    expect(on.buttons).toContainEqual([
+      { text: 'Выключить', callback_data: 'notif:material_new' },
+    ]);
+    expect(teacher.text).not.toContain('Новый материал');
   });
 
   // ADR-0162: «Занятие отменено» — ученический вид, в меню бота он стоит с
@@ -102,13 +121,13 @@ describe('buildNotificationsMenu', () => {
       ['exam_result', 'lesson_soon', 'lesson_cancelled', 'payment_due'],
     );
 
-    expect(menu.buttons).toHaveLength(5);
+    expect(menu.buttons).toHaveLength(6);
   });
 
   it('ученик с одним включённым видом — меню не разваливается на пустых строках вокруг подсказки', () => {
     const menu = buildNotificationsMenu([], ['exam_result']);
 
-    // Один вид в тексте (у ученика их доступно пять, но сюда передан один
+    // Один вид в тексте (у ученика их доступно шесть, но сюда передан один
     // включённый — buildNotificationsMenu всё равно рисует все, остальные
     // выключенными) — блоки разделены ровно одним пустым переносом, без
     // утроенных. Хвост один — про то, чего бот не переключает (ADR-0162);
@@ -125,6 +144,9 @@ describe('buildNotificationsMenu', () => {
         'Запись занятия — выключено\n' +
         'Придёт, когда учитель добавит запись занятия, — в кабинет и push-уведомлением. ' +
         'Обычно выключено: включите, если смотрите записи.\n\n' +
+        'Новый материал — выключено\n' +
+        'Придёт, когда учитель добавит в библиотеку материал к вашим занятиям, — в кабинет ' +
+        'и push-уведомлением. Обычно выключено: включите, если следите за библиотекой.\n\n' +
         'Напоминание об оплате — выключено\n' +
         'Придёт раз в месяц, в день оплаты.\n\n' +
         'О каких занятиях и за сколько напоминать — в кабинете: Уведомления → Настройки.',
@@ -164,7 +186,7 @@ describe('buildNotificationsMenu', () => {
     );
 
     it('кнопок она не добавляет: ни у ученика, ни у учителя', () => {
-      expect(buildNotificationsMenu([], ['exam_result']).buttons).toHaveLength(5);
+      expect(buildNotificationsMenu([], ['exam_result']).buttons).toHaveLength(6);
       expect(buildNotificationsMenu(['teacher'], []).buttons).toHaveLength(4);
     });
 
