@@ -100,6 +100,8 @@ const TEACHER: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -112,6 +114,8 @@ const ADMIN: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
@@ -124,6 +128,8 @@ const STUDENT: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
@@ -136,6 +142,8 @@ const ASSISTANT: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 // WCAG 2.4.1 (ADR-0158): с клавиатуры не нужно проходить меню и шапку на

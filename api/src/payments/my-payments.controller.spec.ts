@@ -20,6 +20,7 @@ const STUDENT: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const MY_PAYMENTS: MyPaymentDto[] = [

@@ -6,6 +6,7 @@
 // (CLAUDE.md «Дубли»: повторяешь блок — в модуль).
 import type { NotificationKind } from '@xuanxue/shared';
 import type { NotificationPrefsService } from './notification-prefs.service';
+import { actingUser } from '../users/student-mode';
 import type { UserLean, UsersService } from '../users/users.service';
 
 export interface NotifiedUserDeps {
@@ -24,6 +25,9 @@ export async function findNotifiedUser(
   const user = await deps.usersService.findById(userId);
   if (!user) return null;
 
-  const prefs = await deps.notificationPrefsService.get(user.id, user.roles);
+  // Действующие роли, не настоящие: «работу проверили» уходит в ленту и push
+  // кабинета, а там штат в режиме ученика — ученик (ADR-0163) и ждёт виды
+  // ученика. Бот остаётся штатным (PersonalChats.chatFor читает настоящие роли).
+  const prefs = await deps.notificationPrefsService.get(user.id, actingUser(user).roles);
   return prefs.enabled.includes(kind) ? user : null;
 }

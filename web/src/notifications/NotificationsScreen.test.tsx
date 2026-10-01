@@ -65,6 +65,8 @@ const ME_LINKED: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ME_NOT_LINKED: MeDto = {
   ...ME_LINKED,

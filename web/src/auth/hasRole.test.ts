@@ -13,6 +13,8 @@ const me: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 describe('hasRole', () => {

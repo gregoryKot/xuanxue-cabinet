@@ -9,6 +9,7 @@ const BASE: UserLean = {
   name: 'Гриша',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 describe('toUserDto', () => {

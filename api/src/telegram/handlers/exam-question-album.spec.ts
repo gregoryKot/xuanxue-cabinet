@@ -22,6 +22,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 const IMAGE = { bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' as const };
 const VIDEO = { bytes: Buffer.from([9, 9]), contentType: 'video/mp4' as const };

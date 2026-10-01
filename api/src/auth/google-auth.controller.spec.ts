@@ -20,6 +20,7 @@ const USER: UserLean = {
   name: 'Мария',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const OAUTH_COOKIE = 'google_oauth=abc; HttpOnly; Path=/api/auth/google';
@@ -142,6 +143,8 @@ describe('GoogleAuthController.login', () => {
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: false,
     });
   });
 

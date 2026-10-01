@@ -21,6 +21,7 @@ const STAFF: UserLean = {
   name: 'Штат',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 const NOW = DateTime.utc(2026, 9, 27, 12, 0, 0);
@@ -65,7 +66,13 @@ describe('Мягкое удаление экзамена и вопроса (ADR-
 
   it('удалённая форма пропадает у учителя, у ученика и из списка попыток разом', async () => {
     const { examId } = await publishedItemAndExam();
-    const student: UserLean = { id: USER_A, name: 'Ученик', roles: [], status: 'active' };
+    const student: UserLean = {
+      id: USER_A,
+      name: 'Ученик',
+      roles: [],
+      status: 'active',
+      studentMode: false,
+    };
     await ctx.service.start(examId, USER_A, NOW);
 
     await ctx.examsService.remove(examId, NOW);

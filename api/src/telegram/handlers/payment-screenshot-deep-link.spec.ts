@@ -78,6 +78,7 @@ describe('handlePaymentScreenshotDeepLink', () => {
         name: 'Ученик',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
     });
 
@@ -96,6 +97,7 @@ describe('handlePaymentScreenshotDeepLink', () => {
         name: 'Ученик',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
     });
 

@@ -57,6 +57,24 @@ describe('LessonPrefsStatsService', () => {
     });
   });
 
+  // ADR-0163: число на «Шаблонах» — про настоящих учеников. Владелец, который
+  // включил себе режим ученика и выбрал занятия, его не раздувает.
+  it('штат в режиме ученика не считается: ни в «активных», ни в выборе', async () => {
+    const admin = await person({
+      roles: ['admin'],
+      studentModeAt: new Date('2026-10-01T10:00:00Z'),
+    });
+    await scopes.set(admin, { mode: 'selected', classIds: ['a'] });
+    await scopes.setReminderMinutes(admin, 60);
+    await person();
+
+    await expect(service.getStats()).resolves.toEqual({
+      activeStudents: 1,
+      chosenClasses: 0,
+      ownReminder: 0,
+    });
+  });
+
   it('ученики без документа настроек считаются только в «активных»', async () => {
     await person();
     await person();

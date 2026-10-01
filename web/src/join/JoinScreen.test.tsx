@@ -237,6 +237,8 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     hasEmail: true,
     needsProfile: false,
     googleLinked: false,
+    studentMode: false,
+    canUseStudentMode: false,
   };
   const FORBIDDEN_TEXT_PATTERNS = [
     /дождаться подтверждения/i,

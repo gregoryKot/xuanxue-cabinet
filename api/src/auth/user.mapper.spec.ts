@@ -11,6 +11,7 @@ function fullUser(): UserLean {
     roles: ['admin'],
     status: 'active',
     lastLoginAt: new Date('2026-09-05T00:00:00Z'),
+    studentMode: false,
   };
 }
 
@@ -29,6 +30,55 @@ describe('toMeDto', () => {
       pendingEmail: undefined,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: true,
+    });
+  });
+
+  // ADR-0163: `roles` в ответе — действующие, и по ним «режим доступен» не
+  // вывести — canUseStudentMode приходит отдельным полем, считается по
+  // настоящим ролям.
+  describe('режим ученика', () => {
+    it('штат без режима: роли целые, режим доступен, но не включён', () => {
+      const dto = toMeDto(fullUser(), true);
+
+      expect(dto).toMatchObject({
+        roles: ['admin'],
+        studentMode: false,
+        canUseStudentMode: true,
+      });
+    });
+
+    it('штат в режиме: роли пустые, режим включён и доступен (чтобы выключить)', () => {
+      const dto = toMeDto({ ...fullUser(), studentMode: true }, true);
+
+      expect(dto).toMatchObject({
+        roles: [],
+        studentMode: true,
+        canUseStudentMode: true,
+      });
+    });
+
+    it('замаскированный AuthGuard человек и человек из БД дают один ответ', () => {
+      const real: UserLean = { ...fullUser(), studentMode: true };
+
+      expect(toMeDto({ ...real, roles: [] }, true)).toEqual(toMeDto(real, true));
+    });
+
+    it('ученик без ролей: режима нет и взять его неоткуда', () => {
+      expect(toMeDto({ ...fullUser(), roles: [] }, true)).toMatchObject({
+        roles: [],
+        studentMode: false,
+        canUseStudentMode: false,
+      });
+    });
+
+    it('бухгалтер — не штат: режим ему не доступен', () => {
+      expect(toMeDto({ ...fullUser(), roles: ['accountant'] }, true)).toMatchObject({
+        roles: ['accountant'],
+        studentMode: false,
+        canUseStudentMode: false,
+      });
     });
   });
 
@@ -89,6 +139,7 @@ describe('toMeDto', () => {
     expect(dto.hasEmail).toBe(true);
     expect(Object.keys(dto).sort()).toEqual([
       'botChatActive',
+      'canUseStudentMode',
       'email',
       'googleLinked',
       'hasEmail',
@@ -99,6 +150,7 @@ describe('toMeDto', () => {
       'pendingEmail',
       'roles',
       'status',
+      'studentMode',
       'telegramLinked',
     ]);
   });

@@ -36,6 +36,8 @@ const ME: MeDto = {
   needsProfile: false,
   googleLinked: false,
   hasEmail: true,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 afterEach(() => {

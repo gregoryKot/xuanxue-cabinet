@@ -59,7 +59,13 @@ function realSessionCookie(userId: string): string {
   )[0] as string;
 }
 
-const USER: UserLean = { id: 'u1', name: 'Анна', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Анна',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 interface BuildOptions {
   env?: Record<string, string | undefined>;

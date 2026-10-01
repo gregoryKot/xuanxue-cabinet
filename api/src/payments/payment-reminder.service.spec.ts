@@ -245,6 +245,27 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     expect(await paymentModel.countDocuments({})).toBe(0);
   });
 
+  // ADR-0163: режим ученика у штата «понарошку» — деньги в него не входят.
+  // Всё остальное у учителя как у настоящего ученика (свой день, чат, вид
+  // включён), чтобы отказ держал именно выборка получателей, а не случайность.
+  it('штат в режиме ученика не получает: оплаты — только настоящим ученикам', async () => {
+    const teacher = await userModel.create({
+      name: 'Учитель',
+      roles: ['teacher'],
+      status: 'active',
+      studentModeAt: NOW.toJSDate(),
+    });
+    const id = teacher._id.toString();
+    await new NotificationPrefsService(prefsModel).setPaymentReminderDay(id, OWN_DAY);
+    const { service, sendMessage } = build({ chats: new Map([[id, 'chat-t']]) });
+
+    expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(await paymentModel.countDocuments({})).toBe(0);
+    expect(await notificationModel.countDocuments({})).toBe(0);
+  });
+
   it('31-е в феврале срабатывает 28-го, а 27-го — нет (2026 не високосный)', async () => {
     const { chats } = await withChat('Ваня', 31);
     const { service, sendMessage } = build({ chats });

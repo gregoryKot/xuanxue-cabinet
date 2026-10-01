@@ -20,6 +20,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   email: 'maria@example.com',
+  studentMode: false,
 };
 
 const COOKIE = 'session=token; HttpOnly; Path=/';
@@ -125,6 +126,8 @@ describe('EmailCodeController.verifyEmailCode', () => {
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: false,
     });
   });
 });

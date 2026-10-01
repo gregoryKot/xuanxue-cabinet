@@ -68,6 +68,8 @@ const STUDENT: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 function renderScreen(me: MeDto, authConfig: unknown = {}) {

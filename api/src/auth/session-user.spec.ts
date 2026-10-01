@@ -7,7 +7,13 @@ import { SESSION_COOKIE } from './session-cookie';
 import { findSessionUser } from './session-user';
 
 const NOW = DateTime.fromISO('2026-09-28T10:00:00Z');
-const USER: UserLean = { id: 'u1', name: 'Анна', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Анна',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 function fakeAuth(verify: AuthService['verifySession']): AuthService {
   return { verifySession: verify } as unknown as AuthService;

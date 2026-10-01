@@ -35,6 +35,9 @@ export async function findReminderCandidates(
   month: string,
   days: ReminderDays,
 ): Promise<ActiveStudent[]> {
+  // Без `includeStudentMode`: напоминание об оплате получают только настоящие
+  // ученики. Штат в режиме ученика (ADR-0163) иначе получил бы «оплатите месяц»,
+  // а админ попал бы в список должников.
   const students = await listActiveStudents(deps.userModel);
   // Ученики без единой роли: `roles: []` для каждого — тот же приём, что у
   // LessonReminderService (defaultNotifications([]) = STUDENT_NOTIFICATIONS).

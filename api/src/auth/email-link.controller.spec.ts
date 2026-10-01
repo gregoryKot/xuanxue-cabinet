@@ -17,6 +17,7 @@ const USER: UserLean = {
   name: 'Мария',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 interface LinkCall {
@@ -89,6 +90,8 @@ describe('EmailLinkController.link', () => {
       pendingEmail: 'maria@example.com',
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: false,
     });
   });
 });

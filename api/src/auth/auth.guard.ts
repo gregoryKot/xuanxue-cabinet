@@ -8,7 +8,7 @@
 //       всех, включая @Public();
 //   (b) @Public() → пропускает без сессии;
 //   (c) cookie → AuthService.verifySession → UsersService.findById →
-//       blocked → @Roles;
+//       blocked → actingUser (режим ученика, ADR-0163) → @Roles;
 //   (d) rolling-перевыпуск cookie, если токену больше SESSION_RENEW_AFTER_DAYS.
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -20,6 +20,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../common/http-headers';
+import { actingUser } from '../users/student-mode';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
@@ -61,16 +62,20 @@ export class AuthGuard implements CanActivate {
     if (!user) throw new UnauthorizedError(SESSION_MESSAGE);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
+    // Режим ученика (ADR-0163): настоящие роли остаются в БД, а решение о доступе
+    // и request.user получают действующие — пустые, пока режим включён. Только
+    // сужение: из ролей `[]` получается `[]`, прибавить нечего (SECURITY §2).
+    const acting = actingUser(user);
     const required = this.metadata<UserRole[]>(context, ROLES_KEY);
     if (
       required &&
       required.length > 0 &&
-      !required.some((r) => user.roles.includes(r))
+      !required.some((r) => acting.roles.includes(r))
     ) {
       throw new ForbiddenError(ACCESS_MESSAGE);
     }
 
-    request.user = user;
+    request.user = acting;
     if (shouldRenew(payload, now)) {
       const { cookie } = this.authService.issueSession(user.id, now);
       response.setHeader('Set-Cookie', cookie);

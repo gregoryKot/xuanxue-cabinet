@@ -49,6 +49,8 @@ const STUDENT: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const TEACHER: MeDto = { ...STUDENT, id: 't1', roles: ['teacher'] };
 

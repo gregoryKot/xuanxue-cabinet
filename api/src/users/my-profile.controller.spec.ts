@@ -16,6 +16,7 @@ const USER: UserLean = {
   name: 'Новый ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 async function buildController(
@@ -79,6 +80,8 @@ describe('MyProfileController.update', () => {
       pendingEmail: undefined,
       noTelegram: false,
       needsProfile: false,
+      studentMode: false,
+      canUseStudentMode: false,
     });
   });
 });

@@ -21,6 +21,7 @@ function userLean(overrides: Partial<UserLean> = {}): UserLean {
     name: 'Т',
     roles: [],
     status: 'active',
+    studentMode: false,
     ...overrides,
   };
 }

@@ -33,6 +33,8 @@ const TEACHER: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -45,6 +47,8 @@ const ADMIN: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -336,6 +340,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -384,6 +390,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -418,6 +426,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -438,6 +448,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -461,6 +473,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, { '/me/lessons': [] });
 
@@ -494,6 +508,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student);
 
@@ -539,6 +555,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockRoute(student, {
       '/me/notifications/lessons': { scope: { mode: 'all', classIds: [] }, classes: [] },
@@ -569,6 +587,8 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     // Своя попытка своим адресом, не список (ADR-0126).
     mockRoute(student, {

@@ -28,12 +28,14 @@ const TEACHER: UserLean = {
   name: 'Учитель',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 const STUDENT: UserLean = {
   id: 's1',
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 function fakeResponse(): {

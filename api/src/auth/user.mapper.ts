@@ -30,14 +30,25 @@
 // `googleLinked` — та же пара, что `telegramLinked` (ADR-0145): `id`
 // пользователя не отдаём, только факт «есть googleId» — «Профиль» показывает
 // «привязан» вместо кнопки «Привязать Google».
-import type { MeDto } from '@xuanxue/shared';
+// `studentMode` / `canUseStudentMode` (ADR-0163): `roles` в ответе — действующие
+// (в режиме ученика пустые), а «режим доступен» по ним не вывести, поэтому
+// `canUseStudentMode` считается здесь: режим включён (а он бывает только у
+// штата — `UserLean.studentMode` требует настоящую роль штата, student-mode.ts)
+// или настоящие роли штата на месте. Через ответ ничего не включить — это
+// подпись для экрана; сервер проверяет роли заново при каждом включении.
+import { isStaffRole, type MeDto } from '@xuanxue/shared';
+import { actingUser } from '../users/student-mode';
 import type { UserLean } from '../users/users.service';
 
 export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
+  // Принимает и человека из БД (вход, ответы PUT-сервисов), и уже
+  // замаскированного AuthGuard — actingUser идемпотентна, ответ в обоих случаях
+  // одинаков: `roles` — действующие, как в сессии (ADR-0163).
+  const acting = actingUser(user);
   return {
     id: user.id,
     name: user.name,
-    roles: user.roles,
+    roles: acting.roles,
     status: user.status,
     telegramLinked: user.telegramId != null,
     botChatActive,
@@ -47,5 +58,7 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     pendingEmail: user.pendingEmail,
     noTelegram: user.noTelegramAt != null,
     needsProfile: user.profileNamedAt == null,
+    studentMode: user.studentMode,
+    canUseStudentMode: user.studentMode || isStaffRole(user.roles),
   };
 }

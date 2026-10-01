@@ -9,7 +9,13 @@ import { AnswerVideoStartController } from './answer-video-start.controller';
 import { AnswerVideoStartService } from './answer-video-start';
 import { StartAnswerVideoDto } from './dto/start-answer-video.dto';
 
-const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 const UPLOAD_DTO: AnswerVideoUploadDto = {
   id: 'v1',

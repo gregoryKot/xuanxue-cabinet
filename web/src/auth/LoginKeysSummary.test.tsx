@@ -16,6 +16,8 @@ const BASE: MeDto = {
   googleLinked: false,
   noTelegram: false,
   needsProfile: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 function valueOf(label: string): string | null {
