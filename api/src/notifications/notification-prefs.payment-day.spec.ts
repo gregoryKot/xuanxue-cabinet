@@ -46,7 +46,9 @@ describe('NotificationPrefsService — день напоминания об оп
     await service.set('u1', 'lesson_soon', false);
 
     expect(await service.getPaymentReminderDay('u1')).toBe(7);
-    expect(await service.get('u1', [])).toEqual({ enabled: ['payment_due'] });
+    expect(await service.get('u1', [])).toEqual({
+      enabled: ['lesson_cancelled', 'payment_due'],
+    });
   });
 
   it('null снимает выбор: поле удалено из документа, а не записано нулём', async () => {

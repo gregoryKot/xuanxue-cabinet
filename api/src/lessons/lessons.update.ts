@@ -21,6 +21,10 @@ import { LESSON_ENCRYPT_SCHEMA } from './lesson.schema';
 export function buildUpdateCommand(input: UpdateLessonInput): UpdateCommand {
   const { startsAt, tags, ...rest } = input;
   const { $set, $unset } = splitUpdate(rest, NULLABLE_LESSON_FIELDS);
+  // Вернули в расписание — отметка об отмене больше не нужна; будущая отмена
+  // поставит свою. Момент отмены ставит `markCancelledAt` (lesson-cancel-mark.ts)
+  // отдельной записью: здесь его не выразить без чтения прежнего статуса.
+  if (rest.status === 'scheduled') $unset.cancelledAt = '';
   if (startsAt !== undefined) {
     $set.startsAt = parseUtcIso(startsAt, 'startsAt').toJSDate();
   }

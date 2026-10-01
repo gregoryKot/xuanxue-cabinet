@@ -41,6 +41,15 @@ export class LessonRecord {
   @Prop({ type: String, enum: LESSON_STATUSES, default: 'scheduled' })
   status!: LessonStatus;
 
+  // Когда занятие отменили (UTC) — от этого момента шаг тика «отмена занятий»
+  // (LessonCancelNoticeService, ADR-0162) сутки пробует сообщить ученикам.
+  // Ставит LessonsService.update при переходе в 'cancelled' и снимает при
+  // возврате в 'scheduled'. У занятий, отменённых до поля, его нет — их
+  // задним числом не объявляют: ученики о них либо давно знают, либо узнают
+  // из расписания.
+  @Prop({ type: Date, required: false })
+  cancelledAt?: Date;
+
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   leaderId?: Types.ObjectId;

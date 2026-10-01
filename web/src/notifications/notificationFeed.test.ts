@@ -3,7 +3,12 @@
 import { describe, expect, it } from 'vitest';
 import type { NotificationDto } from '@xuanxue/shared';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { groupByDay, isUnread, notificationTimeText } from './notificationFeed';
+import {
+  groupByDay,
+  isUnread,
+  notificationBody,
+  notificationTimeText,
+} from './notificationFeed';
 
 stubViewerTimeZone();
 
@@ -59,6 +64,48 @@ describe('notificationTimeText', () => {
     expect(notificationTimeText('2026-09-18T10:00:00.000Z', NOW)).toBe(
       'Пт, 18 сентября, 13:00',
     );
+  });
+});
+
+// ADR-0162: сервер даты занятия в `text` не кладёт (пояса устройства он не
+// знает) — время дописывается здесь, по часам зрителя.
+describe('notificationBody', () => {
+  const STARTS_AT = '2026-09-10T16:00:00.000Z'; // 19:00 в Москве, зрителе теста
+
+  function cancelled(overrides: Partial<NotificationDto> = {}): NotificationDto {
+    return {
+      id: 'c1',
+      kind: 'lesson_cancelled',
+      text: 'Занятие отменено — Тайцзи',
+      lessonId: 'l1',
+      lessonStartsAt: STARTS_AT,
+      createdAt: '2026-09-20T04:50:00.000Z',
+      ...overrides,
+    };
+  }
+
+  it('отмена занятия — текст сервера и в скобках день и время по часам зрителя', () => {
+    expect(notificationBody(cancelled())).toBe(
+      'Занятие отменено — Тайцзи (Чт, 10 сентября, 19:00)',
+    );
+  });
+
+  it('другой пояс зрителя — другое время и день: сервер за него не считает', () => {
+    expect(notificationBody(cancelled(), 'Pacific/Auckland')).toBe(
+      'Занятие отменено — Тайцзи (Пт, 11 сентября, 04:00)',
+    );
+  });
+
+  it('отмена без lessonStartsAt — текст сервера как есть, без пустых скобок', () => {
+    expect(notificationBody(cancelled({ lessonStartsAt: undefined }))).toBe(
+      'Занятие отменено — Тайцзи',
+    );
+  });
+
+  it('остальные виды — текст сервера как есть, даже если дата пришла', () => {
+    const soon = cancelled({ kind: 'lesson_soon', text: 'Скоро занятие — Тайцзи' });
+    expect(notificationBody(soon)).toBe('Скоро занятие — Тайцзи');
+    expect(notificationBody(item('p', NOW))).toBe('Текст p');
   });
 });
 

@@ -130,6 +130,28 @@ describe('NotificationSettingsScreen — «Что присылать» по ро
     expect(screen.queryByText('Черновик поста')).not.toBeInTheDocument();
   });
 
+  // ADR-0162: «Занятие отменено» — четвёртый ученический вид, включён по
+  // умолчанию; штату он не положен (ни у одной роли его нет в дефолте).
+  it('ученик видит «Занятие отменено» с подсказкой и включённым переключателем', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result', 'lesson_cancelled'] });
+
+    expect(await screen.findByText('Занятие отменено')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Придёт сразу, как учитель отменит занятие, — в кабинет и push-уведомлением.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Занятие отменено' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Занятие скоро' })).not.toBeChecked();
+  });
+
+  it('учитель «Занятие отменено» не видит: отмену делает сам', async () => {
+    renderScreen(TEACHER, { enabled: [] });
+
+    expect(await screen.findByText('Черновик поста')).toBeInTheDocument();
+    expect(screen.queryByText('Занятие отменено')).not.toBeInTheDocument();
+  });
+
   // Бот и кабинет переключают одно и то же (ADR-0065) — строка про бота рядом
   // с самими переключателями. Строка зависит от botChatActive (отзыв владельца
   // 2026-09-22, регрессия — раньше рисовалась безусловно и спорила с блоком

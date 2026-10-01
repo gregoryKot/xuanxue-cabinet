@@ -7,14 +7,7 @@
 import { DateTime } from 'luxon';
 import { effectiveReminderMinutes, isLessonInScope } from '@xuanxue/shared';
 import type { LessonPrefs } from '../notifications/lesson-scope.service';
-
-export interface PlanLesson {
-  id: string;
-  classId: string;
-  /** Название класса: снимок для строки ленты (`lessonTitle`). */
-  title: string;
-  startsAt: Date;
-}
+import { lessonRowKey, type PlanLesson } from './lesson-notice-queries';
 
 export interface PlannedReminder {
   lessonId: string;
@@ -27,15 +20,10 @@ export interface ReminderPlanInput {
   recipients: readonly { id: string }[];
   /** Выбор людей; у кого записи нет — «обо всех» и «как в школе». */
   prefs: ReadonlyMap<string, LessonPrefs>;
-  /** Пары, по которым строка ленты уже есть (`reminderKey`). */
+  /** Пары, по которым строка ленты уже есть (`lessonRowKey`). */
   existing: ReadonlySet<string>;
   schoolMinutes: number;
   now: DateTime;
-}
-
-/** Ключ пары «человек × занятие» для множества уже записанных строк. */
-export function reminderKey(userId: string, lessonId: string): string {
-  return `${userId}:${lessonId}`;
 }
 
 /** За сколько минут самый «ранний» из людей хочет напоминание: окно выборки
@@ -77,7 +65,7 @@ export function planReminders(input: ReminderPlanInput): PlannedReminder[] {
       if (own && !isLessonInScope(own.scope, lesson.classId)) continue;
       if (minutes > effectiveReminderMinutes(own?.reminderMinutes, schoolMinutes))
         continue;
-      if (existing.has(reminderKey(userId, lesson.id))) continue;
+      if (existing.has(lessonRowKey(userId, lesson.id))) continue;
       planned.push({ lessonId: lesson.id, lessonTitle: lesson.title, userId });
     }
   }

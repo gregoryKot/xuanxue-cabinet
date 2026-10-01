@@ -8,17 +8,16 @@
 // обещана этапом в docs/PLAN.md. Вид без того и другого — переключатель,
 // который врёт: человек его включает и не получает ничего, а это тот самый
 // тихий отказ, который в продукте про рассылки дороже всего (CLAUDE.md
-// «Логи и наблюдаемость»). Так из проекта ушёл `teacher_message` (ADR-0062).
-// `lesson_soon` уходил тем же путём (ADR-0069), но баг-репорт 2026-09-27
-// («уведомления не приходят») вскрыл, что вида не было вовсе — ADR-0135
-// вернул его вместе с доставкой (лента + push) одним PR. Доставка есть у
-// каждого вида: `payments` — снимок перевода бухгалтеру, из бота или кабинета
-// (ADR-0156), `payment_due` — шаг тика (ADR-0150).
+// «Логи и наблюдаемость»). Так ушёл `teacher_message` (ADR-0062); `lesson_soon`
+// ушёл тем же путём и вернулся с доставкой (ADR-0135, баг-репорт 2026-09-27).
+// Доставка есть у каждого вида: `lesson_cancelled` и `payment_due` — шаги
+// тика (ADR-0162, ADR-0150), `payments` — снимок перевода бухгалтеру (ADR-0156).
 import { USER_ROLES, type UserRole } from './auth';
 
 export const NOTIFICATION_KINDS = [
   'exam_result', // работу проверили — ученику (слой 4.7)
   'lesson_soon', // занятие скоро начнётся — ученику (ADR-0135)
+  'lesson_cancelled', // учитель отменил занятие — ученику (ADR-0162)
   'payment_due', // ежемесячное напоминание об оплате — ученику (ADR-0150, ADR-0157)
   'post_draft', // черновик поста перед занятием, с кнопкой «Исправить»
   'recording_request', // в минуту окончания занятия — «пришлите видео»
@@ -40,6 +39,7 @@ export function isNotificationKind(value: string): value is NotificationKind {
 export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
   exam_result: 'Результат экзамена',
   lesson_soon: 'Занятие скоро',
+  lesson_cancelled: 'Занятие отменено',
   payment_due: 'Напоминание об оплате',
   post_draft: 'Черновик поста',
   recording_request: 'Напоминание про запись',
@@ -55,6 +55,8 @@ export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
 export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
   exam_result: 'Придёт, когда учитель проверит вашу работу и выставит результат.',
   lesson_soon: 'Придёт перед началом занятия — в кабинет и push-уведомлением на телефон.',
+  lesson_cancelled:
+    'Придёт сразу, как учитель отменит занятие, — в кабинет и push-уведомлением.',
   post_draft: 'Придёт перед занятием — успеете поправить текст кнопкой «Исправить».',
   recording_request: 'Придёт в минуту, когда занятие закончится, — пришлите видео.',
   delivery_failed: 'Придёт, если пост не дошёл до канала.',
@@ -70,8 +72,7 @@ export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
  * то же, что учитель, — он равен учителю почти везде (shared/src/auth.ts).
  * Бухгалтер — только оплаты (`payments`). Ученик (человек без единой роли,
  * ADR-0026) сюда не входит — у него нет роли, чтобы быть ключом
- * `Record<UserRole, …>`, его дефолт — отдельная
- * константа `STUDENT_NOTIFICATIONS` ниже.
+ * `Record<UserRole, …>`; его дефолт — `STUDENT_NOTIFICATIONS` ниже.
  *
  * `attempt_submitted` (слой 4.7, PLAN §11) — только у учителя и помощника:
  * они проверяют работы, очередь проверки — их дело. Админ получает тот же
@@ -97,22 +98,22 @@ export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]>
  * константа, не запись в `DEFAULT_NOTIFICATIONS_BY_ROLE`: тот `Record`
  * ограничен `UserRole`, а ученик — не роль.
  *
- * Три вида, и у каждого доставка пришла вместе с ним (ADR-0069): результат
- * проверки работы (ADR-0062), напоминание о занятии (ADR-0135, лента и push) и
- * напоминание об оплате (ADR-0150, бот или лента). Школьный выключатель
- * `settings.paymentReminder.enabled` стоит выше личного: пока школа его не
- * включила, напоминание не приходит ни у кого. */
+ * Четыре вида, и у каждого доставка пришла вместе с ним (ADR-0069): результат
+ * проверки работы (ADR-0062), напоминание о занятии (ADR-0135) и его отмена
+ * (ADR-0162) — лента и push, напоминание об оплате (ADR-0150) — бот или лента.
+ * Школьный выключатель `settings.paymentReminder.enabled` стоит выше личного:
+ * пока школа его не включила, напоминание не приходит ни у кого. */
 export const STUDENT_NOTIFICATIONS: NotificationKind[] = [
   'exam_result',
   'lesson_soon',
+  'lesson_cancelled',
   'payment_due',
 ];
 
 /** Дефолт для конкретного человека — объединение наборов всех его ролей
- * (роли равноправны, вторая роль только добавляет виды). Человек без единой
- * роли — ученик (ADR-0026) — получает `STUDENT_NOTIFICATIONS`. Порядок
- * результата — всегда канонический (`NOTIFICATION_KINDS`), не порядок
- * объединения множеств. */
+ * (роли равноправны, вторая роль только добавляет виды); без единой роли —
+ * ученик (ADR-0026), `STUDENT_NOTIFICATIONS`. Порядок результата — всегда
+ * канонический (`NOTIFICATION_KINDS`), не порядок объединения множеств. */
 export function defaultNotifications(roles: UserRole[]): NotificationKind[] {
   if (roles.length === 0) return STUDENT_NOTIFICATIONS;
   const enabled = new Set<NotificationKind>();
@@ -122,16 +123,15 @@ export function defaultNotifications(roles: UserRole[]): NotificationKind[] {
   return NOTIFICATION_KINDS.filter((kind) => enabled.has(kind));
 }
 
-/** Роли, которым этот вид уведомления положен по умолчанию — кандидаты в
- * получатели (PersonalChats.listFor, api/src/telegram/personal-chats.ts).
- * Почему кандидаты — именно дефолт роли, а не «все подряд, дальше отфильтрует
- * NotificationPrefsService»: переключатель вида человек может выключить, но
- * не может ВКЛЮЧИТЬ вид, которого у него нет по ролям — экран «Профиль»
- * (`NotificationPrefsSection`) и команда `/notifications` в боте показывают
- * только виды, доступные по ролям (PLAN.md §13). Значит дефолт роли — точная
- * верхняя граница множества получателей, а не приближение: расширять поиск
- * шире него незачем, там просто некому быть найденным. Порядок результата —
- * канонический по `USER_ROLES` (тот же приём, что у `defaultNotifications` с
+/** Роли, которым этот вид положен по умолчанию — кандидаты в получатели
+ * (PersonalChats.listFor, api/src/telegram/personal-chats.ts). Кандидаты —
+ * именно дефолт роли, а не «все подряд, дальше отфильтрует
+ * NotificationPrefsService»: человек может выключить вид, но не может ВКЛЮЧИТЬ
+ * тот, которого у него нет по ролям — «Профиль» (`NotificationPrefsSection`) и
+ * `/notifications` в боте показывают только виды по ролям (PLAN.md §13). Значит
+ * дефолт роли — точная верхняя граница получателей, а не приближение: шире
+ * искать незачем, там некому быть найденным. Порядок результата —
+ * канонический по `USER_ROLES` (как у `defaultNotifications` с
  * `NOTIFICATION_KINDS`), не порядок обхода объекта. */
 export function rolesWithNotification(kind: NotificationKind): UserRole[] {
   return USER_ROLES.filter((role) => DEFAULT_NOTIFICATIONS_BY_ROLE[role].includes(kind));

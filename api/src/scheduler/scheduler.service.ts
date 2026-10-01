@@ -18,6 +18,7 @@ import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
+import { LessonCancelNoticeService } from '../lessons/lesson-cancel-notice.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -31,8 +32,7 @@ import { formatSweepResults, runSweepSteps } from './scheduler-sweep-steps';
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
   private readonly logger = new Logger(SchedulerService.name);
-  // Тик в полёте — SIGTERM (onApplicationShutdown) ждёт его, не обрывает
-  // (CLAUDE.md «Деплой»).
+  // Тик в полёте: SIGTERM (onApplicationShutdown) ждёт его, не обрывает («Деплой»).
   private inFlight: Promise<void> | null = null;
 
   constructor(
@@ -43,6 +43,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly previewService: PreviewService,
     private readonly recordingPromptService: RecordingPromptService,
     private readonly lessonReminderService: LessonReminderService,
+    private readonly lessonCancelNoticeService: LessonCancelNoticeService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly paymentReminderService: PaymentReminderService,
@@ -56,9 +57,8 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly heartbeat: SchedulerHeartbeat,
   ) {}
 
-  // waitForCompletion: пропущенный запуск не вызывает код вовсе, свой warn
-  // не нужен. heartbeat (аудит 2026-09-21, MED, RUNBOOK §8 п.4) — начало до
-  // runTick(), конец в finally, чтобы отметиться и при падении шага.
+  // waitForCompletion: пропущенный запуск код не вызывает, свой warn не нужен.
+  // heartbeat (аудит 2026-09-21, RUNBOOK §8 п.4): конец в finally — и при падении шага.
   @Cron(CronExpression.EVERY_MINUTE, { waitForCompletion: true })
   async tick(): Promise<void> {
     this.heartbeat.noteTickStarted(DateTime.utc());
@@ -95,26 +95,27 @@ export class SchedulerService implements OnApplicationShutdown {
     const { reminded } = (await this.step('напоминание', now, (n) =>
       this.lessonReminderService.remind(n),
     )) ?? { reminded: 0 };
+    // ADR-0162: отмену занятия ученикам сообщает тик, а не PATCH учителя.
+    const { notified: cancelNotices } = (await this.step('отмена ученикам', now, (n) =>
+      this.lessonCancelNoticeService.announce(n),
+    )) ?? { notified: 0 };
     const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
       this.manualPromptService.prompt(n),
     )) ?? { prompted: 0 };
-    // Блокер аудита 2026-09-15 (ТЗ 4.4, п.7): без шага просроченная попытка
-    // не закрывалась бы, если ученик не вернулся (exam-deadline-close.service.ts).
+    // Блокер аудита 2026-09-15: без шага просроченная попытка не закрывалась бы,
+    // если ученик не вернулся (exam-deadline-close.service.ts).
     const { closed: examAttemptsClosed } = (await this.step(
       'дедлайны экзаменов',
       now,
       (n) => this.examDeadlineCloseService.closeDue(n),
     )) ?? { closed: 0 };
-    // ADR-0150: вне окна суток после назначенного школой момента шаг ничего
-    // не делает; внутри — личное сообщение или строка ленты каждому, у кого
-    // месяц не оплачен.
+    // ADR-0150: вне окна суток после назначенного момента шаг молчит.
     const { reminded: paymentReminders } = (await this.step(
       'напоминания об оплате',
       now,
       (n) => this.paymentReminderService.remind(n),
     )) ?? { reminded: 0 };
-    // Шесть шагов уборки байтов и данных по сроку — scheduler-sweep-steps.ts
-    // (файл-храповик: этот файл уже был на потолке, «может только уменьшаться»).
+    // Шесть шагов уборки по сроку — scheduler-sweep-steps.ts (файл на потолке).
     const sweep = await runSweepSteps((name, n, run) => this.step(name, n, run), now, {
       removeImageOrphans: (n) => this.examImageSweepService.removeOrphans(n),
       removeVideoOrphans: (n) => this.examVideoSweepService.removeOrphans(n),
@@ -128,14 +129,13 @@ export class SchedulerService implements OnApplicationShutdown {
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
-        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} ` +
+        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} cancelNotices=${cancelNotices} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `paymentReminders=${paymentReminders} ${formatSweepResults(sweep)}`,
     );
   }
 
-  // Тело шага (try/catch, лог, уведомление о сбое) — scheduler-step.ts: файл
-  // на потолке храповика, а тик растёт шагами.
+  // Тело шага (try/catch, лог, уведомление о сбое) — scheduler-step.ts (файл на потолке).
   private step<T>(
     name: string,
     now: DateTime,

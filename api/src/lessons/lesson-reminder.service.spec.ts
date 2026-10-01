@@ -15,6 +15,7 @@ import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
 } from '../notifications/notification-prefs.schema';
+import { LessonRecipientsService } from '../notifications/lesson-recipients.service';
 import { LessonScopeService } from '../notifications/lesson-scope.service';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import {
@@ -100,9 +101,11 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       lessonModel,
       classModel,
       notificationModel,
-      userModel,
-      new NotificationPrefsService(prefsModel),
-      new LessonScopeService(prefsModel),
+      new LessonRecipientsService(
+        userModel,
+        new NotificationPrefsService(prefsModel),
+        new LessonScopeService(prefsModel),
+      ),
       settings,
       push as unknown as PushSenderService,
     );

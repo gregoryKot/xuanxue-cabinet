@@ -89,6 +89,33 @@ describe('insertNotificationRowOnce', () => {
     expect(await model.countDocuments({})).toBe(3);
   });
 
+  // ADR-0162: вид входит в уникальный ключ (userId, kind, lessonId), поэтому
+  // отмена занятия не упирается в уже записанное напоминание о нём.
+  it('lesson_soon и lesson_cancelled одного занятия — две независимые строки', async () => {
+    expect(await insertNotificationRowOnce(model, INPUT)).toBe(true);
+    expect(
+      await insertNotificationRowOnce(model, { ...INPUT, kind: 'lesson_cancelled' }),
+    ).toBe(true);
+    expect(
+      await insertNotificationRowOnce(model, { ...INPUT, kind: 'lesson_cancelled' }),
+    ).toBe(false);
+
+    expect(await model.countDocuments({ userId: 'u1', lessonId: 'l1' })).toBe(2);
+  });
+
+  it('lessonStartsAt записывается датой и не шифруется', async () => {
+    const lessonStartsAt = new Date('2026-09-10T16:00:00Z');
+
+    await insertNotificationRowOnce(model, {
+      ...INPUT,
+      kind: 'lesson_cancelled',
+      lessonStartsAt,
+    });
+
+    const row = await model.findOne({ userId: 'u1' }).lean();
+    expect(row?.lessonStartsAt).toEqual(lessonStartsAt);
+  });
+
   it('пять вызовов разом — ровно один true и одна строка', async () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, () => insertNotificationRowOnce(model, INPUT)),

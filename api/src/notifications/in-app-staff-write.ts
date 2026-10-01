@@ -1,8 +1,9 @@
-// Запись строки ленты кабинета и выбор её получателей — общая часть пяти
-// уведомлений: «работу сдали», «работу проверили» (in-app-exam-notifier.ts),
-// «прислали ссылку на видео» (in-app-video-link-notifier.ts, ADR-0084),
-// «занятие скоро» (lesson-reminder.service.ts, ADR-0135) и «абонемент не
-// оплачен» (payment-reminder.service.ts, ADR-0150). Отдельным модулем,
+// Запись строки ленты кабинета и выбор её получателей — общая часть уведомлений:
+// «работу сдали», «работу проверили» (in-app-exam-notifier.ts), «прислали
+// ссылку на видео» (in-app-video-link-notifier.ts, ADR-0084), «занятие скоро» и
+// «занятие отменено» (lesson-reminder.service.ts, lesson-cancel-notice.service.ts,
+// ADR-0135, ADR-0162) и «абонемент не оплачен» (payment-reminder.service.ts,
+// ADR-0150). Отдельным модулем,
 // а не приватными методами нотификатора: файл-лимит CLAUDE.md («Храповики»)
 // у него уже выбран, а повтор резолва получателей/записи строки в нескольких
 // классах поймал бы jscpd.
@@ -23,7 +24,8 @@ import { NOTIFICATION_ENCRYPT_SCHEMA, NotificationRecord } from './notification.
 /** Ровно одна «идентичность события» заполнена на вызов — та, что совпадает с
  * partial-индексом схемы (`(userId, kind, attemptId | lessonId | paymentMonth)`,
  * notification.schema.ts): по экзаменным видам — examId/examTitle/attemptId, по
- * `lesson_soon` — lessonId/lessonTitle, по `payment_due` — paymentMonth. Все
+ * `lesson_soon` и `lesson_cancelled` — lessonId/lessonTitle (у отмены ещё
+ * lessonStartsAt), по `payment_due` — paymentMonth. Все
  * наборы необязательны в одном интерфейсе, а не три разных типа: строка
  * пишется одной и той же функцией для всех видов (см. шапку файла), а
  * отдельные типы развели бы её на похожие места. */
@@ -35,6 +37,8 @@ export interface WriteInput {
   attemptId?: string;
   lessonId?: string;
   lessonTitle?: string;
+  /** Начало занятия (UTC) — только у `lesson_cancelled`, ADR-0162. */
+  lessonStartsAt?: Date;
   paymentMonth?: string;
   outcome?: GradingOutcome;
 }
@@ -53,10 +57,9 @@ export function staffWriteDeps(
   return { usersService, notificationPrefsService, model };
 }
 
-// Идентичность строки: lessonId у lesson_soon, paymentMonth у payment_due,
-// иначе attemptId (экзаменные виды всегда его несут). Они никогда не приходят
-// вместе — один вызывающий код пишет ровно одно из трёх (in-app-exam-notifier.ts,
-// lesson-reminder.service.ts, payment-reminder.service.ts).
+// Идентичность строки: lessonId у lesson_soon и lesson_cancelled, paymentMonth у
+// payment_due, иначе attemptId (экзаменные виды всегда его несут). Они никогда
+// не приходят вместе — один вызывающий код пишет ровно одно из трёх.
 export function identityFilter(input: WriteInput): Record<string, string | undefined> {
   const base = { userId: input.userId, kind: input.kind };
   if (input.lessonId !== undefined) return { ...base, lessonId: input.lessonId };
@@ -77,6 +80,9 @@ export function rowPayload(input: WriteInput): Record<string, unknown> {
       ...(input.examTitle !== undefined ? { examTitle: input.examTitle } : {}),
       ...(input.lessonId !== undefined ? { lessonId: input.lessonId } : {}),
       ...(input.lessonTitle !== undefined ? { lessonTitle: input.lessonTitle } : {}),
+      ...(input.lessonStartsAt !== undefined
+        ? { lessonStartsAt: input.lessonStartsAt }
+        : {}),
       ...(input.paymentMonth !== undefined ? { paymentMonth: input.paymentMonth } : {}),
       readAt: null,
       // Новое событие по той же попытке/занятию (переоценка, присланная
