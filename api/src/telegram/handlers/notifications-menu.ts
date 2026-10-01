@@ -11,6 +11,7 @@
 // переключает внутри (см. NotificationPrefsService.get).
 import {
   availableNotifications,
+  hasLessonScopedKinds,
   NOTIFICATION_HINTS,
   NOTIFICATION_LABELS,
   type NotificationKind,
@@ -20,6 +21,17 @@ import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 
 const TITLE = 'Уведомления, которые вам доступны:';
+
+// О каких занятиях и за сколько напоминать, бот не переключает: это список
+// занятий и выбор из четырёх значений, на кнопках inline-клавиатуры они не
+// помещаются (ADR-0162). Строка нужна тому, у кого есть вид про занятие
+// (сегодня ученик): иначе он, получив «Занятие скоро» обо всём расписании, не
+// узнает, что выбрать свои можно. Простой текст без ссылки: это меню строится
+// без адреса кабинета, а путь «Уведомления → Настройки» человек находит и без
+// него. Переключатели видов (ADR-0065) тут ни при чём — их бот и кабинет
+// делят, повторять про них «есть ещё кабинет» незачем.
+const LESSON_SETTINGS_NOTE =
+  'О каких занятиях и за сколько напоминать — в кабинете: Уведомления → Настройки.';
 
 export interface NotificationsMenu {
   text: string;
@@ -42,7 +54,9 @@ export function buildNotificationsMenu(
   const buttons = available.map((kind) => [
     inlineButton(toggleButtonLabel(enabledSet.has(kind)), 'notif', kind),
   ]);
-  return { text: `${TITLE}\n\n${lines.join('\n\n')}`, buttons };
+  const blocks = [TITLE, ...lines];
+  if (hasLessonScopedKinds(available)) blocks.push(LESSON_SETTINGS_NOTE);
+  return { text: blocks.join('\n\n'), buttons };
 }
 
 // Название вида уведомления уже стоит над каждой кнопкой (ярлык + подсказка

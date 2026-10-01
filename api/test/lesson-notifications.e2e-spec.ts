@@ -168,6 +168,28 @@ describe('Выбор «о каких занятиях» (e2e)', () => {
     expect(await getLessons(cookie)).toEqual(written);
   });
 
+  // ADR-0162, п. 5: по `scopeChosen` лента решает, показывать ли подсказку «выберите
+  // свои занятия». «Все», записанное руками, считается выбором, «все» по умолчанию — нет.
+  it('scopeChosen: до PUT — false, после PUT «все» или «выбранных» — true, у другого человека — свой', async () => {
+    const cls = await createClass('Цигун');
+    const cookie = await studentCookie('Ученик А');
+    const other = await studentCookie('Ученик Б');
+    expect((await getLessons(cookie)).scopeChosen).toBe(false);
+
+    const minutes = await withCsrf(request(server()).put(REMINDER_PATH))
+      .set('Cookie', cookie)
+      .send({ minutes: 30 });
+    expect((minutes.body as MyLessonNotificationsDto).scopeChosen).toBe(false);
+
+    const all = await putScope(cookie, { mode: 'all', classIds: [] });
+    expect((all.body as MyLessonNotificationsDto).scopeChosen).toBe(true);
+    expect((await getLessons(cookie)).scopeChosen).toBe(true);
+    expect((await getLessons(other)).scopeChosen).toBe(false);
+
+    await putScope(other, { mode: 'selected', classIds: [cls.id] });
+    expect((await getLessons(other)).scopeChosen).toBe(true);
+  });
+
   it('режим «все» не стирает галочки: вернулся к «выбранным» — они на месте', async () => {
     const cls = await createClass('Цигун');
     const cookie = await studentCookie();
