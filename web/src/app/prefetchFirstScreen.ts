@@ -28,9 +28,9 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   // prefetchCache. На «Заданиях» формы запрашивает любая роль (TasksScreen
   // зовёт useMyExams без опций) — там прогрев остаётся для всех.
   const skipsExams = route === ROUTE_MODULES.notifications && isTeacher(me);
-  // То же на «Настройках уведомлений»: блок «О каких занятиях» у человека без
-  // вида про занятие не рисуется (LessonScopeSection.tsx, ADR-0162) и за
-  // списком занятий не пойдёт.
+  // То же на «Настройках уведомлений»: у человека без вида про занятие нет ни
+  // блока «О каких занятиях», ни поля «За сколько напомнить», и за занятиями
+  // экран не пойдёт (useLessonScope.ts, ADR-0162).
   const skipsLessonScope =
     route === ROUTE_MODULES.notificationSettings &&
     !hasLessonScopedKinds(defaultNotifications(me.roles));
