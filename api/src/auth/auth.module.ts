@@ -96,5 +96,8 @@ import { TelegramLinkController } from './telegram-link.controller';
       },
     },
   ],
+  // SESSION_SECRET — ключу бакета троттлера (app.module.ts, ADR-0164): та же
+  // подпись cookie, что у AuthGuard, вторую фабрику секрета не заводим.
+  exports: [SESSION_SECRET],
 })
 export class AuthModule {}

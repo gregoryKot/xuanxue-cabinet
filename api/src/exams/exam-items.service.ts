@@ -63,8 +63,7 @@ export class ExamItemsService {
     return docs.map((doc) => toExamItemDto(decryptExamItem(doc)));
   }
 
-  // includeDeleted — createAttempt (exam-attempt-start.ts) читает через этот
-  // же метод удалённый, но ещё стоящий в форме вопрос (ADR-0140).
+  // includeDeleted — удалённый, но ещё стоящий в форме вопрос (ADR-0140).
   async getById(id: string, includeDeleted = false): Promise<ExamItemDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const filter = includeDeleted ? { _id: id } : { _id: id, ...NOT_DELETED };

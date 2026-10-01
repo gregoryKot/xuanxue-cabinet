@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { DateTime } from 'luxon';
 import { validateEnv } from './config/env.validate';
 import type { NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
@@ -36,6 +37,8 @@ import { TagsModule } from './tags/tags.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { SESSION_SECRET } from './auth/session-token';
+import { throttleTracker, type ThrottleRequestLike } from './auth/throttle-tracker';
 import { SeedModule } from './seed/seed.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { staticAssetsOptions } from './static/static-cache-control';
@@ -70,10 +73,19 @@ import { staticAssetsOptions } from './static/static-cache-control';
         cronJobs: config.get<string>('SCHEDULER_ENABLED') !== 'false',
       }),
     }),
-    // По умолчанию — по IP (правило CLAUDE.md №4: неверифицированная
-    // идентичность бакетируется по IP; верифицированный JWT/initData —
-    // задача будущих модулей auth, ThrottlerGuard переопределяется там же).
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    // Бакет троттлера (правило CLAUDE.md №4, ADR-0164): вошедший — по своей
+    // сессии, неверифицированный — по IP. Секрет сессии — тот же
+    // SESSION_SECRET, что у AuthGuard (экспорт AuthModule), второй фабрики
+    // нет. Гейт — api/test/throttle-session.e2e-spec.ts.
+    ThrottlerModule.forRootAsync({
+      imports: [AuthModule],
+      inject: [SESSION_SECRET],
+      useFactory: (secret: string) => ({
+        throttlers: [{ ttl: 60_000, limit: 120 }],
+        getTracker: (req: ThrottleRequestLike) =>
+          throttleTracker(req, secret, DateTime.utc()),
+      }),
+    }),
     DatabaseModule,
     MigrationsModule,
     ClassesModule,

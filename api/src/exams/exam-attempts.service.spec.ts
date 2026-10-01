@@ -154,6 +154,29 @@ describe('ExamAttemptsService', () => {
     expect(list[0]?.blocks[0]?.questions.map((q) => q.itemId)).toEqual(pickedIds);
   });
 
+  // Аудит 2026-10-01, нагрузочный тест: старт грузил 56 вопросов «Формы 1»
+  // по одному findOne — 65 операций Mongo на нажатие «Начать»; на Atlas M0
+  // (100 операций/с) 60 одновременных стартов ставили базу в очередь на ~40 с.
+  // Вопросы снимка идут одним запросом (exam-items-by-ids.ts), сколько бы их
+  // ни было, — тест держит число запросов, а не только результат.
+  it('старт грузит все вопросы снимка одним запросом к банку, не по одному', async () => {
+    const itemIds = await Promise.all(
+      Array.from({ length: 5 }, (_, i) => createPublishedItem({ prompt: `вопрос ${i}` })),
+    );
+    const examId = await createPublishedExam({ itemIds });
+    const find = jest.spyOn(ctx.itemModel, 'find');
+    const findOne = jest.spyOn(ctx.itemModel, 'findOne');
+    try {
+      const started = await ctx.service.start(examId, USER_A, NOW);
+      expect(started.blocks[0]?.questions).toHaveLength(5);
+      expect(find).toHaveBeenCalledTimes(1);
+      expect(findOne).not.toHaveBeenCalled();
+    } finally {
+      find.mockRestore();
+      findOne.mockRestore();
+    }
+  });
+
   // ADR-0082, дополнение: обязательный вопрос попадает в выборку у любого
   // сдающего, не только иногда — три разных пользователя, три попытки.
   it('requiredItemIds: обязательный вопрос есть в попытке у каждого из нескольких сдающих', async () => {

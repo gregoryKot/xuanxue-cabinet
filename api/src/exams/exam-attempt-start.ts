@@ -10,7 +10,8 @@ import type { Model } from 'mongoose';
 import type { AttemptAnswerDto, ExamAttemptDto, ExamDto } from '@xuanxue/shared';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
-import type { ExamItemsService } from './exam-items.service';
+import type { ExamItemRecord } from './exam-item.schema';
+import { findExamItemsByIds } from './exam-items-by-ids';
 import { findInProgressAttempt } from './exam-attempt-lifecycle';
 import {
   buildAttemptBlocks,
@@ -26,20 +27,18 @@ import {
 
 export async function createAttempt(
   model: Model<ExamAttemptRecord>,
-  examItemsService: ExamItemsService,
+  itemModel: Model<ExamItemRecord>,
   exam: ExamDto,
   userId: string,
   attemptsUsed: number,
   now: DateTime,
 ): Promise<ExamAttemptDto> {
-  const itemIds = [...new Set(exam.blocks.flatMap((block) => block.itemIds))];
+  const itemIds = exam.blocks.flatMap((block) => block.itemIds);
   // includeDeleted (ADR-0140) — блок формы может ссылаться на вопрос, уже
   // удалённый из банка: форма продолжает получать его снимком, пока учитель
   // сам не убрал вопрос из блока (exam-items-eligible.ts, тот же принцип).
-  const items = await Promise.all(
-    itemIds.map((id) => examItemsService.getById(id, true)),
-  );
-  const itemsById = new Map(items.map((item) => [item.id, item]));
+  // Все вопросы — одним запросом, не findOne на каждый (exam-items-by-ids.ts).
+  const itemsById = await findExamItemsByIds(itemModel, itemIds, true);
   const blocks = buildAttemptBlocks({
     blocks: exam.blocks,
     itemsById,

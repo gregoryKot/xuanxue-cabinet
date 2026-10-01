@@ -102,7 +102,7 @@ export function buildAttemptsServices(models: AttemptsTestModels): AttemptsTestS
     models.attemptModel,
     models.gradingModel,
     examsService,
-    examItemsService,
+    models.itemModel,
     userNamesService,
     examNotifier,
     retryCleanup,

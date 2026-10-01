@@ -160,7 +160,9 @@ Inline-интерфейсы в `@Body()` — только compile-time иллю�
 
 Бакет троттлинга строится по проверенной подписи (сессия, initData Telegram, подпись
 виджета входа). Всё неверифицированное бакетируется по IP (`trust proxy` включён — за
-Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` стоит с этапа 0.
+Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` стоит с этапа 0; сессия —
+по cookie (`api/src/auth/throttle-tracker.ts`, ADR-0164). Гейт:
+`api/test/throttle-session.e2e-spec.ts`.
 
 ### 5. Храповики (CI, `scripts/`)
 
