@@ -110,7 +110,7 @@ describe('LessonScopeSection — кому показывается', () => {
     ).toBeChecked();
     expect(screen.getByRole('heading', { name: 'О каких занятиях' })).toBeVisible();
     expect(screen.getByText(/Отметьте занятия, на которые ходите/)).toHaveTextContent(
-      'Отметьте занятия, на которые ходите, — напоминания будут приходить только о них.',
+      'Отметьте занятия, на которые ходите, — уведомления о занятиях будут приходить только о них.',
     );
     expect(screen.getByText('только о них').tagName).toBe('STRONG');
     expect(screen.getByRole('radio', { name: 'Только о выбранных' })).not.toBeChecked();

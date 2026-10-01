@@ -18,6 +18,9 @@ const EVENT_TEXT: Partial<Record<NotificationKind, string>> = {
   exam_result: 'Работу проверили',
   attempt_submitted: 'Работу прислали на проверку',
   lesson_soon: 'Скоро занятие',
+  // Дата и время занятия в строку не вставляются: сервер не знает пояса
+  // устройства, их дописывают web и push-worker по часам зрителя (ADR-0162).
+  lesson_cancelled: 'Занятие отменено',
   payment_due: 'Напоминание об оплате',
   // Строка-страховка бухгалтеру, когда снимок не дошёл до него в Telegram
   // (ADR-0156): формулировка про действие, а не про сбой доставки.
@@ -28,7 +31,8 @@ const TITLE_SEPARATOR = ' — ';
 
 interface NotificationTextInput {
   kind: NotificationKind;
-  /** Название формы (exam_result/attempt_submitted), класса (lesson_soon) или
+  /** Название формы (exam_result/attempt_submitted), класса (lesson_soon,
+   * lesson_cancelled) или
    * месяца (payment_due, payments) — ровно одно из трёх приходит на вид, но
    * склеивание со строкой ниже одинаково для всех: второй заголовок в
    * отдельном поле развёл бы логику показа на два похожих места (CLAUDE.md

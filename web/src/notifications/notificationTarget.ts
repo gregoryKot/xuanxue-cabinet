@@ -14,7 +14,9 @@ const TASKS_PATH = '/tasks';
 const GRADING_PATH = '/grading';
 // Ближайшие занятия ученика — student/LessonsScreen.tsx (ADR-0135): то же
 // место, куда ведёт пункт меню «Занятия», отдельного экрана под одно
-// напоминание не заводим.
+// напоминание не заводим. Отмену занятия (ADR-0162) ведёт туда же: отменённое
+// занятие остаётся в расписании с пометкой (StudentLessonCard).
+
 const LESSONS_PATH = '/lessons';
 
 // payment_due (ADR-0150) сознательно без адреса: экран ученика с оплатой —
@@ -27,7 +29,9 @@ const LESSONS_PATH = '/lessons';
  * клавиатуру (CLAUDE.md «Доступность»). */
 export function notificationTarget(item: NotificationDto): string | undefined {
   if (item.kind === 'exam_result') return TASKS_PATH;
-  if (item.kind === 'lesson_soon') return LESSONS_PATH;
+  if (item.kind === 'lesson_soon' || item.kind === 'lesson_cancelled') {
+    return LESSONS_PATH;
+  }
   if (item.kind === 'attempt_submitted' && item.attemptId) {
     return `${GRADING_PATH}/${item.attemptId}`;
   }

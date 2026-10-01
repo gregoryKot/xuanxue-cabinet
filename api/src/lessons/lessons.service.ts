@@ -25,6 +25,7 @@ import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
+import { markCancelledAt } from './lesson-cancel-mark';
 import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
 import { buildCreatePayload } from './lessons.create';
@@ -98,6 +99,7 @@ export class LessonsService {
     assertLessonId(id);
     if (input.durationMin !== undefined) await assertDurationEditable(this.model, id);
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
+    if (input.status === 'cancelled') await markCancelledAt(this.model, id, now);
     const doc = await this.model
       .findOneAndUpdate({ _id: id }, buildUpdateCommand(input), {
         returnDocument: 'after',

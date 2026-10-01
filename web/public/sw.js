@@ -41,6 +41,13 @@ const INBOX_URL = '/api/me/inbox?limit=20';
 // строка через три секунды, чем чужая заглушка через минуту.
 const INBOX_TIMEOUT_MS = 3000;
 const NOTIFICATIONS_PATH = '/notifications';
+// Дата занятия у отмены (lesson_cancelled, ADR-0162): сервер пояса устройства
+// не знает, а «Занятие отменено — Тайцзи» без числа не говорит, какое из
+// занятий класса отменили. День и время дописываются здесь, по часам
+// устройства, в том же виде, что formatDateTime в web/src/lib/formatDate.ts
+// («Чт, 10 сентября, 19:00»): импортировать его сюда нельзя (шапка файла).
+const LESSON_DAY_FORMAT = { weekday: 'short', day: 'numeric', month: 'long' };
+const LESSON_TIME_FORMAT = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
 
 self.addEventListener('install', () => {
   // Новая версия встаёт в строй сразу, не дожидаясь закрытия старых вкладок —
@@ -66,6 +73,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function notificationText(item) {
+  if (item.kind !== 'lesson_cancelled' || !item.lessonStartsAt) return item.text;
+  const start = new Date(item.lessonStartsAt);
+  // Кривая дата не должна ронять весь push в запасную строку: текст без неё
+  // остаётся осмысленным.
+  if (Number.isNaN(start.getTime())) return item.text;
+  const day = new Intl.DateTimeFormat('ru', LESSON_DAY_FORMAT).format(start);
+  const time = new Intl.DateTimeFormat('ru', LESSON_TIME_FORMAT).format(start);
+  return `${item.text} (${day.charAt(0).toUpperCase()}${day.slice(1)}, ${time})`;
+}
+
 /**
  * Свежая строка для показа: первая непрочитанная запись ленты кабинета, а
  * не первая в списке — лента отсортирована по времени последнего изменения
@@ -82,7 +100,7 @@ async function loadNotificationBody() {
     if (!response.ok) return FALLBACK_NOTIFICATION_BODY;
     const page = await response.json();
     const unread = (page.items ?? []).find((item) => !item.readAt);
-    return unread ? unread.text : FALLBACK_NOTIFICATION_BODY;
+    return unread ? notificationText(unread) : FALLBACK_NOTIFICATION_BODY;
   } catch {
     return FALLBACK_NOTIFICATION_BODY;
   }

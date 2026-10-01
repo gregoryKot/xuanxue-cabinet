@@ -42,6 +42,17 @@ export function notificationTimeText(
     : formatDateTime(iso, timeZone);
 }
 
+/** Строка записи для показа. Обычно `text` с сервера как есть; у отмены
+ * занятия (ADR-0162) в скобках дописано, когда оно было назначено, — по часам
+ * зрителя: сервер пояса устройства не знает (ADR-0060), и без числа из «Занятие
+ * отменено — Тайцзи» не понять, какое из занятий класса отменили. */
+export function notificationBody(item: NotificationDto, timeZone?: string): string {
+  if (item.kind !== 'lesson_cancelled' || item.lessonStartsAt === undefined) {
+    return item.text;
+  }
+  return `${item.text} (${formatDateTime(item.lessonStartsAt, timeZone)})`;
+}
+
 /** Непрочитана — у строки нет `readAt` (shared/src/inbox.ts). Своей функции
  * «сколько непрочитанных» здесь нет нарочно: их считает сервер по всей ленте
  * (`InboxPageDto.unreadCount`), а не эта страница — счёт по загруженным

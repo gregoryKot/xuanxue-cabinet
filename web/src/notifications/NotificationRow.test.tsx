@@ -124,6 +124,36 @@ describe('NotificationRow — время', () => {
   });
 });
 
+// ADR-0162: отмену занятия ведёт на экран занятий, а дата и время берутся по
+// часам зрителя (Москва в тесте), сервер их в `text` не вкладывает.
+describe('NotificationRow — «Занятие отменено»', () => {
+  const CANCELLED = makeItem({
+    kind: 'lesson_cancelled',
+    text: 'Занятие отменено — Тайцзи',
+    lessonId: 'l1',
+    lessonStartsAt: '2026-09-10T16:00:00.000Z', // 19:00 в Москве
+  });
+
+  it('строка с названием и временем занятия по часам зрителя, ссылка на «/lessons»', () => {
+    renderRow(CANCELLED, { isLast: false, onRead: vi.fn() });
+
+    expect(
+      screen.getByText('Занятие отменено — Тайцзи (Чт, 10 сентября, 19:00)'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/lessons');
+  });
+
+  it('«Убрать» называет ту же строку, что на экране: с датой занятия', () => {
+    renderRow(CANCELLED, { isLast: false, onRead: vi.fn() });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Убрать уведомление: Занятие отменено — Тайцзи (Чт, 10 сентября, 19:00)',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('NotificationRow — isLast', () => {
   it('последняя строка своей карточки — без линии снизу', () => {
     renderRow(makeItem(), { isLast: true, onRead: vi.fn() });

@@ -5,16 +5,16 @@
 // ClassesModule, ни LessonsModule про SchedulerModule не знают — цикла нет.
 // BroadcastPlannerService/BroadcastCancelNotifyService/DeliveryRunnerService/
 // PreviewService/RecordingPromptService/ManualPromptService/
-// ExamDeadlineCloseService живут физически в своих доменах (broadcasts/,
-// deliveries/, lessons/, exams/), но провайдер — здесь: тот же приём, что уже
-// был с LessonPlannerService (ADR-0013 «Отдельный модуль модели разрывает
-// цикл»). BroadcastCancelNotifyService именно поэтому здесь, а не провайдером
-// BroadcastsModule: ему нужен TEACHER_NOTIFIER (TelegramModule), а
+// ExamDeadlineCloseService/LessonCancelNoticeService живут физически в своих
+// доменах (broadcasts/, deliveries/, lessons/, exams/), но провайдер — здесь:
+// тот же приём, что с LessonPlannerService (ADR-0013 «Отдельный модуль модели
+// разрывает цикл»). BroadcastCancelNotifyService именно поэтому здесь, а не
+// провайдером BroadcastsModule: ему нужен TEACHER_NOTIFIER (TelegramModule), а
 // BroadcastsModule не может импортировать TelegramModule — тот сам
 // импортирует BroadcastsModule (цикл). Тот же довод — для
 // ExamDeadlineCloseService и EXAM_NOTIFIER: ExamsModule сам импортирует
-// TelegramModule (EXAM_NOTIFIER собран там), импорт ExamsModule сюда потянул
-// бы весь его граф (контроллеры, MediaModule) ради одного сервиса.
+// TelegramModule (EXAM_NOTIFIER собран там), его граф (контроллеры,
+// MediaModule) ради одного сервиса не нужен.
 // BroadcastsModule/DeliveriesModule/ChannelsModule/SettingsModule — модельные
 // модули (только forFeature), сама логика тика собирается на этом уровне;
 // ExamAttemptModelModule — тот же приём для модели попытки (её уже использует
@@ -57,6 +57,7 @@ import { ExamGradingModelModule } from '../exams/exam-grading-model.module';
 import { ExamItemModelModule } from '../exams/exam-item-model.module';
 import { CompositeExamNotifier } from '../exams/exam-notifier.composite';
 import { EXAM_NOTIFIER } from '../exams/exam-notifier';
+import { LessonCancelNoticeService } from '../lessons/lesson-cancel-notice.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { LessonsModule } from '../lessons/lessons.module';
@@ -96,19 +97,17 @@ import { SchedulerService } from './scheduler.service';
     MediaModule,
     ExamImagesModule,
     ExamVideosModule,
-    // AnswerVideosModule — AnswerVideoSweepService (ADR-0137) провайдер этого
-    // модуля; он про SchedulerModule не знает — цикла нет.
+    // AnswerVideoSweepService (ADR-0137) — провайдер этого модуля, цикла нет.
     AnswerVideosModule,
     NotificationsModule,
     PushModule,
-    // Модели `payments`/`payment_screenshots` — шаги «скриншоты оплат»
-    // (ADR-0050) и «напоминания об оплате» (ADR-0150); провайдеры ниже.
+    // Модели `payments`/`payment_screenshots` — шаги оплат (ADR-0050, ADR-0150).
     PaymentsModule,
     StorageModule,
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
-    UserModelModule, // UserRecord для LessonReminderService (ADR-0135)
+    UserModelModule, // UserRecord для PaymentReminderService (ADR-0150)
     TelegramModule,
   ],
   providers: [
@@ -119,6 +118,7 @@ import { SchedulerService } from './scheduler.service';
     PreviewService,
     RecordingPromptService,
     LessonReminderService, // напоминание ученикам о занятии (ADR-0135)
+    LessonCancelNoticeService, // отмена занятия ученикам (ADR-0162)
     ManualPromptService,
     ExamDeadlineCloseService,
     PaymentReminderService, // напоминание ученикам об оплате (ADR-0150)

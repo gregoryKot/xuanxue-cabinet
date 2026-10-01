@@ -28,4 +28,24 @@ describe('toNotificationDto', () => {
   it('payment_due без месяца — одно событие, без разделителя', () => {
     expect(toNotificationDto(raw({})).text).toBe('Напоминание об оплате');
   });
+
+  // ADR-0162: начало занятия едет наружу ISO UTC отдельным полем, а не в
+  // `text` — сервер не знает пояса устройства, время рисует читающий.
+  it('lesson_cancelled — строка с названием класса и lessonStartsAt в ISO UTC', () => {
+    const dto = toNotificationDto(
+      raw({
+        kind: 'lesson_cancelled',
+        lessonId: 'l1',
+        lessonStartsAt: new Date('2026-09-10T16:00:00Z'),
+      }),
+    );
+
+    expect(dto.text).toBe('Занятие отменено');
+    expect(dto.lessonId).toBe('l1');
+    expect(dto.lessonStartsAt).toBe('2026-09-10T16:00:00.000Z');
+  });
+
+  it('у видов без занятия lessonStartsAt нет', () => {
+    expect(toNotificationDto(raw({})).lessonStartsAt).toBeUndefined();
+  });
 });

@@ -46,6 +46,7 @@ export function toNotificationDto(raw: RawLeanNotification): NotificationDto {
     examId: doc.examId,
     attemptId: doc.attemptId,
     lessonId: doc.lessonId,
+    lessonStartsAt: doc.lessonStartsAt ? toIsoUtc(doc.lessonStartsAt) : undefined,
     outcome: doc.outcome,
     readAt: doc.readAt ? toIsoUtc(doc.readAt) : undefined,
     createdAt: toIsoUtc(doc.createdAt),

@@ -40,6 +40,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect(patchA.status).toBe(200);
     expect((patchA.body as NotificationPrefsDto).enabled).toEqual([
       'lesson_soon',
+      'lesson_cancelled',
       'payment_due',
     ]);
 
@@ -48,6 +49,7 @@ describe('Настройки уведомлений — владение (e2e)',
       .set('Cookie', cookieA);
     expect((getA.body as NotificationPrefsDto).enabled).toEqual([
       'lesson_soon',
+      'lesson_cancelled',
       'payment_due',
     ]);
 
@@ -57,6 +59,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((getB.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'lesson_cancelled',
       'payment_due',
     ]);
   });
@@ -106,6 +109,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((getB.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'lesson_cancelled',
       'payment_due',
     ]);
   });
@@ -124,6 +128,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((res.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'lesson_cancelled',
       'payment_due',
     ]);
   });

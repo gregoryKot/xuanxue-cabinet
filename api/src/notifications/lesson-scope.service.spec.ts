@@ -88,7 +88,7 @@ describe('LessonScopeService', () => {
 
     expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
     expect(await prefs.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'payment_due', 'payments'],
+      enabled: ['lesson_soon', 'lesson_cancelled', 'payment_due', 'payments'],
     });
   });
 

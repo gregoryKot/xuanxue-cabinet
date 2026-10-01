@@ -38,15 +38,19 @@ const TEACHER: MeDto = {
 };
 
 describe('useNotificationPrefs — виды по роли', () => {
-  it('ученику доступны три вида — результат экзамена, напоминания о занятии и об оплате (ADR-0135, ADR-0150)', async () => {
-    mockedApiFetch.mockResolvedValueOnce({
-      enabled: ['exam_result', 'lesson_soon', 'payment_due'],
-    });
+  it('ученику доступны четыре вида — результат экзамена, напоминание и отмена занятия, напоминание об оплате (ADR-0135, ADR-0162, ADR-0150)', async () => {
+    const studentKinds = [
+      'exam_result',
+      'lesson_soon',
+      'lesson_cancelled',
+      'payment_due',
+    ];
+    mockedApiFetch.mockResolvedValueOnce({ enabled: studentKinds });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['exam_result', 'lesson_soon', 'payment_due']);
-    expect(result.current.enabled).toEqual(['exam_result', 'lesson_soon', 'payment_due']);
+    expect(result.current.kinds).toEqual(studentKinds);
+    expect(result.current.enabled).toEqual(studentKinds);
   });
 
   it('учителю доступны его виды, не ученические', async () => {
@@ -67,7 +71,12 @@ describe('useNotificationPrefs — виды по роли', () => {
     const { result } = renderHook(() => useNotificationPrefs(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['exam_result', 'lesson_soon', 'payment_due']);
+    expect(result.current.kinds).toEqual([
+      'exam_result',
+      'lesson_soon',
+      'lesson_cancelled',
+      'payment_due',
+    ]);
   });
 });
 

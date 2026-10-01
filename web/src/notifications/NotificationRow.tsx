@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import type { NotificationDto } from '@xuanxue/shared';
 import { SwipeRow } from '../components/SwipeRow';
 import { describeOutcome } from '../student/examAttemptState';
-import { isUnread, notificationTimeText } from './notificationFeed';
+import { isUnread, notificationBody, notificationTimeText } from './notificationFeed';
 import { notificationTarget } from './notificationTarget';
 
 interface NotificationRowProps {
@@ -88,6 +88,7 @@ export function NotificationRow({
 }: NotificationRowProps) {
   const unread = isUnread(item);
   const target = notificationTarget(item);
+  const line = notificationBody(item);
 
   const body = (
     <>
@@ -96,7 +97,7 @@ export function NotificationRow({
         style={{ ...dotStyle, background: unread ? 'var(--terracotta)' : 'transparent' }}
       />
       <span style={textColumnStyle}>
-        <span style={textStyle}>{item.text}</span>
+        <span style={textStyle}>{line}</span>
         {item.outcome && (
           <span
             className="xuanxue-status-label"
@@ -133,7 +134,7 @@ export function NotificationRow({
     <SwipeRow
       isLast={isLast}
       onDismiss={onDismiss}
-      dismissLabel={`Убрать уведомление: ${item.text}`}
+      dismissLabel={`Убрать уведомление: ${line}`}
     >
       {content}
     </SwipeRow>

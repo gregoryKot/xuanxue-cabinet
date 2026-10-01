@@ -66,9 +66,25 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик (без ролей) — результат экзамена, напоминания о занятии и об оплате (ADR-0135, ADR-0150)', () => {
+  it('ученик (без ролей) — результат экзамена, напоминание и отмена занятия, напоминание об оплате (ADR-0135, ADR-0162, ADR-0150)', () => {
     expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
-    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result', 'lesson_soon', 'payment_due']);
+    expect(STUDENT_NOTIFICATIONS).toEqual([
+      'exam_result',
+      'lesson_soon',
+      'lesson_cancelled',
+      'payment_due',
+    ]);
+  });
+
+  // ADR-0162: «Занятие отменено» включён ученику без единого переключения
+  // руками, а штату он не положен — отмену занятий школы учитель делает сам.
+  it('lesson_cancelled — только у ученика, ни у одной роли', () => {
+    expect(rolesWithNotification('lesson_cancelled')).toEqual([]);
+    for (const role of USER_ROLES) {
+      expect(defaultNotifications([role])).not.toContain('lesson_cancelled');
+    }
+    expect(NOTIFICATION_LABELS.lesson_cancelled).toBe('Занятие отменено');
+    expect(NOTIFICATION_HINTS.lesson_cancelled).toContain('отменит занятие');
   });
 
   // ADR-0069: вид без доставки — переключатель, который врёт. Проверяем не

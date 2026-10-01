@@ -76,6 +76,14 @@ describe('hasLessonScopedKinds', () => {
     expect(hasLessonScopedKinds([])).toBe(false);
   });
 
+  // ADR-0162: отмену занятия тик сверяет с выбором человека (isLessonInScope),
+  // поэтому она в списке видов, которые выбор фильтрует.
+  it('«Занятие скоро» и «Занятие отменено» подчиняются выбору, остальные виды — нет', () => {
+    expect(LESSON_SCOPED_KINDS).toEqual(['lesson_soon', 'lesson_cancelled']);
+    expect(hasLessonScopedKinds(['lesson_cancelled'])).toBe(true);
+    expect(hasLessonScopedKinds(['exam_result', 'payment_due'])).toBe(false);
+  });
+
   it('каждый вид «про занятие» — настоящий вид уведомления', () => {
     for (const kind of LESSON_SCOPED_KINDS) {
       expect(NOTIFICATION_KINDS).toContain(kind);

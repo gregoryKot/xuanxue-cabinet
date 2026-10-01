@@ -35,6 +35,12 @@ describe('notificationTarget', () => {
     );
   });
 
+  it('lesson_cancelled — те же ближайшие занятия: отменённое занятие там с пометкой (ADR-0162)', () => {
+    expect(notificationTarget(item({ kind: 'lesson_cancelled', lessonId: 'l1' }))).toBe(
+      '/lessons',
+    );
+  });
+
   it('payment_due — экрана оплаты у ученика ещё нет (слой 2.4), ссылки нет', () => {
     expect(
       notificationTarget(item({ kind: 'payment_due', text: 'Абонемент' })),

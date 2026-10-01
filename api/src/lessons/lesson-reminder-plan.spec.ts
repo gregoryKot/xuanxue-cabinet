@@ -4,11 +4,10 @@
 import { DateTime } from 'luxon';
 import type { LessonScope } from '@xuanxue/shared';
 import type { LessonPrefs } from '../notifications/lesson-scope.service';
+import { lessonRowKey, type PlanLesson } from './lesson-notice-queries';
 import {
   maxLeadMinutes,
   planReminders,
-  reminderKey,
-  type PlanLesson,
   type ReminderPlanInput,
 } from './lesson-reminder-plan';
 
@@ -139,7 +138,7 @@ describe('planReminders', () => {
 
   describe('уже напомнили', () => {
     it('пара с готовой строкой пропускается, соседняя пара — нет', () => {
-      const existing = new Set([reminderKey('u1', 'l1')]);
+      const existing = new Set([lessonRowKey('u1', 'l1')]);
 
       const result = plan({
         lessons: [lesson('l1', 30), lesson('l2', 30)],
@@ -155,7 +154,7 @@ describe('planReminders', () => {
     });
 
     it('сменил 15 → 120 после напоминания: вторая строка не планируется', () => {
-      const existing = new Set([reminderKey('u1', 'l1')]);
+      const existing = new Set([lessonRowKey('u1', 'l1')]);
 
       const result = plan({
         lessons: [lesson('l1', 10)],
@@ -167,7 +166,7 @@ describe('planReminders', () => {
     });
 
     it('строка другого человека о том же занятии не мешает', () => {
-      const existing = new Set([reminderKey('u2', 'l1')]);
+      const existing = new Set([lessonRowKey('u2', 'l1')]);
 
       expect(plan({ lessons: [lesson('l1', 30)], existing })).toHaveLength(1);
     });

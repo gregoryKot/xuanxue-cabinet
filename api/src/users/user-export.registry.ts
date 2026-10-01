@@ -192,6 +192,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       'kind',
       'examTitle',
       'lessonTitle',
+      'lessonStartsAt',
       'paymentMonth',
       'outcome',
       'readAt',

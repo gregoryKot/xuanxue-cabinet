@@ -27,6 +27,15 @@ describe('notificationText', () => {
     expect(notificationText({ kind: 'lesson_soon' })).toBe('Скоро занятие');
   });
 
+  // ADR-0162: даты в строке нет — сервер не знает пояса устройства, дату и
+  // время дописывают web и push-worker по часам зрителя.
+  it('lesson_cancelled — «Занятие отменено» с названием класса, без даты (ADR-0162)', () => {
+    expect(notificationText({ kind: 'lesson_cancelled', title: 'Цигун для глаз' })).toBe(
+      'Занятие отменено — Цигун для глаз',
+    );
+    expect(notificationText({ kind: 'lesson_cancelled' })).toBe('Занятие отменено');
+  });
+
   it('payment_due — «Напоминание об оплате» с названием месяца (ADR-0150)', () => {
     expect(notificationText({ kind: 'payment_due', title: 'сентябрь 2026' })).toBe(
       'Напоминание об оплате — сентябрь 2026',
