@@ -102,10 +102,10 @@ export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]>
  * `UserRole`, а ученик — не роль. Виды «по желанию» — notification-availability.ts.
  *
  * Четыре вида, и у каждого доставка пришла вместе с ним (ADR-0069): результат
- * проверки (ADR-0062), напоминание о занятии (ADR-0135) и его отмена (ADR-0162)
- * — лента и push, напоминание об оплате (ADR-0150) — бот или лента. Школьный
- * выключатель `settings.paymentReminder.enabled` стоит выше личного: пока школа
- * его не включила, напоминание не приходит ни у кого. */
+ * проверки работы (ADR-0062), напоминание о занятии (ADR-0135) и его отмена
+ * (ADR-0162) — лента и push, напоминание об оплате (ADR-0150) — бот или лента.
+ * Школьный выключатель `settings.paymentReminder.enabled` стоит выше личного:
+ * пока школа его не включила, напоминание не приходит ни у кого. */
 export const STUDENT_NOTIFICATIONS: NotificationKind[] = [
   'exam_result',
   'lesson_soon',
