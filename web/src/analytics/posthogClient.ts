@@ -17,6 +17,8 @@ let started = false;
 export interface AnalyticsPersonProps {
   roles: string[];
   status: string;
+  /** Штат в режиме ученика (ADR-0163): `roles` тогда пустые. */
+  studentMode: boolean;
 }
 
 /** Один раз на сессию вкладки — повторный вызов (например, смена пути при
