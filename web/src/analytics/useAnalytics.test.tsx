@@ -108,6 +108,7 @@ describe('useAnalytics', () => {
     expect(startAnalytics).toHaveBeenCalledWith('phc_example', 'u42', {
       roles: ['admin'],
       status: 'active',
+      studentMode: false,
     });
   });
 

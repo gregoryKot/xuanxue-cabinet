@@ -14,9 +14,11 @@ import type * as PosthogClientModule from './posthogClient';
 const ANALYTICS_START_FAILED_MESSAGE =
   'PostHog: аналитика не запущена (сеть, конфигурация или загрузка модуля)';
 
-function personPropsFor(me: MeDto): { roles: string[]; status: string } {
-  // Только роль(и) и статус — ни имени, ни email, ни telegram (ADR-0143).
-  return { roles: me.roles, status: me.status };
+function personPropsFor(me: MeDto): PosthogClientModule.AnalyticsPersonProps {
+  // Только роль(и), статус и признак режима ученика — ни имени, ни email, ни
+  // telegram (ADR-0143). В режиме ученика `roles` пустые (ADR-0163), без
+  // `studentMode` штат в аналитике был бы неотличим от настоящего ученика.
+  return { roles: me.roles, status: me.status, studentMode: me.studentMode };
 }
 
 export function useAnalytics(): void {
