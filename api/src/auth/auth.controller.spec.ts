@@ -231,6 +231,8 @@ describe('AuthController.me', () => {
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: true,
     });
   });
 
@@ -338,6 +340,8 @@ describe('AuthController.verifyEmailLogin', () => {
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: true,
     });
   });
 });
@@ -388,6 +392,8 @@ describe('AuthController.loginWithTelegram', () => {
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: true,
     });
   });
 

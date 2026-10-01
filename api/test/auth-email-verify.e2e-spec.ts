@@ -78,14 +78,12 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     // Новый email — без telegramId, боту тем более некуда писать (ADR-0042).
     expect(body.botChatActive).toBe(false);
     // Только поля MeDto — tokenHash и чужих адресов в ответе нет (SECURITY §2,
-    // CLAUDE.md «API»). `email` — свой подтверждённый адрес владельцу сессии
-    // (ADR-0059, баг владельца 2026-09-29), `hasEmail` — признак при нём;
-    // `pendingEmail` тут отсутствует, потому что этот человек вошёл по уже
-    // подтверждённому адресу и ждать ему нечего — необязательное поле в JSON
-    // не появляется вовсе.
+    // CLAUDE.md «API»). `email` — свой адрес владельцу сессии (ADR-0059, баг
+    // 2026-09-29); `pendingEmail` не приходит: ждать подтверждения нечего.
     expect(Object.keys(body).sort()).toEqual(
       [
         'botChatActive',
+        'canUseStudentMode',
         'email',
         'googleLinked',
         'hasEmail',
@@ -95,6 +93,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
         'noTelegram',
         'roles',
         'status',
+        'studentMode',
         'telegramLinked',
       ].sort(),
     );

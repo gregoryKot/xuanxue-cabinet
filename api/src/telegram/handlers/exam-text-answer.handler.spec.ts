@@ -134,7 +134,7 @@ describe('ExamTextAnswerHandler', () => {
 
     expect(port.saveAnswer).toHaveBeenCalledWith(
       ATTEMPT_ID,
-      { id: 'u1', name: 'Ученик', roles: [], status: 'active' },
+      { id: 'u1', name: 'Ученик', roles: [], status: 'active', studentMode: false },
       { itemId: 'i1', text: 'мой ответ' },
       NOW,
     );
@@ -256,7 +256,7 @@ describe('ExamTextAnswerHandler', () => {
 
       expect(port.saveAnswer).toHaveBeenCalledWith(
         ATTEMPT_ID,
-        { id: 'u1', name: 'Ученик', roles: [], status: 'active' },
+        { id: 'u1', name: 'Ученик', roles: [], status: 'active', studentMode: false },
         { itemId: 'i1', text: 'потому что так', optionIds: ['o1'] },
         NOW,
       );
