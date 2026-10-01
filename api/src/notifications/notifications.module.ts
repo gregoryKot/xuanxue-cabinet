@@ -2,8 +2,9 @@
 // настройка (NotificationPrefsService/Controller) и лента кабинета
 // (InboxService/Controller, `/me/inbox`, слой in-app уведомлений, ADR-0061),
 // выбор «о каких занятиях» (LessonScopeService, LessonNotificationsController,
-// `/me/notifications/lessons`, ADR-0162) и получатели шагов тика о занятии
-// (LessonRecipientsService).
+// `/me/notifications/lessons`, ADR-0162), число для штата к нему
+// (LessonPrefsStatsService, `/notifications/lesson-prefs-stats`) и получатели
+// шагов тика о занятии (LessonRecipientsService).
 // NotificationRecord регистрируется здесь и экспортируется через
 // MongooseModule — ExamsModule, который уже импортирует этот модуль ради
 // NotificationPrefsService, собирает им же InAppExamNotifier
@@ -18,6 +19,8 @@ import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { LessonNotificationsController } from './lesson-notifications.controller';
 import { LessonNotificationsService } from './lesson-notifications.service';
+import { LessonPrefsStatsController } from './lesson-prefs-stats.controller';
+import { LessonPrefsStatsService } from './lesson-prefs-stats.service';
 import { LessonRecipientsService } from './lesson-recipients.service';
 import { LessonScopeService } from './lesson-scope.service';
 import { NotificationPrefsController } from './notification-prefs.controller';
@@ -47,6 +50,7 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
   controllers: [
     NotificationPrefsController,
     LessonNotificationsController,
+    LessonPrefsStatsController,
     InboxController,
   ],
   providers: [
@@ -54,6 +58,7 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
     LessonScopeService,
     LessonRecipientsService,
     LessonNotificationsService,
+    LessonPrefsStatsService,
     InboxService,
   ],
   // LessonRecipientsService — шагам тика о занятии (LessonReminderService,

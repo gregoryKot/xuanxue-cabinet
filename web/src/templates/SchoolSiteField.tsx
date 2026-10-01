@@ -11,7 +11,7 @@
 //   (ТЗ preview-minutes.md) — учитель успевает поправить тему или отменить
 //   рассылку;
 // - за сколько минут ученику приходит напоминание о занятии — лента кабинета
-//   и push (ADR-0135).
+//   и push (ADR-0135); под ним — сколько учеников выбрали своё (ADR-0162).
 import type { CSSProperties } from 'react';
 import {
   SETTINGS_LIMITS,
@@ -24,6 +24,7 @@ import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
 import { editorSectionStyle } from '../components/editorLayout';
+import { LessonPrefsStats } from './LessonPrefsStats';
 import { useLessonReminderMinutesField } from './useLessonReminderMinutesField';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
@@ -140,6 +141,7 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
       >
         Сохранить напоминание о занятии
       </Button>
+      <LessonPrefsStats />
     </section>
   );
 }
