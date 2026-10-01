@@ -33,7 +33,7 @@ describe('buildNotificationsMenu', () => {
     ]);
   });
 
-  it('ученик видит только свои виды, не учительские (экзамен, занятие и его отмена, оплата)', () => {
+  it('ученик видит только свои виды, не учительские (экзамен, занятие, его отмена и запись, оплата)', () => {
     const menu = buildNotificationsMenu(
       [],
       ['exam_result', 'lesson_soon', 'lesson_cancelled', 'payment_due'],
@@ -44,8 +44,30 @@ describe('buildNotificationsMenu', () => {
       [{ text: 'Выключить', callback_data: 'notif:exam_result' }],
       [{ text: 'Выключить', callback_data: 'notif:lesson_soon' }],
       [{ text: 'Выключить', callback_data: 'notif:lesson_cancelled' }],
+      [{ text: 'Включить', callback_data: 'notif:recording_ready' }],
       [{ text: 'Выключить', callback_data: 'notif:payment_due' }],
     ]);
+  });
+
+  // ADR-0162: «Запись занятия» — вид «по желанию». Ученик видит его в меню
+  // выключенным, хотя сам ничего не переключал; включённый — с кнопкой «Выключить».
+  // Штат его не видит вовсе: у него таких видов нет.
+  it('«Запись занятия»: ученику — выключена и с подсказкой, включил — «включено», штату — нет', () => {
+    const off = buildNotificationsMenu([], ['exam_result']);
+    const on = buildNotificationsMenu([], ['recording_ready']);
+    const teacher = buildNotificationsMenu(['teacher'], ['post_draft']);
+
+    expect(off.text).toContain(
+      'Запись занятия — выключено\n' +
+        'Придёт, когда учитель добавит запись занятия, — в кабинет и push-уведомлением. ' +
+        'Обычно выключено: включите, если смотрите записи.',
+    );
+    expect(on.text).toContain('Запись занятия — включено');
+    expect(on.buttons).toContainEqual([
+      { text: 'Выключить', callback_data: 'notif:recording_ready' },
+    ]);
+    expect(teacher.text).not.toContain('Запись занятия');
+    expect(teacher.buttons).toHaveLength(4);
   });
 
   // ADR-0162: «Занятие отменено» — ученический вид, в меню бота он стоит с
@@ -74,19 +96,19 @@ describe('buildNotificationsMenu', () => {
     ]);
   });
 
-  it('без ролей (гость) — дефолт ученика, четыре вида', () => {
+  it('без ролей (гость) — дефолт ученика и вид «по желанию», пять кнопок', () => {
     const menu = buildNotificationsMenu(
       [],
       ['exam_result', 'lesson_soon', 'lesson_cancelled', 'payment_due'],
     );
 
-    expect(menu.buttons).toHaveLength(4);
+    expect(menu.buttons).toHaveLength(5);
   });
 
   it('ученик с одним включённым видом — меню не разваливается на пустых строках вокруг подсказки', () => {
     const menu = buildNotificationsMenu([], ['exam_result']);
 
-    // Один вид в тексте (у ученика их доступно четыре, но сюда передан один
+    // Один вид в тексте (у ученика их доступно пять, но сюда передан один
     // включённый — buildNotificationsMenu всё равно рисует все, остальные
     // выключенными) — блоки разделены ровно одним пустым переносом, без
     // утроенных, и без хвоста про кабинет (ADR-0065: бот и кабинет
@@ -99,6 +121,9 @@ describe('buildNotificationsMenu', () => {
         'Придёт перед началом занятия — в кабинет и push-уведомлением на телефон.\n\n' +
         'Занятие отменено — выключено\n' +
         'Придёт сразу, как учитель отменит занятие, — в кабинет и push-уведомлением.\n\n' +
+        'Запись занятия — выключено\n' +
+        'Придёт, когда учитель добавит запись занятия, — в кабинет и push-уведомлением. ' +
+        'Обычно выключено: включите, если смотрите записи.\n\n' +
         'Напоминание об оплате — выключено\n' +
         'Придёт раз в месяц, в день оплаты.',
     );

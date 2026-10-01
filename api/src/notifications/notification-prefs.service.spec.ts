@@ -156,6 +156,37 @@ describe('NotificationPrefsService', () => {
       ]);
     });
 
+    // ADR-0162: «Запись занятия» — вид «по желанию»: ученик видит его в
+    // настройках (`availableNotifications`), но он приходит, только когда сам
+    // включён. Сервис обязан отличать «не включал» от «включил» без отдельного
+    // хранения: хватает `overrides` (`applyOverrides` умеет добавлять вид).
+    it('«Запись занятия»: у ученика без переключения её нет, у включившего — есть', async () => {
+      await service.set('u1', 'recording_ready', true);
+
+      const result = await service.getManyEnabled([
+        { id: 'u1', roles: [] },
+        { id: 'u2', roles: [] },
+      ]);
+
+      expect(result.get('u1')).toEqual([
+        'exam_result',
+        'lesson_soon',
+        'lesson_cancelled',
+        'recording_ready',
+        'payment_due',
+      ]);
+      expect(result.get('u2')).not.toContain('recording_ready');
+    });
+
+    it('«Запись занятия» включена и выключена обратно — снова нет (read-after-write)', async () => {
+      await service.set('u1', 'recording_ready', true);
+      await service.set('u1', 'recording_ready', false);
+
+      expect(await service.get('u1', [])).toEqual({
+        enabled: ['exam_result', 'lesson_soon', 'lesson_cancelled', 'payment_due'],
+      });
+    });
+
     it('одна выборка на весь список — не запрос на человека в цикле', async () => {
       await service.set('u1', 'post_draft', false);
       const findSpy = jest.spyOn(model, 'find');

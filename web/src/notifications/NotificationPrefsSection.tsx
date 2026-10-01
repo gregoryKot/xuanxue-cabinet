@@ -4,7 +4,7 @@
 // рубрика `.xuanxue-eyebrow`, не второй `<h1>` (тот же приём, что
 // student/TasksScreen.tsx: на экране один h1 — у самого экрана).
 // Доступен любой роли, включая ученика — виды ограничены его ролями
-// (defaultNotifications), не гвардом маршрута. Переключение — сразу PATCH
+// (availableNotifications), не гвардом маршрута. Переключение — сразу PATCH
 // без оптимистичной отрисовки: строка остаётся в прежнем состоянии, пока не
 // пришёл ответ, тем же приёмом, что PersonRow.tsx делает с ролями.
 import { useState, type CSSProperties, type ReactNode } from 'react';

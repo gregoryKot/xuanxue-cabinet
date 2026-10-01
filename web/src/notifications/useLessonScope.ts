@@ -14,7 +14,7 @@
 // useNotificationPrefs.ts.
 import { useCallback, useState } from 'react';
 import {
-  defaultNotifications,
+  availableNotifications,
   hasLessonScopedKinds,
   type LessonReminderDto,
   type LessonScope,
@@ -36,7 +36,7 @@ const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попроб
  * занятиях», поля «За сколько напомнить» и запроса за их данными: человеку без
  * видов про занятие запрос не нужен, сервер отдал бы список впустую. */
 export function hasLessonSettings(me: MeDto | null): boolean {
-  return me !== null && hasLessonScopedKinds(defaultNotifications(me.roles));
+  return me !== null && hasLessonScopedKinds(availableNotifications(me.roles));
 }
 
 export interface UseLessonScopeResult {

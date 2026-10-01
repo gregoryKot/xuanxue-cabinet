@@ -18,6 +18,9 @@ const GRADING_PATH = '/grading';
 // занятие остаётся в расписании с пометкой (StudentLessonCard).
 
 const LESSONS_PATH = '/lessons';
+// «Записи занятий» ученика (ROUTE_MODULES.archive, слой 3.3): запись, о которой
+// сообщила лента (`recording_ready`, ADR-0162), лежит там, не на «Занятиях».
+const ARCHIVE_PATH = '/archive';
 
 // payment_due (ADR-0150) сознательно без адреса: экран ученика с оплатой —
 // слой 2.4 PLAN §15, пока его нет, ссылка вела бы в никуда. Когда экран
@@ -32,6 +35,7 @@ export function notificationTarget(item: NotificationDto): string | undefined {
   if (item.kind === 'lesson_soon' || item.kind === 'lesson_cancelled') {
     return LESSONS_PATH;
   }
+  if (item.kind === 'recording_ready') return ARCHIVE_PATH;
   if (item.kind === 'attempt_submitted' && item.attemptId) {
     return `${GRADING_PATH}/${item.attemptId}`;
   }

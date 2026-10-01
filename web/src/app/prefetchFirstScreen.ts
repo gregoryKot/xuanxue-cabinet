@@ -1,7 +1,11 @@
 // Что предзагрузить для роли и адреса — решение отдельно от «кто это запускает»
 // (FirstScreenPrefetch.tsx), чтобы проверить его без React (CLAUDE.md, ревью
 // «это можно протестировать без DOM?»).
-import { defaultNotifications, hasLessonScopedKinds, type MeDto } from '@xuanxue/shared';
+import {
+  availableNotifications,
+  hasLessonScopedKinds,
+  type MeDto,
+} from '@xuanxue/shared';
 import { MY_EXAMS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
@@ -33,7 +37,7 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   // экран не пойдёт (useLessonScope.ts, ADR-0162).
   const skipsLessonScope =
     route === ROUTE_MODULES.notificationSettings &&
-    !hasLessonScopedKinds(defaultNotifications(me.roles));
+    !hasLessonScopedKinds(availableNotifications(me.roles));
   const skipped = new Set([
     ...(skipsExams ? [MY_EXAMS_PATH] : []),
     ...(skipsLessonScope ? [MY_LESSON_NOTIFICATIONS_PATH] : []),

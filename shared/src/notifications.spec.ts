@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { USER_ROLES } from './auth';
+import { STUDENT_OPTIONAL_NOTIFICATIONS } from './notification-availability';
 import {
   DEFAULT_NOTIFICATIONS_BY_ROLE,
   defaultNotifications,
@@ -91,11 +92,27 @@ describe('defaultNotifications', () => {
   // «нет строки lesson_soon» (такой тест не переживёт следующего удаления), а
   // само условие входа в список: у каждого вида есть либо получатель по роли,
   // либо он ученический.
-  it('у каждого вида есть получатель: роль по умолчанию или ученик', () => {
+  it('у каждого вида есть получатель: роль по умолчанию, ученик или ученик «по желанию»', () => {
     for (const kind of NOTIFICATION_KINDS) {
       const hasRole = rolesWithNotification(kind).length > 0;
-      expect(hasRole || STUDENT_NOTIFICATIONS.includes(kind)).toBe(true);
+      const isStudentKind =
+        STUDENT_NOTIFICATIONS.includes(kind) ||
+        STUDENT_OPTIONAL_NOTIFICATIONS.includes(kind);
+      expect(hasRole || isStudentKind).toBe(true);
     }
+  });
+
+  // ADR-0162: «Запись занятия» ученик включает сам. Выключен у всех по
+  // умолчанию — ни в дефолте ученика, ни в дефолте любой роли.
+  it('recording_ready — вид «по желанию»: не в дефолте ни у кого, подпись и подсказка есть', () => {
+    expect(defaultNotifications([])).not.toContain('recording_ready');
+    for (const role of USER_ROLES) {
+      expect(defaultNotifications([role])).not.toContain('recording_ready');
+    }
+    expect(rolesWithNotification('recording_ready')).toEqual([]);
+    expect(NOTIFICATION_LABELS.recording_ready).toBe('Запись занятия');
+    expect(NOTIFICATION_HINTS.recording_ready).toContain('добавит запись занятия');
+    expect(NOTIFICATION_HINTS.recording_ready).not.toContain('**');
   });
 
   it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {

@@ -24,8 +24,8 @@ import { NOTIFICATION_ENCRYPT_SCHEMA, NotificationRecord } from './notification.
 /** Ровно одна «идентичность события» заполнена на вызов — та, что совпадает с
  * partial-индексом схемы (`(userId, kind, attemptId | lessonId | paymentMonth)`,
  * notification.schema.ts): по экзаменным видам — examId/examTitle/attemptId, по
- * `lesson_soon` и `lesson_cancelled` — lessonId/lessonTitle (у отмены ещё
- * lessonStartsAt), по `payment_due` — paymentMonth. Все
+ * `lesson_soon`, `lesson_cancelled` и `recording_ready` — lessonId/lessonTitle
+ * (у отмены и записи ещё lessonStartsAt), по `payment_due` — paymentMonth. Все
  * наборы необязательны в одном интерфейсе, а не три разных типа: строка
  * пишется одной и той же функцией для всех видов (см. шапку файла), а
  * отдельные типы развели бы её на похожие места. */
@@ -37,7 +37,7 @@ export interface WriteInput {
   attemptId?: string;
   lessonId?: string;
   lessonTitle?: string;
-  /** Начало занятия (UTC) — только у `lesson_cancelled`, ADR-0162. */
+  /** Начало занятия (UTC) — у `lesson_cancelled` и `recording_ready`, ADR-0162. */
   lessonStartsAt?: Date;
   paymentMonth?: string;
   outcome?: GradingOutcome;
@@ -57,7 +57,7 @@ export function staffWriteDeps(
   return { usersService, notificationPrefsService, model };
 }
 
-// Идентичность строки: lessonId у lesson_soon и lesson_cancelled, paymentMonth у
+// Идентичность строки: lessonId у видов про занятие, paymentMonth у
 // payment_due, иначе attemptId (экзаменные виды всегда его несут). Они никогда
 // не приходят вместе — один вызывающий код пишет ровно одно из трёх.
 export function identityFilter(input: WriteInput): Record<string, string | undefined> {

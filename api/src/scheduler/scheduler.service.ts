@@ -1,9 +1,7 @@
-// Единственная точка входа планировщика: здесь и только здесь строка
-// `scheduler.tick`, которую ждёт RUNBOOK §2 п.4. Шаги идут последовательно в
-// одном тике: рассылка не может появиться раньше своего занятия, доставка —
-// раньше рассылки, предпросмотр — раньше самой рассылки. Ошибка одного шага
-// не блокирует остальные — у каждого свой try/catch, итоговая строка лога
-// печатается всегда, с нулями там, где шаг упал.
+// Единственная точка входа планировщика: здесь и только здесь строка `scheduler.tick`,
+// которую ждёт RUNBOOK §2 п.4. Шаги идут по порядку: рассылка не раньше своего занятия,
+// доставка и предпросмотр — не раньше рассылки. Ошибка шага не блокирует остальные (у
+// каждого свой try/catch), итоговая строка лога печатается всегда, с нулями у упавшего.
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
@@ -23,6 +21,7 @@ import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
+import { RecordingReadyNoticeService } from '../lessons/recording-ready-notice.service';
 import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
@@ -44,6 +43,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly recordingPromptService: RecordingPromptService,
     private readonly lessonReminderService: LessonReminderService,
     private readonly lessonCancelNoticeService: LessonCancelNoticeService,
+    private readonly recordingReadyNoticeService: RecordingReadyNoticeService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly paymentReminderService: PaymentReminderService,
@@ -57,8 +57,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly heartbeat: SchedulerHeartbeat,
   ) {}
 
-  // waitForCompletion: пропущенный запуск код не вызывает, свой warn не нужен.
-  // heartbeat (аудит 2026-09-21, RUNBOOK §8 п.4): конец в finally — и при падении шага.
+  // waitForCompletion: пропущенный запуск код не вызывает; heartbeat — RUNBOOK §8 п.4.
   @Cron(CronExpression.EVERY_MINUTE, { waitForCompletion: true })
   async tick(): Promise<void> {
     this.heartbeat.noteTickStarted(DateTime.utc());
@@ -95,15 +94,16 @@ export class SchedulerService implements OnApplicationShutdown {
     const { reminded } = (await this.step('напоминание', now, (n) =>
       this.lessonReminderService.remind(n),
     )) ?? { reminded: 0 };
-    // ADR-0162: отмену занятия ученикам сообщает тик, а не PATCH учителя.
     const { notified: cancelNotices } = (await this.step('отмена ученикам', now, (n) =>
       this.lessonCancelNoticeService.announce(n),
+    )) ?? { notified: 0 };
+    const { notified: recordingNotices } = (await this.step('запись ученикам', now, (n) =>
+      this.recordingReadyNoticeService.announce(n),
     )) ?? { notified: 0 };
     const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
       this.manualPromptService.prompt(n),
     )) ?? { prompted: 0 };
-    // Блокер аудита 2026-09-15: без шага просроченная попытка не закрывалась бы,
-    // если ученик не вернулся (exam-deadline-close.service.ts).
+    // Блокер аудита 2026-09-15: без шага просроченную попытку не закрыл бы никто.
     const { closed: examAttemptsClosed } = (await this.step(
       'дедлайны экзаменов',
       now,
@@ -129,7 +129,7 @@ export class SchedulerService implements OnApplicationShutdown {
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
-        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} cancelNotices=${cancelNotices} ` +
+        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} cancelNotices=${cancelNotices} recordingNotices=${recordingNotices} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `paymentReminders=${paymentReminders} ${formatSweepResults(sweep)}`,
     );

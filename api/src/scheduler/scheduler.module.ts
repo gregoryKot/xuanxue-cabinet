@@ -3,15 +3,13 @@
 // LessonsModule зависит от ClassesModule ради модели класса. Планировщику
 // нужны обе модели — SchedulerModule импортирует оба домена напрямую; ни
 // ClassesModule, ни LessonsModule про SchedulerModule не знают — цикла нет.
-// BroadcastPlannerService/BroadcastCancelNotifyService/DeliveryRunnerService/
-// PreviewService/RecordingPromptService/ManualPromptService/
-// ExamDeadlineCloseService/LessonCancelNoticeService живут физически в своих
-// доменах (broadcasts/, deliveries/, lessons/, exams/), но провайдер — здесь:
-// тот же приём, что с LessonPlannerService (ADR-0013 «Отдельный модуль модели
-// разрывает цикл»). BroadcastCancelNotifyService именно поэтому здесь, а не
-// провайдером BroadcastsModule: ему нужен TEACHER_NOTIFIER (TelegramModule), а
-// BroadcastsModule не может импортировать TelegramModule — тот сам
-// импортирует BroadcastsModule (цикл). Тот же довод — для
+// Сервисы шагов тика (рассылки, доставка, предпросмотр, «Запись?», ручные каналы,
+// дедлайны экзаменов, отмена и запись занятия ученикам) живут физически в своих
+// доменах, но провайдер — здесь: тот же приём, что с LessonPlannerService
+// (ADR-0013 «Отдельный модуль модели разрывает цикл»). BroadcastCancelNotifyService
+// именно поэтому здесь, а не провайдером BroadcastsModule: ему нужен
+// TEACHER_NOTIFIER (TelegramModule), а BroadcastsModule не может импортировать
+// TelegramModule — тот сам импортирует BroadcastsModule (цикл). Тот же довод — для
 // ExamDeadlineCloseService и EXAM_NOTIFIER: ExamsModule сам импортирует
 // TelegramModule (EXAM_NOTIFIER собран там), его граф (контроллеры,
 // MediaModule) ради одного сервиса не нужен.
@@ -63,6 +61,7 @@ import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { LessonsModule } from '../lessons/lessons.module';
 import { MediaModule } from '../media/media.module';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
+import { RecordingReadyNoticeService } from '../lessons/recording-ready-notice.service';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentReminderService } from '../payments/payment-reminder.service';
@@ -119,6 +118,7 @@ import { SchedulerService } from './scheduler.service';
     RecordingPromptService,
     LessonReminderService, // напоминание ученикам о занятии (ADR-0135)
     LessonCancelNoticeService, // отмена занятия ученикам (ADR-0162)
+    RecordingReadyNoticeService, // запись занятия ученикам (ADR-0162)
     ManualPromptService,
     ExamDeadlineCloseService,
     PaymentReminderService, // напоминание ученикам об оплате (ADR-0150)

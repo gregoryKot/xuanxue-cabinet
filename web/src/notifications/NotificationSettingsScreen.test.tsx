@@ -153,6 +153,27 @@ describe('NotificationSettingsScreen — «Что присылать» по ро
     expect(screen.queryByText('Занятие отменено')).not.toBeInTheDocument();
   });
 
+  // ADR-0162: «Запись занятия» — вид «по желанию». Ученик видит его выключенным,
+  // хотя ни разу не переключал: в `enabled` вида нет, а в списке он есть.
+  it('ученик видит «Запись занятия» с подсказкой и выключенным переключателем', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result', 'lesson_cancelled'] });
+
+    expect(await screen.findByText('Запись занятия')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Придёт, когда учитель добавит запись занятия, — в кабинет и push-уведомлением. Обычно выключено: включите, если смотрите записи.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Запись занятия' })).not.toBeChecked();
+  });
+
+  it('учитель «Запись занятия» не видит: у штата вида «по желанию» нет', async () => {
+    renderScreen(TEACHER, { enabled: [] });
+
+    expect(await screen.findByText('Черновик поста')).toBeInTheDocument();
+    expect(screen.queryByText('Запись занятия')).not.toBeInTheDocument();
+  });
+
   // Бот и кабинет переключают одно и то же (ADR-0065) — строка про бота рядом
   // с самими переключателями. Строка зависит от botChatActive (отзыв владельца
   // 2026-09-22, регрессия — раньше рисовалась безусловно и спорила с блоком
@@ -226,6 +247,27 @@ describe('NotificationSettingsScreen — переключение вида (read
       expect.objectContaining({
         method: 'PATCH',
         body: { kind: 'exam_result', enabled: true },
+      }),
+    );
+  });
+
+  // «Запись занятия» включается тем же PATCH, что и любой вид: сервер хранит
+  // это как override `enabled: true` сверх дефолта (ADR-0162).
+  it('«Запись занятия» включается тем же PATCH и встаёт включённой из ответа', async () => {
+    const user = userEvent.setup();
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+    const toggle = await screen.findByRole('checkbox', { name: 'Запись занятия' });
+    expect(toggle).not.toBeChecked();
+
+    serve(STUDENT, { enabled: ['exam_result', 'recording_ready'] });
+    await user.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      PREFS_PATH,
+      expect.objectContaining({
+        method: 'PATCH',
+        body: { kind: 'recording_ready', enabled: true },
       }),
     );
   });

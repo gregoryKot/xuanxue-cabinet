@@ -62,8 +62,8 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
     InboxService,
   ],
   // LessonRecipientsService — шагам тика о занятии (LessonReminderService,
-  // LessonCancelNoticeService, провайдеры SchedulerModule): получатели и их
-  // выбор занятий одной выборкой на пачку учеников.
+  // LessonCancelNoticeService, RecordingReadyNoticeService, провайдеры
+  // SchedulerModule): получатели и их выбор занятий одной выборкой на пачку.
   exports: [MongooseModule, NotificationPrefsService, LessonRecipientsService],
 })
 export class NotificationsModule {}
