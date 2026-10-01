@@ -1,6 +1,8 @@
 // Блок «О каких занятиях» (LessonScopeSection.tsx, ADR-0162): выбор «обо всех» /
 // «только о выбранных» и галочки занятий. Запись — PUT с выбором целиком, экран
-// рисуется из его ответа (read-after-write без второго GET, ADR-0087).
+// рисуется из его ответа (read-after-write без второго GET, ADR-0087). Данные
+// блок не грузит: их отдаёт экран (useLessonScope.ts), поэтому здесь — тонкая
+// обвязка, которая делает то же, что экран.
 // Пояс зрителя задан явно (CLAUDE.md «Детерминизм»): по умолчанию — пояс школы,
 // чтобы подпись пояса не зависела от машины, на которой идёт тест.
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -22,6 +24,7 @@ import {
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { LessonScopeSection } from './LessonScopeSection';
+import { useLessonScope } from './useLessonScope';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -85,11 +88,15 @@ function serve(me: MeDto, response: unknown, putResponse: unknown = response) {
   });
 }
 
+function SectionWithData() {
+  return <LessonScopeSection lessons={useLessonScope()} />;
+}
+
 function renderSection() {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <LessonScopeSection />
+        <SectionWithData />
       </AuthProvider>
     </MemoryRouter>,
   );

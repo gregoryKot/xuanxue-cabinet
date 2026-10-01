@@ -6,14 +6,11 @@
 // Каждое изменение — сразу PUT с выбором целиком и отрисовка из его ответа, без
 // второго GET (ADR-0087). Оптимистичной отрисовки нет: пока PUT в пути,
 // контролы выключены, а положение не меняется до ответа, тем же приёмом, что у
-// NotificationPrefsSection.tsx.
+// NotificationPrefsSection.tsx. Данные блок не грузит сам: экран зовёт
+// useLessonScope один раз и отдаёт результат и ему, и полю «За сколько
+// напомнить» (LessonReminderField.tsx) — один `GET` на экран.
 import type { CSSProperties } from 'react';
-import {
-  LESSON_SCOPE_MODES,
-  defaultNotifications,
-  hasLessonScopedKinds,
-  type LessonScopeMode,
-} from '@xuanxue/shared';
+import { LESSON_SCOPE_MODES, type LessonScopeMode } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadableSection } from '../components/LoadableSection';
 import { dangerNoteStyle } from '../components/screenLayout';
@@ -21,7 +18,7 @@ import { SkeletonList } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { LessonScopeClassList } from './LessonScopeClassList';
 import { scopeWithMode } from './lessonScopeEdit';
-import { useLessonScope } from './useLessonScope';
+import { hasLessonSettings, type UseLessonScopeResult } from './useLessonScope';
 
 const HEADING = 'О каких занятиях';
 const EXPLANATION =
@@ -42,9 +39,8 @@ const fieldsetStyle: CSSProperties = {
   gap: 6,
 };
 
-function LessonScopeBlock() {
-  const { scope, classes, loading, error, reload, saving, saveError, save } =
-    useLessonScope();
+function LessonScopeBlock({ lessons }: { lessons: UseLessonScopeResult }) {
+  const { scope, classes, loading, error, reload, saving, saveError, save } = lessons;
 
   return (
     <LoadableSection
@@ -92,11 +88,11 @@ function LessonScopeBlock() {
   );
 }
 
-export function LessonScopeSection() {
+export function LessonScopeSection({ lessons }: { lessons: UseLessonScopeResult }) {
   const { me } = useAuth();
-  // Пока `me` не пришёл, не знаем, нужен ли блок: скелетон, не пустота и не
-  // лишний запрос за занятиями человеку, которому блока не положено.
+  // Пока `me` не пришёл, не знаем, нужен ли блок: скелетон, не пустота. Запрос
+  // за занятиями экран шлёт только тому, кому блок положен (`hasLessonSettings`).
   if (me === null) return <SkeletonList rows={3} h={48} />;
-  if (!hasLessonScopedKinds(defaultNotifications(me.roles))) return null;
-  return <LessonScopeBlock />;
+  if (!hasLessonSettings(me)) return null;
+  return <LessonScopeBlock lessons={lessons} />;
 }

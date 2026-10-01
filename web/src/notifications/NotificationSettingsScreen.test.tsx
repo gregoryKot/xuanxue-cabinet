@@ -3,8 +3,9 @@
 // подсказки про бота и сбоя загрузки перенесены сюда из ProfileScreen.test.tsx,
 // где раздел жил до переезда (CLAUDE.md «Отказались от механики — удаляем с
 // концами»: покрытие осталось, поменялся адрес). Блок push здесь заменён
-// заглушкой — его состояния держит PushNotificationsSection.test.tsx; а блок
-// «О каких занятиях» в подробностях — LessonScopeSection.test.tsx.
+// заглушкой — его состояния держит PushNotificationsSection.test.tsx; блок
+// «О каких занятиях» в подробностях — LessonScopeSection.test.tsx, а поле «За
+// сколько напомнить» под «Занятие скоро» — LessonReminderField.test.tsx.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
