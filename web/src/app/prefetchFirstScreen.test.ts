@@ -118,8 +118,10 @@ describe('firstScreenPaths', () => {
 
   // Новые задания считаются только у ученика (ADR-0074): у штата школы
   // попыток нет, поэтому этот прогрев не ходит в /me/exams — промис остался
-  // бы в prefetchCache, забрать его было бы некому.
-  it('штат школы на /notifications — греется только лента, без /me/exams', () => {
+  // бы в prefetchCache, забрать его было бы некому. То же с занятиями для
+  // подсказки «выберите свои занятия» (ADR-0162, п. 5): у штата вида про
+  // занятие нет, и лента за ними не пойдёт (LessonScopeHint.tsx).
+  it('штат школы на /notifications — греется только лента, без /me/exams и занятий', () => {
     expect(firstScreenPaths('/notifications', makeMe({ roles: ['teacher'] }))).toEqual([
       NOTIFICATIONS_FEED_PATH,
     ]);
@@ -131,10 +133,11 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
-  it('ученик на /notifications — греется лента и формы, как раньше', () => {
+  it('ученик на /notifications — греются лента, формы и занятия для подсказки', () => {
     expect(firstScreenPaths('/notifications', makeMe({ roles: [] }))).toEqual([
       NOTIFICATIONS_FEED_PATH,
       MY_EXAMS_PATH,
+      MY_LESSON_NOTIFICATIONS_PATH,
     ]);
   });
 

@@ -41,14 +41,15 @@ export class LessonNotificationsService {
   ) {}
 
   async get(userId: string): Promise<MyLessonNotificationsDto> {
-    const [scope, classes, own, school] = await Promise.all([
-      this.lessonScopes.get(userId),
+    const [{ scope, chosen }, classes, own, school] = await Promise.all([
+      this.lessonScopes.getChoice(userId),
       listLessonScopeClasses(this.classModel),
       this.lessonScopes.getReminderMinutes(userId),
       this.settingsService.get(),
     ]);
     return {
       scope,
+      scopeChosen: chosen,
       classes,
       reminder: toReminderDto(own, school.lessonReminderMinutes),
     };

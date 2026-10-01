@@ -73,6 +73,16 @@ const spinnerStyle: CSSProperties = {
   animation: 'xuanxue-spin 700ms linear infinite',
 };
 
+/** Силуэт кнопки без состояния (`pending`, `disabled`) — общий с ButtonLink.tsx:
+ * переход на другой экран выглядит как кнопка, но остаётся `<a>`, а не
+ * `<button>` с `navigate()`. */
+export function buttonSurfaceStyle(
+  variant: ButtonVariant,
+  size: ButtonSize = 'default',
+): CSSProperties {
+  return { ...base, ...variants[variant], ...sizes[size] };
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -92,9 +102,7 @@ export function Button({
     <button
       type="button"
       style={{
-        ...base,
-        ...variants[variant],
-        ...sizes[size],
+        ...buttonSurfaceStyle(variant, size),
         opacity: pending ? 0.7 : 1,
         ...style,
       }}

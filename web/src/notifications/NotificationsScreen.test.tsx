@@ -7,11 +7,17 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MeDto, MyExamDto, NotificationDto } from '@xuanxue/shared';
+import type {
+  MeDto,
+  MyExamDto,
+  MyLessonNotificationsDto,
+  NotificationDto,
+} from '@xuanxue/shared';
 import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { AuthProvider } from '../auth/AuthProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
@@ -94,9 +100,20 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   };
 }
 
-function renderScreen(overrides: Record<string, unknown> = {}) {
+// Подсказка «выберите свои занятия» (ADR-0162, п. 5) спрашивает занятия у каждого
+// ученика. По умолчанию человек уже выбирал — подсказки нет, и остальные тесты
+// ленты её не видят; тесты подсказки подставляют свой ответ.
+const LESSONS_CHOSEN: MyLessonNotificationsDto = {
+  scope: { mode: 'all', classIds: [] },
+  scopeChosen: true,
+  classes: [],
+  reminder: { minutes: null, schoolMinutes: 60 },
+};
+
+function renderScreen(overrides: Record<string, unknown> = {}, me: MeDto = ME_LINKED) {
   mockApiByPath({
-    '/auth/me': ME_LINKED,
+    '/auth/me': me,
+    [MY_LESSON_NOTIFICATIONS_PATH]: LESSONS_CHOSEN,
     [MY_EXAMS_PATH]: [],
     [NOTIFICATIONS_FEED_PATH]: { items: [], unreadCount: 0 },
     '/me/inbox/': undefined, // POST .../read и .../read-all
@@ -105,8 +122,8 @@ function renderScreen(overrides: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <MyExamsProvider me={ME_LINKED}>
-          <NotificationsProvider me={ME_LINKED}>
+        <MyExamsProvider me={me}>
+          <NotificationsProvider me={me}>
             <NotificationsScreen />
           </NotificationsProvider>
         </MyExamsProvider>
@@ -161,6 +178,88 @@ describe('NotificationsScreen — ссылка на настройки (ADR-0162
     expect(
       row.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+// Подсказка «выберите свои занятия» (LessonScopeHint.tsx, ADR-0162, п. 5): тексты и
+// кнопки — в LessonScopeHint.test.tsx, здесь её место в ленте и то, что сбой
+// второстепенных данных ленту не трогает.
+describe('NotificationsScreen — подсказка «выберите свои занятия»', () => {
+  const lessonsPending = (overrides: Partial<MyLessonNotificationsDto> = {}) => ({
+    ...LESSONS_CHOSEN,
+    scopeChosen: false,
+    classes: [
+      {
+        id: 'c1',
+        title: 'Цигун',
+        groupLabel: '',
+        tz: 'Asia/Jerusalem',
+        slots: [
+          { weekday: 1, time: '19:00', durationMin: 60 },
+          { weekday: 3, time: '19:00', durationMin: 60 },
+        ],
+      },
+    ],
+    ...overrides,
+  });
+  const lessonGets = () =>
+    mockedApiFetch.mock.calls.filter(([path]) => path === MY_LESSON_NOTIFICATIONS_PATH);
+
+  it('стоит самой первой: над карточкой нового задания и над лентой', async () => {
+    renderScreen({
+      [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending(),
+      [MY_EXAMS_PATH]: [makeExam()],
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    const hint = await screen.findByText('2 раза в неделю');
+    const task = await screen.findByText('Новое задание');
+    const row = await screen.findByText('Текст события');
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(hint.compareDocumentPosition(task) & FOLLOWING).toBeTruthy();
+    expect(hint.compareDocumentPosition(row) & FOLLOWING).toBeTruthy();
+  });
+
+  it('и при пустой ленте', async () => {
+    renderScreen({ [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending() });
+
+    expect(await screen.findByText('2 раза в неделю')).toBeInTheDocument();
+    expect(await screen.findByText('Уведомлений пока нет.')).toBeInTheDocument();
+  });
+
+  it('человек уже выбирал — подсказки нет', async () => {
+    renderScreen();
+
+    await screen.findByText('Уведомлений пока нет.');
+    await waitFor(() => expect(lessonGets()).toHaveLength(1));
+    expect(
+      screen.queryByRole('button', { name: 'Оставить все' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('штат — подсказки нет и за занятиями лента не ходит', async () => {
+    const teacher: MeDto = { ...ME_LINKED, roles: ['teacher'] };
+    renderScreen({ [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending() }, teacher);
+
+    await screen.findByText('Уведомлений пока нет.');
+    expect(
+      screen.queryByRole('button', { name: 'Оставить все' }),
+    ).not.toBeInTheDocument();
+    expect(lessonGets()).toHaveLength(0);
+  });
+
+  it('занятия не загрузились — ни подсказки, ни баннера ошибки: лента живёт без неё', async () => {
+    renderScreen({
+      [MY_LESSON_NOTIFICATIONS_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    await screen.findByText('Текст события');
+    await waitFor(() => expect(lessonGets()).toHaveLength(1));
+    expect(
+      screen.queryByRole('button', { name: 'Оставить все' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 

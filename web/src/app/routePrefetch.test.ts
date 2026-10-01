@@ -117,10 +117,11 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     ]);
   });
 
-  it('/notifications — лента событий и список своих экзаменов (новые задания)', () => {
+  it('/notifications — лента, список своих экзаменов (новые задания) и занятия (подсказка «выберите свои»)', () => {
     expect(prefetchAt('/notifications')).toEqual([
       NOTIFICATIONS_FEED_PATH,
       MY_EXAMS_PATH,
+      MY_LESSON_NOTIFICATIONS_PATH,
     ]);
   });
 

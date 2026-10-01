@@ -57,6 +57,51 @@ describe('LessonNotificationsService', () => {
     expect(result.classes.map((c) => c.id)).toEqual([cls._id.toString()]);
   });
 
+  // ADR-0162, п. 5: `scopeChosen` — «человек сам записал режим», даже «все». По
+  // нему лента решает, показывать ли подсказку «выберите свои занятия».
+  describe('scopeChosen', () => {
+    it('нет документа — false', async () => {
+      expect((await service.get('u1')).scopeChosen).toBe(false);
+    });
+
+    it('своё «за сколько» без выбора занятий — всё ещё false', async () => {
+      const written = await service.updateReminder('u1', { minutes: 30 });
+
+      expect(written.scopeChosen).toBe(false);
+      expect((await service.get('u1')).scopeChosen).toBe(false);
+    });
+
+    it('PUT «все» — true в ответе и в следующем GET, режим по-прежнему «все»', async () => {
+      const written = await service.update('u1', { mode: 'all', classIds: [] });
+
+      expect(written.scopeChosen).toBe(true);
+      expect(written.scope).toEqual({ mode: 'all', classIds: [] });
+      expect(await service.get('u1')).toEqual(written);
+    });
+
+    it('PUT «выбранные» — true; у другого человека false', async () => {
+      const cls = await createClass();
+
+      const written = await service.update('u1', {
+        mode: 'selected',
+        classIds: [cls._id.toString()],
+      });
+
+      expect(written.scopeChosen).toBe(true);
+      expect((await service.get('u2')).scopeChosen).toBe(false);
+    });
+
+    it('отклонённый PUT (несуществующее занятие) выбора не записывает — false', async () => {
+      const gone = new Types.ObjectId().toString();
+
+      await expect(
+        service.update('u1', { mode: 'all', classIds: [gone] }),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+
+      expect((await service.get('u1')).scopeChosen).toBe(false);
+    });
+  });
+
   it('PUT отвечает тем, что потом покажет GET (read-after-write, ADR-0087)', async () => {
     const cls = await createClass();
 

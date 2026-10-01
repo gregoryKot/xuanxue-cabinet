@@ -47,6 +47,12 @@ export interface LessonReminderDto {
 
 export interface MyLessonNotificationsDto {
   scope: LessonScope;
+  /** Выбирал ли человек сам: в `notification_prefs` записан режим, и «все» в
+   * том числе. `false` — «все» по умолчанию, человек ничего не отмечал; по нему
+   * лента решает, подсказать ли выбрать свои занятия (ADR-0162, п. 5). Отдельное
+   * поле, а не часть `LessonScope`: этот тип же — тело `PUT`, а «выбирал» решает
+   * сервер, не клиент. */
+  scopeChosen: boolean;
   /** Активные занятия расписания — из них человек ставит галочки. */
   classes: LessonScopeClassDto[];
   reminder: LessonReminderDto;

@@ -58,6 +58,7 @@ const lessons = (
   schoolMinutes = 60,
 ): MyLessonNotificationsDto => ({
   scope: { mode: 'all', classIds: [] },
+  scopeChosen: false,
   classes: [],
   reminder: { minutes, schoolMinutes },
 });

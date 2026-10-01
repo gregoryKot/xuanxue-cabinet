@@ -13,6 +13,7 @@ const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'act
 
 const PAGE: MyLessonNotificationsDto = {
   scope: { mode: 'selected', classIds: ['c1'] },
+  scopeChosen: true,
   classes: [],
   reminder: { minutes: 30, schoolMinutes: 60 },
 };

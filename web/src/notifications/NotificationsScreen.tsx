@@ -19,6 +19,7 @@ import { TextLinkButton } from '../components/TextLinkButton';
 import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
 import { TELEGRAM_CHAT_EXPLANATION } from '../telegram/telegramChatExplanation';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
+import { LessonScopeHint } from './LessonScopeHint';
 import { NewTaskCard } from './NewTaskCard';
 import { NotificationSettingsLink } from './NotificationSettingsLink';
 import { NotificationGroup } from './NotificationGroup';
@@ -95,6 +96,10 @@ export default function NotificationsScreen() {
           retryLabel="Обновить"
         />
       )}
+
+      {/* Сверху ленты: «почему мне столько пишут» — вопрос этого экрана
+          (ADR-0162, п. 5). Своя загрузка и свой молчаливый сбой. */}
+      <LessonScopeHint />
 
       {/* Только первая загрузка: markRead перечитывает ленту, и на голом
           `loading` список схлопывался бы в скелетон от каждого нажатия по

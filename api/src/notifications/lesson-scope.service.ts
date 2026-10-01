@@ -22,6 +22,14 @@ export interface LessonPrefs {
   reminderMinutes?: number;
 }
 
+/** Выбор человека и то, делал ли он его сам: «все» по умолчанию и «все»,
+ * выбранное руками, читаются одинаково, а подсказка в ленте (ADR-0162, п. 5)
+ * должна их различать. */
+export interface LessonScopeChoice {
+  scope: LessonScope;
+  chosen: boolean;
+}
+
 /** Нет документа или в нём нет выбора — «как у школы»: обо всех занятиях,
  * галочек нет. Каждый вызов собирает свой объект — массив из общей константы
  * кто-нибудь мог бы дополнить. */
@@ -48,11 +56,14 @@ export class LessonScopeService {
     private readonly model: Model<NotificationPrefsRecord>,
   ) {}
 
-  async get(userId: string): Promise<LessonScope> {
+  /** Выбор одним чтением. `chosen` — в документе записан режим (даже `all`):
+   * переключатели видов документ заводят, а режим не трогают, и «есть
+   * документ» тут не признак. */
+  async getChoice(userId: string): Promise<LessonScopeChoice> {
     const doc = await this.model
       .findOne({ userId }, { lessonScopeMode: 1, lessonClassIds: 1 })
       .lean<LeanScope | null>();
-    return toScope(doc);
+    return { scope: toScope(doc), chosen: Boolean(doc?.lessonScopeMode) };
   }
 
   /** Своё «за сколько минут» или `undefined` — «как в школе». */

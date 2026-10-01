@@ -39,6 +39,7 @@ const personWith = (roles: UserRole[]): MeDto => ({
 
 const lessons = (minutes: number | null): MyLessonNotificationsDto => ({
   scope: { mode: 'selected', classIds: ['c1'] },
+  scopeChosen: true,
   classes: [],
   reminder: { minutes, schoolMinutes: 60 },
 });
@@ -84,6 +85,7 @@ describe('useLessonScope — ответ записи раньше `GET`', () => 
     await act(() => result.current.save({ mode: 'selected', classIds: ['c1'] }));
 
     expect(result.current.scope).toEqual({ mode: 'selected', classIds: ['c1'] });
+    expect(result.current.scopeChosen).toBe(true);
     expect(result.current.reminder).toEqual({ minutes: 30, schoolMinutes: 60 });
     expect(result.current.loading).toBe(false);
   });
@@ -96,6 +98,30 @@ describe('useLessonScope — ответ записи раньше `GET`', () => 
 
     expect(result.current.reminder).toEqual({ minutes: 120, schoolMinutes: 60 });
     expect(result.current.scope).toEqual({ mode: 'selected', classIds: ['c1'] });
+  });
+});
+
+describe('useLessonScope — «выбирал ли человек сам»', () => {
+  it('в ответе `GET` — false, после записи «все» — true из ответа `PUT`, без второго `GET`', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(personWith([]));
+      if (path === LESSONS_PATH)
+        return Promise.resolve({ ...lessons(null), scopeChosen: false });
+      if (path === SCOPE_PATH) return Promise.resolve(lessons(null));
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AuthProvider>{children}</AuthProvider>
+    );
+    const { result } = renderHook(() => useLessonScope(), { wrapper });
+    await waitFor(() => expect(result.current.scopeChosen).toBe(false));
+
+    await act(() => result.current.save({ mode: 'all', classIds: [] }));
+
+    expect(result.current.scopeChosen).toBe(true);
+    expect(
+      mockedApiFetch.mock.calls.filter(([path]) => path === LESSONS_PATH),
+    ).toHaveLength(1);
   });
 });
 
@@ -118,6 +144,7 @@ describe('useLessonScope — кому за данными ходить', () => {
     await act(() => Promise.resolve());
     expect(result.current.loading).toBe(false);
     expect(result.current.reminder).toBeNull();
+    expect(result.current.scopeChosen).toBeNull();
     expect(
       mockedApiFetch.mock.calls.filter(([path]) => path === LESSONS_PATH),
     ).toHaveLength(0);

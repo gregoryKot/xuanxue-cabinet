@@ -28,48 +28,83 @@ describe('LessonScopeService', () => {
     await model.deleteMany({});
   });
 
+  const scopeOf = async (userId: string) => (await service.getChoice(userId)).scope;
+
   it('без документа — обо всех занятиях, галочек нет', async () => {
-    expect(await service.get('u1')).toEqual({ mode: 'all', classIds: [] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'all', classIds: [] });
   });
 
   it('документ есть, а выбора нет (человек трогал только переключатели) — обо всех', async () => {
     await new NotificationPrefsService(model).set('u1', 'exam_result', false);
 
-    expect(await service.get('u1')).toEqual({ mode: 'all', classIds: [] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'all', classIds: [] });
   });
 
   it('выбрал занятия → прочитал: режим и список на месте (read-after-write)', async () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1', 'c2'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c1', 'c2'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c1', 'c2'] });
   });
 
   it('«выбранные» без галочек — так и читается, а не превращается в «все»', async () => {
     await service.set('u1', { mode: 'selected', classIds: [] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: [] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: [] });
   });
 
   it('вернулся к «всем» — галочки не стёрты, вернулся к «выбранным» — на месте', async () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1'] });
     await service.set('u1', { mode: 'all', classIds: ['c1'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'all', classIds: ['c1'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'all', classIds: ['c1'] });
     const stored = await model.findOne({ userId: 'u1' }).lean();
     expect(stored?.lessonClassIds).toEqual(['c1']);
+  });
+
+  // ADR-0162, п. 5: подсказка в ленте нужна тому, кто ничего не выбирал, и только
+  // ему. «Все», выбранное руками, от «всех» по умолчанию читается одинаково —
+  // различает их только записанный режим.
+  describe('chosen — выбирал ли человек сам', () => {
+    it('без документа — нет', async () => {
+      expect((await service.getChoice('u1')).chosen).toBe(false);
+    });
+
+    it('документ есть, а режима нет (трогал только переключатели или «за сколько») — нет', async () => {
+      await new NotificationPrefsService(model).set('u1', 'exam_result', false);
+      await service.setReminderMinutes('u2', 30);
+
+      expect((await service.getChoice('u1')).chosen).toBe(false);
+      expect((await service.getChoice('u2')).chosen).toBe(false);
+    });
+
+    it('записал «все» руками — да, и список режим «все» по-прежнему «все»', async () => {
+      await service.set('u1', { mode: 'all', classIds: [] });
+
+      expect(await service.getChoice('u1')).toEqual({
+        scope: { mode: 'all', classIds: [] },
+        chosen: true,
+      });
+    });
+
+    it('записал «выбранные» — да, у другого человека по-прежнему нет', async () => {
+      await service.set('u1', { mode: 'selected', classIds: ['c1'] });
+
+      expect((await service.getChoice('u1')).chosen).toBe(true);
+      expect((await service.getChoice('u2')).chosen).toBe(false);
+    });
   });
 
   it('повторы id в списке схлопываются, порядок первых вхождений сохранён', async () => {
     await service.set('u1', { mode: 'selected', classIds: ['c2', 'c1', 'c2', 'c1'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c2', 'c1'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c2', 'c1'] });
   });
 
   it('второй раз то же самое — тот же результат, документ один', async () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1'] });
     await service.set('u1', { mode: 'selected', classIds: ['c1'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
 
@@ -77,7 +112,7 @@ describe('LessonScopeService', () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1', 'c2'] });
     await service.set('u1', { mode: 'selected', classIds: ['c3'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c3'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c3'] });
   });
 
   it('выбор сохраняется, переключатели уведомлений не затронуты, и наоборот', async () => {
@@ -86,7 +121,7 @@ describe('LessonScopeService', () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1'] });
     await prefs.set('u1', 'payments', true);
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
     expect(await prefs.get('u1', [])).toEqual({
       enabled: ['lesson_soon', 'lesson_cancelled', 'payment_due', 'payments'],
     });
@@ -96,8 +131,8 @@ describe('LessonScopeService', () => {
     await service.set('u1', { mode: 'selected', classIds: ['c1'] });
     await service.set('u2', { mode: 'selected', classIds: ['c2'] });
 
-    expect(await service.get('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
-    expect(await service.get('u2')).toEqual({ mode: 'selected', classIds: ['c2'] });
+    expect(await scopeOf('u1')).toEqual({ mode: 'selected', classIds: ['c1'] });
+    expect(await scopeOf('u2')).toEqual({ mode: 'selected', classIds: ['c2'] });
   });
 
   describe('getManyLessonPrefs', () => {
@@ -193,7 +228,7 @@ describe('LessonScopeService', () => {
       await service.set('u1', { mode: 'all', classIds: ['c1'] });
 
       expect(await service.getReminderMinutes('u1')).toBe(15);
-      expect(await service.get('u1')).toEqual({ mode: 'all', classIds: ['c1'] });
+      expect(await scopeOf('u1')).toEqual({ mode: 'all', classIds: ['c1'] });
       expect((await prefs.get('u1', [])).enabled).not.toContain('exam_result');
     });
 

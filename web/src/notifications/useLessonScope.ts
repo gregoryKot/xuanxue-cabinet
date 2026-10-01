@@ -7,11 +7,14 @@
 // Запись — `PUT`, и каждый `PUT` отдаёт то же, что `GET` (MyLessonNotificationsDto),
 // поэтому ответ кладётся на экран напрямую (`applyData`), а не перечитывается
 // вторым запросом (ADR-0087, check-write-then-reload). Из ответа берётся только
-// своя часть: выбор занятий пишет `scope` и `classes`, «за сколько» — `reminder`.
+// своя часть: выбор занятий пишет `scope`, `scopeChosen` и `classes`, «за
+// сколько» — `reminder`.
 // Если оба `PUT` в пути, ответ раньше уехавшего принёс бы чужую часть в
 // состоянии «до» и затёр бы свежую. Оптимистичной отрисовки нет: контрол
 // остаётся в прежнем положении, пока не пришёл ответ, тем же приёмом, что
 // useNotificationPrefs.ts.
+// Тот же хук читает и лента (LessonScopeHint.tsx, подсказка «выберите свои
+// занятия», ADR-0162, п. 5): второго хука за тем же ресурсом нет.
 import { useCallback, useState } from 'react';
 import {
   availableNotifications,
@@ -41,6 +44,9 @@ export function hasLessonSettings(me: MeDto | null): boolean {
 
 export interface UseLessonScopeResult {
   scope: LessonScope | null;
+  /** Выбирал ли человек сам (в том числе «все»); `null`, пока данных нет. По
+   * нему лента решает, звать ли выбрать свои занятия (LessonScopeHint.tsx). */
+  scopeChosen: boolean | null;
   classes: LessonScopeClassDto[];
   /** Личное «за сколько напомнить» и школьное значение; `null`, пока данных нет. */
   reminder: LessonReminderDto | null;
@@ -75,7 +81,14 @@ export function useLessonScope(): UseLessonScopeResult {
           body: next,
         });
         applyData((prev) =>
-          prev ? { ...prev, scope: saved.scope, classes: saved.classes } : saved,
+          prev
+            ? {
+                ...prev,
+                scope: saved.scope,
+                scopeChosen: saved.scopeChosen,
+                classes: saved.classes,
+              }
+            : saved,
         );
       } catch (err) {
         // Текст ответа (например «Такого занятия больше нет в расписании…»)
@@ -96,6 +109,7 @@ export function useLessonScope(): UseLessonScopeResult {
 
   return {
     scope: data?.scope ?? null,
+    scopeChosen: data?.scopeChosen ?? null,
     classes: data?.classes ?? [],
     reminder: data?.reminder ?? null,
     // Данных ещё нет и ошибки нет — запрос вот-вот уйдёт (`me` только что
