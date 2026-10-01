@@ -21,6 +21,7 @@ const USER_LEAN: UserLean = {
   name: 'Гриша',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 const ADMIN: UserLean = {
@@ -28,6 +29,7 @@ const ADMIN: UserLean = {
   name: 'Маша',
   roles: ['admin'],
   status: 'active',
+  studentMode: false,
 };
 
 async function buildController(

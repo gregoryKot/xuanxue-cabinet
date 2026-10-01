@@ -200,6 +200,8 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -259,6 +261,8 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
   });
@@ -283,6 +287,8 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });

@@ -22,6 +22,7 @@ const STAFF_USER: UserLean = {
   name: 'Учитель',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 describe('ExamDeadlineCloseService', () => {

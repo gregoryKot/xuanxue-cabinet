@@ -54,6 +54,8 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     hasEmail: true,
     needsProfile,
     googleLinked: false,
+    studentMode: false,
+    canUseStudentMode: false,
   };
 }
 
@@ -87,6 +89,8 @@ describe('RequireAuth', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -110,6 +114,8 @@ describe('RequireAuth', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(student);
 
@@ -156,6 +162,8 @@ describe('RequireAuth', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -178,6 +186,8 @@ describe('RequireAuth', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);
 

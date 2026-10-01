@@ -42,6 +42,7 @@ const USER: UserLean = {
   email: 'maria@example.com',
   roles: ['admin'],
   status: 'active',
+  studentMode: false,
 };
 
 async function buildController(

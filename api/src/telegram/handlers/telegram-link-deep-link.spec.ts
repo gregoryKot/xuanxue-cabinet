@@ -123,6 +123,7 @@ describe('handleTelegramLinkDeepLink', () => {
         name: 'Ольга',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
     });
 
@@ -141,6 +142,7 @@ describe('handleTelegramLinkDeepLink', () => {
         name: 'Ольга',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
     });
 
@@ -162,6 +164,7 @@ describe('handleTelegramLinkDeepLink', () => {
         name: 'Дима',
         roles: ['teacher'],
         status: 'active',
+        studentMode: false,
       },
     });
 

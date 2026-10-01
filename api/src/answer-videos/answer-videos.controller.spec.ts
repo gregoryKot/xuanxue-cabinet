@@ -16,7 +16,13 @@ import { AnswerVideoStatsService } from './answer-video-stats.service';
 import { AnswerVideosController } from './answer-videos.controller';
 import { AnswerVideosService } from './answer-videos.service';
 
-const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 const UPLOAD_DTO: AnswerVideoUploadDto = {
   id: 'v1',

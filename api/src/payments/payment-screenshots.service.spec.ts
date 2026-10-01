@@ -11,8 +11,9 @@ import {
   PAYMENT_MONTH_INVALID_MESSAGE,
   PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
   PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+  STUDENT_MODE_PAYMENT_MESSAGE,
 } from '@xuanxue/shared';
-import { InvalidInputError, NotFoundError } from '../common/errors';
+import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/errors';
 import { binaryToBuffer } from '../exam-images/exam-image.mapper';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { SettingsService } from '../settings/settings.service';
@@ -77,9 +78,31 @@ describe('PaymentScreenshotsService', () => {
   }
 
   // Контроллер передаёт id и имя из сессии (имя — для подписи бухгалтеру, ADR-0156).
-  function asStudent(userId: string): { id: string; name: string } {
-    return { id: userId, name: 'Ученик' };
+  function asStudent(userId: string): {
+    id: string;
+    name: string;
+    studentMode: boolean;
+  } {
+    return { id: userId, name: 'Ученик', studentMode: false };
   }
+
+  // ADR-0163: снимок из кабинета уходит бухгалтеру как настоящий — в режиме
+  // ученика его не принимаем ни байтом: ни записи оплаты, ни байтов в базе.
+  it('в режиме ученика — ForbiddenError, оплата и байты не записаны', async () => {
+    const userId = newUserId();
+
+    const attempt = service.upload(
+      JPEG_BYTES,
+      { ...asStudent(userId), studentMode: true },
+      '2026-09',
+      NOW,
+    );
+
+    await expect(attempt).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(attempt).rejects.toThrow(STUDENT_MODE_PAYMENT_MESSAGE);
+    expect(await paymentModel.countDocuments({})).toBe(0);
+    expect(await screenshotModel.countDocuments({})).toBe(0);
+  });
 
   it('загрузка в месяц без документа оплаты: awaiting, kind upload, ответ без байтов и id', async () => {
     const userId = newUserId();

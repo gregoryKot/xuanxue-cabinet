@@ -32,6 +32,9 @@ export class LessonPrefsStatsService {
   async getStats(): Promise<LessonPrefsStatsDto> {
     const prefs = (field: string) => `$${PREFS_FIELD}.${field}`;
     const pipeline: PipelineStage[] = [
+      // Только настоящие ученики: штат в режиме ученика (ADR-0163) хранит в БД
+      // настоящие роли и сюда не попадает — число на «Шаблонах» не растёт от
+      // того, что владелец проверяет кабинет глазами ученика.
       { $match: { roles: { $size: 0 }, status: 'active' } },
       {
         $lookup: {

@@ -9,7 +9,13 @@ import type { UpdateLessonScopeDto } from './dto/update-lesson-scope.dto';
 import { LessonNotificationsController } from './lesson-notifications.controller';
 import { LessonNotificationsService } from './lesson-notifications.service';
 
-const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 const PAGE: MyLessonNotificationsDto = {
   scope: { mode: 'selected', classIds: ['c1'] },

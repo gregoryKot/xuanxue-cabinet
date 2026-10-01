@@ -35,6 +35,8 @@ const personWith = (roles: UserRole[]): MeDto => ({
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 });
 
 const lessons = (minutes: number | null): MyLessonNotificationsDto => ({

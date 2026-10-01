@@ -45,6 +45,8 @@ const TEACHER: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto {

@@ -14,7 +14,13 @@ import { sendOptionVideo, sendVideoLink } from './exam-question-video-send';
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
 const CHAT_ID = 111;
 const NOW = DateTime.utc(2026, 9, 27, 10, 0, 0);
-const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 const VIDEO = { bytes: Buffer.from([1, 2, 3]), contentType: 'video/mp4' as const };
 
 function optionEntry(overrides: Partial<VideoAlbumEntry> = {}): VideoAlbumEntry {

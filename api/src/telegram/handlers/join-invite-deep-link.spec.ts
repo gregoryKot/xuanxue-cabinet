@@ -33,6 +33,7 @@ const ACTIVE_USER: UserLean = {
   name: 'Игорь',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 // Одно сообщение, не несколько подряд (отзыв владельца 2026-09-22): ссылка на
 // кабинет — вступление к welcomeConnectedUser, не отдельная реплика.

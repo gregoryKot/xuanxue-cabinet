@@ -86,6 +86,7 @@ function buildHandler(overrides: {
             name: 'Ученик',
             roles: [],
             status: 'active',
+            studentMode: false,
           })
         : { kind: 'unknown' },
     );
@@ -180,7 +181,13 @@ describe('ExamTextAnswerHandler', () => {
   it('сервис отказал — общий текст ошибки, не падает', async () => {
     const botSessions = fakeBotSessionService();
     const botAccess = fakeBotUserAccess(
-      activeAccess({ id: 'u1', name: 'Ученик', roles: [], status: 'active' }),
+      activeAccess({
+        id: 'u1',
+        name: 'Ученик',
+        roles: [],
+        status: 'active',
+        studentMode: false,
+      }),
     );
     const registry = new ExamBotPortRegistry();
     registry.set(

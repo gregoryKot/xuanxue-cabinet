@@ -13,6 +13,7 @@ import type { DateTime } from 'luxon';
 import {
   PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
   PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+  STUDENT_MODE_PAYMENT_MESSAGE,
   type ExamImageContentType,
   type MyPaymentDto,
 } from '@xuanxue/shared';
@@ -21,7 +22,7 @@ import {
 // не по заголовку, и тот же потолок в 1 МБ (SECURITY §4).
 import { binaryToBuffer } from '../exam-images/exam-image.mapper';
 import { parseExamImageUpload } from '../exam-images/exam-image-upload';
-import { InvalidInputError, NotFoundError } from '../common/errors';
+import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
@@ -64,10 +65,12 @@ export class PaymentScreenshotsService {
    * откатить загрузку, ни уронить ответ (deliver-uploaded-screenshot.ts). */
   async upload(
     body: unknown,
-    user: Pick<UserLean, 'id' | 'name'>,
+    user: Pick<UserLean, 'id' | 'name' | 'studentMode'>,
     month: string,
     now: DateTime,
   ): Promise<MyPaymentDto> {
+    // Режим ученика (ADR-0163): снимок ушёл бы бухгалтеру как настоящий.
+    if (user.studentMode) throw new ForbiddenError(STUDENT_MODE_PAYMENT_MESSAGE);
     assertMonthKey(month);
     // То же окно месяцев, что у ссылки бота (ADR-0050, PLAN §15): месяц
     // приезжает полем пути и подделывается так же, как payload ссылки, —

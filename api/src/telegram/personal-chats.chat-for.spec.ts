@@ -49,6 +49,32 @@ afterEach(async () => {
 });
 
 describe('PersonalChats.chatFor', () => {
+  // ADR-0163: бот остаётся штатным — настоящие роли, штатные дефолты. Оплата
+  // человеку в режиме ученика в Telegram не приходит.
+  it('учитель в режиме ученика: payment_due в бот не уходит, штатный post_draft — уходит', async () => {
+    const teacher = await userModel.create({
+      name: 'Мария',
+      telegramId: 111,
+      roles: ['teacher'],
+      studentModeAt: NOW.toJSDate(),
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'x',
+      config: '{}',
+      target: '111',
+      active: true,
+    });
+    const id = teacher._id.toString();
+
+    expect(await personalChats.chatFor(id, 'payment_due')).toBeNull();
+    expect(await personalChats.chatFor(id, 'post_draft')).toEqual({
+      chatId: '111',
+      userId: id,
+      name: 'Мария',
+    });
+  });
+
   it('ученик с активным личным каналом и включённым видом (дефолт роли) — чат найден', async () => {
     const student = await userModel.create({
       name: 'Ольга',

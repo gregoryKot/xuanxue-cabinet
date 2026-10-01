@@ -24,6 +24,7 @@ const STUDENT: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const TEACHER: UserLean = { ...STUDENT, id: 'u2', roles: ['teacher'] };

@@ -4,6 +4,8 @@
 // 401, а вызывающему коду здесь (GoogleAuthService, ADR-0145) нужен сам факт
 // «есть ли сессия и чья» — что с этим делать (редирект на /login у `start`,
 // 401/403 у `POST`), решает он сам. Один код на оба места (CLAUDE.md «Дубли»).
+// Роли здесь настоящие, без `actingUser` (ADR-0163): вызывающему нужны `id` и
+// `status`, решения по ролям он не принимает.
 import type { DateTime } from 'luxon';
 import type { UserLean, UsersService } from '../users/users.service';
 import type { AuthService } from './auth.service';

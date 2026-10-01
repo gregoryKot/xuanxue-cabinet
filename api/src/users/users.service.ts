@@ -17,10 +17,10 @@ import {
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { normalizeUserStatus } from './normalize-user-status';
+import { isStudentModeOn } from './student-mode';
 import { upsertUserByKey } from './upsert-user-by-key';
 
-/** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
- * roles, а не только то, что видит интерфейс (toMeDto в auth/to-me.dto.ts). */
+/** Внутреннее представление пользователя — шире MeDto (toMeDto в auth/user.mapper.ts). */
 export interface UserLean {
   id: string;
   name: string;
@@ -34,6 +34,8 @@ export interface UserLean {
   joinedViaInviteAt?: Date;
   profileNamedAt?: Date;
   noTelegramAt?: Date;
+  /** Режим ученика включён (ADR-0163, student-mode.ts). `roles` при этом настоящие. */
+  studentMode: boolean;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -46,9 +48,8 @@ export interface NewTelegramUser {
   status: UserStatus;
 }
 
-/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация.
- * status — через normalizeUserStatus.ts (expand→contract после миграции 0007,
- * ADR-0036): единственный маппер документа в UserLean покрывает этим все чтения. */
+/** Единственный маппер документа в UserLean, роли не маскирует (student-mode.ts). status —
+ * через normalizeUserStatus.ts (expand→contract после миграции 0007, ADR-0036). */
 export function toLean(doc: UserDoc): UserLean {
   return {
     id: doc._id.toString(),
@@ -63,6 +64,7 @@ export function toLean(doc: UserDoc): UserLean {
     joinedViaInviteAt: doc.joinedViaInviteAt,
     profileNamedAt: doc.profileNamedAt,
     noTelegramAt: doc.noTelegramAt,
+    studentMode: isStudentModeOn(doc.studentModeAt, doc.roles),
   };
 }
 
@@ -83,17 +85,15 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
-  /** Логика — в list-contacts-with-roles.ts (та же причина выноса, что у
-   * upsert-user-by-key.ts). Роли — параметром: list() зовёт со штатом,
-   * listFor(kind) — с ролями вида (см. комментарий там же и в personal-chats.ts). */
+  /** Логика — в list-contacts-with-roles.ts. Роли — параметром: list() зовёт со
+   * штатом, listFor(kind) — с ролями вида (см. комментарий там же и в personal-chats.ts). */
   async listContactsWithRoles(roles: readonly UserRole[]): Promise<RoledContact[]> {
     return listContactsWithRolesQuery(this.model, roles);
   }
 
   /** Активные люди с такими ролями — кандидаты записи кабинета
    * (InAppExamNotifier, ADR-0061), без требования канала связи (в отличие
-   * от listContactsWithRoles). Логика — в list-active-with-roles.ts (та же
-   * причина выноса, что у upsert-user-by-key.ts). */
+   * от listContactsWithRoles). Логика — в list-active-with-roles.ts. */
   async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
     return listActiveWithRolesQuery(this.model, roles);
   }
@@ -145,8 +145,7 @@ export class UsersService {
     await this.model.updateOne({ _id: id }, { $set: { lastLoginAt: now.toJSDate() } });
   }
 
-  /** Логика — в mark-joined-via-invite.ts (та же причина выноса, что у
-   * upsert-user-by-key.ts: файл не растёт за 150 строк). */
+  /** Логика — в mark-joined-via-invite.ts (та же причина выноса). */
   async markJoinedViaInvite(id: string, now: DateTime): Promise<void> {
     await markJoinedViaInviteWrite(this.model, id, now);
   }

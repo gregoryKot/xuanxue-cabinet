@@ -73,6 +73,7 @@ function buildHandler(overrides: {
             name: 'Ученик Иванов',
             roles: [],
             status: 'active',
+            studentMode: false,
           })
         : { kind: 'unknown' },
     );

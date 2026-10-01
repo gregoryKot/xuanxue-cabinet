@@ -23,6 +23,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 const EXAM: MyExamDto = {
   id: 'e1',

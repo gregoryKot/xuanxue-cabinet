@@ -16,6 +16,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const PAGE_DTO: InboxPageDto = { items: [], unreadCount: 0 };

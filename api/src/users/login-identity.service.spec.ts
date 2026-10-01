@@ -19,6 +19,7 @@ const EXISTING: UserLean = {
   telegramId: 42,
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 function fakeConfig(values: Record<string, unknown> = {}): ConfigService {

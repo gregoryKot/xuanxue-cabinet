@@ -49,6 +49,8 @@ const ACTIVE_ME: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 describe('JoinScreen — сессия уже есть (ADR-0036: вход уже создал/подтвердил человека)', () => {

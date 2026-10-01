@@ -15,6 +15,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   telegramId: 1301,
+  studentMode: false,
 };
 
 describe('UserBotChatStatusService.hasActiveChatFor', () => {

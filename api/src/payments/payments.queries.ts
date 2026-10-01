@@ -20,7 +20,9 @@ import type { ActiveStudent, PaymentRowData } from './payments.rows';
  * учителя) — строка на каждого нужна `listMonth`, даже без документа
  * payments. Сортировка по имени — стабильный порядок списка на экране;
  * лимит — та же защита от «дай всё», что и у остальных списков
- * (CLAUDE.md «API»), внутренний запрос не исключение. */
+ * (CLAUDE.md «API»), внутренний запрос не исключение. Роли — настоящие, из БД:
+ * штат в режиме ученика (ADR-0163) хранит их там и в списке бухгалтера
+ * не появляется — у него нет абонемента. */
 export async function listActiveStudents(
   model: Model<UserRecord>,
 ): Promise<ActiveStudent[]> {
@@ -64,7 +66,8 @@ export async function findPaymentsForMonth(
  * единой роли (ADR-0026, `roles: []`), не только не-штат: `isStaffRole`
  * здесь не подходит — она не считает `accountant` штатом (STAFF_ROLES —
  * только teacher/assistant/admin, shared/src/auth.ts), а бухгалтеру
- * абонемент заводить так же не нужно, как и учителю. */
+ * абонемент заводить так же не нужно, как и учителю. Роли читаются из БД
+ * заново, режим ученика (ADR-0163) их не маскирует: штат в нём остаётся штатом. */
 export async function assertActiveStudent(
   model: Model<UserRecord>,
   userId: string,

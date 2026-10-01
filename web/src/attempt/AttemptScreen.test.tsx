@@ -35,6 +35,8 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 /** Экран параллельно зовёт /attempts/:id, /auth/me и /auth/config, поэтому

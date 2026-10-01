@@ -18,6 +18,9 @@
 // noTelegramAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
 // (не свободный текст): момент, когда человек сказал, что Telegram у него
 // нет (ADR-0067, PUT /me/no-telegram, UserNoTelegramService.setNoTelegram).
+// studentModeAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY:
+// момент, когда сотрудник школы включил себе режим ученика (ADR-0163,
+// PUT /me/student-mode, UserStudentModeService.setStudentMode).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
   USER_ROLES,
@@ -99,6 +102,18 @@ export class UserRecord {
   // Telegram позже, и дорога назад обязана быть.
   @Prop({ type: Date, required: false })
   noTelegramAt?: Date;
+
+  // Сотрудник школы включил себе режим ученика (ADR-0163, PUT
+  // /me/student-mode). Date, не Boolean — та же пара «момент → булево», что у
+  // noTelegramAt (UserLean.studentMode). Роли в `roles` НЕ меняются: «Люди»,
+  // защита последнего админа и бот видят настоящие, а AuthGuard кладёт в
+  // request.user пустые (users/student-mode.ts). Поле только убавляет права —
+  // прибавить через него нечего. Ставит и снимает только сам человек
+  // ($set — только при настоящей роли штата, $unset — всегда), не через
+  // UsersController. Выключение — $unset, не запись null: «поля нет» читается
+  // однозначно как «режима нет».
+  @Prop({ type: Date, required: false })
+  studentModeAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserRecord);

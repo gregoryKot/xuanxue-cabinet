@@ -13,6 +13,7 @@ const GRADER = {
   name: 'Дима',
   roles: ['teacher' as const],
   status: 'active' as const,
+  studentMode: false,
 };
 
 function fakeBotSessions(): { clear: jest.Mock } {

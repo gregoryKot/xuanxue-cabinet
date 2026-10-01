@@ -94,6 +94,32 @@ describe('PersonalChats.list', () => {
     ]);
   });
 
+  // ADR-0163: бот остаётся штатным — владелец единственный админ, «сбой в
+  // кабинете» и «пост не ушёл» не должны уйти в пустоту оттого, что он
+  // проверяет кабинет глазами ученика. Бот ищет людей по ролям в БД, а режим их
+  // не трогает.
+  it('учитель в режиме ученика — по-прежнему в списке бота (ADR-0163)', async () => {
+    const teacher = await userModel.create({
+      name: 'Мария',
+      telegramId: 111,
+      roles: ['teacher'],
+      studentModeAt: NOW.toJSDate(),
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Личные сообщения: Мария',
+      config: '{}',
+      target: '111',
+      active: true,
+    });
+
+    const chats = await personalChats.list(NOW);
+
+    expect(chats).toEqual([
+      { chatId: '111', userId: teacher._id.toString(), name: 'Мария' },
+    ]);
+  });
+
   it('учитель без /start (канала нет) — не в списке', async () => {
     await userModel.create({ name: 'Дима', telegramId: 222, roles: ['admin'] });
 

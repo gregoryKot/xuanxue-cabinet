@@ -4,7 +4,13 @@ import type { UserLean, UsersService } from './users.service';
 import { markUserJoined } from './mark-user-joined';
 
 const NOW = DateTime.fromISO('2026-09-28T10:00:00Z');
-const USER: UserLean = { id: 'u1', name: 'Новый ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Новый ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 describe('markUserJoined', () => {
   it('пишет через UsersService.markJoinedViaInvite и возвращает свежий joinedViaInviteAt', async () => {

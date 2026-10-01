@@ -15,6 +15,7 @@ const TEACHER: UserLean = {
   telegramId: 555,
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 function fakeUsersService(user: UserLean | null): UsersService {
