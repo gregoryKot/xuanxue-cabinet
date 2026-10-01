@@ -1,3 +1,11 @@
+// Файл standalone.css читается через `node:fs`, а не `?raw`: vitest подменяет
+// любой CSS пустой строкой, в том числе с `?raw` (так же в
+// accessibility/accessibilityClaims.test.ts). web собирается без типов Node —
+// поэтому ссылка ниже, только для этого файла.
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -7,6 +15,7 @@ import type * as HttpModule from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppShell } from './AppShell';
+import { APP_SHELL_CLASS } from './appShellStyles';
 import { rootPathFor } from './screenAccess';
 
 vi.mock('../api/http', async () => {
@@ -484,6 +493,27 @@ describe('AppShell — прокрутка внутри оболочки, а не
     const shell = container.firstElementChild as HTMLElement;
     expect(shell.style.height).toBe('100dvh');
     expect(shell.style.overflow).toBe('hidden');
+  });
+
+  // Отзыв владельца 2026-10-01: «при сворачивании клавиатуры иногда дыра
+  // появляется». В установленном приложении body держал отступы safe-area, и
+  // документ был выше оболочки в 100dvh — окно прокручивалось, iOS оставлял
+  // его сдвинутым после клавиатуры. Правило, что снимает отступы body, цепляется
+  // за класс оболочки: переименуешь класс или селектор по одному — разрыв
+  // вернёт пустую полосу под нижним меню молча, а этот тест покраснеет.
+  it('класс оболочки тот, за который цепляется standalone.css', async () => {
+    stubMobileViewport();
+    const { container } = renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    const shell = container.firstElementChild as HTMLElement;
+    const standaloneCss = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../pwa/standalone.css'),
+      'utf8',
+    );
+    expect(shell).toHaveClass(APP_SHELL_CLASS);
+    expect(standaloneCss).toContain(`body:has(.${APP_SHELL_CLASS})`);
+    expect(standaloneCss).toContain(`.${APP_SHELL_CLASS} {`);
   });
 
   it('прокручивается колонка содержимого, и оттяжка не уходит на страницу', async () => {
