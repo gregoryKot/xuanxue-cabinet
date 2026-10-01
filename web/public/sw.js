@@ -41,13 +41,10 @@ const INBOX_URL = '/api/me/inbox?limit=20';
 // строка через три секунды, чем чужая заглушка через минуту.
 const INBOX_TIMEOUT_MS = 3000;
 const NOTIFICATIONS_PATH = '/notifications';
-// Дата занятия у отмены и записи (lesson_cancelled, recording_ready, ADR-0162):
-// сервер пояса устройства не знает, а «Занятие отменено — Тайцзи» без числа не
-// говорит, какое из занятий класса отменили. День и время дописываются здесь, по
-// часам устройства, в том же виде, что formatDateTime в web/src/lib/formatDate.ts
-// («Чт, 10 сентября, 19:00»): импортировать его сюда нельзя (шапка файла). Список
-// видов — копия LESSON_DATED_KINDS из web/src/notifications/notificationFeed.ts
-// по той же причине; sw.test.ts гоняет push по каждому виду того списка.
+// Дата занятия у отмены и записи (ADR-0162): сервер пояса устройства не знает, а «Занятие
+// отменено — Тайцзи» без числа не говорит, какое занятие отменили. День и время дописаны
+// по часам устройства, как у formatDateTime (web/src/lib/formatDate.ts). Список видов —
+// копия LESSON_DATED_KINDS (notificationFeed.ts): импортировать сюда нельзя, sw.test.ts сверяет.
 const DATED_KINDS = ['lesson_cancelled', 'recording_ready'];
 const LESSON_DAY_FORMAT = { weekday: 'short', day: 'numeric', month: 'long' };
 const LESSON_TIME_FORMAT = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
