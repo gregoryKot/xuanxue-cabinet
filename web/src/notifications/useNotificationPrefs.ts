@@ -8,7 +8,11 @@
 // ответа PATCH, а не отдельный GET следом (отзыв владельца 2026-09-21:
 // переключатель ждал оба запроса подряд и стоял серым 1–2 секунды).
 import { useCallback } from 'react';
-import { defaultNotifications, type MeDto, type NotificationKind } from '@xuanxue/shared';
+import {
+  availableNotifications,
+  type MeDto,
+  type NotificationKind,
+} from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -16,7 +20,8 @@ const LOAD_ERROR_MESSAGE =
   'Не удалось загрузить настройки уведомлений. Попробуйте ещё раз.';
 
 export interface UseNotificationPrefsResult {
-  /** Виды, доступные этому человеку по его ролям — остальные не показываем. */
+  /** Виды, доступные этому человеку (по ролям и «по желанию» у ученика, ADR-0162) —
+   * остальные не показываем. */
   kinds: NotificationKind[];
   enabled: NotificationKind[] | null;
   loading: boolean;
@@ -42,7 +47,7 @@ export function useNotificationPrefs(me: MeDto | null): UseNotificationPrefsResu
   );
 
   return {
-    kinds: defaultNotifications(me?.roles ?? []),
+    kinds: availableNotifications(me?.roles ?? []),
     enabled: data?.enabled ?? null,
     loading,
     error,

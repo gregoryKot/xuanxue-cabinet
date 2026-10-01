@@ -154,6 +154,36 @@ describe('NotificationRow — «Занятие отменено»', () => {
   });
 });
 
+// ADR-0162: запись занятия ведёт в «Записи занятий» ученика, а не на «Занятия»;
+// день и время занятия — по часам зрителя, как у отмены.
+describe('NotificationRow — «Запись занятия»', () => {
+  const RECORDED = makeItem({
+    kind: 'recording_ready',
+    text: 'Запись занятия — Тайцзи',
+    lessonId: 'l1',
+    lessonStartsAt: '2026-09-10T16:00:00.000Z', // 19:00 в Москве
+  });
+
+  it('строка с названием и временем занятия по часам зрителя, ссылка на «/archive»', () => {
+    renderRow(RECORDED, { isLast: false, onRead: vi.fn() });
+
+    expect(
+      screen.getByText('Запись занятия — Тайцзи (Чт, 10 сентября, 19:00)'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/archive');
+  });
+
+  it('«Убрать» называет ту же строку, что на экране', () => {
+    renderRow(RECORDED, { isLast: false, onRead: vi.fn() });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Убрать уведомление: Запись занятия — Тайцзи (Чт, 10 сентября, 19:00)',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('NotificationRow — isLast', () => {
   it('последняя строка своей карточки — без линии снизу', () => {
     renderRow(makeItem(), { isLast: true, onRead: vi.fn() });

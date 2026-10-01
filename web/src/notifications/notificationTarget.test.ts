@@ -41,6 +41,12 @@ describe('notificationTarget', () => {
     );
   });
 
+  it('recording_ready — «Записи занятий» ученика: запись лежит там, не на «Занятиях» (ADR-0162)', () => {
+    expect(notificationTarget(item({ kind: 'recording_ready', lessonId: 'l1' }))).toBe(
+      '/archive',
+    );
+  });
+
   it('payment_due — экрана оплаты у ученика ещё нет (слой 2.4), ссылки нет', () => {
     expect(
       notificationTarget(item({ kind: 'payment_due', text: 'Абонемент' })),

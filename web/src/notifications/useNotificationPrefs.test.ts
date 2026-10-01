@@ -38,22 +38,31 @@ const TEACHER: MeDto = {
 };
 
 describe('useNotificationPrefs — виды по роли', () => {
-  it('ученику доступны четыре вида — результат экзамена, напоминание и отмена занятия, напоминание об оплате (ADR-0135, ADR-0162, ADR-0150)', async () => {
-    const studentKinds = [
+  // ADR-0162: «Запись занятия» доступна ученику, но включённой не приходит —
+  // в списке видов она есть, в `enabled` нет, пока он сам её не включил.
+  it('ученику доступны пять видов, из них включены четыре: «Запись занятия» — по желанию (ADR-0135, ADR-0162, ADR-0150)', async () => {
+    const studentEnabled = [
       'exam_result',
       'lesson_soon',
       'lesson_cancelled',
       'payment_due',
     ];
-    mockedApiFetch.mockResolvedValueOnce({ enabled: studentKinds });
+    mockedApiFetch.mockResolvedValueOnce({ enabled: studentEnabled });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(studentKinds);
-    expect(result.current.enabled).toEqual(studentKinds);
+    expect(result.current.kinds).toEqual([
+      'exam_result',
+      'lesson_soon',
+      'lesson_cancelled',
+      'recording_ready',
+      'payment_due',
+    ]);
+    expect(result.current.enabled).toEqual(studentEnabled);
+    expect(result.current.enabled).not.toContain('recording_ready');
   });
 
-  it('учителю доступны его виды, не ученические', async () => {
+  it('учителю доступны его виды, не ученические — «Записи занятия» среди них нет', async () => {
     mockedApiFetch.mockResolvedValueOnce({ enabled: [] });
     const { result } = renderHook(() => useNotificationPrefs(TEACHER));
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -66,7 +75,7 @@ describe('useNotificationPrefs — виды по роли', () => {
     ]);
   });
 
-  it('без сессии (me === null) — дефолт ученика', async () => {
+  it('без сессии (me === null) — виды ученика', async () => {
     mockedApiFetch.mockResolvedValueOnce({ enabled: [] });
     const { result } = renderHook(() => useNotificationPrefs(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -75,6 +84,7 @@ describe('useNotificationPrefs — виды по роли', () => {
       'exam_result',
       'lesson_soon',
       'lesson_cancelled',
+      'recording_ready',
       'payment_due',
     ]);
   });

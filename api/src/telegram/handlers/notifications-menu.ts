@@ -4,11 +4,13 @@
 // (NotificationsCommandHandler, новое сообщение) и для нажатия кнопки
 // (handleNotificationToggle, editMessageText) — CLAUDE.md «Одна механика —
 // один компонент»: обе точки показывают один и тот же экран, не две копии.
-// «Доступные по роли» — это `defaultNotifications(roles)`: тот же набор,
-// что дефолт роли (shared/src/notifications.ts) — override не расширяет его,
-// только переключает внутри (см. NotificationPrefsService.get).
+// «Доступные» — это `availableNotifications(roles)`: дефолт роли
+// (shared/src/notifications.ts) плюс виды «по желанию», которые ученик
+// включает сам («Запись занятия», ADR-0162) и которые показаны выключенными,
+// пока он их не тронул. Всё остальное override не расширяет, а только
+// переключает внутри (см. NotificationPrefsService.get).
 import {
-  defaultNotifications,
+  availableNotifications,
   NOTIFICATION_HINTS,
   NOTIFICATION_LABELS,
   type NotificationKind,
@@ -31,7 +33,7 @@ export function buildNotificationsMenu(
   roles: UserRole[],
   enabled: readonly NotificationKind[],
 ): NotificationsMenu {
-  const available = defaultNotifications(roles);
+  const available = availableNotifications(roles);
   const enabledSet = new Set(enabled);
   const lines = available.map((kind) => {
     const state = enabledSet.has(kind) ? 'включено' : 'выключено';

@@ -6,6 +6,7 @@
 // один раз при импорте, поэтому повторный импорт модуля между тестами не
 // нужен. Детерминизм: без setTimeout, без реальной сети (vi.stubGlobal).
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LESSON_DATED_KINDS } from '../notifications/notificationFeed';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 
 // Время в push-тексте отмены занятия считается по часам устройства — в тесте
@@ -139,14 +140,42 @@ describe('push', () => {
     );
   });
 
-  // ADR-0162: push берёт `text` строки ленты, а у отмены занятия сервер дату
-  // не вкладывает (пояса устройства он не знает) — worker дописывает её сам.
-  it('отмена занятия — текст строки и день с временем по часам устройства', async () => {
+  // ADR-0162: push берёт `text` строки ленты, а у отмены и записи занятия сервер
+  // дату не вкладывает (пояса устройства он не знает) — worker дописывает её сам.
+  // Гоняем по списку экрана ленты: вид, которому лента дату рисует, а worker нет,
+  // дал бы разные строки в колокольчике и в push.
+  it.each(LESSON_DATED_KINDS)(
+    '%s — текст строки и день с временем по часам устройства',
+    async (kind) => {
+      stubInboxResponse([
+        {
+          kind,
+          text: 'Название вида — Тайцзи',
+          lessonStartsAt: '2026-09-10T16:00:00.000Z', // 19:00 в Москве
+        },
+      ]);
+
+      const { event, settle } = withWaitUntil();
+      getListener('push')(event);
+      await settle();
+
+      expect(fakeSelf.registration.showNotification).toHaveBeenCalledWith(
+        'Школа Сюань-Сюэ',
+        expect.objectContaining({
+          body: 'Название вида — Тайцзи (Чт, 10 сентября, 19:00)',
+        }),
+      );
+    },
+  );
+
+  // Дата — только у видов про одно занятие: у «Занятия скоро» занятие и так
+  // ближайшее, а чужой `lessonStartsAt` не повод дописывать скобки.
+  it('вид вне списка с lessonStartsAt — текст строки как есть', async () => {
     stubInboxResponse([
       {
-        kind: 'lesson_cancelled',
-        text: 'Занятие отменено — Тайцзи',
-        lessonStartsAt: '2026-09-10T16:00:00.000Z', // 19:00 в Москве
+        kind: 'lesson_soon',
+        text: 'Скоро занятие — Тайцзи',
+        lessonStartsAt: '2026-09-10T16:00:00.000Z',
       },
     ]);
 
@@ -156,9 +185,7 @@ describe('push', () => {
 
     expect(fakeSelf.registration.showNotification).toHaveBeenCalledWith(
       'Школа Сюань-Сюэ',
-      expect.objectContaining({
-        body: 'Занятие отменено — Тайцзи (Чт, 10 сентября, 19:00)',
-      }),
+      expect.objectContaining({ body: 'Скоро занятие — Тайцзи' }),
     );
   });
 

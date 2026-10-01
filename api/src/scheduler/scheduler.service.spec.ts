@@ -16,6 +16,7 @@ import type { LessonCancelNoticeService } from '../lessons/lesson-cancel-notice.
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { LessonReminderService } from '../lessons/lesson-reminder.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
+import type { RecordingReadyNoticeService } from '../lessons/recording-ready-notice.service';
 import type { PaymentReminderService } from '../payments/payment-reminder.service';
 import type { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -31,6 +32,7 @@ function buildService(overrides: {
   promptRecordings?: RecordingPromptService['prompt'];
   remindStudents?: LessonReminderService['remind'];
   announceCancelled?: LessonCancelNoticeService['announce'];
+  announceRecordings?: RecordingReadyNoticeService['announce'];
   promptManual?: ManualPromptService['prompt'];
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   remindPayments?: PaymentReminderService['remind'];
@@ -67,6 +69,8 @@ function buildService(overrides: {
     overrides.remindStudents ?? jest.fn().mockResolvedValue({ reminded: 0 });
   const announceCancelled =
     overrides.announceCancelled ?? jest.fn().mockResolvedValue({ notified: 0 });
+  const announceRecordings =
+    overrides.announceRecordings ?? jest.fn().mockResolvedValue({ notified: 0 });
   const promptManual =
     overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const closeExamDeadlines =
@@ -108,6 +112,7 @@ function buildService(overrides: {
     { prompt: promptRecordings } as unknown as RecordingPromptService,
     { remind: remindStudents } as unknown as LessonReminderService,
     { announce: announceCancelled } as unknown as LessonCancelNoticeService,
+    { announce: announceRecordings } as unknown as RecordingReadyNoticeService,
     { prompt: promptManual } as unknown as ManualPromptService,
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
     { remind: remindPayments } as unknown as PaymentReminderService,
@@ -165,6 +170,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<LessonCancelNoticeService['announce']> =>
         Promise.resolve({ notified: 1 }),
     );
+    const announceRecordings = jest.fn(
+      (_now: DateTime): ReturnType<RecordingReadyNoticeService['announce']> =>
+        Promise.resolve({ notified: 1 }),
+    );
     const promptManual = jest.fn(
       (_now: DateTime): ReturnType<ManualPromptService['prompt']> =>
         Promise.resolve({ prompted: 1 }),
@@ -198,6 +207,7 @@ describe('SchedulerService.tick', () => {
       promptRecordings,
       remindStudents,
       announceCancelled,
+      announceRecordings,
       promptManual,
       closeExamDeadlines,
       remindPayments,
@@ -216,6 +226,7 @@ describe('SchedulerService.tick', () => {
     expect(promptRecordings).toHaveBeenCalledTimes(1);
     expect(remindStudents).toHaveBeenCalledTimes(1);
     expect(announceCancelled).toHaveBeenCalledTimes(1);
+    expect(announceRecordings).toHaveBeenCalledTimes(1);
     expect(promptManual).toHaveBeenCalledTimes(1);
     expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
     expect(remindPayments).toHaveBeenCalledTimes(1);
@@ -233,6 +244,7 @@ describe('SchedulerService.tick', () => {
     expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
     expect(remindStudents.mock.calls[0]?.[0]).toBe(calledWith);
     expect(announceCancelled.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(announceRecordings.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
     expect(closeExamDeadlines.mock.calls[0]?.[0]).toBe(calledWith);
     expect(remindPayments.mock.calls[0]?.[0]).toBe(calledWith);
@@ -268,6 +280,36 @@ describe('SchedulerService.tick', () => {
       'mongo упал',
       expect.any(DateTime),
     );
+  });
+
+  // ADR-0162: «запись ученикам» — тоже свой шаг со своим try/catch: упал он —
+  // учитель узнает, а ручные каналы и оплаты после него всё равно идут.
+  it('ошибка шага «запись ученикам» не останавливает соседей и сообщает о себе', async () => {
+    const announceRecordings = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const promptManual = jest.fn().mockResolvedValue({ prompted: 0 });
+    const { service, notifySchedulerFailed } = buildService({
+      announceRecordings,
+      promptManual,
+    });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+
+    expect(promptManual).toHaveBeenCalledTimes(1);
+    expect(notifySchedulerFailed).toHaveBeenCalledWith(
+      'запись ученикам',
+      'mongo упал',
+      expect.any(DateTime),
+    );
+  });
+
+  it('упавшая отмена ученикам не мешает шагу «запись ученикам»', async () => {
+    const announceCancelled = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const announceRecordings = jest.fn().mockResolvedValue({ notified: 0 });
+    const { service } = buildService({ announceCancelled, announceRecordings });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+
+    expect(announceRecordings).toHaveBeenCalledTimes(1);
   });
 
   it('упавшее напоминание о занятии не мешает шагу «отмена ученикам»', async () => {

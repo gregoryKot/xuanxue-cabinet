@@ -102,6 +102,32 @@ describe('notificationBody', () => {
     );
   });
 
+  // ADR-0162: у записи занятия то же, что у отмены, — без даты из «Запись
+  // занятия — Тайцзи» не понять, о каком занятии класса речь.
+  it('запись занятия — текст сервера и в скобках день и время по часам зрителя', () => {
+    const recorded = cancelled({
+      kind: 'recording_ready',
+      text: 'Запись занятия — Тайцзи',
+    });
+
+    expect(notificationBody(recorded)).toBe(
+      'Запись занятия — Тайцзи (Чт, 10 сентября, 19:00)',
+    );
+    expect(notificationBody(recorded, 'Pacific/Auckland')).toBe(
+      'Запись занятия — Тайцзи (Пт, 11 сентября, 04:00)',
+    );
+  });
+
+  it('запись занятия без lessonStartsAt (строка до появления поля) — текст сервера как есть', () => {
+    const recorded = cancelled({
+      kind: 'recording_ready',
+      text: 'Запись занятия — Тайцзи',
+      lessonStartsAt: undefined,
+    });
+
+    expect(notificationBody(recorded)).toBe('Запись занятия — Тайцзи');
+  });
+
   it('остальные виды — текст сервера как есть, даже если дата пришла', () => {
     const soon = cancelled({ kind: 'lesson_soon', text: 'Скоро занятие — Тайцзи' });
     expect(notificationBody(soon)).toBe('Скоро занятие — Тайцзи');

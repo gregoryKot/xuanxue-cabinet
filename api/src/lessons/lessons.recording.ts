@@ -1,7 +1,10 @@
 // Подготовка добавляемой записи занятия — чистая логика, юнит-тест без Mongo
 // (CLAUDE.md «Тесты»).
+import type { DateTime } from 'luxon';
+import type { UpdateQuery } from 'mongoose';
 import { LESSON_LIMITS, type AddRecordingInput, type Recording } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
+import type { LessonRecord } from './lesson.schema';
 
 const NO_RECORDING_SOURCE = 'Добавьте ссылку на запись или отправьте видео боту';
 const INVALID_RECORDING_URL =
@@ -49,6 +52,25 @@ export function buildRecordingPush(
     title: input.title ?? classTitle,
     url: input.url,
     telegramFileId: input.telegramFileId,
+  };
+}
+
+/** Что записать занятию при добавлении записи: сама запись и момент, когда
+ * она появилась впервые (`recordingReadyAt`, от него шаг тика «запись ученикам»
+ * сообщает о ней, ADR-0162). `$min`, а не `$set`: поля нет — встаёт `now`, поле
+ * есть — остаётся прежнее (раньше него `now` не бывает), так что вторая запись
+ * момент не двигает. Одной командой с `$push`, а не отдельной записью: «только
+ * если запись правда добавилась» и «только если момента ещё нет» решаются
+ * в одном атомарном `updateOne` — повтор url/file_id (`$nor`) не добавляет ни
+ * записи, ни момента. У занятия, где записи лежали до поля, момент встаёт с
+ * первой новой записью: она и есть новое событие. */
+export function buildRecordingAddCommand(
+  recording: Recording,
+  now: DateTime,
+): UpdateQuery<LessonRecord> {
+  return {
+    $push: { recordings: recording },
+    $min: { recordingReadyAt: now.toJSDate() },
   };
 }
 

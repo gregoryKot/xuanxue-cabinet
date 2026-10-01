@@ -437,6 +437,7 @@ export {
   isNotificationKind,
   rolesWithNotification,
 } from './notifications';
+export { availableNotifications } from './notification-availability';
 export type {
   LessonScope,
   LessonScopeClassDto,

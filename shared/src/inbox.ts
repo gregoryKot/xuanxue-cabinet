@@ -19,12 +19,13 @@ export interface NotificationDto {
    * attempt_submitted/exam_result, оба всегда со ссылками на форму. */
   examId?: string;
   attemptId?: string;
-  /** Есть у `lesson_soon` (ADR-0135) и `lesson_cancelled` (ADR-0162) — ссылка
-   * на занятие, к которому относится строка. */
+  /** Есть у `lesson_soon` (ADR-0135), `lesson_cancelled` и `recording_ready`
+   * (ADR-0162) — ссылка на занятие, к которому относится строка. */
   lessonId?: string;
-  /** Только у `lesson_cancelled`: когда занятие должно было начаться, ISO UTC
-   * с Z. Сервер пояса устройства не знает — дату и время в `text` он не
-   * вставляет, их рисуют web и push-worker по часам зрителя (ADR-0060). */
+  /** У `lesson_cancelled` и `recording_ready`: когда занятие началось или
+   * должно было начаться, ISO UTC с Z. Сервер пояса устройства не знает — дату
+   * и время в `text` он не вставляет, их рисуют web и push-worker по часам
+   * зрителя (ADR-0060). */
   lessonStartsAt?: string;
   /** Только у exam_result — итог проверки (без баллов, PLAN §11 «Границы»). */
   outcome?: GradingOutcome;

@@ -41,6 +41,7 @@ import {
 import {
   assertHasRecordingSource,
   assertValidRecordingUrl,
+  buildRecordingAddCommand,
   buildRecordingDuplicateConditions,
   buildRecordingPush,
 } from './lessons.recording';
@@ -134,10 +135,11 @@ export class LessonsService {
     if (!lesson) throw new NotFoundError(LESSON_NOT_FOUND);
     const title = await findClassTitle(this.classModel, lesson.classId);
     const recording = buildRecordingPush(input, title);
-    // Повтор url/file_id не плодит вторую запись ($nor, lessons.recording.ts).
+    // Повтор url/file_id не плодит вторую запись ($nor, lessons.recording.ts);
+    // вместе с первой записью встаёт и `recordingReadyAt` (ADR-0162).
     await this.model.updateOne(
       { _id: id, $nor: buildRecordingDuplicateConditions(input) },
-      { $push: { recordings: recording } },
+      buildRecordingAddCommand(recording, now),
     );
     // Зовём всегда, не только при $push: идемпотентность — на уникальном индексе
     // (lessonId, recordingKey), не на факте изменения (docs/PLAN.md §6 «Записи»).

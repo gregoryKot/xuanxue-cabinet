@@ -1,8 +1,9 @@
-// Чистая функция «кому и о каком отменённом занятии написать» (ADR-0162), без
-// Mongo и без DI: входят занятие, получатели, их выбор и уже записанные строки.
+// Чистая функция «кому и о каком занятии написать» (ADR-0162; отмена и запись
+// занятия), без Mongo и без DI: входят занятие, получатели, их выбор и уже
+// записанные строки.
 import type { LessonScope } from '@xuanxue/shared';
 import type { LessonPrefs } from '../notifications/lesson-scope.service';
-import { planCancelNotices } from './lesson-cancel-notice-plan';
+import { planLessonNotices } from './lesson-notice-plan';
 import { lessonRowKey, type PlanLesson } from './lesson-notice-queries';
 
 const ALL: LessonScope = { mode: 'all', classIds: [] };
@@ -16,9 +17,9 @@ function prefsOf(entries: Record<string, LessonScope>): Map<string, LessonPrefs>
   return new Map(Object.entries(entries).map(([id, scope]) => [id, { scope }]));
 }
 
-describe('planCancelNotices', () => {
+describe('planLessonNotices', () => {
   it('всем получателям обо всех занятиях, со снимком названия и началом занятия', () => {
-    const planned = planCancelNotices({
+    const planned = planLessonNotices({
       lessons: [lesson('l1')],
       recipients: [{ id: 'u1' }, { id: 'u2' }],
       prefs: prefsOf({ u1: ALL, u2: ALL }),
@@ -42,7 +43,7 @@ describe('planCancelNotices', () => {
   });
 
   it('у получателя нет записи о выборе — «обо всех занятиях»', () => {
-    const planned = planCancelNotices({
+    const planned = planLessonNotices({
       lessons: [lesson('l1')],
       recipients: [{ id: 'u1' }],
       prefs: new Map(),
@@ -53,7 +54,7 @@ describe('planCancelNotices', () => {
   });
 
   it('выбрал другое занятие — пропускается; выбрал это — остаётся', () => {
-    const planned = planCancelNotices({
+    const planned = planLessonNotices({
       lessons: [lesson('l1', 'c1')],
       recipients: [{ id: 'other' }, { id: 'this' }, { id: 'none' }],
       prefs: prefsOf({
@@ -68,7 +69,7 @@ describe('planCancelNotices', () => {
   });
 
   it('режим «все» со старыми галочками — остаётся обо всех', () => {
-    const planned = planCancelNotices({
+    const planned = planLessonNotices({
       lessons: [lesson('l1', 'c1')],
       recipients: [{ id: 'u1' }],
       prefs: prefsOf({ u1: { mode: 'all', classIds: ['c2'] } }),
@@ -79,7 +80,7 @@ describe('planCancelNotices', () => {
   });
 
   it('строка уже есть — пара пропускается, соседние остаются', () => {
-    const planned = planCancelNotices({
+    const planned = planLessonNotices({
       lessons: [lesson('l1'), lesson('l2')],
       recipients: [{ id: 'u1' }, { id: 'u2' }],
       prefs: prefsOf({ u1: ALL, u2: ALL }),
@@ -97,10 +98,10 @@ describe('planCancelNotices', () => {
     const base = { prefs: new Map(), existing: new Set<string>() };
 
     expect(
-      planCancelNotices({ ...base, lessons: [], recipients: [{ id: 'u1' }] }),
+      planLessonNotices({ ...base, lessons: [], recipients: [{ id: 'u1' }] }),
     ).toEqual([]);
     expect(
-      planCancelNotices({ ...base, lessons: [lesson('l1')], recipients: [] }),
+      planLessonNotices({ ...base, lessons: [lesson('l1')], recipients: [] }),
     ).toEqual([]);
   });
 });

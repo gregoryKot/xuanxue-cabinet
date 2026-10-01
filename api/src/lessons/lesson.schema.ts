@@ -75,6 +75,15 @@ export class LessonRecord {
   @Prop({ type: String, required: false })
   note?: string;
 
+  // Когда у занятия появилась первая запись (UTC) — от этого момента шаг тика
+  // «запись ученикам» (RecordingReadyNoticeService, ADR-0162) сутки пробует
+  // сообщить тем ученикам, кто включил вид «Запись занятия». Ставит
+  // LessonsService.addRecording вместе с самой записью и больше не двигает:
+  // вторая запись не повод писать снова. У занятий, чьи записи появились до
+  // поля, его нет — задним числом они не объявляются. Наружу не уходит.
+  @Prop({ type: Date, required: false })
+  recordingReadyAt?: Date;
+
   // Бот один раз спрашивает «Запись?» после занятия — отметка, чтобы не
   // спрашивать повторно на каждом тике планировщика.
   @Prop({ type: Date, required: false })
@@ -103,6 +112,14 @@ LessonSchema.index({ status: 1, startsAt: 1 });
 LessonSchema.index(
   { classId: 1, plannedAt: 1 },
   { unique: true, partialFilterExpression: { plannedAt: { $type: 'date' } } },
+);
+// Шаг тика «запись ученикам» (ADR-0162) раз в минуту ищет занятия с недавним
+// `recordingReadyAt`; частичный — у большинства занятий поля нет и в индекс они
+// не попадают. Запрос с `$gte` по полю подходит под `$exists` (как и у
+// индексов ленты).
+LessonSchema.index(
+  { recordingReadyAt: 1 },
+  { partialFilterExpression: { recordingReadyAt: { $exists: true } } },
 );
 // Фильтр по тегу (GET /api/lessons?tag=…, ADR-0075) — тот же приём, что у
 // MaterialSchema.index({ tags: 1 }).

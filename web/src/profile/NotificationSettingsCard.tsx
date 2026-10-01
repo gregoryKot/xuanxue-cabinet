@@ -4,7 +4,11 @@
 // Приписка называет то, что человек там найдёт, — и только то, что у него
 // есть: выбора «о каких занятиях» у штата нет (`hasLessonScopedKinds`), а
 // обещанная и не найденная строка читалась бы пропавшей настройкой.
-import { defaultNotifications, hasLessonScopedKinds, type MeDto } from '@xuanxue/shared';
+import {
+  availableNotifications,
+  hasLessonScopedKinds,
+  type MeDto,
+} from '@xuanxue/shared';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
@@ -16,7 +20,7 @@ const HINT_WITHOUT_LESSONS = 'Что присылать и на какое ус�
 export function NotificationSettingsCard({ me }: { me: MeDto | null }) {
   // Пока `me` не пришёл, приписку выбрать нечем: скелетон по форме карточки.
   if (me === null) return <SkeletonList rows={1} h={64} />;
-  const hint = hasLessonScopedKinds(defaultNotifications(me.roles))
+  const hint = hasLessonScopedKinds(availableNotifications(me.roles))
     ? HINT
     : HINT_WITHOUT_LESSONS;
   return <SectionLink to={NOTIFICATION_SETTINGS_PATH} title={TITLE} hint={hint} />;

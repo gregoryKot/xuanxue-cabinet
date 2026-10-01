@@ -3,7 +3,7 @@
 // время самой строки уже пришли с сервера в UTC (in-app-notifications.ts);
 // здесь только взгляд на них в поясе читателя, тем же приёмом, что у
 // lib/relativeDay.ts.
-import type { NotificationDto } from '@xuanxue/shared';
+import type { NotificationDto, NotificationKind } from '@xuanxue/shared';
 import { formatDateTime, formatTime } from '../lib/formatDate';
 import { isToday } from '../lib/relativeDay';
 
@@ -42,12 +42,20 @@ export function notificationTimeText(
     : formatDateTime(iso, timeZone);
 }
 
-/** Строка записи для показа. Обычно `text` с сервера как есть; у отмены
- * занятия (ADR-0162) в скобках дописано, когда оно было назначено, — по часам
- * зрителя: сервер пояса устройства не знает (ADR-0060), и без числа из «Занятие
- * отменено — Тайцзи» не понять, какое из занятий класса отменили. */
+// Виды, чья строка говорит об одном занятии класса и без даты не понятна
+// (ADR-0162). Тот же список держит push-worker (web/public/sw.js, DATED_KINDS):
+// он вне сборки, импортировать отсюда не может, и spec sw.js сверяет их.
+export const LESSON_DATED_KINDS: readonly NotificationKind[] = [
+  'lesson_cancelled',
+  'recording_ready',
+];
+
+/** Строка записи для показа. Обычно `text` с сервера как есть; у отмены и
+ * записи занятия (ADR-0162) в скобках дописано, когда оно было назначено, — по
+ * часам зрителя: сервер пояса устройства не знает (ADR-0060), и без числа из
+ * «Занятие отменено — Тайцзи» не понять, какое из занятий класса отменили. */
 export function notificationBody(item: NotificationDto, timeZone?: string): string {
-  if (item.kind !== 'lesson_cancelled' || item.lessonStartsAt === undefined) {
+  if (!LESSON_DATED_KINDS.includes(item.kind) || item.lessonStartsAt === undefined) {
     return item.text;
   }
   return `${item.text} (${formatDateTime(item.lessonStartsAt, timeZone)})`;
