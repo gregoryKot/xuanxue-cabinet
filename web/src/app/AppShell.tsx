@@ -56,6 +56,7 @@ import { SkipLink, mainLandmarkProps } from '../components/SkipLink';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppNav } from './AppNav';
 import {
+  APP_SHELL_CLASS,
   contentColumnStyle,
   contentTopBarStyle,
   shellRowStyle,
@@ -66,6 +67,7 @@ import { AppShellBrandRow } from './AppShellBrandRow';
 import { InstallAppCard } from '../install/InstallAppCard';
 import { NewVersionBanner } from './NewVersionBanner';
 import { canSeeRoute, rootPathFor } from './screenAccess';
+import { usePinWindowScroll } from './usePinWindowScroll';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
 const PROFILE_PATH = '/profile';
@@ -86,6 +88,9 @@ export function AppShell() {
   // нарисованным первым экраном — самое время дотянуть остальные разделы в
   // простое браузера, чтобы переход по меню не ждал сети.
   usePrefetchRoutes(me);
+  // Окно в кабинете не прокручивается — возвращаем его на место после
+  // клавиатуры (usePinWindowScroll.ts).
+  usePinWindowScroll();
 
   // Боковая колонка — у любой роли на широком экране (см. шапку файла); от
   // неё зависит, кто рисует знак школы и блок человека.
@@ -94,7 +99,7 @@ export function AppShell() {
   return (
     <MyExamsProvider me={me}>
       <NotificationsProvider me={me}>
-        <div style={shellStyle}>
+        <div className={APP_SHELL_CLASS} style={shellStyle}>
           {/* Первая остановка Tab: без неё клавиатура проходит меню и шапку
               на каждом экране заново (WCAG 2.4.1, components/SkipLink.tsx). */}
           <SkipLink />
