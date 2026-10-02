@@ -8,19 +8,18 @@
 import { randomBytes } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import {
+  EMAIL_LOGIN_RESEND_COOLDOWN_MIN,
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
+} from '@xuanxue/shared';
 import { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import { generateEmailLoginCode, hashesMatch, hashSecret } from './email-login-code';
 import { EmailLoginTokenRecord } from './email-login-token.schema';
 
-// Не env (в отличие от TTL сессии, ADR-0012) — время жизни заявки входа не
-// настройка школы, менять его в интерфейсе некому и незачем (CLAUDE.md
-// «Кабинет учителя»: в env — только секреты и инфраструктура).
-export const EMAIL_LOGIN_TOKEN_TTL_MIN = 15;
-// Анти-спам (SECURITY §2): issue() не шлёт второе письмо тому же адресу
-// раньше этого срока — отдельно от троттлинга по IP в auth.controller.ts,
-// который не защищает от одного адресата с разных IP.
-export const EMAIL_LOGIN_RESEND_COOLDOWN_MIN = 2;
+// TTL заявки и cooldown повторного письма — в shared (email-login-code.ts,
+// аудит 2026-10-01 F30): форма входа показывает ученику те же цифры, и
+// второго литерала в web быть не должно.
 // Формат randomBytes(32).toString('hex') — 64 hex-символа, используется и в
 // VerifyEmailLoginDto (verify-email-login.dto.ts).
 export const EMAIL_LOGIN_TOKEN_RE = /^[0-9a-f]{64}$/;

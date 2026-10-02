@@ -3,10 +3,11 @@
 // EmailCodeForm внутри использует useAuth()/useNavigate() (ADR-0104) —
 // оборачиваем в <AuthProvider>/<MemoryRouter>, тот же приём, что
 // EmailCodeForm.test.tsx.
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EMAIL_LOGIN_RESEND_COOLDOWN_MIN } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
@@ -44,7 +45,23 @@ function renderForm(props: { inviteCode?: string } = {}) {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  vi.useRealTimers();
 });
+
+const COOLDOWN_MS = EMAIL_LOGIN_RESEND_COOLDOWN_MIN * 60 * 1000;
+
+/** Фальшивые часы для отсчёта cooldown (F30); userEvent двигает их сам,
+ * иначе его внутренние задержки ждали бы вечно. */
+function setupWithFakeTimers() {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+}
+
+async function passCooldown(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(COOLDOWN_MS);
+  });
+}
 
 describe('EmailLoginForm', () => {
   it('пустое поле — кнопка недоступна', async () => {
@@ -111,8 +128,11 @@ describe('EmailLoginForm', () => {
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
   });
 
-  it('«Отправить ещё раз» шлёт второй запрос с тем же адресом, экран не возвращается к форме', async () => {
-    const user = userEvent.setup();
+  // Аудит 2026-10-01, F30: в окне cooldown сервер отвечает тем же 204, не
+  // отправляя письма, а после окна заменяет заявку — код из первого письма
+  // перестаёт работать. Раньше ссылка была всегда и молчала.
+  it('пока идёт cooldown — ссылки нет, виден отсчёт', async () => {
+    const user = setupWithFakeTimers();
     mockRoutes((path) =>
       path === '/auth/email/request' ? Promise.resolve(undefined) : undefined,
     );
@@ -122,6 +142,36 @@ describe('EmailLoginForm', () => {
     await user.click(screen.getByRole('button', { name: 'Прислать код' }));
     await screen.findByText(/Письмо ушло/);
 
+    expect(
+      screen.queryByRole('button', { name: 'Отправить ещё раз' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Новое письмо можно запросить через/)).toHaveTextContent(
+      '2:00',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(screen.getByText(/Новое письмо можно запросить через/)).toHaveTextContent(
+      '1:45',
+    );
+  });
+
+  it('после cooldown «Отправить ещё раз» шлёт второй запрос с тем же адресом и предупреждает про прежний код', async () => {
+    const user = setupWithFakeTimers();
+    mockRoutes((path) =>
+      path === '/auth/email/request' ? Promise.resolve(undefined) : undefined,
+    );
+    renderForm();
+
+    await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
+    await screen.findByText(/Письмо ушло/);
+    await passCooldown();
+
+    expect(
+      screen.getByText('Код из прежнего письма перестанет работать.'),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
 
     // Фильтр по пути (не toHaveBeenCalledTimes): AuthProvider на монтировании
@@ -135,6 +185,10 @@ describe('EmailLoginForm', () => {
       body: { email: 'a@example.com' },
     });
     expect(await screen.findByText(/Письмо ушло/)).toBeInTheDocument();
+    // Повтор ушёл — окно закрылось снова.
+    expect(
+      screen.queryByRole('button', { name: 'Отправить ещё раз' }),
+    ).not.toBeInTheDocument();
   });
 
   it('ошибка до первого успеха — текст под полем, форма остаётся', async () => {
@@ -156,7 +210,7 @@ describe('EmailLoginForm', () => {
   });
 
   it('сбой «Отправить ещё раз» — текст ошибки поверх экрана «отправлено», форма не возвращается', async () => {
-    const user = userEvent.setup();
+    const user = setupWithFakeTimers();
     let requestAttempt = 0;
     mockRoutes((path) => {
       if (path !== '/auth/email/request') return undefined;
@@ -169,6 +223,7 @@ describe('EmailLoginForm', () => {
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
     await user.click(screen.getByRole('button', { name: 'Прислать код' }));
     await screen.findByText(/Письмо ушло/);
+    await passCooldown();
 
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
 

@@ -110,7 +110,7 @@ export function AttemptInProgress({
       </div>
 
       <AttemptSubmitBar
-        saveLabel={formatSaveStatus(autosave.status)}
+        saveLabel={formatSaveStatus(autosave.status, autosave.refusal)}
         onSubmit={submitFlow.handleSubmit}
         submitting={submitFlow.flushing || submitting}
         submitError={submitFlow.flushError ?? reasonGuard.error ?? submitError}

@@ -5,6 +5,7 @@ import type { ConfigService } from '@nestjs/config';
 import {
   EMAIL_LOGIN_QUOTA_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
 } from '@xuanxue/shared';
 import { NotAvailableError } from '../common/errors';
 import { MailService } from './mail.service';
@@ -97,6 +98,9 @@ describe('MailService.sendLoginLink', () => {
     expect(body.text).toContain('482913');
     expect(body.text).toContain('Код для входа: 482913');
     expect(body.text).toContain('Введите его на странице входа');
+    // Срок в письме берётся из той же константы, что и срок заявки: правка
+    // TTL не оставит в письме прежнее число (аудит 2026-10-01, F30).
+    expect(body.text).toContain(`Код работает ${EMAIL_LOGIN_TOKEN_TTL_MIN} минут`);
     expect(body.text.indexOf('482913')).toBeLessThan(body.text.indexOf('token=abc'));
   });
 

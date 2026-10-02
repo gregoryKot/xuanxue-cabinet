@@ -75,7 +75,14 @@ interface ToggleProps {
    * (components/InfoTip.tsx, ADR-0139) — вместо строки под переключателем. */
   tip?: string;
   checked: boolean;
+  /** Запрос-мутация в пути: контрол выключен и приглушён (opacity), чтобы
+   * было видно «занято». */
   disabled?: boolean;
+  /** Показ без права ответить (предпросмотр «глазами ученика», «Ваши
+   * ответы»): контрол выключен, но НЕ приглушён — это не «занято», и серая
+   * вуаль исказила бы вид строки, какой её видит ученик (отзыв владельца
+   * 2026-10-02, та же причина, что у AttemptOptionTile.tsx). */
+  readOnly?: boolean;
   /** Передано — это радио из группы с таким именем, а не самостоятельная галочка. */
   name?: string;
   onChange: (checked: boolean) => void;
@@ -87,12 +94,13 @@ export function Toggle({
   tip,
   checked,
   disabled,
+  readOnly,
   name,
   onChange,
 }: ToggleProps) {
   const labelStyle: CSSProperties = {
     ...rowStyle,
-    cursor: disabled ? 'default' : 'pointer',
+    cursor: disabled || readOnly ? 'default' : 'pointer',
     opacity: disabled ? 0.6 : 1,
   };
   const row = (
@@ -102,7 +110,7 @@ export function Toggle({
           type={name ? 'radio' : 'checkbox'}
           name={name}
           checked={checked}
-          disabled={disabled}
+          disabled={disabled || readOnly}
           onChange={(event) => onChange(event.target.checked)}
           style={inputStyle}
         />

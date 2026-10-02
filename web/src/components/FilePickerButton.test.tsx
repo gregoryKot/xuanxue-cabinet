@@ -127,4 +127,27 @@ describe('FilePickerButton', () => {
     expect(label).toHaveStyle({ background: 'var(--terracotta)' });
     expect(screen.getByLabelText('Загрузить видео')).toHaveAttribute('accept', 'video/*');
   });
+
+  // Предпросмотр «глазами ученика»: учитель видит ту же кнопку, что ученик,
+  // но выбрать файл через неё нельзя (отзыв владельца 2026-10-02).
+  it.each(['text', 'primary'] as const)(
+    'disabled (%s) — поле выбора выключено, вид кнопки прежний, не приглушён',
+    (variant) => {
+      render(
+        <FilePickerButton
+          label="Загрузить видео"
+          accept="video/*"
+          pending={false}
+          onFile={vi.fn()}
+          variant={variant}
+          disabled
+        />,
+      );
+
+      const label = screen.getByLabelText('Загрузить видео').closest('label');
+      expect(screen.getByLabelText('Загрузить видео')).toBeDisabled();
+      expect(label?.style.cursor).toBe('default');
+      expect(['', '1']).toContain(label?.style.opacity);
+    },
+  );
 });

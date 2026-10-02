@@ -6,11 +6,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLIENT_ERROR_LIMITS } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
+// Потолок тела keepalive — одна константа на весь кабинет (http.ts, аудит
+// 2026-10-01 F43), не свой литерал в тесте.
+import { KEEPALIVE_BODY_MAX_BYTES } from '../api/http';
 import type { reportClientError as reportClientErrorType } from './reportClientError';
-
-/** Потолок тела keepalive-запроса из спецификации fetch — общий на все живые
- * keepalive-запросы сразу. */
-const KEEPALIVE_BODY_LIMIT_BYTES = 64 * 1024;
 
 vi.mock('../api/http', async (importOriginal) => ({
   ...(await importOriginal<typeof HttpModule>()),
@@ -191,7 +190,7 @@ describe('reportClientError', () => {
     await reportClientError('render', new Error(longMessage));
 
     const bodyBytes = new TextEncoder().encode(JSON.stringify(lastRequestBody())).length;
-    expect(bodyBytes).toBeLessThan(KEEPALIVE_BODY_LIMIT_BYTES / 8);
+    expect(bodyBytes).toBeLessThan(KEEPALIVE_BODY_MAX_BYTES / 8);
   });
 
   it('отказ apiFetch не бросает наружу и не порождает второй отчёт того же сбоя', async () => {
