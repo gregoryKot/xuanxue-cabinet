@@ -19,6 +19,7 @@ import { paymentReminderWithoutSchoolDay } from './0018-payment-reminder-without
 import { fullSchoolSchedule } from './0019-full-school-schedule.migration';
 import { paymentContactWithChannel } from './0020-payment-contact-with-channel.migration';
 import { examVideosReady } from './0021-exam-videos-ready.migration';
+import { scheduleByMoment } from './0022-school-schedule-by-moment.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -38,7 +39,10 @@ type Db = mongo.Db;
 // ссылкам, и порядок здесь описывает то, что уже случилось.
 export interface Migration {
   id: string;
-  up: (db: Db) => Promise<void>;
+  /** Строки отчёта — что миграция поменяла или пропустила; раннер пишет их в
+   * лог. Миграция 0019 пропустила слот молча, и «Цзибеньгун» на проде
+   * заметил владелец, а не лог (2026-10-02). */
+  up: (db: Db) => Promise<void | readonly string[]>;
 }
 
 export const MIGRATIONS: Migration[] = [
@@ -62,4 +66,5 @@ export const MIGRATIONS: Migration[] = [
   fullSchoolSchedule,
   paymentContactWithChannel,
   examVideosReady,
+  scheduleByMoment,
 ];

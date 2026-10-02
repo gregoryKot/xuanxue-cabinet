@@ -426,7 +426,7 @@
   "api/src/migrations/0016-payment-reminder-template-without-subscription.migration.ts": 40,
   "api/src/migrations/0017-payment-reminder-template-contact.migration.ts": 44,
   "api/src/migrations/0018-payment-reminder-without-school-day.migration.ts": 29,
-  "api/src/migrations/0019-full-school-schedule.migration.ts": 300,
+  "api/src/migrations/0019-full-school-schedule.migration.ts": 232,
   "api/src/migrations/0020-payment-contact-with-channel.migration.ts": 53,
   "api/src/migrations/migration.runner.ts": 141,
   "api/src/migrations/migrations.module.ts": 17,

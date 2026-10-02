@@ -1,6 +1,7 @@
 // Реальный Mongo в памяти вместо мока: раннер держит логику блокировок и
 // денормализованного состояния (какие миграции применены), read-after-write
 // связка «применил → записалось → второй прогон не повторяет» важнее мока.
+import { Logger } from '@nestjs/common';
 import type { Connection, mongo } from 'mongoose';
 import { MigrationRunner } from './migration.runner';
 import type { Migration } from './migrations';
@@ -202,6 +203,19 @@ describe('MigrationRunner', () => {
 
     await expect(runner.run(migrations)).resolves.toBeUndefined();
     expect(await appliedIds()).toEqual(['0001-concurrent']);
+  });
+
+  // 2026-10-02: миграция 0019 молча пропустила правленный слот, и старое
+  // название на проде заметил владелец, а не лог. Отчёт миграции — в лог.
+  it('строки отчёта миграции уходят в лог с её id', async () => {
+    const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+
+    await runner.run([
+      { id: '0001-report', up: () => Promise.resolve(['переименовано «А» → «Б»']) },
+    ]);
+
+    expect(log).toHaveBeenCalledWith('0001-report: переименовано «А» → «Б»');
+    log.mockRestore();
   });
 
   it('без установленного соединения с БД бросает понятную ошибку', async () => {
