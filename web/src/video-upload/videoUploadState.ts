@@ -4,7 +4,7 @@
 import type { FormError } from '../components/FormServerError';
 
 type VideoUploadPhase =
-  'idle' | 'uploading' | 'waiting' | 'cancelled' | 'done' | 'failed';
+  'idle' | 'compressing' | 'uploading' | 'waiting' | 'cancelled' | 'done' | 'failed';
 
 export interface VideoUploadState {
   phase: VideoUploadPhase;
@@ -14,6 +14,8 @@ export interface VideoUploadState {
   partCount: number;
   totalBytes: number;
   partBytes: number;
+  /** Только `phase: 'compressing'` — доля готовности сжатия 0..1 (ADR-0165). */
+  compressProgress: number;
   /** Только `phase: 'failed'` — текст сервера или общий запасной. */
   error: FormError | null;
 }
@@ -24,14 +26,19 @@ export const IDLE_VIDEO_UPLOAD_STATE: VideoUploadState = {
   partCount: 0,
   totalBytes: 0,
   partBytes: 0,
+  compressProgress: 0,
   error: null,
 };
 
-/** Загрузка идёт прямо сейчас (в том числе стоит на паузе до повтора) — по
+/** Видео в работе прямо сейчас: сжимается, грузится или стоит на паузе до повтора — по
  * этому признаку экран прячет выбор файла и показывает полосу, подвал формы
  * отказывает «Отправить» (useUploadActiveMark.ts, аудит 2026-10-01), а экран
- * телефона не гаснет (useScreenWakeLock.ts). Новая фаза «в работе» (сжатие,
- * ADR-0165) добавляется здесь — и получает все три сразу. */
+ * телефона не гаснет (useScreenWakeLock.ts). Новая фаза «в работе»
+ * добавляется здесь — и получает все три сразу. */
 export function isVideoUploadActive(state: VideoUploadState): boolean {
-  return state.phase === 'uploading' || state.phase === 'waiting';
+  return (
+    state.phase === 'compressing' ||
+    state.phase === 'uploading' ||
+    state.phase === 'waiting'
+  );
 }
