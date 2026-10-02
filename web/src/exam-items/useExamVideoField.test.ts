@@ -99,6 +99,18 @@ describe('useExamVideoField — загрузка файла', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('«Отправить без сжатия» вне сжатия ничего не делает: загрузка идёт как шла', async () => {
+    const transport = useFakeTransport({ start: () => new Promise(() => {}) });
+    const { result } = renderHook(() => useExamVideoField(vi.fn()));
+    act(() => result.current.uploadFile(FILE));
+    await waitFor(() => expect(transport.start).toHaveBeenCalled());
+
+    act(() => result.current.skipCompression());
+
+    expect(result.current.upload.phase).toBe('uploading');
+    expect(transport.start).toHaveBeenCalledTimes(1);
+  });
+
   it('связь пропала — пауза, «Продолжить сейчас» доводит загрузку до конца', async () => {
     let part1Attempts = 0;
     useFakeTransport({

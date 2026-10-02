@@ -1,7 +1,7 @@
 // Что человек видит, пока видео сжимается, грузится и после (ADR-0137,
-// ADR-0165): полоса прогресса (при сжатии — «Сжимаем видео — 40%», при загрузке
-// по частям — «N из M»), просьба не закрывать страницу, «Отменить», на паузе —
-// «Продолжить сейчас»;
+// ADR-0165): полоса прогресса (при сжатии — «Сжимаем видео — 40%» и «Отправить
+// без сжатия» с пояснением, при загрузке по частям — «N из M»), просьба не
+// закрывать страницу, «Отменить», на паузе — «Продолжить сейчас»;
 // после «Отменить» — подсказка выбрать тот же файл; после отказа — текст
 // сервера. Выбор файла и объяснение «откуда это и зачем» остаются за экраном
 // вида видео: они у каждого свои. Только вёрстка по состоянию хука
@@ -23,6 +23,13 @@ const STAY_ON_PAGE_HINT =
   'Не закрывайте страницу, пока видео **грузится**: загрузка остановится.';
 const CANCEL_LABEL = 'Отменить';
 const RESUME_LABEL = 'Продолжить сейчас';
+// Отзыв владельца 2026-10-02: «пусть пользователь выбирает: у меня плохая сеть —
+// сжать видео, или просто загружать». Сжатие идёт само, а выбор — только здесь,
+// пока оно идёт: ученику не нужно решать заранее (ADR-0165).
+const SKIP_COMPRESSION_LABEL = 'Отправить без сжатия';
+const SKIP_COMPRESSION_HINT =
+  'Сжатое видео в **несколько раз меньше** — на слабой связи оно уйдёт быстрее. ' +
+  'Если связь хорошая или нужно исходное качество, отправьте без сжатия.';
 const WAITING_TEXT = 'Связь пропала — продолжим сами, как только она вернётся.';
 // Только после «Отменить»: незаконченная загрузка ждёт на сервере, и тот же
 // файл продолжит её с места остановки (ADR-0137). На отказ сервера строки нет —
@@ -61,12 +68,14 @@ interface VideoUploadProgressProps {
   state: VideoUploadState;
   onCancel: () => void;
   onResume: () => void;
+  onSkipCompression: () => void;
 }
 
 export function VideoUploadProgress({
   state,
   onCancel,
   onResume,
+  onSkipCompression,
 }: VideoUploadProgressProps) {
   const isCompressing = state.phase === 'compressing';
   const uploadedBytes = Math.min(state.sentParts * state.partBytes, state.totalBytes);
@@ -96,6 +105,16 @@ export function VideoUploadProgress({
               `${formatFileSize(uploadedBytes)} из ${formatFileSize(state.totalBytes)}`
             )}
           </p>
+          {isCompressing && state.canSkipCompression && (
+            <>
+              <p style={progressTextStyle}>
+                <RichText text={SKIP_COMPRESSION_HINT} />
+              </p>
+              <TextLinkButton onClick={onSkipCompression}>
+                {SKIP_COMPRESSION_LABEL}
+              </TextLinkButton>
+            </>
+          )}
           {state.phase === 'waiting' && (
             <div style={waitingRowStyle}>
               <p style={progressTextStyle}>{WAITING_TEXT}</p>

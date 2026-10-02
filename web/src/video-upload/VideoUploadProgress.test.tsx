@@ -21,8 +21,16 @@ function stateIn(phase: VideoUploadState['phase'], sentParts = 1): VideoUploadSt
 function renderProgress(state: VideoUploadState) {
   const onCancel = vi.fn();
   const onResume = vi.fn();
-  render(<VideoUploadProgress state={state} onCancel={onCancel} onResume={onResume} />);
-  return { onCancel, onResume };
+  const onSkipCompression = vi.fn();
+  render(
+    <VideoUploadProgress
+      state={state}
+      onCancel={onCancel}
+      onResume={onResume}
+      onSkipCompression={onSkipCompression}
+    />,
+  );
+  return { onCancel, onResume, onSkipCompression };
 }
 
 describe('VideoUploadProgress — idle/done', () => {
@@ -79,6 +87,43 @@ describe('VideoUploadProgress — compressing', () => {
 
     expect(screen.queryByRole('button', { name: 'Продолжить сейчас' })).toBeNull();
   });
+});
+
+describe('VideoUploadProgress — «Отправить без сжатия»', () => {
+  const SKIP_LABEL = 'Отправить без сжатия';
+
+  it('на сжатии кнопка и пояснение есть, нажатие зовёт onSkipCompression', async () => {
+    const { onSkipCompression, onCancel } = renderProgress({
+      ...stateIn('compressing', 0),
+      canSkipCompression: true,
+    });
+    const user = userEvent.setup();
+
+    expect(screen.getByText('несколько раз меньше').tagName).toBe('STRONG');
+    expect(screen.getByText(/на слабой связи оно уйдёт быстрее/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: SKIP_LABEL }));
+
+    expect(onSkipCompression).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('исходник больше потолка вида видео — ни кнопки, ни пояснения', () => {
+    renderProgress({ ...stateIn('compressing', 0), canSkipCompression: false });
+
+    expect(screen.queryByRole('button', { name: SKIP_LABEL })).toBeNull();
+    expect(screen.queryByText(/несколько раз меньше/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Отменить' })).toBeInTheDocument();
+  });
+
+  it.each(['uploading', 'waiting', 'cancelled', 'failed'] as const)(
+    'в фазе %s кнопки нет, даже если признак остался в состоянии',
+    (phase) => {
+      renderProgress({ ...stateIn(phase), canSkipCompression: true });
+
+      expect(screen.queryByRole('button', { name: SKIP_LABEL })).toBeNull();
+      expect(screen.queryByText(/несколько раз меньше/)).toBeNull();
+    },
+  );
 });
 
 describe('VideoUploadProgress — просьба не закрывать страницу', () => {

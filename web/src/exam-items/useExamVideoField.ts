@@ -31,6 +31,8 @@ export interface UseExamVideoFieldResult {
   cancelUpload: () => void;
   /** «Продолжить сейчас» на паузе перед повтором. */
   resumeUpload: () => void;
+  /** «Отправить без сжатия» на полосе сжатия. */
+  skipCompression: () => void;
   /** Подтверждает `urlDraft` — валидный `https://` уходит в форму через
    * `onChange`, невалидный останется в поле с текстом ошибки под ним. */
   commitUrl: () => void;
@@ -43,13 +45,15 @@ export function useExamVideoField(
 ): UseExamVideoFieldResult {
   const [error, setError] = useState<string | null>(null);
   const [urlDraft, setUrlDraft] = useState('');
-  const { state, selectFile, cancel, resumeNow, reset } = useVideoUpload({
-    createTransport: examVideoTransport,
-    // Готовое видео уходит в форму ровно так же, как раньше: только id.
-    onDone: (video) => onChange({ videoId: video.id }),
-    maxBytes: EXAM_VIDEO_LIMITS.maxBytes,
-    tooLargeMessage: EXAM_VIDEO_TOO_LARGE_MESSAGE,
-  });
+  const { state, selectFile, cancel, resumeNow, skipCompression, reset } = useVideoUpload(
+    {
+      createTransport: examVideoTransport,
+      // Готовое видео уходит в форму ровно так же, как раньше: только id.
+      onDone: (video) => onChange({ videoId: video.id }),
+      maxBytes: EXAM_VIDEO_LIMITS.maxBytes,
+      tooLargeMessage: EXAM_VIDEO_TOO_LARGE_MESSAGE,
+    },
+  );
 
   function commitUrl(): void {
     const trimmed = urlDraft.trim();
@@ -78,6 +82,7 @@ export function useExamVideoField(
     uploadFile: selectFile,
     cancelUpload: cancel,
     resumeUpload: resumeNow,
+    skipCompression,
     commitUrl,
     clear,
   };

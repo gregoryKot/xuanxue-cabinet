@@ -47,7 +47,7 @@ export function AttemptVideoUpload({ itemId, video, disabled }: AttemptVideoUplo
     () => answerVideoTransport(attemptId, itemId),
     [attemptId, itemId],
   );
-  const { state, selectFile, cancel, resumeNow } = useVideoUpload({
+  const { state, selectFile, cancel, resumeNow, skipCompression } = useVideoUpload({
     createTransport,
     onDone: applyMedia,
     maxBytes: ANSWER_VIDEO_LIMITS.maxBytes,
@@ -76,7 +76,12 @@ export function AttemptVideoUpload({ itemId, video, disabled }: AttemptVideoUplo
         />
       )}
 
-      <VideoUploadProgress state={state} onCancel={cancel} onResume={resumeNow} />
+      <VideoUploadProgress
+        state={state}
+        onCancel={cancel}
+        onResume={resumeNow}
+        onSkipCompression={skipCompression}
+      />
     </>
   );
 }

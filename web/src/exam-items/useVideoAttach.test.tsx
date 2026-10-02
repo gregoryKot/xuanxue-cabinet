@@ -22,6 +22,7 @@ function stubField(overrides: Partial<ReturnType<typeof useExamVideoField>> = {}
   const uploadFile = vi.fn();
   const cancelUpload = vi.fn();
   const resumeUpload = vi.fn();
+  const skipCompression = vi.fn();
   const commitUrl = vi.fn();
   const clear = vi.fn();
   const setUrlDraft = vi.fn();
@@ -33,11 +34,20 @@ function stubField(overrides: Partial<ReturnType<typeof useExamVideoField>> = {}
     uploadFile,
     cancelUpload,
     resumeUpload,
+    skipCompression,
     commitUrl,
     clear,
     ...overrides,
   });
-  return { uploadFile, cancelUpload, resumeUpload, commitUrl, clear, setUrlDraft };
+  return {
+    uploadFile,
+    cancelUpload,
+    resumeUpload,
+    skipCompression,
+    commitUrl,
+    clear,
+    setUrlDraft,
+  };
 }
 
 /** Состояние загрузчика (video-upload/useVideoUpload.ts) в нужной фазе. */
@@ -169,6 +179,18 @@ describe('useVideoAttach — пусто, R2 подключён', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Отменить' }));
 
     expect(cancelUpload).toHaveBeenCalled();
+  });
+
+  it('идёт сжатие — «Отправить без сжатия» зовёт skipCompression()', async () => {
+    const { skipCompression, cancelUpload } = stubField({
+      upload: uploadIn('compressing', { canSkipCompression: true }),
+    });
+    render(<Harness value={{}} fileStorageEnabled onChange={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Отправить без сжатия' }));
+
+    expect(skipCompression).toHaveBeenCalledTimes(1);
+    expect(cancelUpload).not.toHaveBeenCalled();
   });
 
   it('пауза перед повтором — «Продолжить сейчас» зовёт resumeUpload()', async () => {
