@@ -6,6 +6,7 @@
 // (правило CLAUDE.md «Время» запрещает web без Luxon: то же самое здесь —
 // web/vite.config.ts и web/package.json Luxon не тянут).
 import {
+  EVERY_TWO_WEEKS,
   WEEKDAYS,
   type ClassDto,
   type ScheduleRuleDto,
@@ -28,6 +29,10 @@ export interface ScheduleSlot {
   startTime: string;
   endTime: string;
   startMinutes: number;
+  /** Слот идёт раз в две недели (ADR-0168): сетка показывает правила, не
+   * конкретные недели, и без подписи «раз в 2 недели» строка читалась бы
+   * как «каждую пятницу». */
+  isBiweekly: boolean;
   active: boolean;
   /** Онлайн-занятие без ссылки Zoom: рассылка уйдёт без неё, ученик
    * останется за дверью. SlotRow показывает «без ссылки» прямо в сетке
@@ -106,6 +111,7 @@ export function buildScheduleGrid(
         startTime: rule.time,
         endTime: ruleEndTime(rule),
         startMinutes,
+        isBiweekly: rule.everyWeeks === EVERY_TWO_WEEKS,
         active: cls.active,
         linkMissing: cls.format !== 'offline' && !cls.zoomLink,
         channelCount: countActiveChannels(cls.channelIds, activeChannelIds),

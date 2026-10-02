@@ -71,7 +71,7 @@ describe('useClassForm — создание', () => {
     act(() => {
       result.current.setField('title', '  Цигун  ');
       result.current.setField('rules', [
-        { weekday: 1, time: '19:00', durationMinText: '60' },
+        { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
     });
 
@@ -95,7 +95,7 @@ describe('useClassForm — создание', () => {
     act(() => {
       result.current.setField('title', 'Занятие');
       result.current.setField('rules', [
-        { weekday: 1, time: '19:00', durationMinText: '60' },
+        { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
     });
 
@@ -121,7 +121,7 @@ describe('useClassForm — создание', () => {
     act(() => {
       result.current.setField('title', 'Новое занятие');
       result.current.setField('rules', [
-        { weekday: 1, time: '19:00', durationMinText: '60' },
+        { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
     });
     await act(async () => {
@@ -142,7 +142,7 @@ describe('useClassForm — создание', () => {
     act(() => {
       result.current.setField('title', 'Занятие');
       result.current.setField('rules', [
-        { weekday: 1, time: '19:00', durationMinText: '60' },
+        { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
     });
 
@@ -262,7 +262,7 @@ describe('useClassForm — черновик (ADR-0052, дополнение 2026
     act(() => {
       result.current.setField('title', 'Занятие');
       result.current.setField('rules', [
-        { weekday: 1, time: '19:00', durationMinText: '60' },
+        { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
     });
 

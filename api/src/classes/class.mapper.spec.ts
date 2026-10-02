@@ -67,6 +67,29 @@ describe('toClassDto', () => {
     expect('location' in dto).toBe(true); // ключ есть, просто пуст — не удалён
   });
 
+  // ADR-0168: у старых документов полей нет — ответ без них, а не с null.
+  it('правило раз в две недели отдаёт everyWeeks и startsOn, еженедельное — ни того, ни другого', () => {
+    const doc = fullClass();
+    doc.rules = [
+      {
+        _id: RULE_ID,
+        weekday: 5,
+        time: '20:00',
+        durationMin: 90,
+        everyWeeks: 2,
+        startsOn: '2026-10-02',
+      },
+      { _id: new Types.ObjectId(), weekday: 1, time: '19:00', durationMin: 60 },
+    ];
+
+    const [biweekly, weekly] = toClassDto(doc).rules;
+
+    expect(biweekly).toMatchObject({ everyWeeks: 2, startsOn: '2026-10-02' });
+    expect(weekly?.everyWeeks).toBeUndefined();
+    expect(weekly?.startsOn).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(weekly))).not.toHaveProperty('everyWeeks');
+  });
+
   it('пустой список правил и каналов — пустые массивы', () => {
     const doc = fullClass();
     doc.rules = [];

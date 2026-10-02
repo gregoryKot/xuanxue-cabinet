@@ -55,7 +55,9 @@ function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
     channelIds: [],
     leaderId: '',
     tagsText: '',
-    rules: [{ weekday: 1, time: '19:00', durationMinText: '60' }],
+    rules: [
+      { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
+    ],
     ...overrides,
   };
 }
@@ -85,7 +87,41 @@ describe('initialClassFormState', () => {
     expect(state.tz).toBe('Europe/Moscow');
     expect(state.leadMinutesText).toBe('15');
     expect(state.rules).toEqual([
-      { id: 'r1', weekday: 2, time: '19:00', durationMinText: '60' },
+      {
+        id: 'r1',
+        weekday: 2,
+        time: '19:00',
+        durationMinText: '60',
+        everyWeeks: 1,
+        startsOn: '',
+      },
+    ]);
+  });
+
+  it('занятие раз в две недели — частота и дата первого занятия попадают в строку правила (ADR-0168)', () => {
+    const state = initialClassFormState(
+      makeClass({
+        rules: [
+          {
+            id: 'r1',
+            weekday: 5,
+            time: '20:00',
+            durationMin: 90,
+            everyWeeks: 2,
+            startsOn: '2026-10-02',
+          },
+        ],
+      }),
+    );
+    expect(state.rules).toEqual([
+      {
+        id: 'r1',
+        weekday: 5,
+        time: '20:00',
+        durationMinText: '90',
+        everyWeeks: 2,
+        startsOn: '2026-10-02',
+      },
     ]);
   });
 
@@ -138,7 +174,11 @@ describe('validateClassForm', () => {
   it('пустое время правила — ошибка', () => {
     expect(
       validateClassForm(
-        baseState({ rules: [{ weekday: 1, time: '', durationMinText: '60' }] }),
+        baseState({
+          rules: [
+            { weekday: 1, time: '', durationMinText: '60', everyWeeks: 1, startsOn: '' },
+          ],
+        }),
       ),
     ).toMatch(/время/);
   });
@@ -146,7 +186,17 @@ describe('validateClassForm', () => {
   it('пустая длительность — ошибка, не «0 минут»', () => {
     expect(
       validateClassForm(
-        baseState({ rules: [{ weekday: 1, time: '19:00', durationMinText: '' }] }),
+        baseState({
+          rules: [
+            {
+              weekday: 1,
+              time: '19:00',
+              durationMinText: '',
+              everyWeeks: 1,
+              startsOn: '',
+            },
+          ],
+        }),
       ),
     ).toMatch(/Длительность/);
   });
@@ -154,9 +204,35 @@ describe('validateClassForm', () => {
   it('длительность вне диапазона CLASS_LIMITS — ошибка', () => {
     expect(
       validateClassForm(
-        baseState({ rules: [{ weekday: 1, time: '19:00', durationMinText: '1' }] }),
+        baseState({
+          rules: [
+            {
+              weekday: 1,
+              time: '19:00',
+              durationMinText: '1',
+              everyWeeks: 1,
+              startsOn: '',
+            },
+          ],
+        }),
       ),
     ).toMatch(/Длительность/);
+  });
+
+  it('раз в две недели без даты — ошибка правила, форма не уходит на сервер (ADR-0168)', () => {
+    const rule = {
+      weekday: 5 as const,
+      time: '20:00',
+      durationMinText: '90',
+      everyWeeks: 2 as const,
+      startsOn: '',
+    };
+    expect(validateClassForm(baseState({ rules: [rule] }))).toBe(
+      'Впишите дату первого занятия: от неё занятие идёт через неделю.',
+    );
+    expect(
+      validateClassForm(baseState({ rules: [{ ...rule, startsOn: '2026-10-02' }] })),
+    ).toBeNull();
   });
 
   it('пустое «за сколько минут слать» — ошибка, не «0»', () => {
@@ -205,6 +281,31 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     const input = toCreateInput(baseState());
     expect(input.leadMinutes).toBe(30);
     expect(input.rules?.[0]).toMatchObject({ durationMin: 60 });
+  });
+
+  it('правило раз в две недели уходит с everyWeeks и датой — создание и правка (ADR-0168)', () => {
+    const state = baseState({
+      rules: [
+        {
+          weekday: 5,
+          time: '20:00',
+          durationMinText: '90',
+          everyWeeks: 2,
+          startsOn: '2026-10-02',
+        },
+      ],
+    });
+    const expected = [
+      {
+        weekday: 5,
+        time: '20:00',
+        durationMin: 90,
+        everyWeeks: 2,
+        startsOn: '2026-10-02',
+      },
+    ];
+    expect(toCreateInput(state).rules).toEqual(expected);
+    expect(toUpdateInput(state).rules).toEqual(expected);
   });
 
   it('channelIds уходят в тело запроса как есть — создание и правка (ревью п.1)', () => {

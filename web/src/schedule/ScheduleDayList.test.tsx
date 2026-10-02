@@ -23,6 +23,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     startTime: '19:00',
     endTime: '20:00',
     startMinutes: 1140,
+    isBiweekly: false,
     active: true,
     linkMissing: false,
     channelCount: 1,

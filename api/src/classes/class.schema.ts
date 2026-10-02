@@ -6,10 +6,13 @@ import { SchemaTypes, Types } from 'mongoose';
 import {
   CLASS_FORMATS,
   DEFAULT_LEAD_MINUTES,
+  RULE_DATE_RE,
+  RULE_EVERY_WEEKS,
   RULE_TIME_RE,
   SCHOOL_TZ,
   WEEKDAYS,
   type ClassFormat,
+  type RuleEveryWeeks,
   type ScheduleRule,
   type Weekday,
 } from '@xuanxue/shared';
@@ -30,6 +33,18 @@ class ScheduleRuleSubdoc implements ScheduleRule {
 
   @Prop({ type: Number, required: true })
   durationMin!: number;
+
+  // «Раз в две недели» (ADR-0168): поля необязательны, старые документы без
+  // них — еженедельные, миграция данных не нужна. Хранится только `2`:
+  // еженедельное правило не несёт ни `everyWeeks`, ни `startsOn` — одно
+  // представление, сравнивать нечего (classes.update.ts, mapRules).
+  @Prop({ type: Number, enum: RULE_EVERY_WEEKS, required: false })
+  everyWeeks?: RuleEveryWeeks;
+
+  // Календарная дата без пояса: день недели у неё один во всех зонах, а
+  // момент начала планировщик собирает из даты, времени правила и `tz`.
+  @Prop({ type: String, required: false, match: RULE_DATE_RE })
+  startsOn?: string;
 }
 const ScheduleRuleSchema = SchemaFactory.createForClass(ScheduleRuleSubdoc);
 
@@ -104,6 +119,9 @@ export const CLASS_FIELD_POLICY: FieldPolicy = {
   zoomLink: enc,
   zoomPassword: enc,
   'rules.time': plain('время слота, нужно для выборок'),
+  'rules.startsOn': plain(
+    'дата первого занятия раз в две недели, не персональные данные',
+  ),
   tz: plain('IANA-зона для выборок'),
   tags: plain('рубрика курса, фильтр по тегу; не персональные данные'),
 };

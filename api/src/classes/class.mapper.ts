@@ -46,5 +46,8 @@ function toRuleDto(rule: LeanScheduleRule): ScheduleRuleDto {
     weekday: rule.weekday,
     time: rule.time,
     durationMin: rule.durationMin,
+    // Старый документ полей не содержит — в ответе их нет совсем, не `null`.
+    everyWeeks: rule.everyWeeks,
+    startsOn: rule.startsOn,
   };
 }

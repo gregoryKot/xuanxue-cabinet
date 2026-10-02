@@ -4,11 +4,15 @@
 import { IsIn, IsInt, IsMongoId, IsOptional, Matches, Max, Min } from 'class-validator';
 import {
   CLASS_LIMITS,
+  RULE_DATE_RE,
+  RULE_EVERY_WEEKS,
   RULE_TIME_RE,
   WEEKDAYS,
+  type RuleEveryWeeks,
   type ScheduleRuleInput,
   type Weekday,
 } from '@xuanxue/shared';
+import { OptionalNotNull } from '../../common/validation';
 
 export class ScheduleRuleDto implements ScheduleRuleInput {
   @IsOptional()
@@ -28,4 +32,15 @@ export class ScheduleRuleDto implements ScheduleRuleInput {
   @Min(CLASS_LIMITS.durationMinMin)
   @Max(CLASS_LIMITS.durationMinMax)
   durationMin!: number;
+
+  // «Раз в две недели» (ADR-0168). Здесь — только форма значений; что при
+  // `2` дата обязана быть и выпадать на день правила, проверяет
+  // `mapRules` (classes.update.ts) доменной ошибкой с понятным текстом.
+  @OptionalNotNull()
+  @IsIn(RULE_EVERY_WEEKS)
+  everyWeeks?: RuleEveryWeeks;
+
+  @OptionalNotNull()
+  @Matches(RULE_DATE_RE, { message: 'в формате ГГГГ-ММ-ДД, например 2026-10-02.' })
+  startsOn?: string;
 }
