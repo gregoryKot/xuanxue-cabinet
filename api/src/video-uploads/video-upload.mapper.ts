@@ -1,11 +1,9 @@
-// Единственный маппер состояния загрузки (lean) → AnswerVideoUploadDto
+// Единственный маппер состояния загрузки (lean) → VideoUploadDto
 // (CLAUDE.md «API») для всех видов видео: `key`/`uploadId` не уходят в DTO —
 // адрес объекта в R2 не должен утечь мимо подписанной ссылки
-// (FileStoreService.signedGetUrl). Тип DTO пока прежний, общий с web
-// (shared/src/answer-videos.ts).
+// (FileStoreService.signedGetUrl).
 import type { Types } from 'mongoose';
-import type { AnswerVideoUploadDto } from '@xuanxue/shared';
-import { ANSWER_VIDEO_LIMITS } from '@xuanxue/shared';
+import { ANSWER_VIDEO_LIMITS, type VideoUploadDto } from '@xuanxue/shared';
 import type { VideoUploadRecord } from './video-upload.schema';
 
 /** Запись загрузки как её отдаёт `.lean()`. Схема-наследник сужает её своими
@@ -20,7 +18,7 @@ export function partCountFor(sizeBytes: number): number {
   return Math.ceil(sizeBytes / ANSWER_VIDEO_LIMITS.partBytes);
 }
 
-export function toVideoUploadDto(doc: RawLeanVideoUpload): AnswerVideoUploadDto {
+export function toVideoUploadDto(doc: RawLeanVideoUpload): VideoUploadDto {
   return {
     id: doc._id.toString(),
     partBytes: ANSWER_VIDEO_LIMITS.partBytes,

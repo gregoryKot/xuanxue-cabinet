@@ -8,6 +8,10 @@ import { Types } from 'mongoose';
 import type { UserRole } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import {
+  EXAM_VIDEO_NOT_FOUND_MESSAGE,
+  EXAM_VIDEO_UPLOADING_MESSAGE,
+} from '@xuanxue/shared';
 import { InvalidInputError, NotAvailableError, NotFoundError } from '../common/errors';
 import { ExamAttemptRecord, ExamAttemptSchema } from '../exams/exam-attempt.schema';
 import type { FileStoreService } from '../storage/file-store.service';
@@ -325,6 +329,98 @@ describe('ExamVideosService', () => {
       await expect(
         service.rememberTelegramFileId('not-an-id', 'tg-file-3'),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  // ADR-0165: видео, которое грузится частями, ни показать, ни привязать к
+  // вопросу нельзя; прежнее без поля status (до миграции) — готовое.
+  describe('готовность видео', () => {
+    async function insertVideo(extra: Record<string, unknown>): Promise<string> {
+      const doc = await videoModel.collection.insertOne({
+        key: `exam-videos/${new Types.ObjectId().toString()}`,
+        contentType: 'video/mp4',
+        sizeBytes: MP4.length,
+        ...extra,
+      });
+      store.objects.set(
+        (await videoModel.findById(doc.insertedId).lean())?.key ?? '',
+        MP4,
+      );
+      return doc.insertedId.toString();
+    }
+
+    it('загрузка не окончена — assertExist отказывает словами про загрузку, не «не найдено»', async () => {
+      const id = await insertVideo({ status: 'uploading', fingerprint: 'f' });
+
+      const failure = service.assertExist([id]);
+
+      await expect(failure).rejects.toBeInstanceOf(InvalidInputError);
+      await expect(failure).rejects.toThrow(EXAM_VIDEO_UPLOADING_MESSAGE);
+    });
+
+    it('готовое вместе с неоконченным — отказ из-за неоконченного', async () => {
+      const ready = await insertVideo({ status: 'ready', fingerprint: 'a' });
+      const uploading = await insertVideo({ status: 'uploading', fingerprint: 'b' });
+
+      await expect(service.assertExist([ready, uploading])).rejects.toThrow(
+        EXAM_VIDEO_UPLOADING_MESSAGE,
+      );
+    });
+
+    it('несуществующее вместе с неоконченным — «не найдено»: сказать нечего о том, чего нет', async () => {
+      const uploading = await insertVideo({ status: 'uploading', fingerprint: 'b' });
+
+      await expect(
+        service.assertExist([uploading, new Types.ObjectId().toString()]),
+      ).rejects.toThrow(EXAM_VIDEO_NOT_FOUND_MESSAGE);
+    });
+
+    it('готовое и запись без status (до миграции) проходят assertExist', async () => {
+      const ready = await insertVideo({ status: 'ready', fingerprint: 'a' });
+      const legacy = await insertVideo({});
+
+      await expect(service.assertExist([ready, legacy])).resolves.toBeUndefined();
+    });
+
+    it('signedUrl и loadForBot для неоконченного — 404 даже штату', async () => {
+      const id = await insertVideo({ status: 'uploading', fingerprint: 'f' });
+      const teacher = userLean({ roles: ['teacher'] });
+
+      await expect(service.signedUrl(id, teacher, NOW)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+      await expect(service.loadForBot(id, teacher, NOW)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('запись без status отдаётся плееру и боту как готовая', async () => {
+      const id = await insertVideo({});
+      const teacher = userLean({ roles: ['teacher'] });
+
+      await expect(service.signedUrl(id, teacher, NOW)).resolves.toContain('fake-r2');
+      const loaded = await service.loadForBot(id, teacher, NOW);
+      expect(loaded.contentType).toBe('video/mp4');
+    });
+
+    it('у готового видео нет contentType — повреждённая запись, ошибка, а не выдуманный тип', async () => {
+      const id = await insertVideo({ status: 'ready', fingerprint: 'x' });
+      await videoModel.collection.updateOne(
+        { _id: new Types.ObjectId(id) },
+        { $unset: { contentType: 1 } },
+      );
+
+      await expect(
+        service.loadForBot(id, userLean({ roles: ['teacher'] }), NOW),
+      ).rejects.toThrow('нет contentType');
+    });
+
+    it('прежняя сырая загрузка пишет готовое видео с отпечатком-заглушкой', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+
+      const doc = await videoModel.findById(dto.id).lean();
+      expect(doc?.status).toBe('ready');
+      expect(doc?.fingerprint).toMatch(/^raw:exam-videos\//);
     });
   });
 });

@@ -10,6 +10,8 @@ function seedDoc(sizeBytes: number) {
     key: `exam-videos/${sizeBytes}`,
     contentType: 'video/mp4' as const,
     sizeBytes,
+    status: 'ready' as const,
+    fingerprint: `test:${sizeBytes}`,
   };
 }
 
@@ -36,6 +38,27 @@ describe('ExamVideoStatsService', () => {
 
   it('пустая коллекция — честный ноль, не пропущенная строка агрегации', async () => {
     await expect(service.getSummary()).resolves.toEqual({ count: 0, totalBytes: 0 });
+  });
+
+  // ADR-0165: недогруженное видео никто ещё не смотрел — в число не входит.
+  it('видео, которое ещё грузится частями, в число не входит', async () => {
+    await videoModel.create(seedDoc(1_000_000));
+    await videoModel.create({ ...seedDoc(9_000_000), status: 'uploading' });
+
+    await expect(service.getSummary()).resolves.toEqual({
+      count: 1,
+      totalBytes: 1_000_000,
+    });
+  });
+
+  it('видео без поля status (записано до ADR-0165) считается готовым', async () => {
+    await videoModel.collection.insertOne({
+      key: 'exam-videos/legacy',
+      contentType: 'video/mp4',
+      sizeBytes: 700,
+    });
+
+    await expect(service.getSummary()).resolves.toEqual({ count: 1, totalBytes: 700 });
   });
 
   it('несколько видео — count и totalBytes суммируются', async () => {

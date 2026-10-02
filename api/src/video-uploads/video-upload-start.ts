@@ -5,7 +5,7 @@
 import { randomUUID } from 'crypto';
 import type { DateTime } from 'luxon';
 import type { Types } from 'mongoose';
-import type { AnswerVideoUploadDto } from '@xuanxue/shared';
+import type { VideoUploadDto } from '@xuanxue/shared';
 import { discardUpload, type DiscardDeps } from './video-upload-discard';
 import { toVideoUploadDto, type RawLeanVideoUpload } from './video-upload.mapper';
 import type { VideoUploadRecord, VideoUploadStatus } from './video-upload.schema';
@@ -33,7 +33,7 @@ export interface StartUploadInput {
 export async function startVideoUpload<T extends VideoUploadRecord>(
   deps: DiscardDeps<T>,
   { existing, sizeBytes, fingerprint, keyPrefix, create, now }: StartUploadInput,
-): Promise<AnswerVideoUploadDto> {
+): Promise<VideoUploadDto> {
   if (
     existing &&
     existing.sizeBytes === sizeBytes &&

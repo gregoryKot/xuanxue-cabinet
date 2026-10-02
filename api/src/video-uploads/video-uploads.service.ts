@@ -11,7 +11,7 @@
 import { Injectable } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import type { AnswerVideoUploadDto } from '@xuanxue/shared';
+import type { VideoUploadDto } from '@xuanxue/shared';
 import { MultipartStoreService } from '../storage/multipart-store.service';
 import { ObjectHeadService } from '../storage/object-head.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -34,14 +34,14 @@ export class VideoUploadsService {
   start<T extends VideoUploadRecord>(
     model: Model<T>,
     input: StartUploadInput,
-  ): Promise<AnswerVideoUploadDto> {
+  ): Promise<VideoUploadDto> {
     return startVideoUpload({ model, ...this.storage() }, input);
   }
 
   uploadPart<T extends VideoUploadRecord>(
     model: Model<T>,
     input: UploadPartInput,
-  ): Promise<AnswerVideoUploadDto> {
+  ): Promise<VideoUploadDto> {
     return uploadVideoPart({ model, multipart: this.multipart }, input);
   }
 

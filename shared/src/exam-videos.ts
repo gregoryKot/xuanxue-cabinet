@@ -32,6 +32,14 @@ export interface VideoDownloadQuery {
   [VIDEO_DOWNLOAD_QUERY_PARAM]?: typeof VIDEO_DOWNLOAD_QUERY_VALUE;
 }
 
+/** Старт загрузки видео вопроса частями (ADR-0165): тот же протокол, что у
+ * видео-ответа, без вопроса и попытки — видео принадлежит школе. */
+export interface StartExamVideoInput {
+  /** Заявленный размер всего файла — по нему считается число частей. */
+  sizeBytes: number;
+  fingerprint: string;
+}
+
 export interface ExamVideoDto {
   id: string;
   contentType: ExamVideoContentType;
@@ -60,6 +68,10 @@ export const EXAM_VIDEO_UNSUPPORTED_MESSAGE =
 export const EXAM_VIDEO_TOO_LARGE_MESSAGE =
   `Видео больше ${EXAM_VIDEO_LIMITS.maxBytes / BYTES_IN_MB} МБ. ` +
   'Сократите запись или дайте ссылкой на YouTube.';
+// Видео есть, но ещё грузится частями (ADR-0165): вопрос с таким id сохранить
+// нельзя, а «не найдено» ввело бы учителя в заблуждение.
+export const EXAM_VIDEO_UPLOADING_MESSAGE =
+  'Видео ещё загружается. Дождитесь конца загрузки и сохраните вопрос снова.';
 // Один текст и для несуществующего id, и для видео не из своей попытки
 // (SECURITY §3: не подтверждаем существование того, что человеку не положено).
 export const EXAM_VIDEO_NOT_FOUND_MESSAGE = 'Видео не найдено. Загрузите его ещё раз.';

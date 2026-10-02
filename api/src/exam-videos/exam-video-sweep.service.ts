@@ -1,7 +1,9 @@
-// Уборщик видео-сирот (ADR-0133) — тем же приёмом и по той же причине, что
+// Уборщик видео вопросов (ADR-0133) — тем же приёмом и по той же причине, что
 // ExamImageSweepService: видео живёт, пока на него ссылается вопрос банка
 // (текущие поля/варианты или история правок — `exam_items.videoIds`) или
-// снимок попытки (`exam_attempts.videoIds`). Шаг планировщика
+// снимок попытки (`exam_attempts.videoIds`). Сиротой считается только готовое
+// видео: загрузку, которая идёт частями, ссылки ещё ждут; брошенную (неделя без
+// движения) убирает общее ядро video-uploads/ (ADR-0165) тем же шагом. Шаг планировщика
 // (scheduler.service.ts), не HTTP. Без ключей R2 (хранилище выключено) шаг
 // молча ничего не делает — учитель тогда грузит видео только ссылкой,
 // сиротам взяться неоткуда.
@@ -14,6 +16,9 @@ import { ExamItemRecord } from '../exams/exam-item.schema';
 import { referencedMediaIds } from '../exams/exam-media-references';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { STALE_UPLOAD_DAYS } from '../video-uploads/video-upload-stale';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
+import { EXAM_VIDEO_READY_FILTER } from './exam-video.mapper';
 import { ExamVideoRecord } from './exam-video.schema';
 
 const ORPHAN_AGE_HOURS = 24;
@@ -35,29 +40,43 @@ export class ExamVideoSweepService {
     @InjectModel(ExamAttemptRecord.name) readonly attemptModel: Model<ExamAttemptRecord>,
     private readonly fileStore: FileStoreService,
     private readonly orphans: StorageOrphansService,
+    private readonly uploads: VideoUploadsService,
   ) {}
 
   // `now` параметром (Luxon), не DateTime.utc() внутри — детерминизм теста
   // (CLAUDE.md «Тесты»).
   async removeOrphans(now: DateTime): Promise<ExamVideoSweepResult> {
     if (!this.fileStore.isEnabled) return { removed: 0 };
+    const stale = await this.uploads.sweepStale(this.model, {
+      olderThanDays: STALE_UPLOAD_DAYS,
+      limit: SWEEP_BATCH_LIMIT,
+      now,
+    });
+    const unreferenced = await this.removeUnreferenced(now);
+    return { removed: stale + unreferenced };
+  }
+
+  private async removeUnreferenced(now: DateTime): Promise<number> {
     const boundary = now.minus({ hours: ORPHAN_AGE_HOURS }).toJSDate();
     // Используемые id исключаются в самом запросе ($nin) — почему, см.
     // referencedMediaIds (аудит 2026-10-01, F54).
     const used = await referencedMediaIds(this, 'videoIds');
     const candidates = await this.model
-      .find({ createdAt: { $lt: boundary }, _id: { $nin: used } }, { _id: 1, key: 1 })
+      .find(
+        { ...EXAM_VIDEO_READY_FILTER, createdAt: { $lt: boundary }, _id: { $nin: used } },
+        { _id: 1, key: 1 },
+      )
       .sort({ createdAt: 1 })
       .limit(SWEEP_BATCH_LIMIT)
       .lean();
-    if (candidates.length === 0) return { removed: 0 };
+    if (candidates.length === 0) return 0;
     const ids = candidates.map((doc) => doc._id);
 
     const referenced = new Set(
       (await referencedMediaIds(this, 'videoIds', ids)).map((id) => id.toString()),
     );
     const orphans = candidates.filter((doc) => !referenced.has(doc._id.toString()));
-    if (orphans.length === 0) return { removed: 0 };
+    if (orphans.length === 0) return 0;
 
     // removeNow (ADR-0079) сама кладёт ключ в журнал перед удалением из R2 —
     // отказ хранилища не теряет ключ молча, следующий тик StorageOrphansService.sweep
@@ -66,6 +85,6 @@ export class ExamVideoSweepService {
       await this.orphans.removeNow(orphan.key, now);
     }
     await this.model.deleteMany({ _id: { $in: orphans.map((doc) => doc._id) } });
-    return { removed: orphans.length };
+    return orphans.length;
   }
 }

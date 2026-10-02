@@ -7,6 +7,8 @@
 // /answer-videos/:id/complete` завершает её в R2 и превращает в
 // `media_assets` (`kind: 'file'`).
 
+import type { VideoUploadDto } from './video-uploads';
+
 const BYTES_IN_MB = 1024 * 1024;
 const BYTES_IN_GB = 1024 * BYTES_IN_MB;
 
@@ -38,14 +40,9 @@ export interface StartAnswerVideoInput {
   fingerprint: string;
 }
 
-export interface AnswerVideoUploadDto {
-  id: string;
-  partBytes: number;
-  partCount: number;
-  /** Номера частей, которые уже приняты — по ним браузер продолжает с
-   * первой недостающей, не начинает заново (ADR-0137). */
-  receivedParts: number[];
-}
+/** Ответ на старт и на каждую часть — тот же, что у видео вопроса: тип один на
+ * все виды видео (video-uploads.ts), прежнее имя оставлено для web. */
+export type AnswerVideoUploadDto = VideoUploadDto;
 
 /** Число видео-ответов и их суммарный объём — число раздела «Экзамены»
  * (CLAUDE.md «Продуктовая фича = число в своём разделе»), тем же приёмом,

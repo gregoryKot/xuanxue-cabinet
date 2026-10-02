@@ -13,7 +13,10 @@ import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
+import type { MultipartStoreService } from '../storage/multipart-store.service';
+import type { ObjectHeadService } from '../storage/object-head.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { ExamVideoSweepService } from './exam-video-sweep.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
 
@@ -39,6 +42,7 @@ describe('ExamVideoSweepService', () => {
   let orphanModel: Model<StorageOrphanRecord>;
   let service: ExamVideoSweepService;
   let store: ReturnType<typeof fakeFileStore>;
+  let abortMultipartUpload: jest.Mock;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -55,12 +59,18 @@ describe('ExamVideoSweepService', () => {
     );
     store = fakeFileStore();
     const orphans = new StorageOrphansService(orphanModel, store.fileStore);
+    abortMultipartUpload = jest.fn().mockResolvedValue(undefined);
     service = new ExamVideoSweepService(
       videoModel,
       itemModel,
       attemptModel,
       store.fileStore,
       orphans,
+      new VideoUploadsService(
+        { abortMultipartUpload } as unknown as MultipartStoreService,
+        {} as ObjectHeadService,
+        orphans,
+      ),
     );
   }, 60_000);
 
@@ -83,6 +93,8 @@ describe('ExamVideoSweepService', () => {
       key: `exam-videos/${new Types.ObjectId().toString()}`,
       contentType: 'video/mp4',
       sizeBytes: 1,
+      status: 'ready',
+      fingerprint: 'test',
     });
     await videoModel.collection.updateOne(
       { _id: doc._id },
@@ -90,6 +102,75 @@ describe('ExamVideoSweepService', () => {
     );
     return doc._id.toString();
   }
+
+  // ADR-0165: видео, которое грузится частями, ссылки ещё ждут — сиротой оно
+  // не считается, а брошенное (неделя без движения) убирает общее ядро.
+  async function makeUpload(options: {
+    idleDays: number;
+    uploadId?: string;
+  }): Promise<string> {
+    const doc = await videoModel.create({
+      key: `exam-videos/${new Types.ObjectId().toString()}`,
+      sizeBytes: 100,
+      fingerprint: 'test',
+      status: 'uploading',
+      ...(options.uploadId ? { uploadId: options.uploadId } : {}),
+    });
+    const idleSince = NOW.minus({ days: options.idleDays }).toJSDate();
+    await videoModel.collection.updateOne(
+      { _id: doc._id },
+      { $set: { createdAt: idleSince, updatedAt: idleSince } },
+    );
+    return doc._id.toString();
+  }
+
+  it('идущая загрузка старше суток — не сирота, остаётся', async () => {
+    await makeUpload({ idleDays: 2 });
+
+    const result = await service.removeOrphans(NOW);
+
+    expect(result.removed).toBe(0);
+    await expect(videoModel.countDocuments({})).resolves.toBe(1);
+  });
+
+  it('брошенная загрузка старше недели — прерывается в R2 и удаляется, свежая остаётся', async () => {
+    await makeUpload({ idleDays: 8, uploadId: 'upload-stale' });
+    const fresh = await makeUpload({ idleDays: 1, uploadId: 'upload-fresh' });
+
+    const result = await service.removeOrphans(NOW);
+
+    expect(result.removed).toBe(1);
+    expect(abortMultipartUpload).toHaveBeenCalledTimes(1);
+    expect(abortMultipartUpload).toHaveBeenCalledWith(
+      expect.stringMatching(/^exam-videos\//),
+      'upload-stale',
+      NOW,
+    );
+    const left = await videoModel.find({}, { _id: 1 }).lean();
+    expect(left.map((doc) => doc._id.toString())).toEqual([fresh]);
+  });
+
+  it('R2 выключен — брошенная загрузка не трогается', async () => {
+    store.enabled.value = false;
+    await makeUpload({ idleDays: 8 });
+
+    await expect(service.removeOrphans(NOW)).resolves.toEqual({ removed: 0 });
+    await expect(videoModel.countDocuments({})).resolves.toBe(1);
+  });
+
+  it('видео без поля status (записано до ADR-0165) — готовое: сирота убирается как раньше', async () => {
+    await videoModel.collection.insertOne({
+      key: 'exam-videos/legacy',
+      contentType: 'video/mp4',
+      sizeBytes: 1,
+      createdAt: NOW.minus({ hours: 25 }).toJSDate(),
+      updatedAt: NOW.minus({ hours: 25 }).toJSDate(),
+    });
+
+    const result = await service.removeOrphans(NOW);
+
+    expect(result.removed).toBe(1);
+  });
 
   it('R2 выключен — шаг ничего не делает', async () => {
     store.enabled.value = false;

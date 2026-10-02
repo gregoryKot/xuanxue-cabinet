@@ -36,6 +36,20 @@ describe('makeIsVideoPart', () => {
     expect(isAnswerVideoPart(req({}))).toBe(true);
   });
 
+  // ADR-0165: тот же предикат и тот же список — путь части видео вопроса.
+  it('PUT на /api/exam-videos/:id/parts/:n — true (видео вопроса)', () => {
+    expect(
+      isAnswerVideoPart(
+        req({ url: '/api/exam-videos/507f1f77bcf86cd799439011/parts/3' }),
+      ),
+    ).toBe(true);
+  });
+
+  it('PUT на /api/exam-videos без /:id/parts/:n — false: прежняя сырая загрузка идёт своим предикатом', () => {
+    expect(isAnswerVideoPart(req({ url: '/api/exam-videos' }))).toBe(false);
+    expect(isAnswerVideoPart(req({ url: '/api/exam-videos/uploads' }))).toBe(false);
+  });
+
   it('метод POST — false', () => {
     expect(isAnswerVideoPart(req({ method: 'POST' }))).toBe(false);
   });
@@ -83,12 +97,12 @@ describe('makeIsVideoPart', () => {
   // ADR-0165: новый вид видео добавляет шаблон пути, а не второй предикат.
   it('предикат берёт пути из переданного списка: чужой путь не включает парсер', () => {
     const other = makeIsVideoPart(SECRET, [
-      /^\/api\/exam-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
+      /^\/api\/lesson-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
     ]);
 
-    expect(other(req({ url: '/api/exam-videos/507f1f77bcf86cd799439011/parts/2' }))).toBe(
-      true,
-    );
+    expect(
+      other(req({ url: '/api/lesson-videos/507f1f77bcf86cd799439011/parts/2' })),
+    ).toBe(true);
     expect(other(req({}))).toBe(false);
   });
 });

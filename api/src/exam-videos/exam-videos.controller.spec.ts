@@ -3,9 +3,10 @@
 // (exam-videos.e2e-spec.ts) на настоящем гварде и настоящем парсере тела.
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import type { ExamVideoDto, ExamVideoStatsDto } from '@xuanxue/shared';
+import type { ExamVideoDto, ExamVideoStatsDto, VideoUploadDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { ExamVideoStatsService } from './exam-video-stats.service';
+import { ExamVideoUploadsService } from './exam-video-uploads.service';
 import { ExamVideosController } from './exam-videos.controller';
 import { ExamVideosService } from './exam-videos.service';
 
@@ -15,6 +16,13 @@ const USER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+};
+
+const UPLOAD_DTO: VideoUploadDto = {
+  id: 'v1',
+  partBytes: 8_388_608,
+  partCount: 2,
+  receivedParts: [1],
 };
 
 const VIDEO_DTO: ExamVideoDto = {
@@ -27,12 +35,14 @@ const VIDEO_DTO: ExamVideoDto = {
 async function buildController(
   service: Partial<ExamVideosService> = {},
   statsService: Partial<ExamVideoStatsService> = {},
+  uploadsService: Partial<ExamVideoUploadsService> = {},
 ): Promise<ExamVideosController> {
   const module = await Test.createTestingModule({
     controllers: [ExamVideosController],
     providers: [
       { provide: ExamVideosService, useValue: service },
       { provide: ExamVideoStatsService, useValue: statsService },
+      { provide: ExamVideoUploadsService, useValue: uploadsService },
     ],
   }).compile();
   return module.get(ExamVideosController);
@@ -96,5 +106,35 @@ describe('ExamVideosController', () => {
     expect(signedUrl).toHaveBeenCalledWith('v1', USER, expect.any(DateTime), {
       download: true,
     });
+  });
+
+  // ADR-0165: загрузка частями — контроллер только передаёт id пользователя из
+  // сессии (владение проверяет сервис), без своей логики.
+  it('start() передаёт id пользователя и тело старта в сервис загрузки', async () => {
+    const start = jest.fn().mockResolvedValue(UPLOAD_DTO);
+    const controller = await buildController({}, {}, { start });
+    const body = { sizeBytes: 9_000_000, fingerprint: '9000000:abc' };
+
+    await expect(controller.start(body, USER)).resolves.toEqual(UPLOAD_DTO);
+    expect(start).toHaveBeenCalledWith('u1', body, expect.any(DateTime));
+  });
+
+  it('uploadPart() передаёт id загрузки, номер, тело части и пользователя', async () => {
+    const uploadPart = jest.fn().mockResolvedValue(UPLOAD_DTO);
+    const controller = await buildController({}, {}, { uploadPart });
+    const bytes = Buffer.from([1, 2, 3]);
+
+    await expect(controller.uploadPart('v1', 2, { body: bytes }, USER)).resolves.toEqual(
+      UPLOAD_DTO,
+    );
+    expect(uploadPart).toHaveBeenCalledWith('v1', 'u1', 2, bytes, expect.any(DateTime));
+  });
+
+  it('complete() отдаёт то, что вернул сервис загрузки', async () => {
+    const complete = jest.fn().mockResolvedValue(VIDEO_DTO);
+    const controller = await buildController({}, {}, { complete });
+
+    await expect(controller.complete('v1', USER)).resolves.toEqual(VIDEO_DTO);
+    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime));
   });
 });
