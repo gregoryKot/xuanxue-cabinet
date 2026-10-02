@@ -23,9 +23,9 @@ import {
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
-import { AnswerVideoAssembleService } from './answer-video-assemble';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
 
 const NOW = DateTime.utc(2026, 10, 2, 10, 0, 0);
@@ -88,23 +88,20 @@ describe('AnswerVideoCompleteService: повтор complete', () => {
     const orphans = new StorageOrphansService(orphanModel, {
       remove: () => Promise.resolve(),
     } as unknown as FileStoreService);
+    const uploads = new VideoUploadsService(
+      multipart as unknown as MultipartStoreService,
+      objectHead as unknown as ObjectHeadService,
+      orphans,
+    );
     service = new AnswerVideoCompleteService(
       videoModel,
       attemptModel,
       mediaModel,
-      new AnswerVideoAssembleService(
-        videoModel,
-        multipart as unknown as MultipartStoreService,
-        objectHead as unknown as ObjectHeadService,
-        orphans,
-      ),
+      uploads,
       orphans,
       notifiers,
     );
-    partService = new AnswerVideoPartService(
-      videoModel,
-      multipart as unknown as MultipartStoreService,
-    );
+    partService = new AnswerVideoPartService(videoModel, uploads);
   });
 
   afterEach(async () => {

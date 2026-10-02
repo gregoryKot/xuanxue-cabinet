@@ -12,8 +12,7 @@ import { NotFoundError } from '../common/errors';
 import { VIEW_VIDEO, signedVideoUrl, type VideoUrlOptions } from '../common/video-link';
 import { FileStoreService } from '../storage/file-store.service';
 import type { UserLean } from '../users/users.service';
-import type { RawLeanAnswerVideo } from './answer-video.mapper';
-import { AnswerVideoRecord } from './answer-video.schema';
+import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
 
 @Injectable()
 export class AnswerVideosService {

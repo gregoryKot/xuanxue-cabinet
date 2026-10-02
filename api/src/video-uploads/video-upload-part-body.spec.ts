@@ -3,7 +3,7 @@
 import { DateTime } from 'luxon';
 import { SESSION_COOKIE } from '../auth/session-cookie';
 import { signSession } from '../auth/session-token';
-import { makeIsAnswerVideoPart } from './answer-video-part-body';
+import { makeIsVideoPart, VIDEO_PART_PATH_PATTERNS } from './video-upload-part-body';
 
 const SECRET = 'a'.repeat(32);
 const VALID_PATH = '/api/answer-videos/507f1f77bcf86cd799439011/parts/1';
@@ -18,7 +18,7 @@ function req(overrides: {
   url?: string;
   contentType?: string | string[];
   cookie?: string;
-}): Parameters<ReturnType<typeof makeIsAnswerVideoPart>>[0] {
+}): Parameters<ReturnType<typeof makeIsVideoPart>>[0] {
   return {
     method: overrides.method ?? 'PUT',
     url: overrides.url ?? VALID_PATH,
@@ -29,8 +29,8 @@ function req(overrides: {
   };
 }
 
-describe('makeIsAnswerVideoPart', () => {
-  const isAnswerVideoPart = makeIsAnswerVideoPart(SECRET);
+describe('makeIsVideoPart', () => {
+  const isAnswerVideoPart = makeIsVideoPart(SECRET, VIDEO_PART_PATH_PATTERNS);
 
   it('PUT на /api/answer-videos/:id/parts/:n с octet-stream и валидной сессией — true', () => {
     expect(isAnswerVideoPart(req({}))).toBe(true);
@@ -78,5 +78,17 @@ describe('makeIsAnswerVideoPart', () => {
 
   it('токен подписан чужим секретом — false', () => {
     expect(isAnswerVideoPart(req({ cookie: validCookie('b'.repeat(32)) }))).toBe(false);
+  });
+
+  // ADR-0165: новый вид видео добавляет шаблон пути, а не второй предикат.
+  it('предикат берёт пути из переданного списка: чужой путь не включает парсер', () => {
+    const other = makeIsVideoPart(SECRET, [
+      /^\/api\/exam-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
+    ]);
+
+    expect(other(req({ url: '/api/exam-videos/507f1f77bcf86cd799439011/parts/2' }))).toBe(
+      true,
+    );
+    expect(other(req({}))).toBe(false);
   });
 });

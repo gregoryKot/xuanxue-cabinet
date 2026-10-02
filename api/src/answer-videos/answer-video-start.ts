@@ -8,8 +8,7 @@
 // вопрос (ADR-0037), статус попытки, и только потом хранилище/размер —
 // чужому attemptId и несуществующему отвечаем одинаково раньше, чем
 // раскрываем что-либо о хранилище.
-import { randomUUID } from 'crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
@@ -24,7 +23,6 @@ import {
   type AnswerVideoUploadDto,
   type StartAnswerVideoInput,
 } from '@xuanxue/shared';
-import { errorMessage } from '../common/error-info';
 import {
   ConflictError,
   InvalidInputError,
@@ -35,22 +33,20 @@ import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { loadAttemptOwnerInfo } from '../media/media-attempt-owner';
 import { isVideoItemInSnapshot } from '../media/media-item-lookup';
 import { FileStoreService } from '../storage/file-store.service';
-import { MultipartStoreService } from '../storage/multipart-store.service';
-import { StorageOrphansService } from '../storage/storage-orphans.service';
-import { toAnswerVideoUploadDto, type RawLeanAnswerVideo } from './answer-video.mapper';
-import { AnswerVideoRecord } from './answer-video.schema';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
+import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
+
+// Каталог ключей в R2 — случайный `answer-videos/<uuid>`, не персональные данные.
+const ANSWER_VIDEO_KEY_PREFIX = 'answer-videos';
 
 @Injectable()
 export class AnswerVideoStartService {
-  private readonly logger = new Logger(AnswerVideoStartService.name);
-
   constructor(
     @InjectModel(AnswerVideoRecord.name) private readonly model: Model<AnswerVideoRecord>,
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
     private readonly fileStore: FileStoreService,
-    private readonly multipart: MultipartStoreService,
-    private readonly orphans: StorageOrphansService,
+    private readonly uploads: VideoUploadsService,
   ) {}
 
   async start(
@@ -87,56 +83,21 @@ export class AnswerVideoStartService {
       })
       .lean<RawLeanAnswerVideo | null>();
 
-    if (
-      existing &&
-      existing.sizeBytes === input.sizeBytes &&
-      existing.fingerprint === input.fingerprint
-    ) {
-      // Тот же файл к тому же вопросу — продолжаем (ADR-0137), не начинаем
-      // новую загрузку и не открываем второй multipart в R2.
-      return toAnswerVideoUploadDto(existing);
-    }
-    if (existing) {
-      await this.discard(existing, now);
-    }
-
-    const key = `answer-videos/${randomUUID()}`;
-    // Журнал сирот — раньше самого документа (ADR-0079): ключ выбран, но в
-    // R2 ещё ничего нет (multipart откроется на первой части) — упади
-    // создание документа прямо сейчас, ключ всё равно не потеряется.
-    await this.orphans.track(key);
-    const created = await this.model.create({
-      userId: new Types.ObjectId(userId),
-      attemptId: new Types.ObjectId(attemptId),
-      itemId: new Types.ObjectId(input.itemId),
+    // Резюме или новая загрузка — ядро (ADR-0165); здесь только то, чьё это
+    // видео и к какому вопросу.
+    return this.uploads.start(this.model, {
+      existing,
       sizeBytes: input.sizeBytes,
       fingerprint: input.fingerprint,
-      key,
-      status: 'uploading',
+      keyPrefix: ANSWER_VIDEO_KEY_PREFIX,
+      create: (state) =>
+        this.model.create({
+          userId: new Types.ObjectId(userId),
+          attemptId: new Types.ObjectId(attemptId),
+          itemId: new Types.ObjectId(input.itemId),
+          ...state,
+        }),
+      now,
     });
-    const doc = await this.model.findById(created._id).lean<RawLeanAnswerVideo>();
-    if (!doc)
-      throw new Error(
-        'AnswerVideoStartService.start: запись не найдена сразу после создания',
-      );
-    return toAnswerVideoUploadDto(doc);
-  }
-
-  /** Другой файл к тому же вопросу пришёл заново (например, вкладку закрыли
-   * и выбрали другое видео) — прежняя незаконченная загрузка ни к чему,
-   * убираем best-effort: отказ хранилища не должен блокировать новую
-   * попытку загрузить файл. */
-  private async discard(existing: RawLeanAnswerVideo, now: DateTime): Promise<void> {
-    if (existing.uploadId) {
-      try {
-        await this.multipart.abortMultipartUpload(existing.key, existing.uploadId, now);
-      } catch (err) {
-        this.logger.warn(
-          `не удалось прервать прежнюю multipart-загрузку: ${errorMessage(err)}`,
-        );
-      }
-    }
-    await this.orphans.removeNow(existing.key, now);
-    await this.model.deleteOne({ _id: existing._id });
   }
 }
