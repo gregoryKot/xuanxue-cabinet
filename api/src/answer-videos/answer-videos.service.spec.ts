@@ -144,4 +144,80 @@ describe('AnswerVideosService.signedUrl', () => {
       expect(lastDownload).toBeUndefined();
     });
   });
+
+  // ADR-0165: кадр-превью — те же права, что у видео, и тот же 404.
+  describe('loadPoster', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 5, 6, 7]);
+
+    async function makeWithPoster(
+      status: 'uploading' | 'ready',
+      withPoster = true,
+    ): Promise<string> {
+      const doc = await videoModel.create({
+        userId: new Types.ObjectId(OWNER),
+        attemptId: new Types.ObjectId(),
+        itemId: new Types.ObjectId(),
+        key: 'answer-videos/p',
+        sizeBytes: 100,
+        fingerprint: '100:1',
+        status,
+        ...(withPoster ? { poster: JPEG } : {}),
+      });
+      return doc._id.toString();
+    }
+
+    it('владелец получает те же байты (read-after-write)', async () => {
+      const id = await makeWithPoster('ready');
+
+      await expect(service.loadPoster(id, user(OWNER))).resolves.toEqual(JPEG);
+    });
+
+    it('штат получает кадр чужого видео', async () => {
+      const id = await makeWithPoster('ready');
+
+      await expect(service.loadPoster(id, user(STRANGER, ['teacher']))).resolves.toEqual(
+        JPEG,
+      );
+    });
+
+    it('чужой, не штат — NotFoundError: кадр ученика не отдаётся чужому', async () => {
+      const id = await makeWithPoster('ready');
+
+      await expect(service.loadPoster(id, user(STRANGER))).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('у видео нет кадра — null, не ошибка (старые видео)', async () => {
+      const id = await makeWithPoster('ready', false);
+
+      await expect(service.loadPoster(id, user(OWNER))).resolves.toBeNull();
+    });
+
+    it('видео ещё грузится — NotFoundError, даже если кадр уже лежит', async () => {
+      const id = await makeWithPoster('uploading');
+
+      await expect(service.loadPoster(id, user(OWNER))).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('несуществующий и невалидный id — тот же NotFoundError', async () => {
+      await expect(
+        service.loadPoster('507f1f77bcf86cd799439011', user(OWNER)),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      await expect(service.loadPoster('не-id', user(OWNER))).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('обычная выдача видео кадр не читает: signedUrl работает, а запись без +poster пуста', async () => {
+      const id = await makeWithPoster('ready');
+
+      await expect(service.signedUrl(id, user(OWNER), NOW)).resolves.toContain(
+        'fake-r2.example',
+      );
+      expect(await videoModel.findById(id).lean()).not.toHaveProperty('poster');
+    });
+  });
 });

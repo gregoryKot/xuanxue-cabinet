@@ -20,9 +20,9 @@ import {
 // Разбор сырого тела — тот же, что у картинок вариантов ответа
 // (CLAUDE.md «Одна механика — один компонент»): формат по сигнатуре байтов,
 // не по заголовку, и тот же потолок в 1 МБ (SECURITY §4).
-import { binaryToBuffer } from '../exam-images/exam-image.mapper';
 import { parseExamImageUpload } from '../exam-images/exam-image-upload';
 import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/errors';
+import { binaryToBuffer } from '../common/binary-to-buffer';
 import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';

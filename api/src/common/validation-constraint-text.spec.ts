@@ -34,6 +34,7 @@ describe('constraintText', () => {
       'допустимые значения: lesson_link, recording, manual.',
     ],
     ['isMongoId', 'classId must be a mongodb id', 'неверный идентификатор.'],
+    ['isBase64', 'poster must be base64 encoded', 'не удалось прочитать данные.'],
     [
       'isIso8601',
       'startsAt must be a valid ISO 8601 date string',

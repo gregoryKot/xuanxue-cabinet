@@ -14,7 +14,7 @@ import {
   STUDENT_MODE_PAYMENT_MESSAGE,
 } from '@xuanxue/shared';
 import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/errors';
-import { binaryToBuffer } from '../exam-images/exam-image.mapper';
+import { binaryToBuffer } from '../common/binary-to-buffer';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { SettingsService } from '../settings/settings.service';
 import { decryptBytes } from '../utils/encryption-bytes';

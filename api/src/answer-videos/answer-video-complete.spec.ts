@@ -8,7 +8,8 @@ import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import { ConflictError, NotAvailableError } from '../common/errors';
+import { ConflictError, InvalidInputError, NotAvailableError } from '../common/errors';
+import { VIDEO_POSTER_NOT_JPEG_MESSAGE } from '@xuanxue/shared';
 import type { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamAttemptSchema } from '../exams/exam-attempt.schema';
 import { insertMediaAsset } from '../media/media-asset-insert';
@@ -25,7 +26,9 @@ import {
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
+import { readPoster } from '../video-uploads/video-poster';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
+import { beforeModelCall } from '../test-support/before-model-call';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
 
 const NOW = DateTime.utc(2026, 10, 2, 10, 0, 0);
@@ -349,5 +352,130 @@ describe('AnswerVideoCompleteService: повтор complete', () => {
     ).rejects.toBeInstanceOf(ConflictError);
     expect(multipart.createMultipartUpload).not.toHaveBeenCalled();
     expect(multipart.uploadPart).not.toHaveBeenCalled();
+  });
+
+  // ADR-0165: кадр-превью приходит в теле complete и ложится в запись видео.
+  describe('кадр-превью', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+    const OTHER_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 9, 9]);
+
+    async function storedPoster(id: string): Promise<Buffer | null> {
+      const doc = await videoModel.findById(id, '+poster').lean();
+      return doc && readPoster(doc);
+    }
+
+    it('с кадром: видео готово, кадр записан в ту же запись, ответ его не несёт', async () => {
+      const { id } = await seedUpload();
+
+      const media = await service.complete(id, OWNER, NOW, JPEG.toString('base64'));
+
+      expect(await videoModel.findById(id).lean()).toMatchObject({ status: 'ready' });
+      expect(await storedPoster(id)).toEqual(JPEG);
+      expect(media).not.toHaveProperty('poster');
+    });
+
+    it('без кадра: видео готово, кадра нет', async () => {
+      const { id } = await seedUpload();
+
+      await service.complete(id, OWNER, NOW);
+
+      expect(await videoModel.findById(id).lean()).toMatchObject({ status: 'ready' });
+      expect(await storedPoster(id)).toBeNull();
+    });
+
+    it('неверный кадр: 400 до сборки в R2, видео не тронуто и завершается повтором без кадра', async () => {
+      const { id } = await seedUpload();
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2]).toString('base64');
+
+      const failure = service.complete(id, OWNER, NOW, png);
+
+      await expect(failure).rejects.toBeInstanceOf(InvalidInputError);
+      await expect(failure).rejects.toThrow(VIDEO_POSTER_NOT_JPEG_MESSAGE);
+      expect(multipart.completeMultipartUpload).not.toHaveBeenCalled();
+      expect(await videoModel.findById(id).lean()).toMatchObject({ status: 'uploading' });
+      expect(await mediaCount()).toBe(0);
+
+      await expect(service.complete(id, OWNER, NOW)).resolves.toMatchObject({
+        kind: 'file',
+      });
+    });
+
+    it('чужой с неверным кадром получает 404, а не разбор кадра', async () => {
+      const { id } = await seedUpload();
+
+      await expect(
+        service.complete(id, new Types.ObjectId().toString(), NOW, 'не-кадр'),
+      ).rejects.toMatchObject({ code: 'not_found' });
+    });
+
+    it('повтор complete с кадром у готового видео без кадра — кадр ставится один раз', async () => {
+      const { id } = await seedUpload();
+      await service.complete(id, OWNER, NOW);
+
+      await service.complete(id, OWNER, NOW, JPEG.toString('base64'));
+      await service.complete(id, OWNER, NOW, OTHER_JPEG.toString('base64'));
+
+      expect(await storedPoster(id)).toEqual(JPEG);
+      expect(await mediaCount()).toBe(1);
+    });
+
+    it('повтор без кадра у готового с кадром — кадр цел', async () => {
+      const { id } = await seedUpload();
+      await service.complete(id, OWNER, NOW, JPEG.toString('base64'));
+
+      await service.complete(id, OWNER, NOW);
+
+      expect(await storedPoster(id)).toEqual(JPEG);
+    });
+
+    it('неверный кадр на повторе у готового видео — тоже 400, кадр не меняется', async () => {
+      const { id } = await seedUpload();
+      await service.complete(id, OWNER, NOW);
+
+      await expect(service.complete(id, OWNER, NOW, 'не-кадр')).rejects.toBeInstanceOf(
+        InvalidInputError,
+      );
+      expect(await storedPoster(id)).toBeNull();
+    });
+
+    // Параллельный complete без кадра успевает целиком, пока наш ещё собирает:
+    // наш переход в ready проигрывает, но кадр, который пришёл с ним, не теряется.
+    it('проиграл переход в ready параллельному complete без кадра — кадр всё равно записан', async () => {
+      const { id } = await seedUpload();
+      beforeModelCall(videoModel, 'updateOne', async () => {
+        await service.complete(id, OWNER, NOW.plus({ seconds: 1 }));
+      });
+
+      await service.complete(id, OWNER, NOW, JPEG.toString('base64'));
+
+      expect(await storedPoster(id)).toEqual(JPEG);
+      expect(await mediaCount()).toBe(1);
+      expect(notify).toHaveBeenCalledTimes(1);
+    });
+
+    // Кадр лежит в самой записи, поэтому удаление записи — удаление кадра: ни
+    // замена файла, ни уборка не знают о нём (read-after-write).
+    it('замена файла к тому же вопросу убирает прежнее видео вместе с его кадром', async () => {
+      const first = await seedUpload();
+      await service.complete(first.id, OWNER, NOW, JPEG.toString('base64'));
+      expect(await storedPoster(first.id)).toEqual(JPEG);
+      const second = await videoModel.create({
+        userId: new Types.ObjectId(OWNER),
+        attemptId: new Types.ObjectId(first.attemptId),
+        itemId: new Types.ObjectId(first.itemId),
+        key: 'answer-videos/second',
+        sizeBytes: SIZE_BYTES,
+        fingerprint: 'second',
+        uploadId: 'upload-2',
+        parts: [{ n: 1, etag: '"e2"' }],
+      });
+
+      await service.complete(second._id.toString(), OWNER, NOW.plus({ minutes: 1 }));
+
+      expect(
+        await videoModel.collection.findOne({ _id: new Types.ObjectId(first.id) }),
+      ).toBe(null);
+      expect(await storedPoster(first.id)).toBeNull();
+    });
   });
 });

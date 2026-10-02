@@ -84,6 +84,14 @@ export abstract class VideoUploadRecord {
   // вместе с uploadId. Дата, не текст о человеке — шифрования не требует.
   @Prop({ type: Date, required: false })
   r2CompletedAt?: Date;
+
+  // Кадр-превью — JPEG в самой записи (ADR-0165): без своего объекта в R2 он
+  // уходит вместе с документом, и ни один путь удаления не учат второму ключу.
+  // `select: false` — списки, статистика и уборщики его не читают (до 150 КБ на
+  // запись); читает только `GET …/poster`, явно (`+poster`). `.lean()` отдаёт
+  // его не Buffer, а Binary — common/binary-to-buffer.ts.
+  @Prop({ type: Buffer, required: false, select: false })
+  poster?: Buffer;
 }
 
 /** Решения о шифровании общих полей — одно место для всех схем-наследников
@@ -98,6 +106,9 @@ export const VIDEO_UPLOAD_FIELD_POLICY: FieldPolicy = {
     'размер и хэш первого и последнего мегабайта файла — числа, не текст о человеке',
   ),
   status: plain('перечисление, нужно для выборок'),
+  poster: plain(
+    'кадр-превью JPEG, байты — тот же класс данных, что сам файл видео, который приложением не шифруется',
+  ),
   'parts.etag': plain(
     'технический ETag части от R2, не текст о человеке — вложенное поле, enc/encJson тут не сработает',
   ),

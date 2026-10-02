@@ -27,6 +27,8 @@ import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry
 import { notifyVideoAdded } from '../media/notify-video-link-added';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { assertAllPartsReceived } from '../video-uploads/video-upload-assemble';
+import { parseVideoPoster, setPosterIfAbsent } from '../video-uploads/video-poster';
+import { markVideoReady } from '../video-uploads/video-upload-ready';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { attachFileMedia, findFileMedia } from './answer-video-attach';
 import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
@@ -44,13 +46,21 @@ export class AnswerVideoCompleteService {
     private readonly notifiers: ExamMediaNotifierRegistry,
   ) {}
 
-  async complete(id: string, userId: string, now: DateTime): Promise<ExamMediaDto> {
+  async complete(
+    id: string,
+    userId: string,
+    now: DateTime,
+    posterBase64?: string,
+  ): Promise<ExamMediaDto> {
     assertObjectId(id, ANSWER_VIDEO_NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanAnswerVideo | null>();
     if (!doc || doc.userId.toString() !== userId) {
       throw new NotFoundError(ANSWER_VIDEO_NOT_FOUND_MESSAGE);
     }
-    if (doc.status === 'ready') return this.completedEarlier(doc);
+    // Неверный кадр — 400 до сборки в R2: видео остаётся незавершённым, и его
+    // завершает повтор без кадра (ADR-0165).
+    const poster = parseVideoPoster(posterBase64);
+    if (doc.status === 'ready') return this.completedEarlier(doc, poster);
     if (!doc.uploadId) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
     assertAllPartsReceived(doc);
 
@@ -71,16 +81,9 @@ export class AnswerVideoCompleteService {
       now,
     );
 
-    // Условный переход: из двух параллельных `complete` его делает один, он
-    // же и уведомляет — уведомление не должно уйти дважды.
-    const moved = await this.model.updateOne(
-      { _id: doc._id, status: 'uploading' },
-      {
-        $set: { status: 'ready', completedAt: now.toJSDate(), parts: [] },
-        $unset: { uploadId: 1, r2CompletedAt: 1 },
-      },
-    );
-    if (moved.modifiedCount > 0) {
+    // Из двух параллельных `complete` переход делает один, он же и уведомляет —
+    // уведомление не должно уйти дважды.
+    if (await markVideoReady(this.model, doc._id, { now, poster })) {
       notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
     }
     return media;
@@ -88,9 +91,15 @@ export class AnswerVideoCompleteService {
 
   /** Видео уже `ready` — отдаём его запись. Записи нет (убрана уборщиком между
    * вызовами) — то же 409, что и раньше: отдавать нечего. */
-  private async completedEarlier(doc: RawLeanAnswerVideo): Promise<ExamMediaDto> {
+  private async completedEarlier(
+    doc: RawLeanAnswerVideo,
+    poster: Buffer | undefined,
+  ): Promise<ExamMediaDto> {
     const media = await findFileMedia(this.mediaModel, doc._id);
     if (!media) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
+    // Повтор с кадром, которого у готового видео ещё нет (первый вызов шёл без
+    // него) — ставим; уже стоящий не перетирается.
+    await setPosterIfAbsent(this.model, doc._id.toString(), poster);
     return media;
   }
 }

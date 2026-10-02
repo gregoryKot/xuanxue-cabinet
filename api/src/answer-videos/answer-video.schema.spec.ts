@@ -17,6 +17,7 @@ describe('AnswerVideoSchema', () => {
         'itemId',
         'key',
         'parts',
+        'poster',
         'r2CompletedAt',
         'sizeBytes',
         'status',
@@ -53,6 +54,15 @@ describe('AnswerVideoSchema', () => {
     });
   });
 
+  // ADR-0165: кадр лежит в самой записи и до 150 КБ — читается только явно.
+  it('кадр-превью: Buffer, не обязателен и не читается по умолчанию (select: false)', () => {
+    const poster = AnswerVideoSchema.path('poster');
+
+    expect(poster.instance).toBe('Buffer');
+    expect(poster.isRequired).toBeFalsy();
+    expect(poster.options).toMatchObject({ select: false });
+  });
+
   it('часть — субдокумент без своего _id, номер и ETag обязательны', () => {
     const part = AnswerVideoSchema.path('parts') as unknown as {
       schema: {
@@ -82,7 +92,7 @@ describe('AnswerVideoSchema', () => {
 
   it('политика шифрования несёт решения для общих полей', () => {
     expect(Object.keys(ANSWER_VIDEO_FIELD_POLICY).sort()).toEqual(
-      ['fingerprint', 'key', 'parts.etag', 'status', 'uploadId'].sort(),
+      ['fingerprint', 'key', 'parts.etag', 'poster', 'status', 'uploadId'].sort(),
     );
   });
 });

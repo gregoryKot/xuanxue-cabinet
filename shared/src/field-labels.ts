@@ -98,10 +98,10 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   tag: 'Тег',
   // ListExamItemsDto.includeDeleted (ADR-0140) — редактору формы, не экрану банка.
   includeDeleted: 'Показывать удалённые',
+  poster: 'Кадр-превью', // видео, ADR-0165: кадр в теле complete
 
-  // exams — /exams (конструктор экзамена, ТЗ 4.3). title/status — общие
-  // подписи выше (classes.title, lessons.status), здесь тот же смысл:
-  // название формы, статус формы.
+  // exams — /exams (конструктор экзамена, ТЗ 4.3). title/status — те же подписи,
+  // что выше (classes.title, lessons.status): название и статус формы.
   description: 'Описание',
   level: 'Уровень',
   blocks: 'Блоки',

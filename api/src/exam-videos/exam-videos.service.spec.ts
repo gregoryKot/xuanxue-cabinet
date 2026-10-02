@@ -423,4 +423,91 @@ describe('ExamVideosService', () => {
       expect(doc?.fingerprint).toMatch(/^raw:exam-videos\//);
     });
   });
+
+  // ADR-0165: кадр-превью — те же права, что у видео (loadAccessibleDoc), тот же 404.
+  describe('loadPoster', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 5, 6, 7]);
+
+    async function insertWithPoster(
+      extra: Record<string, unknown> = {},
+    ): Promise<string> {
+      const doc = await videoModel.create({
+        key: `exam-videos/${new Types.ObjectId().toString()}`,
+        contentType: 'video/mp4',
+        sizeBytes: 10,
+        fingerprint: 'f',
+        status: 'ready',
+        poster: JPEG,
+        ...extra,
+      });
+      return doc._id.toString();
+    }
+
+    it('штат получает те же байты (read-after-write)', async () => {
+      const id = await insertWithPoster();
+
+      await expect(
+        service.loadPoster(id, userLean({ roles: ['teacher'] })),
+      ).resolves.toEqual(JPEG);
+    });
+
+    it('ученик со своей попыткой получает кадр, без попытки — NotFoundError', async () => {
+      const id = await insertWithPoster();
+      const student = userLean({ roles: [] });
+
+      await expect(service.loadPoster(id, student)).rejects.toBeInstanceOf(NotFoundError);
+      await seedAttempt(student.id, [id]);
+      await expect(service.loadPoster(id, student)).resolves.toEqual(JPEG);
+    });
+
+    it('у видео нет кадра — null (старые видео и завершённые без кадра)', async () => {
+      const id = await insertWithPoster({ poster: undefined });
+
+      await expect(
+        service.loadPoster(id, userLean({ roles: ['teacher'] })),
+      ).resolves.toBeNull();
+    });
+
+    it('видео ещё грузится — NotFoundError даже штату', async () => {
+      const id = await insertWithPoster({ status: 'uploading' });
+
+      await expect(
+        service.loadPoster(id, userLean({ roles: ['teacher'] })),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('запись без status (до миграции) считается готовой и отдаёт кадр, если он есть', async () => {
+      const raw = await videoModel.collection.insertOne({
+        key: 'exam-videos/legacy',
+        contentType: 'video/mp4',
+        sizeBytes: 1,
+        poster: JPEG,
+      });
+
+      await expect(
+        service.loadPoster(raw.insertedId.toString(), userLean({ roles: ['teacher'] })),
+      ).resolves.toEqual(JPEG);
+    });
+
+    it('несуществующий и невалидный id — NotFoundError', async () => {
+      const teacher = userLean({ roles: ['teacher'] });
+
+      await expect(
+        service.loadPoster(new Types.ObjectId().toString(), teacher),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      await expect(service.loadPoster('не-id', teacher)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('signedUrl и loadForBot кадр не читают: записи без +poster пусты', async () => {
+      const id = await insertWithPoster();
+      const teacher = userLean({ roles: ['teacher'] });
+
+      await service.signedUrl(id, teacher, NOW);
+      await service.loadForBot(id, teacher, NOW);
+
+      expect(await videoModel.findById(id).lean()).not.toHaveProperty('poster');
+    });
+  });
 });

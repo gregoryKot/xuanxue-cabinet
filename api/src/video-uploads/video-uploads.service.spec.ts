@@ -17,6 +17,8 @@ import {
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { assertAllPartsReceived } from './video-upload-assemble';
+import { readPoster } from './video-poster';
+import { markVideoReady } from './video-upload-ready';
 import type { RawLeanVideoUpload } from './video-upload.mapper';
 import { VideoUploadRecord } from './video-upload.schema';
 import { VideoUploadsService } from './video-uploads.service';
@@ -201,5 +203,63 @@ describe('VideoUploadsService на тестовой модели', () => {
     );
     expect(await model.countDocuments({ _id: stale._id })).toBe(0);
     expect(await model.countDocuments({ _id: { $in: [fresh._id, ready._id] } })).toBe(2);
+  });
+
+  // Конец загрузки (ADR-0165): условный переход вместе с кадром — общий для обоих
+  // видов видео, сам по себе, без их доменной части.
+  describe('markVideoReady', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
+
+    async function seedUploading(
+      extra: Record<string, unknown> = {},
+    ): Promise<Types.ObjectId> {
+      const doc = await model.create({
+        ownerId: owner,
+        key: 'test-clips/ready',
+        sizeBytes: SIZE_BYTES,
+        fingerprint: 'f',
+        uploadId: 'upload-1',
+        parts: [{ n: 1, etag: '"e1"' }],
+        r2CompletedAt: NOW.toJSDate(),
+        ...extra,
+      });
+      return doc._id;
+    }
+
+    it('делает переход: готово, дата, части и служебные поля убраны, кадр записан; true', async () => {
+      const id = await seedUploading();
+
+      const moved = await markVideoReady(model, id, { now: NOW, poster: JPEG });
+
+      expect(moved).toBe(true);
+      const doc = await model.findById(id, '+poster').lean();
+      expect(doc).toMatchObject({ status: 'ready', parts: [] });
+      expect(doc?.completedAt).toEqual(NOW.toJSDate());
+      expect(doc?.uploadId).toBeUndefined();
+      expect(doc?.r2CompletedAt).toBeUndefined();
+      expect(doc && readPoster(doc)).toEqual(JPEG);
+    });
+
+    it('без кадра поле poster не появляется', async () => {
+      const id = await seedUploading();
+
+      await markVideoReady(model, id, { now: NOW, poster: undefined });
+
+      const doc = await model.findById(id, '+poster').lean();
+      expect(doc && readPoster(doc)).toBeNull();
+    });
+
+    it('готовое видео не трогает: false, дата и кадр прежние; пропущенный кадр ставится', async () => {
+      const id = await seedUploading();
+      await markVideoReady(model, id, { now: NOW, poster: undefined });
+
+      const later = NOW.plus({ hours: 1 });
+      const moved = await markVideoReady(model, id, { now: later, poster: JPEG });
+
+      expect(moved).toBe(false);
+      const doc = await model.findById(id, '+poster').lean();
+      expect(doc?.completedAt).toEqual(NOW.toJSDate());
+      expect(doc && readPoster(doc)).toEqual(JPEG);
+    });
   });
 });
