@@ -110,4 +110,25 @@ describe('USER_REFERENCE_PATHS', () => {
 
     expect(actual).toEqual(expected);
   });
+
+  // Удаление аккаунта делает $unset по каждому пути из реестра. Если путь в
+  // схеме required, документ после этого невалиден, а маппер, доверяющий типу
+  // (`doc.createdBy.toString()`), падает: инцидент 2026-10-02, GET /api/materials
+  // → 500 после удаления автора. Ссылка на человека обязана быть необязательной.
+  it('каждый путь реестра в схеме не required — удаление аккаунта его обнуляет', () => {
+    for (const { model, path } of USER_REFERENCE_PATHS) {
+      const def = MODEL_DEFINITIONS.find((d) => d.name === model);
+      const schemaPath = def?.schema.path(path);
+      expect({ model, path, exists: schemaPath !== undefined }).toEqual({
+        model,
+        path,
+        exists: true,
+      });
+      expect({ model, path, isRequired: Boolean(schemaPath?.isRequired) }).toEqual({
+        model,
+        path,
+        isRequired: false,
+      });
+    }
+  });
 });

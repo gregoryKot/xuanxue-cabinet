@@ -7,7 +7,8 @@ export interface GradingCommentPresetDto {
   id: string;
   text: string;
   title?: string;
-  createdBy: string;
+  /** Нет, если аккаунт автора удалён (USER_REFERENCE_PATHS). */
+  createdBy?: string;
   createdAt: string; // ISO UTC с Z
 }
 

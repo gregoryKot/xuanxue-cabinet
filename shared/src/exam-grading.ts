@@ -119,7 +119,8 @@ export interface ExamGradingDto {
   attemptId: string;
   examId: string;
   userId: string;
-  graderId: string;
+  /** Нет, если аккаунт проверявшего удалён (USER_REFERENCE_PATHS). */
+  graderId?: string;
   comment?: string;
   outcome: GradingOutcome;
   gradedAt: string; // ISO UTC с Z

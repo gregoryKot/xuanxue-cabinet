@@ -90,9 +90,11 @@ export class MaterialRecord {
   @Prop({ type: Date, required: false })
   announceAt?: Date;
 
-  // См. USER_REFERENCE_PATHS.
-  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
-  createdBy!: Types.ObjectId;
+  // См. USER_REFERENCE_PATHS. Не required: удаление аккаунта автора делает
+  // $unset этого поля, материал школы остаётся (инцидент 2026-10-02,
+  // GET /api/materials → 500).
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
+  createdBy?: Types.ObjectId;
 }
 
 export const MaterialSchema = SchemaFactory.createForClass(MaterialRecord);
