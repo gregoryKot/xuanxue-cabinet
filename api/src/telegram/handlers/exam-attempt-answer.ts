@@ -4,13 +4,13 @@
 // автосохранения не заводим, оно и так получается по одному ответу за раз.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import { ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import { ATTEMPT_NOT_FOUND_BOT_MESSAGE } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { GENERIC_ERROR } from './callback-actions';
 import { saveChoice } from './exam-attempt-choice';
-import { reportExamActionError } from './exam-attempt-error';
+import { reportExamActionError, sendExamErrorText } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
 import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
@@ -28,7 +28,7 @@ export async function handleExamOption(
   try {
     const attempt = await examBot.loadOwnAttempt(ids.attemptId, user, now);
     if (!attempt) {
-      await ctx.editMessageText(ATTEMPT_NOT_FOUND_MESSAGE).catch(() => null);
+      await sendExamErrorText(ctx, ATTEMPT_NOT_FOUND_BOT_MESSAGE, 'edit');
       return;
     }
     if (attempt.status !== 'in_progress') {
@@ -50,7 +50,7 @@ export async function handleExamOption(
       !option ||
       (question.kind !== 'single' && question.kind !== 'multiple')
     ) {
-      await ctx.editMessageText(GENERIC_ERROR).catch(() => null);
+      await sendExamErrorText(ctx, GENERIC_ERROR, 'edit');
       return;
     }
 

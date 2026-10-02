@@ -4,6 +4,7 @@
 // запись в Mongo проверена в bot-session.service.spec.ts. presentAttemptScreen
 // — фейковый ctx и ExamBotPort, без Telegram: сама отправка альбома со всеми
 // её деталями (file_id, повтор, сбой) — exam-question-album.spec.ts.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { AttemptQuestionDto, ExamAttemptDto } from '@xuanxue/shared';
@@ -11,6 +12,7 @@ import type { UserLean } from '../../users/users.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
+import { SCREEN_NOT_SENT_MESSAGE } from './exam-question-screen-send';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
@@ -243,35 +245,58 @@ describe('renderAttemptScreen — строка про время (ADR-0121)', ()
   });
 });
 
-function fakeCtx(): {
+/** `journal` — порядок вызовов Telegram (F25: удаление старого экрана только
+ * ПОСЛЕ удачной отправки нового); `failReplies` — сколько первых reply упадут. */
+function fakeCtx(options: { failReplies?: number } = {}): {
   ctx: Context;
   edits: string[];
   replies: string[];
+  replyButtons: string[][];
   deletes: number[];
+  journal: string[];
 } {
   const edits: string[] = [];
   const replies: string[] = [];
+  const replyButtons: string[][] = [];
   const deletes: number[] = [];
+  const journal: string[] = [];
+  let repliesToFail = options.failReplies ?? 0;
   const ctx = {
     editMessageText: (text: string) => {
+      journal.push('editMessageText');
       edits.push(text);
       return Promise.resolve(true);
     },
-    reply: (text: string) => {
+    reply: (
+      text: string,
+      extra?: { reply_markup?: { inline_keyboard?: { text: string }[][] } },
+    ) => {
+      journal.push('reply');
+      if (repliesToFail > 0) {
+        repliesToFail -= 1;
+        return Promise.reject(new Error('Too Many Requests: retry after 1'));
+      }
       replies.push(text);
+      replyButtons.push(
+        (extra?.reply_markup?.inline_keyboard ?? []).flat().map((b) => b.text),
+      );
       return Promise.resolve();
     },
     deleteMessage: () => {
+      journal.push('deleteMessage');
       deletes.push(1);
       return Promise.resolve(true);
     },
     telegram: {
-      sendPhoto: () => Promise.resolve({ message_id: 1, photo: [{ file_id: 'f' }] }),
+      sendPhoto: () => {
+        journal.push('sendPhoto');
+        return Promise.resolve({ message_id: 1, photo: [{ file_id: 'f' }] });
+      },
       sendVideo: () => Promise.resolve({ message_id: 1, video: { file_id: 'v' } }),
       sendMessage: () => Promise.resolve({ message_id: 1 }),
     },
   } as unknown as Context;
-  return { ctx, edits, replies, deletes };
+  return { ctx, edits, replies, replyButtons, deletes, journal };
 }
 
 const ALBUM = [
@@ -328,20 +353,76 @@ describe('presentAttemptScreen', () => {
     expect(port.loadOptionImage).not.toHaveBeenCalled();
   });
 
-  it('via: edit, альбом есть — старое сообщение удаляется, экран уходит reply, не edit', async () => {
-    const { ctx, edits, deletes, replies } = fakeCtx();
+  // Аудит 2026-10-01 (F25): прежний тест считал только вызовы, не порядок —
+  // неверный порядок delete → reply был зелёным.
+  it('via: edit, альбом есть — альбом, затем экран reply, и только потом удаление старого', async () => {
+    const port = fakeExamBotPort({
+      loadOptionImage: jest.fn().mockResolvedValue({
+        bytes: Buffer.from([1]),
+        contentType: 'image/jpeg',
+      }),
+    });
+    const { ctx, edits, deletes, replies, journal } = fakeCtx();
 
     await presentAttemptScreen(
       ctx,
-      deps(),
+      { ...deps(), examBot: port },
       VIEW_WITH_ALBUM,
       { via: 'edit', withAlbum: true },
       NOW,
     );
 
+    expect(journal).toEqual(['sendPhoto', 'reply', 'deleteMessage']);
     expect(deletes).toHaveLength(1);
     expect(edits).toHaveLength(0);
     expect(replies).toEqual(['Текст']);
+  });
+
+  it('reply упал (429) — старый экран с кнопками не удаляется, в чат уходит текст с «В меню», в лог — error', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { ctx, deletes, replies, replyButtons, journal } = fakeCtx({ failReplies: 1 });
+
+    await expect(
+      presentAttemptScreen(
+        ctx,
+        deps(),
+        VIEW_WITH_ALBUM,
+        { via: 'edit', withAlbum: true },
+        NOW,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(deletes).toHaveLength(0);
+    expect(journal).not.toContain('deleteMessage');
+    expect(replies).toEqual([SCREEN_NOT_SENT_MESSAGE]);
+    expect(replyButtons[0]).toEqual(['В меню']);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('экран не отправлен'),
+      expect.objectContaining({ attemptId: ATTEMPT_ID }),
+    );
+    error.mockRestore();
+  });
+
+  it('reply упал и текст с «В меню» тоже не ушёл — не бросает', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { ctx, deletes } = fakeCtx({ failReplies: 2 });
+
+    await expect(
+      presentAttemptScreen(
+        ctx,
+        deps(),
+        VIEW_WITH_ALBUM,
+        { via: 'edit', withAlbum: true },
+        NOW,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(deletes).toHaveLength(0);
+    error.mockRestore();
   });
 
   it('via: reply, альбом есть — экран уходит reply, ничего не удаляется', async () => {
