@@ -3,6 +3,7 @@
 // PUT не плодит вторую запись (уникальный индекс attemptId), попытка
 // становится graded.
 import { DateTime } from 'luxon';
+import { Types } from 'mongoose';
 import { NotFoundError } from '../common/errors';
 import { beforeModelCall } from '../test-support/before-model-call';
 import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
@@ -56,9 +57,34 @@ describe('ExamGradingsService', () => {
     const examId = await createPublishedExam(itemId);
     const started = await ctx.service.start(examId, USER_A, NOW);
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
 
     expect(review.grading).toBeUndefined();
+    expect(review.pendingVideoItemIds).toEqual([]);
+  });
+
+  // Аудит 2026-10-01 F34: видео приходит частями после сдачи — карточка
+  // обязана отличать «ещё грузится» от «не прислал».
+  it('видео-ответ ещё грузится — карточка несёт itemId вопроса в pendingVideoItemIds', async () => {
+    const itemId = await createPublishedItem({ kind: 'video' });
+    const examId = await createPublishedExam(itemId);
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.answerVideoModel.collection.insertOne({
+      userId: new Types.ObjectId(USER_A),
+      attemptId: new Types.ObjectId(started.id),
+      itemId: new Types.ObjectId(itemId),
+      key: 'answer-videos/pending',
+      sizeBytes: 100,
+      fingerprint: '100:1',
+      status: 'uploading',
+      parts: [],
+      createdAt: NOW.toJSDate(),
+      updatedAt: NOW.toJSDate(),
+    });
+
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
+
+    expect(review.pendingVideoItemIds).toEqual([itemId]);
   });
 
   // Регрессия отзыва владельца 2026-09-21: владелец открыл попытку в
@@ -101,7 +127,7 @@ describe('ExamGradingsService', () => {
     );
     await ctx.service.submit(started.id, USER_A, NOW);
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
     const [first, second] = review.blocks[0]?.questions ?? [];
 
     expect(first?.itemId).toBe(optionItem.id);
@@ -139,7 +165,7 @@ describe('ExamGradingsService', () => {
     expect(graded.outcome).toBe('passed');
     expect(graded.comment).toBe('Общий комментарий учителя');
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
     expect(review.grading?.outcome).toBe('passed');
     expect(review.status).toBe('graded');
 
@@ -180,7 +206,7 @@ describe('ExamGradingsService', () => {
     const examId = await createPublishedExam(itemId);
     const started = await ctx.service.start(examId, USER_A, NOW);
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
 
     expect(review.notifiesUserInTelegram).toBe(false);
   });
@@ -204,7 +230,7 @@ describe('ExamGradingsService', () => {
     });
     const started = await ctx.service.start(examId, studentId, NOW);
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
 
     expect(review.notifiesUserInTelegram).toBe(true);
   });
@@ -232,7 +258,7 @@ describe('ExamGradingsService', () => {
     });
     const started = await ctx.service.start(examId, studentId, NOW);
 
-    const review = await ctx.gradingsService.getReview(started.id);
+    const review = await ctx.gradingsService.getReview(started.id, NOW);
 
     expect(review.notifiesUserInTelegram).toBe(false);
   });
@@ -247,7 +273,7 @@ describe('ExamGradingsService', () => {
 
     await ctx.gradingsService.grade(attemptA.id, GRADER_ID, { outcome: 'failed' }, NOW);
 
-    const reviewB = await ctx.gradingsService.getReview(attemptB.id);
+    const reviewB = await ctx.gradingsService.getReview(attemptB.id, NOW);
     expect(reviewB.grading).toBeUndefined();
     expect(reviewB.status).toBe('submitted'); // не задета оценкой А
   });

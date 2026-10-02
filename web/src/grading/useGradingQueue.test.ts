@@ -38,7 +38,7 @@ describe('useGradingQueue — загрузка', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/attempts?status=submitted&limit=200',
+      '/attempts/queue?status=submitted&limit=200',
       expect.anything(),
     );
   });

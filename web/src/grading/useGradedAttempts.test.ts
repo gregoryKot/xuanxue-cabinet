@@ -40,7 +40,7 @@ describe('useGradedAttempts — загрузка', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/attempts?status=graded&limit=200',
+      '/attempts/queue?status=graded&limit=200',
       expect.anything(),
     );
   });

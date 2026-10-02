@@ -3,6 +3,8 @@
 // (файл-лимит CLAUDE.md «Храповики»): там остаётся подъём Mongo и моделей,
 // здесь — их сборка в сервисы, один раз для всех спеков попыток.
 import type { Model } from 'mongoose';
+import { AnswerVideoStatsService } from '../answer-videos/answer-video-stats.service';
+import type { AnswerVideoRecord } from '../answer-videos/answer-video.schema';
 import type { ChannelRecord } from '../channels/channel.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import type { ExamImageRecord } from '../exam-images/exam-image.schema';
@@ -49,6 +51,8 @@ export interface AttemptsTestModels {
   // Лента кабинета (ADR-0061) — нужна ADR-0131: повтор после просроченной
   // попытки затирает и её строки в inbox учителя (ExamAttemptRetryCleanupService).
   notificationModel: Model<NotificationRecord>;
+  // F34 (аудит 2026-10-01): карточка проверки читает незавершённые загрузки.
+  answerVideoModel: Model<AnswerVideoRecord>;
 }
 
 export interface AttemptsTestServices {
@@ -119,6 +123,7 @@ export function buildAttemptsServices(models: AttemptsTestModels): AttemptsTestS
     userNamesService,
     personalChats,
     examNotifier,
+    new AnswerVideoStatsService(models.answerVideoModel),
   );
   // Реестр нотификатора ссылок (ADR-0084) — не собран в этих спеках
   // (ExamsModule здесь не поднимается): getOrNull() вернёт null, addLink()

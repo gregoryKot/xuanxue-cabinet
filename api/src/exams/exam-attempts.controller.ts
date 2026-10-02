@@ -46,11 +46,10 @@ import {
 } from './exam-attempt-media';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
+import { STAFF_ONLY_ROLES } from './exam-staff-roles';
 import { ListAttemptsDto } from './dto/list-attempts.dto';
 import { PutGradingDto } from './dto/put-grading.dto';
 import { SaveAttemptAnswersDto } from './dto/save-attempt-answers.dto';
-
-const STAFF_ONLY_ROLES = ['teacher', 'assistant', 'admin'] as const;
 
 @Controller()
 export class ExamAttemptsController {
@@ -138,7 +137,7 @@ export class ExamAttemptsController {
   @ApiRoute('GET /attempts/:id/review')
   @Roles(...STAFF_ONLY_ROLES)
   async review(@Param('id') id: string): Promise<AttemptReviewDto> {
-    const review = await this.examGradingsService.getReview(id);
+    const review = await this.examGradingsService.getReview(id, DateTime.utc());
     return withReviewMedia(this.mediaAssetsService, review);
   }
 
@@ -155,7 +154,7 @@ export class ExamAttemptsController {
     @CurrentUser() user: UserLean,
   ): Promise<AttemptReviewDto> {
     await this.examGradingsService.grade(id, user.id, body, DateTime.utc());
-    const review = await this.examGradingsService.getReview(id);
+    const review = await this.examGradingsService.getReview(id, DateTime.utc());
     return withReviewMedia(this.mediaAssetsService, review);
   }
 }

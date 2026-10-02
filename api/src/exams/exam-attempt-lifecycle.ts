@@ -21,7 +21,7 @@
 // функция выходит на первой строке). Поле дублировало бы гарантию, которая
 // уже есть.
 import type { DateTime } from 'luxon';
-import type { Model, Types } from 'mongoose';
+import type { Model } from 'mongoose';
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
@@ -54,22 +54,6 @@ export async function findInProgressAttempt(
     .findOne({ examId, userId, status: 'in_progress' })
     .lean<RawLeanExamAttempt>();
   return doc ? decryptAttempt(doc) : null;
-}
-
-/** Идущая попытка по id из уже снятого снимка `findLastAttempt` — один
- * документ, не второй поиск по статусу (F08, аудит 2026-10-01: два чтения
- * подряд оставляли окно, в котором двойной старт рождал вторую `in_progress`).
- * `null` — попытку только что снесли (повторный старт конкурента), и
- * вызывающий идёт по ветке создания. */
-export async function resumeAttemptById(
-  model: Model<ExamAttemptRecord>,
-  attemptId: Types.ObjectId,
-  now: DateTime,
-  onExpiredClose?: (closed: LeanExamAttempt) => void,
-): Promise<LeanExamAttempt | null> {
-  const doc = await model.findById(attemptId).lean<RawLeanExamAttempt>();
-  if (!doc) return null;
-  return closeIfExpiredAttempt(model, decryptAttempt(doc), now, onExpiredClose);
 }
 
 /** Закрывает попытку по дедлайну прямо сейчас, если время уже вышло — любой
@@ -122,12 +106,20 @@ export async function closeIfExpiredAttempt(
  *
  * `limit` — не «дай всё» (CLAUDE.md «API»): при массовом наплыве просрочек
  * (сотни учеников на одном экзамене) следующий тик доберёт остаток, тот же
- * приём, что у RecordingPromptService/DeliveryRunnerService. */
+ * приём, что у RecordingPromptService/DeliveryRunnerService.
+ *
+ * `onExpiredClose` здесь, в отличие от closeIfExpiredAttempt, может вернуть
+ * Promise, и он ждётся до следующей попытки (аудит 2026-10-01 F11, ADR-0167):
+ * группа с одним стартом истекает в одну минуту, и fire-and-forget на
+ * каждую запускал веер — 50 карточек «работу сдали» в один чат учителя
+ * разом (Telegram отвечает 429, пинг теряется) и сотни операций Mongo за
+ * секунды. Тику ждать можно (@Cron с waitForCompletion), HTTP-пути
+ * по-прежнему зовут closeIfExpiredAttempt с void-колбэком. */
 export async function closeExpiredAttempts(
   model: Model<ExamAttemptRecord>,
   now: DateTime,
   limit: number,
-  onExpiredClose?: (closed: LeanExamAttempt) => void,
+  onExpiredClose?: (closed: LeanExamAttempt) => void | Promise<void>,
 ): Promise<number> {
   const candidates = await model
     .find({ status: 'in_progress', deadlineAt: { $lte: now.toJSDate() } })
@@ -135,16 +127,20 @@ export async function closeExpiredAttempts(
     .lean<RawLeanExamAttempt[]>();
 
   let closedByThisCall = 0;
-  const countingCallback = (closed: LeanExamAttempt): void => {
-    closedByThisCall += 1;
-    onExpiredClose?.(closed);
-  };
   for (const raw of candidates) {
     // Битая попытка (F55) — одна строка error-лога и пропуск, не падение
     // тика: остальные закрываются, она остаётся in_progress до починки данных.
     const attempt = decryptAttemptOrNull(raw);
     if (!attempt) continue;
-    await closeIfExpiredAttempt(model, attempt, now, countingCallback);
+    // Колбэк closeIfExpiredAttempt синхронный — запоминаем, выиграл ли этот
+    // вызов гонку, и уведомляем уже с ожиданием, по одной попытке за раз.
+    let closedHere: LeanExamAttempt | null = null;
+    await closeIfExpiredAttempt(model, attempt, now, (closed) => {
+      closedHere = closed;
+    });
+    if (!closedHere) continue;
+    closedByThisCall += 1;
+    await onExpiredClose?.(closedHere);
   }
   return closedByThisCall;
 }

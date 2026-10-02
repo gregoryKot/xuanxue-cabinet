@@ -1,10 +1,8 @@
 // Один модуль на банк вопросов (`exam_items`), форму экзамена (`exams`, ТЗ
 // 4.3) и попытку (`exam_attempts`, ТЗ 4.4): попытка при старте читает форму
-// и вопросы через ExamsService/ExamItemsService того же модуля (проверка
-// «блок ссылается на опубликованный вопрос», расшифровка снимка) — им всё
-// равно нужен общий контекст DI; заводить отдельный модуль ради разделения
-// добавило бы только ре-экспорт MongooseModule без другой пользы (CLAUDE.md
-// «Файлы»: не создавай без нужды).
+// и вопросы через ExamsService/ExamItemsService того же модуля — им нужен
+// общий контекст DI, отдельный модуль добавил бы только ре-экспорт
+// MongooseModule (CLAUDE.md «Файлы»: не создавай без нужды).
 //
 // Импортирует UsersModule ради UserNamesService (слой 4.6: имя ученика в
 // карточке проверки и списке попыток). Цикла нет — UsersModule ничего не
@@ -13,16 +11,10 @@
 //
 // Импортирует TelegramModule ради EXAM_NOTIFIER (слой 4.7, PLAN §11) — тот
 // же приём, что у TEACHER_NOTIFIER в scheduler.module.ts: реализация
-// (TelegramExamNotifier) физически живёт в api/src/telegram (Telegraf вне
-// telegram/channels запрещён eslint), но собирается здесь — сами
-// ExamAttemptsService/ExamGradingsService/MyExamsService и так живут в этом
-// модуле, отдельного «модуля-сборщика» под них, в отличие от
-// scheduler-сервисов, не заводили. Цикла нет — TelegramModule и его
-// собственные импорты (ChannelsModule/UsersModule/BroadcastsModule/
-// LessonsModule/DeliveriesModule/ClassesModule/SettingsModule/
-// NotificationsModule) про ExamsModule не знают (сверено grep'ом): порт
-// ExamNotifier — единственное, что TelegramExamNotifier берёт из exams/, и
-// это только тип (import type), не рантайм-зависимость модуля.
+// (TelegramExamNotifier) живёт в api/src/telegram (Telegraf вне
+// telegram/channels запрещён eslint), но собирается здесь, рядом с сервисами
+// экзамена. Цикла нет — TelegramModule и его импорты про ExamsModule не
+// знают (сверено grep'ом): порт ExamNotifier берётся оттуда только типом.
 //
 // Импортирует MediaModule ради MediaAssetsService (слой 4.5, ADR-0023):
 // ExamAttemptsController подмешивает media в ответ (exam-attempt-media.ts).
@@ -42,18 +34,13 @@
 // ExamAttemptModelModule (тонкая регистрация модели попытки, без контроллеров
 // и остального ExamsModule), про ExamsModule он не знает.
 //
-// Импортирует NotificationsModule ради InAppExamNotifier (слой in-app
-// уведомлений, ADR-0061) — второе плечо EXAM_NOTIFIER рядом с
-// TelegramExamNotifier: класс физически живёт в notifications/ (там же
-// коллекция notifications и лента `/me/inbox`), но собирается здесь, тем же
-// приёмом, что TelegramExamNotifier — не провайдер своего модуля, а
-// провайдер ExamsModule. Ему нужен NotificationPrefsService — TelegramModule
-// уже импортирует NotificationsModule сам, но не экспортирует
-// NotificationPrefsService наружу, поэтому ExamsModule берёт его отдельно.
-// Циклов нет — ни один из двух модулей про exams/ не знает. Модель
-// NotificationRecord доступна ему потому, что NotificationsModule
-// регистрирует её через MongooseModule.forFeature и экспортирует
-// MongooseModule — второй раз forFeature здесь заводить не нужно.
+// Импортирует NotificationsModule ради InAppExamNotifier (ADR-0061) —
+// второе плечо EXAM_NOTIFIER: класс живёт в notifications/, но собирается
+// здесь, тем же приёмом, что TelegramExamNotifier. Ему нужен
+// NotificationPrefsService — TelegramModule его наружу не экспортирует,
+// поэтому ExamsModule берёт NotificationsModule отдельно. Циклов нет. Модель
+// NotificationRecord приходит с экспортом MongooseModule оттуда же — второй
+// forFeature здесь не нужен.
 //
 // ExamMediaLinkNotifier (ADR-0084, слой 4.5) — тем же приёмом кладёт себя в
 // ExamMediaNotifierRegistry (media/), которую MediaModule уже экспортирует:
@@ -66,12 +53,16 @@
 // ExamsModule. Цикла нет — PushModule про exams/ не знает.
 //
 // Импортирует ExamVideosModule ради ExamVideosService (слой 4.2, ADR-0133) —
-// тем же приёмом и по той же причине, что ExamImagesModule выше:
-// ExamItemsService проверяет через него существование видео у вопроса/
-// варианта перед записью. Цикла нет — ExamVideosModule импортирует только
-// ExamAttemptModelModule и StorageModule, про ExamsModule он не знает.
+// тем же приёмом и по той же причине, что ExamImagesModule выше. Цикла нет —
+// ExamVideosModule импортирует только ExamAttemptModelModule и StorageModule.
+//
+// Импортирует AnswerVideosModule ради AnswerVideoStatsService (аудит
+// 2026-10-01 F34: карточка проверки знает, что видео-ответ ещё грузится).
+// Цикла нет — AnswerVideosModule берёт модели попытки и оценки через
+// ExamAttemptModelModule/ExamGradingModelModule, про ExamsModule не знает.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AnswerVideosModule } from '../answer-videos/answer-videos.module';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { ExamVideosModule } from '../exam-videos/exam-videos.module';
 import { MediaModule } from '../media/media.module';
@@ -86,6 +77,8 @@ import { TelegramVideoLinkNotifier } from '../telegram/telegram-video-link-notif
 import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptCountService } from './exam-attempt-count.service';
+import { ExamAttemptQueueController } from './exam-attempt-queue.controller';
+import { ExamAttemptQueueService } from './exam-attempt-queue.service';
 import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
@@ -115,6 +108,7 @@ import { MyExamsService } from './my-exams.service';
     ExamVideosModule,
     NotificationsModule,
     PushModule,
+    AnswerVideosModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },
@@ -126,6 +120,9 @@ import { MyExamsService } from './my-exams.service';
   controllers: [
     ExamItemsController,
     ExamsController,
+    // Раньше ExamAttemptsController: `attempts/queue` обязан встать до
+    // `attempts/:id` (комментарий в exam-attempt-queue.controller.ts, F33).
+    ExamAttemptQueueController,
     ExamAttemptsController,
     MyExamsController,
   ],
@@ -135,6 +132,7 @@ import { MyExamsService } from './my-exams.service';
     ExamsService,
     ExamAttemptsService,
     ExamAttemptCountService,
+    ExamAttemptQueueService,
     // Каскад удаления просроченной непроверенной попытки при повторе
     // (ADR-0131) — модель media_assets/notifications доступна уже
     // импортированными MediaModule/NotificationsModule (комментарии выше).

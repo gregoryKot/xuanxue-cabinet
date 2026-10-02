@@ -111,6 +111,74 @@ describe('GradingForm — оценка уже стоит', () => {
   });
 });
 
+// Аудит 2026-10-01 F34: пока видео грузится, оценка переводит попытку в
+// graded и дозагрузка ученика получает 409 — перед сохранением спрашиваем.
+describe('GradingForm — видео ещё грузится', () => {
+  function renderPendingForm() {
+    mockApiByPath({ '/grading-presets': [] });
+    const onSubmit = vi.fn().mockResolvedValue(true);
+    render(
+      <MemoryRouter>
+        <GradingForm
+          grading={undefined}
+          onSubmit={onSubmit}
+          saving={false}
+          saveError={null}
+          hasPendingVideo
+        />
+      </MemoryRouter>,
+    );
+    return { onSubmit };
+  }
+
+  it('«Сохранить оценку» — сначала подтверждение, onSubmit не звался', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderPendingForm();
+
+    await user.selectOptions(screen.getByLabelText('Итог'), 'needs_work');
+    await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Видео ещё грузится' }),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('«Оценить без видео» — onSubmit с выбранным итогом', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderPendingForm();
+
+    await user.selectOptions(screen.getByLabelText('Итог'), 'needs_work');
+    await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
+    await user.click(await screen.findByRole('button', { name: 'Оценить без видео' }));
+
+    expect(onSubmit).toHaveBeenCalledWith({ comment: undefined, outcome: 'needs_work' });
+  });
+
+  it('«Подождать» — диалог закрыт, оценка не ушла', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderPendingForm();
+
+    await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
+    await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
+    await user.click(await screen.findByRole('button', { name: 'Подождать' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('без выбранного итога — валидация раньше подтверждения', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderPendingForm();
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Выберите итог проверки.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
 describe('GradingForm — ошибка сервера', () => {
   it('показывается под формой', () => {
     renderForm({ saveError: { message: 'Не удалось сохранить оценку.' } });

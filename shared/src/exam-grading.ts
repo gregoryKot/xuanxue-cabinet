@@ -103,6 +103,11 @@ export interface AttemptReviewDto {
    * Опционально в типе по той же причине, что у `ExamAttemptDto.media`
    * (exams.ts): существующие фикстуры web/ не тронуты правкой контракта. */
   media?: ExamMediaDto[];
+  /** Видео-вопросы, чьё видео ещё грузится (answer_videos `uploading` с живой
+   * загрузкой — AnswerVideoStatsService.pendingItemIds, аудит 2026-10-01 F34):
+   * учитель видит «видео загружается», а не «ответа нет», и не ставит
+   * «доработать» по пустому месту. Опционально по той же причине, что `media`. */
+  pendingVideoItemIds?: string[];
 }
 
 // Оценка попытки (`exam_gradings`, `PUT /attempts/:id/grading`) — данные

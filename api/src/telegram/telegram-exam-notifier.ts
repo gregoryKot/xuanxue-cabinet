@@ -6,26 +6,18 @@
 // Тексты — отдельными чистыми модулями (attempt-submitted-message.ts,
 // exam-graded-message.ts). Отправка — best-effort: сбой резолва (в т.ч.
 // Mongo при чтении имени/чата) ловится try/catch и уходит в Logger.warn, не
-// наружу (CLAUDE.md «Логи», «Ошибки») — вызывающий сервис (ExamAttemptsService/
-// ExamGradingsService) не должен падать или ждать бота. Сбой самой отправки
-// (бот.sendMessage вернул `false`) — отдельная ветка (аудит 2026-09, находка
-// 2): раньше он тонул внутри TelegramBotService тем же `warn`, и здесь его
-// никто не видел — заблокированный бот учителя или удалённый чат ученика
-// считались успешной доставкой. Если адресату уведомление в итоге не дошло —
-// `error` с ключом для поиска (attemptId, вид уведомления), без PII.
-// Третий случай — адресатов нет вовсе (ни у кого нет активного чата с ботом
-// или вид выключен у всех): до 2026-09-17 он проходил молча — сквозной e2e
-// (exam-full-flow.e2e-spec.ts) подменяет нотификатор фейком и этого не
-// видел. Теперь `warn` с причиной: лента кабинета (InAppExamNotifier,
-// ADR-0061) почти наверняка подхватит, но тоже отчитывается о себе сама —
-// здесь честно говорим за свой канал, куда уведомление не ушло и почему.
+// наружу (CLAUDE.md «Логи», «Ошибки»). Сбой самой отправки (бот.sendMessage
+// вернул `false`, аудит 2026-09, находка 2): никому не дошло — `error`,
+// части адресатов — `warn` (аудит 2026-10-01 F11: 429 от Telegram на один
+// из чатов иначе проходил молча), оба с ключом для поиска (attemptId, вид
+// уведомления), без PII. Адресатов нет вовсе — `warn` с причиной (2026-09-17):
+// лента кабинета (InAppExamNotifier, ADR-0061) отчитывается о себе сама,
+// здесь честно говорим за свой канал.
 //
-// Слой 4б.5 (PLAN §12): «работу сдали» теперь несёт карточку проверки
-// (ответы по вопросам, автопроверка вариантов) и кнопки «Зачёт»/«Доработать»/
-// «Незачёт» — карточка та же, что `GET /attempts/:id/review`
-// (ExamBotPort.loadAttemptReview, не вторая сборка), поэтому имя ученика
-// берём из неё (`review.userName`) — отдельный UserNamesService здесь больше
-// не нужен, он уже внутри ExamGradingsService.getReview.
+// Слой 4б.5 (PLAN §12): «работу сдали» несёт карточку проверки и кнопки
+// «Зачёт»/«Доработать»/«Незачёт» — карточка та же, что `GET /attempts/:id/review`
+// (ExamBotPort.loadAttemptReview, не вторая сборка), имя ученика берём из
+// неё (`review.userName`), отдельный UserNamesService здесь не нужен.
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -91,13 +83,20 @@ export class TelegramExamNotifier implements ExamNotifier {
       const delivered = await Promise.all(
         chats.map((chat) => this.bot.sendMessage(chat.chatId, text, buttons)),
       );
-      if (delivered.every((ok) => !ok)) {
+      const failed = delivered.filter((ok) => !ok).length;
+      const logContext = { attemptId: context.attemptId, kind: 'attempt_submitted' };
+      if (failed === delivered.length) {
         // Никто из адресатов не получил уведомление — тихий отказ дороже
         // всего именно здесь (CLAUDE.md «Логи»): error, не warn, чтобы не
         // потеряться среди обычных сетевых предупреждений.
         this.logger.error(
           `exam.notifyAttemptSubmitted: доставка не удалась ни одному из ${delivered.length} чатов`,
-          { attemptId: context.attemptId, kind: 'attempt_submitted' },
+          logContext,
+        );
+      } else if (failed > 0) {
+        this.logger.warn(
+          `exam.notifyAttemptSubmitted: доставка не удалась в ${failed} из ${delivered.length} чатов`,
+          logContext,
         );
       }
       // Адресаты были (chats.length), даже если доставка не удалась — это

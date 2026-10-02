@@ -26,11 +26,8 @@ import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.ser
 import { loadOwnAttempt } from './exam-attempt-load-own';
 import { decryptAttemptsSkippingBroken } from './exam-attempt-decrypt-safe';
 import { ExamItemRecord } from './exam-item.schema';
-import {
-  assertOpenForChange,
-  closeIfExpiredAttempt,
-  resumeAttemptById,
-} from './exam-attempt-lifecycle';
+import { assertOpenForChange, closeIfExpiredAttempt } from './exam-attempt-lifecycle';
+import { resumeAttemptById } from './exam-attempt-resume';
 import { assertExamNotPastDue, assertExamPublished } from './exam-start-guards';
 import { saveAttemptAnswers, type AttemptAnswersChange } from './exam-attempt-save';
 import { assertReasonsGiven } from './exam-attempt-submit-reason';
