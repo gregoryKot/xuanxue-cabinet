@@ -28,12 +28,16 @@ interface AttemptMediaLinkFormProps {
   onSubmit: (url: string) => Promise<boolean>;
   pending: boolean;
   error: FormError | null;
+  /** Показ без права ответить — предпросмотр «глазами ученика»
+   * (AttemptQuestionVideo.tsx): поле выключено, сохранять нечего. */
+  disabled?: boolean;
 }
 
 export function AttemptMediaLinkForm({
   onSubmit,
   pending,
   error,
+  disabled,
 }: AttemptMediaLinkFormProps) {
   const [url, setUrl] = useState('');
   // Синхронный латч поверх `pending`-пропа: тот приходит из состояния
@@ -80,6 +84,7 @@ export function AttemptMediaLinkForm({
       <Field label="Ссылка на видео">
         <input
           style={inputStyle}
+          disabled={disabled}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onPaste={handlePaste}

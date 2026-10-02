@@ -112,4 +112,10 @@ describe('AttemptMediaLinkForm', () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toHaveValue('не-ссылка');
   });
+
+  it('disabled — поле выключено (предпросмотр «глазами ученика»)', () => {
+    renderForm({ disabled: true });
+
+    expect(screen.getByLabelText('Ссылка на видео')).toBeDisabled();
+  });
 });

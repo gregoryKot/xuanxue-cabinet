@@ -10,6 +10,7 @@
 // набор и свой порядок.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
+import type { AttemptVideoControls } from '../attempt/useAttemptMedia';
 import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
 import { RichText } from '../components/RichText';
@@ -31,6 +32,9 @@ interface ExamPreviewQuestionsProps {
    * которых в списке больше нет (ExamPreview.tsx, pruneRequiredIds). */
   requiredIds: string[];
   bankItems: ExamItemDto[];
+  /** Управление видео-вопросом (previewVideoControls.ts) — собирается один раз
+   * на страницу в ExamPreview.tsx и идёт каждому видео-вопросу. */
+  video: AttemptVideoControls;
 }
 
 export function ExamPreviewQuestions({
@@ -40,6 +44,7 @@ export function ExamPreviewQuestions({
   questionsPerAttempt,
   requiredIds,
   bankItems,
+  video,
 }: ExamPreviewQuestionsProps) {
   const note = previewNote({
     itemCount: itemIds.length,
@@ -70,6 +75,7 @@ export function ExamPreviewQuestions({
                 index={index}
                 item={bankItems.find((candidate) => candidate.id === itemId)}
                 required={requiredIds.includes(itemId)}
+                video={video}
               />
             ))}
           </ol>
