@@ -9,7 +9,11 @@
 import { Types, type Connection, type Model } from 'mongoose';
 import { DEFAULT_LEAD_MINUTES, SCHOOL_TZ } from '@xuanxue/shared';
 import { seedSchoolClasses } from './0001-school-classes.migration';
-import { fullSchoolSchedule } from './0019-full-school-schedule.migration';
+import {
+  fullSchoolSchedule,
+  growRules,
+  parseRule,
+} from './0019-full-school-schedule.migration';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord, type LeanScheduleRule } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -311,5 +315,56 @@ describe('Миграция 0019-full-school-schedule', () => {
 
     const created = slotAt(classes, 4, '20:00');
     expect(created.channelIds.map(String)).toEqual([String(school._id)]);
+  });
+
+  // Документ без поля rules бывает только заведённым руками мимо схемы. Миграция
+  // идёт до `listen`, и её падение не дало бы приложению стартовать.
+  it('документ без правил не роняет миграцию и остаётся как был', async () => {
+    const { insertedId } = await db()
+      .collection('classes')
+      .insertOne({ title: 'Черновик без правил', groupLabel: '' });
+
+    const classes = await migrate();
+
+    expect(classes).toHaveLength(EXPECTED_CLASSES + 1);
+    const draft = await db().collection('classes').findOne({ _id: insertedId });
+    expect(draft).toEqual({
+      _id: insertedId,
+      title: 'Черновик без правил',
+      groupLabel: '',
+    });
+  });
+});
+
+describe('0019: разбор таблицы и правила слота', () => {
+  it('запись без длительности — час, с длительностью — сколько указано', () => {
+    expect(parseRule('Вс 08:00')).toEqual({ weekday: 0, time: '08:00', durationMin: 60 });
+    expect(parseRule('Пт 10:30 (30)')).toEqual({
+      weekday: 5,
+      time: '10:30',
+      durationMin: 30,
+    });
+  });
+
+  // Опечатка в таблице должна уронить тесты, а не молча завести слот в
+  // воскресенье или без времени.
+  it.each(['Xx 08:00', 'Вс', 'Вс 8 утра'])('кривая запись «%s» — ошибка', (text) => {
+    expect(() => parseRule(text)).toThrow(text);
+  });
+
+  it('правило с прежним моментом сохраняет _id, новый момент получает новый', () => {
+    const kept = new Types.ObjectId();
+    const rules = growRules(
+      [{ _id: kept, weekday: 1, time: '08:00', durationMin: 60 }],
+      [
+        { weekday: 1, time: '08:00', durationMin: 90 },
+        { weekday: 2, time: '08:00', durationMin: 60 },
+      ],
+    );
+
+    expect(String(rules[0]?._id)).toBe(String(kept));
+    expect(rules[0]?.durationMin).toBe(90);
+    expect(rules[1]?._id).toBeInstanceOf(Types.ObjectId);
+    expect(String(rules[1]?._id)).not.toBe(String(kept));
   });
 });

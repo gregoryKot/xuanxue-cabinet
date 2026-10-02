@@ -1,33 +1,26 @@
 // Полное расписание школы: 30 занятий в неделю в 24 слотах, с парками, залом на
-// Аркави и онлайн-комнатами. Миграция 0001 принесла только онлайн-часть
-// (11 слотов, 16 занятий); 2026-10-02 владелец прислал полный список. Вносить его
-// руками — 13 новых слотов и 11 правок старых, ровно та работа, от которой он уже
-// отказывался (ADR-0019, дополнение 2026-09-10), поэтому он едет миграцией.
-// Что выбрано и где источники расходятся — ADR-0166.
+// Аркави и онлайн. 0001 принесла только онлайн-часть (11 слотов, 16 занятий);
+// 2026-10-02 владелец прислал полный список. Руками это 13 новых слотов и 11
+// правок старых — работа, от которой он уже отказывался (ADR-0019, дополнение
+// 2026-09-10). Что выбрано и где источники расходятся — ADR-0166.
 //
-// 1. Переименовываются только нетронутые слоты 0001. Слот нетронут, пока набор
-// его правил (день, время, длительность) совпадает с созданным 0001: за недели
-// жизни расписания в кабинете учитель мог поменять время, и это важнее нашей
-// таблицы. Тронутый слот пропускается целиком, а на его прежний момент новый не
-// заводится. Формат, ссылку, каналы, ведущего, active и теги не сверяем и не
-// меняем (формат ставит таблица). Слот ищется по (title, groupLabel), но таких
-// после первого прогона два («Медитация чжи-гуань» с пустой подписью), поэтому
-// берётся тот, чьи правила совпали, — это же держит идемпотентность.
+// 1. Переименовываются только нетронутые слоты 0001 — те, чей набор правил
+// (день, время, длительность) совпадает с созданным 0001: время, поменянное
+// учителем в кабинете, важнее нашей таблицы. Тронутый слот пропускается
+// целиком, и на его прежний момент новый не заводится. Ссылку, каналы,
+// ведущего, active и теги не трогаем. Тёзок по (title, groupLabel) после
+// первого прогона два, поэтому слот выбирается по совпавшим правилам — это же
+// держит идемпотентность.
 //
-// 2. Новые слоты заводятся по моменту (weekday, time), а не по (title, groupLabel):
-// у двух пар они одинаковые при разных комнатах Zoom — «Тайцзицюань / младшая
-// группа» во Вт 20:00 и Чт 08:00, «Тайцзицюань / средняя группа» в Пн и Вт 10:00
-// и Ср 18:30. Если на момент уже стоит правило любого слота, активного или
-// выключенного (учитель мог завести его сам), правило отбрасывается, а слот без
-// правил не вставляется.
+// 2. Новые слоты заводятся по моменту (weekday, time), а не по (title,
+// groupLabel): «Тайцзицюань / младшая группа» во Вт 20:00 и Чт 08:00 — тёзки с
+// разными комнатами Zoom. Момент, занятый правилом любого слота (учитель мог
+// завести его сам), пропускается.
 //
-// 3. Ссылка Zoom копируется только внутри одной комнаты. В присланном списке
-// Пт 09:00 сидит в комнате Вт 08:00, Пт 18:30 — в комнате Ср 18:30, а Чт 08:00
-// раньше было частью утреннего слота вместе с Вт 08:00. Строки `zoomLink` и
-// `zoomPassword` переносятся как есть, зашифрованными, без расшифровки. Нет такого
-// слота или ссылки — слот встаёт без ссылки (экран покажет «без ссылки»): у
-// Вт 20:00 комнаты в списке нет, ссылку впишет учитель. Самих ссылок и паролей в
-// этом файле нет: репозиторий публичный (SECURITY.md).
+// 3. Ссылка Zoom копируется только внутри одной комнаты: Пт 09:00 и Чт 08:00 —
+// комната Вт 08:00, Пт 18:30 — комната Ср 18:30. Строки переносятся как есть,
+// зашифрованными. У Вт 20:00 комнаты нет — ссылку впишет учитель. Самих ссылок
+// в файле нет: репозиторий публичный (SECURITY.md).
 //
 // Сырые документы через драйвер, как в 0001: умолчания схемы выписаны явно.
 import { mongo } from 'mongoose';
@@ -83,7 +76,7 @@ interface ScheduleSlot {
   sameZoomAs: SeedRule | undefined;
 }
 
-function parseRule(text: string): SeedRule {
+export function parseRule(text: string): SeedRule {
   const [, day, time, minutes] = RULE_RE.exec(text) ?? [];
   const weekday = WEEKDAYS.find((_, index) => DAY_LABELS[index] === day);
   if (weekday === undefined || !time) throw new Error(`0019: не разобрать «${text}»`);
@@ -175,10 +168,15 @@ interface ClassDoc extends mongo.Document {
   location?: string;
   zoomLink?: string;
   zoomPassword?: string;
-  rules?: (SeedRule & { _id: Id })[];
+  rules?: StoredRule[];
 }
 
 type Classes = mongo.Collection<ClassDoc>;
+type StoredRule = SeedRule & { _id: Id };
+
+// Документ без правил — только заведённый руками мимо схемы: слот без моментов,
+// а не повод уронить старт приложения.
+const rulesOf = (doc: Pick<ClassDoc, 'rules'>): StoredRule[] => doc.rules ?? [];
 
 const momentOf = (rule: Pick<SeedRule, 'weekday' | 'time'>): string =>
   `${rule.weekday} ${rule.time}`;
@@ -193,28 +191,32 @@ function isSameRuleSet(have: readonly SeedRule[], want: readonly SeedRule[]): bo
 
 const isGrown = (doc: ClassDoc, slot: ScheduleSlot): boolean =>
   doc.title === slot.title &&
-  (doc.groupLabel ?? '') === slot.groupLabel &&
+  doc.groupLabel === slot.groupLabel &&
   doc.format === slot.format &&
   (slot.location === null || doc.location === slot.location) &&
-  isSameRuleSet(doc.rules ?? [], slot.rules);
+  isSameRuleSet(rulesOf(doc), slot.rules);
 
-/** Фаза 1: нетронутый слот 0001 становится слотом полного расписания. `_id`
- * правила с прежним моментом сохраняется — на него ссылается `lessons.ruleId`,
- * и планировщик тогда лишь поправит длительность, а не пересоздаст занятия. */
+/** Правила слота поверх правил слота 0001: правило с прежним моментом
+ * сохраняет `_id` — на него ссылается `lessons.ruleId`, и планировщик лишь
+ * поправит длительность, а не пересоздаст занятия. */
+export function growRules(stored: readonly StoredRule[], wanted: readonly SeedRule[]) {
+  const keptIds = new Map(stored.map((rule) => [momentOf(rule), rule._id]));
+  return wanted.map((rule) => ({
+    _id: keptIds.get(momentOf(rule)) ?? new ObjectId(),
+    ...rule,
+  }));
+}
+
+/** Фаза 1: нетронутый слот 0001 становится слотом полного расписания. */
 async function growLegacySlot(classes: Classes, slot: ScheduleSlot, now: Date) {
   const { grownFrom } = slot;
   if (!grownFrom) return;
   const candidates = await classes
     .find({ title: grownFrom.title, groupLabel: grownFrom.groupLabel })
     .toArray();
-  const doc = candidates.find((one) => isSameRuleSet(one.rules ?? [], grownFrom.rules));
+  const doc = candidates.find((one) => isSameRuleSet(rulesOf(one), grownFrom.rules));
   if (!doc || isGrown(doc, slot)) return;
 
-  const keptIds = new Map((doc.rules ?? []).map((rule) => [momentOf(rule), rule._id]));
-  const rules = slot.rules.map((rule) => ({
-    _id: keptIds.get(momentOf(rule)) ?? new ObjectId(),
-    ...rule,
-  }));
   await classes.updateOne(
     { _id: doc._id },
     {
@@ -222,7 +224,7 @@ async function growLegacySlot(classes: Classes, slot: ScheduleSlot, now: Date) {
         title: slot.title,
         groupLabel: slot.groupLabel,
         format: slot.format,
-        rules,
+        rules: growRules(rulesOf(doc), slot.rules),
         updatedAt: now,
         ...(slot.location === null ? {} : { location: slot.location }),
       },
@@ -257,7 +259,7 @@ async function readZoomOf(classes: Classes, { weekday, time }: SeedRule) {
 /** Фаза 2: новые слоты — на моменты, которые никто не занял. */
 async function insertNewSlots(db: Db, classes: Classes, now: Date): Promise<void> {
   const docs = await classes.find({}, { projection: { rules: 1 } }).toArray();
-  const taken = new Set(docs.flatMap((doc) => doc.rules ?? []).map(momentOf));
+  const taken = new Set(docs.flatMap(rulesOf).map(momentOf));
   const channelIds = await readBroadcastChannelIds(db);
 
   for (const slot of SCHEDULE.filter((one) => !one.grownFrom)) {
