@@ -76,6 +76,8 @@ describe('ExamVideosService.signedUrl — скачивание', () => {
       key: 'exam-videos/x',
       contentType,
       sizeBytes: 9,
+      status: 'ready',
+      fingerprint: 'test',
     });
     return doc._id.toString();
   }

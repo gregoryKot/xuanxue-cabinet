@@ -8,7 +8,9 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
 import { StorageModule } from '../storage/storage.module';
+import { VideoUploadsModule } from '../video-uploads/video-uploads.module';
 import { ExamVideoStatsService } from './exam-video-stats.service';
+import { ExamVideoUploadsService } from './exam-video-uploads.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
 import { ExamVideosController } from './exam-videos.controller';
 import { ExamVideosService } from './exam-videos.service';
@@ -17,10 +19,11 @@ import { ExamVideosService } from './exam-videos.service';
   imports: [
     ExamAttemptModelModule,
     StorageModule,
+    VideoUploadsModule,
     MongooseModule.forFeature([{ name: ExamVideoRecord.name, schema: ExamVideoSchema }]),
   ],
   controllers: [ExamVideosController],
-  providers: [ExamVideosService, ExamVideoStatsService],
+  providers: [ExamVideosService, ExamVideoStatsService, ExamVideoUploadsService],
   exports: [MongooseModule, ExamVideosService],
 })
 export class ExamVideosModule {}

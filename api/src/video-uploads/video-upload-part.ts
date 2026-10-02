@@ -14,7 +14,7 @@ import {
   ANSWER_VIDEO_PART_INVALID_MESSAGE,
   EXAM_VIDEO_EMPTY_MESSAGE,
   EXAM_VIDEO_UNSUPPORTED_MESSAGE,
-  type AnswerVideoUploadDto,
+  type VideoUploadDto,
 } from '@xuanxue/shared';
 import { ConflictError, InvalidInputError } from '../common/errors';
 import { sniffVideoSignature } from '../common/raw-upload';
@@ -42,7 +42,7 @@ export interface UploadPartInput {
 export async function uploadVideoPart<T extends VideoUploadRecord>(
   deps: PartDeps<T>,
   { doc, partNumber, body, now }: UploadPartInput,
-): Promise<AnswerVideoUploadDto> {
+): Promise<VideoUploadDto> {
   // r2CompletedAt: файл в R2 уже собран (ADR-0165) — часть 1 открыла бы
   // вторую загрузку на тот же ключ, и она осталась бы брошенной.
   if (doc.status !== 'uploading' || doc.r2CompletedAt) {

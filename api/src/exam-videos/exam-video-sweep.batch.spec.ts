@@ -13,7 +13,10 @@ import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
+import type { MultipartStoreService } from '../storage/multipart-store.service';
+import type { ObjectHeadService } from '../storage/object-head.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { ExamVideoSweepService, SWEEP_BATCH_LIMIT } from './exam-video-sweep.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
 
@@ -43,12 +46,18 @@ describe('ExamVideoSweepService — батч из используемых', () 
       isEnabled: true,
       remove: () => Promise.resolve(),
     } as unknown as FileStoreService;
+    const orphans = new StorageOrphansService(orphanModel, fileStore);
     service = new ExamVideoSweepService(
       videoModel,
       itemModel,
       attemptModel,
       fileStore,
-      new StorageOrphansService(orphanModel, fileStore),
+      orphans,
+      new VideoUploadsService(
+        {} as MultipartStoreService,
+        {} as ObjectHeadService,
+        orphans,
+      ),
     );
   }, 60_000);
 
@@ -61,6 +70,8 @@ describe('ExamVideoSweepService — батч из используемых', () 
       key: `exam-videos/${new Types.ObjectId().toString()}`,
       contentType: 'video/mp4',
       sizeBytes: 1,
+      status: 'ready',
+      fingerprint: 'test',
     });
     // Через .collection — timestamps-плагин Mongoose иначе молча стирает
     // явный createdAt из $set (immutable-поле).

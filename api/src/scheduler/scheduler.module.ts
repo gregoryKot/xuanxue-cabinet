@@ -76,6 +76,7 @@ import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { TelegramTeacherNotifier } from '../telegram/telegram-teacher-notifier';
 import { UserModelModule } from '../users/user-model.module';
 import { UsersModule } from '../users/users.module';
+import { VideoUploadsModule } from '../video-uploads/video-uploads.module';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { SchedulerService } from './scheduler.service';
 
@@ -102,6 +103,8 @@ import { SchedulerService } from './scheduler.service';
     // Модели `payments`/`payment_screenshots` — шаги оплат (ADR-0050, ADR-0150).
     PaymentsModule,
     StorageModule,
+    // ExamVideoSweepService (ADR-0165) убирает брошенные загрузки общим ядром.
+    VideoUploadsModule,
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,

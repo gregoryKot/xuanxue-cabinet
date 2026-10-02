@@ -7,6 +7,10 @@ import { discardUpload, type DiscardDeps } from './video-upload-discard';
 import type { RawLeanVideoUpload } from './video-upload.mapper';
 import type { VideoUploadRecord } from './video-upload.schema';
 
+/** Брошенная загрузка живёт неделю (ADR-0137) — столько же R2 сам держит
+ * брошенные части, продлевать смысла нет. Один срок на все виды видео. */
+export const STALE_UPLOAD_DAYS = 7;
+
 export interface SweepStaleInput {
   olderThanDays: number;
   /** Не «дай всё» (CLAUDE.md «API») — следующий тик доберёт остаток. */

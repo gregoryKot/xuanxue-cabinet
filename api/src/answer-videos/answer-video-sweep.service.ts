@@ -15,12 +15,10 @@ import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { MediaAssetRecord } from '../media/media-asset.schema';
 import { MultipartStoreService } from '../storage/multipart-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { STALE_UPLOAD_DAYS } from '../video-uploads/video-upload-stale';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
 
-// Брошенная загрузка живёт неделю (ADR-0137) — столько же R2 сам держит
-// брошенные части, продлевать смысла нет.
-const STALE_UPLOAD_DAYS = 7;
 // Не «дай всё» (CLAUDE.md «API») — следующий тик доберёт остаток, тот же
 // приём, что у SWEEP_BATCH_LIMIT соседних шагов (exam-video-sweep.service.ts).
 const SWEEP_BATCH_LIMIT = 50;
