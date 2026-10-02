@@ -93,34 +93,53 @@ describe('ExamAttemptsService.saveAnswers({ toggleOption }) — против Mon
     return { attemptId: attempt.id, itemId: item.id, optionIds };
   }
 
-  // Сценарий находки: два callback_query за ~300 мс, оба прочитали пустой ответ.
-  it('два параллельных переключения А и Б — оба отмечены, ничего не потеряно', async () => {
+  // Сценарий находки F27: два нажатия за ~300 мс, оба прочитали пустой ответ.
+  // Настоящий Promise.all против mongodb-memory-server здесь не годится: порядок
+  // двух реальных запросов к серверу не детерминирован — иногда первый вызов
+  // успевает и прочитать, и записать до чтения второго, конфликта CAS нет и
+  // вызовов findOneAndUpdate два, а не три (так тест мигнул в CI 2026-10-02;
+  // мигающий тест запрещён, CLAUDE.md «Детерминизм»). Поэтому момент гонки
+  // фиксирует мок: А уже прочитал пустой ответ и собирается писать — и именно
+  // тут Б целиком проходит между чтением и записью А. Сами запросы к Mongo —
+  // настоящие, по-прежнему не мок модели.
+  it('Б успел между чтением и записью А — оба отмечены, ничего не потеряно', async () => {
     const { attemptId, itemId, optionIds } = await startMultipleAttempt();
     const [a, b] = optionIds;
     if (!a || !b) throw new Error('unreachable: у вопроса три варианта');
 
-    // Без шпиона тест прошёл бы и при гонке, которой не было (второй вызов
-    // успел после первого), и при CAS, переставшем повторять, — но тогда бы
-    // потерялся один из ответов. Шпион проверяет сам повтор: два первых CAS,
-    // один из них промахнулся, плюс повторный — итого больше двух.
+    const originalFindOneAndUpdate = ctx.attemptModel.findOneAndUpdate.bind(
+      ctx.attemptModel,
+    );
     const casSpy = jest.spyOn(ctx.attemptModel, 'findOneAndUpdate');
+    // Только первый CAS (запись А со старым `answers`): Б проходит целиком, его
+    // собственный CAS идёт уже через оригинал — once-реализация израсходована.
+    // Затем настоящий CAS А со старыми аргументами промахивается, цикл А
+    // перечитывает ответы и дописывает А поверх Б.
+    casSpy.mockImplementationOnce(
+      (...args: Parameters<typeof originalFindOneAndUpdate>) => {
+        const pending = (async () => {
+          await ctx.service.saveAnswers(
+            attemptId,
+            USER_A,
+            { toggleOption: { itemId, optionId: b } },
+            NOW,
+          );
+          return originalFindOneAndUpdate(...args).lean();
+        })();
+        return { lean: () => pending } as never;
+      },
+    );
     try {
-      await Promise.all([
-        ctx.service.saveAnswers(
-          attemptId,
-          USER_A,
-          { toggleOption: { itemId, optionId: a } },
-          NOW,
-        ),
-        ctx.service.saveAnswers(
-          attemptId,
-          USER_A,
-          { toggleOption: { itemId, optionId: b } },
-          NOW,
-        ),
-      ]);
+      await ctx.service.saveAnswers(
+        attemptId,
+        USER_A,
+        { toggleOption: { itemId, optionId: a } },
+        NOW,
+      );
 
-      expect(casSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+      // Без счёта вызовов тест прошёл бы и при гонке, которой не было, и при
+      // повторе, которого не случилось. Ровно три: промах А, запись Б, повтор А.
+      expect(casSpy).toHaveBeenCalledTimes(3);
     } finally {
       casSpy.mockRestore();
     }
