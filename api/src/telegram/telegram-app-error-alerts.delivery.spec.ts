@@ -105,6 +105,45 @@ describe('TelegramAppErrorAlerts — доставка не удалась', () =
     expect(bot.sendMessage).toHaveBeenCalledTimes(7);
   });
 
+  // Недоставка растянулась через границу часа: сообщение старого окна
+  // возвращает бюджет уже в новое. Без зажима счётчик нового окна уходил в −1,
+  // и потолок «шесть в час» пропускал седьмое (ревью PR #525, F36).
+  it('недоставка старого окна не уводит счётчик нового ниже нуля', async () => {
+    const gates: Array<(delivered: boolean) => void> = [];
+    const bot = fakeBot();
+    bot.sendMessage.mockImplementation(
+      () => new Promise<boolean>((resolve) => gates.push(resolve)),
+    );
+    const { alerts } = buildAlerts(fakePersonalChats(), bot);
+    // Ждём, пока сообщение дойдёт до sendMessage: без таймеров, по микрозадачам.
+    const untilSent = async (count: number): Promise<void> => {
+      while (gates.length < count) await Promise.resolve();
+    };
+
+    const stale = alerts.notifyServerError(fakeContext({ path: '/api/stale' }), NOW);
+    await untilSent(1);
+    const fresh = alerts.notifyServerError(
+      fakeContext({ path: '/api/fresh' }),
+      NOW.plus({ minutes: 61 }),
+    );
+    await untilSent(2);
+    gates[1]?.(false);
+    await fresh;
+    gates[0]?.(false);
+    await stale;
+
+    bot.sendMessage.mockImplementation(() => Promise.resolve(true));
+    for (let i = 0; i < 7; i += 1) {
+      await alerts.notifyServerError(
+        fakeContext({ path: `/api/route-${i}` }),
+        NOW.plus({ minutes: 62 + i }),
+      );
+    }
+
+    // Два недоставленных вызова + ровно шесть в новом окне, а не семь.
+    expect(bot.sendMessage).toHaveBeenCalledTimes(2 + 6);
+  });
+
   it('текст недоставленного сообщения — в error-лог', async () => {
     const { alerts } = buildAlerts(fakePersonalChats(), fakeBot(false));
 

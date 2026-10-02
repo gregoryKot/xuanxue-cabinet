@@ -8,7 +8,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
-import type { Model } from 'mongoose';
+import type { Model, Types } from 'mongoose';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamItemRecord } from '../exams/exam-item.schema';
 import { referencedMediaIds } from '../exams/exam-media-references';
@@ -24,6 +24,22 @@ export const SWEEP_BATCH_LIMIT = 50;
 
 export interface ExamImageSweepResult {
   removed: number;
+}
+
+/** Запрос кандидатов на уборку — отдельной функцией, чтобы спек плана
+ * (database/scheduler-query-indexes.spec.ts) гонял ровно его, а не копию.
+ * Проекция `{ _id: 1 }` вместе с индексом `{ createdAt, _id }`
+ * (exam-image.schema.ts) делает запрос покрытым: байты картинок не читаются,
+ * пока все старые картинки используются (аудит 2026-10-01, F54, ревью PR #525). */
+export function orphanImageCandidatesQuery(
+  model: Model<ExamImageRecord>,
+  boundary: Date,
+  used: Types.ObjectId[],
+) {
+  return model
+    .find({ createdAt: { $lt: boundary }, _id: { $nin: used } }, { _id: 1 })
+    .sort({ createdAt: 1 })
+    .limit(SWEEP_BATCH_LIMIT);
 }
 
 @Injectable()
@@ -43,11 +59,11 @@ export class ExamImageSweepService {
     // почему, см. referencedMediaIds (аудит 2026-10-01, F54). Явный sort —
     // чтобы порядок не зависел от плана запроса.
     const used = await referencedMediaIds(this, 'imageIds');
-    const candidates = await this.model
-      .find({ createdAt: { $lt: boundary }, _id: { $nin: used } }, { _id: 1 })
-      .sort({ createdAt: 1 })
-      .limit(SWEEP_BATCH_LIMIT)
-      .lean();
+    const candidates = await orphanImageCandidatesQuery(
+      this.model,
+      boundary,
+      used,
+    ).lean();
     if (candidates.length === 0) return { removed: 0 };
     const ids = candidates.map((doc) => doc._id);
 

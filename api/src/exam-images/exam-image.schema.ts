@@ -44,9 +44,14 @@ export class ExamImageRecord {
 }
 
 export const ExamImageSchema = SchemaFactory.createForClass(ExamImageRecord);
-// Уборщик сирот следующего слоя ищет картинки старше суток, не
-// сославшиеся ни на один вопрос/попытку (ADR-0035, «Последствия»).
-ExamImageSchema.index({ createdAt: 1 });
+// Уборщик сирот ищет картинки старше суток, не сославшиеся ни на один
+// вопрос/попытку (ADR-0035, «Последствия»), и делает это каждую минуту. С
+// `_id` вторым ключом запрос читает только ключи индекса и не трогает
+// документы: при индексе `{ createdAt: 1 }` каждый тик вычитывал целиком
+// каждую картинку, включая `bytes`, пока все старые используются (нормальное
+// состояние; аудит 2026-10-01, F54, ревью PR #525). Гейт —
+// database/scheduler-query-indexes.spec.ts.
+ExamImageSchema.index({ createdAt: 1, _id: 1 });
 
 // `contentType` — перечисление (enum), решения не требует
 // (encryption-coverage.spec.ts отличает enum от свободного текста по

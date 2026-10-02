@@ -91,7 +91,9 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
     if (delivered.some(Boolean)) return;
     // sendMessage сам не бросает (bot-send-safely.ts) — `false` на каждый чат
     // и есть недоставка. Текст — в error-лог: RUNBOOK ищет сбой по requestId.
-    this.hourlyCount -= 1;
+    // Зажим снизу: недоставка могла растянуться через границу часа, и счётчик
+    // уже нового окна не должен уйти в минус (ревью PR #525, F36).
+    this.hourlyCount = Math.max(0, this.hourlyCount - 1);
     this.lastSentAtBySignature.set(
       signature,
       now.minus({ minutes: SAME_SIGNATURE_INTERVAL_MIN - RETRY_AFTER_FAILURE_MIN }),

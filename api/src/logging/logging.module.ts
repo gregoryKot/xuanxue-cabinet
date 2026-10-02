@@ -47,9 +47,11 @@ function formatLogLevel(label: string): { level: string } {
 // по умолчанию пишет все статусы на info, и шторм 429/409 или 5xx невидим
 // фильтром по уровню в Railway. Доменные ошибки фильтр не логирует — эта
 // строка единственная, где виден статус. Литералы статусов, не HttpStatus:
-// enum в проекте не используем (CLAUDE.md «Код»).
+// enum в проекте не используем (CLAUDE.md «Код»). Любой 5xx, включая 503,
+// уходит в error по порогу ниже, поэтому в WARN_STATUSES только 4xx: 503 там
+// был бы мёртвой записью (ревью PR #525).
 const SERVER_ERROR_FROM = 500;
-const WARN_STATUSES: ReadonlySet<number> = new Set([409, 429, 503]);
+const WARN_STATUSES: ReadonlySet<number> = new Set([409, 429]);
 
 export function requestLogLevel(
   statusCode: number,

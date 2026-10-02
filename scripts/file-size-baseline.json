@@ -667,7 +667,7 @@
   "api/src/telegram/register-handlers.ts": 96,
   "api/src/telegram/telegraf-instance.ts": 14,
   "api/src/telegram/telegram-app-error-alerts.ts": 114,
-  "api/src/telegram/telegram-bot.service.ts": 150,
+  "api/src/telegram/telegram-bot.service.ts": 148,
   "api/src/telegram/telegram-exam-notifier.ts": 158,
   "api/src/telegram/telegram-exam-video-delivery.ts": 70,
   "api/src/telegram/telegram-payment-screenshot-delivery.ts": 53,

@@ -40,9 +40,11 @@ export class ExamVideoRecord {
 }
 
 export const ExamVideoSchema = SchemaFactory.createForClass(ExamVideoRecord);
-// Уборщик сирот следующего слоя ищет видео старше суток, не сославшиеся ни
-// на один вопрос/попытку (тот же приём, что exam-image.schema.ts).
-ExamVideoSchema.index({ createdAt: 1 });
+// Уборщик сирот ищет видео старше суток, не сославшиеся ни на один
+// вопрос/попытку (тот же приём, что exam-image.schema.ts). `_id` вторым
+// ключом — чтобы фильтр `$nin` по используемым отсеивался по ключам индекса,
+// а не после чтения каждого документа (аудит 2026-10-01, F54, ревью PR #525).
+ExamVideoSchema.index({ createdAt: 1, _id: 1 });
 
 // `key`/`contentType` — свободного текста с персональными данными в них нет
 // (см. комментарий у `key` выше и `contentType` — перечисление); explicit
