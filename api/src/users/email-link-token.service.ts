@@ -11,8 +11,8 @@ import { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import { EmailLinkTokenRecord } from './email-link-token.schema';
 
-// Час, не 15 минут, как у ссылки входа (EMAIL_LOGIN_TOKEN_TTL_MIN, ../auth/
-// email-login-token.service.ts): ссылку входа человек ждёт прямо сейчас,
+// Час, не 15 минут, как у ссылки входа (EMAIL_LOGIN_TOKEN_TTL_MIN из
+// shared/src/email-login-code.ts): ссылку входа человек ждёт прямо сейчас,
 // подтверждение почты — попутное дело, и цена протухшего токена здесь —
 // нажать «Прислать ссылку ещё раз» на «Профиле», а не потерянный вход.
 export const EMAIL_CONFIRM_TOKEN_TTL_MIN = 60;

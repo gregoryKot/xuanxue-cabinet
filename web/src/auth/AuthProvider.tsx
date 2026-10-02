@@ -54,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<MeDto | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const requestId = useRef(0);
+  // Для слушателя 401 ниже: он живёт вне рендера и читает статус из ref.
+  const statusRef = useRef<AuthStatus>('loading');
+  statusRef.current = status;
 
   const refresh = useCallback(async () => {
     const thisRequest = (requestId.current += 1);
@@ -115,8 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 401 из любого запроса после входа (не только из /auth/me выше) — сессия
   // протухла или отозвана посреди работы, сбрасываем себя (CLAUDE.md,
   // ревью п.12): RequireAuth увидит status 'guest' и уведёт на /login.
+  // Только при живой сессии (аудит 2026-10-01, F56): 401 во время 'loading'
+  // — это свой же стартовый /auth/me, его разбирает catch в refresh(); а
+  // долетев после удачного входа и второго refresh(), он затирал бы его
+  // результат и возвращал человека с выданной cookie на экран входа.
   useEffect(() => {
-    setUnauthorizedListener(clear);
+    setUnauthorizedListener(() => {
+      if (hasSession(statusRef.current)) clear();
+    });
     return () => setUnauthorizedListener(null);
   }, [clear]);
 

@@ -1,7 +1,7 @@
 // Клик по кнопке теперь не ждёт ничего в этой вкладке — он сразу уводит
 // браузер на Telegram (redirectToTelegramAuth), поэтому в тестах эта функция
 // замокана: настоящий window.location.assign увёл бы jsdom со страницы.
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -221,6 +221,43 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     expect(window.location.hash).toBe('');
   });
 
+  // Аудит 2026-10-01, F56: пока стартовый GET /auth/me висит, POST
+  // /auth/telegram не уходит; после его 401 — уходит ровно один.
+  it('фрагмент в адресе, /auth/me ещё не ответил — POST ждёт; после 401 уходит один раз', async () => {
+    window.location.hash = toTgAuthResultHash({
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+    let rejectMe: (err: unknown) => void = () => undefined;
+    const mePending = new Promise<never>((_, reject) => {
+      rejectMe = reject;
+    });
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me') return mePending;
+      if (path === '/auth/telegram') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+
+    renderScreen();
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith('/auth/me', expect.anything()),
+    );
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/telegram', expect.anything());
+    expect(window.location.hash).not.toBe('');
+
+    act(() => rejectMe(new ApiError('Войдите', 401, 'unauthorized')));
+
+    await waitFor(() =>
+      expect(
+        mockedApiFetch.mock.calls.filter(([path]) => path === '/auth/telegram'),
+      ).toHaveLength(1),
+    );
+  });
+
   // Отзыв владельца (ADR-0044) — приписка про ссылку-приглашение раньше
   // жила внутри children TelegramLoginSection и пряталась вместе с формой
   // почты на время авто-входа по фрагменту; теперь стоит above блока входа
@@ -246,8 +283,13 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
 
     renderScreen();
 
+    // POST уходит только после ответа /auth/me (F56) — ждём его, чтобы
+    // проверять приписку именно во время висящего авто-входа.
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith('/auth/telegram', expect.anything()),
+    );
     expect(
-      await screen.findByText('Первый вход — только по ссылке от учителя.'),
+      screen.getByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
 
     resolveTelegramLogin({

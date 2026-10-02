@@ -16,7 +16,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AttemptAnswerDto } from '@xuanxue/shared';
 import { bootstrapAttemptAnswers, writeAttemptAnswerDraft } from './attemptLocalDraft';
 import { useAttemptAutosaveLifecycle } from './useAttemptAutosaveLifecycle';
-import { useAttemptSaveRunner, type AutosaveStatus } from './useAttemptSaveRunner';
+import {
+  useAttemptSaveRunner,
+  type AttemptFlushOptions,
+  type AutosaveStatus,
+} from './useAttemptSaveRunner';
 
 export type { AutosaveStatus } from './useAttemptSaveRunner';
 
@@ -28,8 +32,10 @@ export interface UseAttemptAutosaveResult {
    * условие отправки попытки. Резолвится, когда все правки (и уже летящая
    * попытка, и то, что только копилось) реально на сервере; реджектится при
    * сбое — без ожидания фонового повтора (useAttemptSaveRunner.ts). */
-  flush: () => Promise<void>;
+  flush: (options?: AttemptFlushOptions) => Promise<void>;
   status: AutosaveStatus;
+  /** Текст сервера при статусе `refused` (attemptSaveFailure.ts), иначе null. */
+  refusal: string | null;
 }
 
 export function useAttemptAutosave(
@@ -50,7 +56,7 @@ export function useAttemptAutosave(
   const dirty = useRef(new Set<string>(bootstrap.recoveredIds));
   const [, bump] = useState(0);
 
-  const { scheduleSave, flush, status } = useAttemptSaveRunner(
+  const { scheduleSave, flush, status, refusal } = useAttemptSaveRunner(
     attemptId,
     dirty,
     answers,
@@ -96,5 +102,5 @@ export function useAttemptAutosave(
 
   const getAnswer = useCallback((itemId: string) => answers.current.get(itemId), []);
 
-  return { getAnswer, setText, setOptions, flush, status };
+  return { getAnswer, setText, setOptions, flush, status, refusal };
 }

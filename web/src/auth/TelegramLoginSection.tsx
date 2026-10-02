@@ -59,12 +59,16 @@ export function TelegramLoginSection({
   inviteCode,
   children,
 }: TelegramLoginSectionProps) {
-  const { refresh } = useAuth();
+  const { refresh, status: authStatus } = useAuth();
   const {
     pending: autoPending,
     error: autoError,
     errorStatus: autoErrorStatus,
-  } = useTelegramAuthResultLogin(refresh, { navigateAfterLogin, inviteCode });
+  } = useTelegramAuthResultLogin(refresh, {
+    navigateAfterLogin,
+    inviteCode,
+    enabled: authStatus !== 'loading', // F56 — гонка 401, комментарий у опции
+  });
   const [pending, setPending] = useState(false);
   // Человек нажал «Войти другим способом» на объяснении отказа: ошибка
   // сервера никуда не делась, но форму ему показываем снова — он мог войти

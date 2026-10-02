@@ -174,6 +174,33 @@ describe('useTelegramAuthResultLogin', () => {
     );
   });
 
+  // Аудит 2026-10-01, F56: пока AuthProvider не ответил на стартовый
+  // /auth/me, фрагмент не отправляется — иначе его 401 мог долететь после
+  // удачного входа и затереть пост-логинный refresh().
+  it('enabled: false — POST не уходит, фрагмент остаётся; enabled: true — уходит ровно один', async () => {
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useTelegramAuthResultLogin(refresh, { enabled }),
+      { initialProps: { enabled: false } },
+    );
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+    expect(window.location.hash).not.toBe('');
+
+    rerender({ enabled: true });
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    const telegramCalls = mockedApiFetch.mock.calls.filter(
+      ([path]) => path === '/auth/telegram',
+    );
+    expect(telegramCalls).toHaveLength(1);
+    expect(window.location.hash).toBe('');
+  });
+
   it('StrictMode вызывает эффект дважды — POST уходит один раз (startedRef)', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockResolvedValue(undefined);
