@@ -19,10 +19,10 @@ vi.mock('../api/http', async () => {
 });
 
 // Загрузка файлом (ADR-0137) — своя state machine, покрыта отдельно
-// (useAnswerVideoUpload.test.ts, AttemptVideoUpload.test.tsx); здесь важен
+// (video-upload/useVideoUpload.test.ts, AttemptVideoUpload.test.tsx); здесь важен
 // только порядок блоков на экране видео-вопроса.
-vi.mock('./useAnswerVideoUpload', () => ({
-  useAnswerVideoUpload: () => ({
+vi.mock('../video-upload/useVideoUpload', () => ({
+  useVideoUpload: () => ({
     state: {
       phase: 'idle',
       sentParts: 0,
