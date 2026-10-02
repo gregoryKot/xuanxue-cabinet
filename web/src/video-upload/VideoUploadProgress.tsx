@@ -1,16 +1,20 @@
-// Что человек видит, пока видео грузится и после (ADR-0137, ADR-0165): полоса
-// прогресса по частям, «N из M», «Отменить», на паузе — «Продолжить сейчас»;
+// Что человек видит, пока видео сжимается, грузится и после (ADR-0137,
+// ADR-0165): полоса прогресса (при сжатии — «Сжимаем видео — 40%», при загрузке
+// по частям — «N из M»), «Отменить», на паузе — «Продолжить сейчас»;
 // после «Отменить» — подсказка выбрать тот же файл; после отказа — текст
 // сервера. Выбор файла и объяснение «откуда это и зачем» остаются за экраном
 // вида видео: они у каждого свои. Только вёрстка по состоянию хука
 // (useVideoUpload.ts, CLAUDE.md «Логика вне компонентов»).
 import type { CSSProperties } from 'react';
 import { FormServerError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { formatFileSize } from '../lib/formatFileSize';
 import { isVideoUploadActive, type VideoUploadState } from './videoUploadState';
 import { videoUploadProgress } from './videoUploadParts';
 
+const UPLOAD_BAR_LABEL = 'Загрузка видео';
+const COMPRESS_BAR_LABEL = 'Сжатие видео';
 const CANCEL_LABEL = 'Отменить';
 const RESUME_LABEL = 'Продолжить сейчас';
 const WAITING_TEXT = 'Связь пропала — продолжим сами, как только она вернётся.';
@@ -58,8 +62,11 @@ export function VideoUploadProgress({
   onCancel,
   onResume,
 }: VideoUploadProgressProps) {
+  const isCompressing = state.phase === 'compressing';
   const uploadedBytes = Math.min(state.sentParts * state.partBytes, state.totalBytes);
-  const fraction = videoUploadProgress(state.sentParts, state.partCount);
+  const fraction = isCompressing
+    ? state.compressProgress
+    : videoUploadProgress(state.sentParts, state.partCount);
   const percent = Math.round(fraction * 100);
 
   return (
@@ -71,13 +78,17 @@ export function VideoUploadProgress({
             aria-valuenow={percent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Загрузка видео"
+            aria-label={isCompressing ? COMPRESS_BAR_LABEL : UPLOAD_BAR_LABEL}
             style={progressTrackStyle}
           >
             <div style={progressFillStyle(fraction)} />
           </div>
           <p style={progressTextStyle}>
-            {formatFileSize(uploadedBytes)} из {formatFileSize(state.totalBytes)}
+            {isCompressing ? (
+              <RichText text={`Сжимаем видео — **${percent}%**`} />
+            ) : (
+              `${formatFileSize(uploadedBytes)} из ${formatFileSize(state.totalBytes)}`
+            )}
           </p>
           {state.phase === 'waiting' && (
             <div style={waitingRowStyle}>

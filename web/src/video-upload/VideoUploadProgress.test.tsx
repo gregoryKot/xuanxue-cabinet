@@ -57,6 +57,30 @@ describe('VideoUploadProgress — uploading', () => {
   });
 });
 
+describe('VideoUploadProgress — compressing', () => {
+  it('«Сжимаем видео — 40%» с полосой на те же 40% и «Отменить»', async () => {
+    const { onCancel } = renderProgress({
+      ...stateIn('compressing', 0),
+      compressProgress: 0.4,
+    });
+    const user = userEvent.setup();
+
+    const bar = screen.getByRole('progressbar', { name: 'Сжатие видео' });
+    expect(bar).toHaveAttribute('aria-valuenow', '40');
+    expect(screen.getByText('40%').tagName).toBe('STRONG');
+    expect(screen.getByText(/Сжимаем видео/)).toBeInTheDocument();
+    expect(screen.queryByText(/из/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Отменить' }));
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('на сжатии нет «Продолжить сейчас»: паузы у него нет', () => {
+    renderProgress(stateIn('compressing', 0));
+
+    expect(screen.queryByRole('button', { name: 'Продолжить сейчас' })).toBeNull();
+  });
+});
+
 describe('VideoUploadProgress — waiting', () => {
   it('тихая строка про пропавшую связь и «Продолжить сейчас»', async () => {
     const { onResume } = renderProgress(stateIn('waiting', 2));

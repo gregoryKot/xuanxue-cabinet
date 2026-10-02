@@ -3,17 +3,19 @@
 // видео одной попытки прогрессируют независимо, без Map по itemId. Сам
 // сквозной прогон (отпечаток → старт → части → завершение, повтор, отмена) —
 // videoUploadRunner.ts, а к какому маршруту сервера он ведёт — транспорт вида
-// видео. Здесь только React state machine поверх них: idle → uploading →
-// waiting (пауза перед повтором) → done | failed | cancelled.
+// видео. Здесь только React state machine поверх них: idle → compressing
+// (сжатие в браузере, ADR-0165; у маленького файла или браузера без WebCodecs
+// пропускается) → uploading → waiting (пауза перед повтором) → done | failed |
+// cancelled.
 import { useCallback, useRef, useState } from 'react';
 import {
   IDLE_VIDEO_UPLOAD_STATE,
   isVideoUploadActive,
   type VideoUploadState,
 } from './videoUploadState';
-import { checkVideoFileSize } from './videoUploadParts';
-import { runVideoUpload } from './videoUploadRunner';
-import type { VideoUploadProgressUpdate, VideoUploadTransport } from './videoUploadTypes';
+import type { VideoUploadTransport } from './videoUploadTypes';
+import { beginVideoUpload } from './beginVideoUpload';
+import { canCompressVideo, compressVideo } from './compressVideo';
 import { useScreenWakeLock } from './useScreenWakeLock';
 import { realSleep, useUploadPause } from './useUploadPause';
 
@@ -29,6 +31,8 @@ export interface UseVideoUploadOptions<TResult extends object> {
   maxBytes: number;
   tooLargeMessage: string;
   sleep?: (ms: number) => Promise<void>;
+  /** Подмена сжатия в тестах (сам перегон — compressVideo.ts). */
+  compress?: typeof compressVideo;
 }
 
 export interface UseVideoUploadResult {
@@ -49,6 +53,7 @@ export function useVideoUpload<TResult extends object>({
   maxBytes,
   tooLargeMessage,
   sleep = realSleep,
+  compress = compressVideo,
 }: UseVideoUploadOptions<TResult>): UseVideoUploadResult {
   const [state, setState] = useState<VideoUploadState>(IDLE_VIDEO_UPLOAD_STATE);
   // Пока видео готовится, грузится или ждёт повтора — экран не гаснет (ADR-0165):
@@ -79,16 +84,6 @@ export function useVideoUpload<TResult extends object>({
 
   const selectFile = useCallback(
     (file: File) => {
-      const sizeError = checkVideoFileSize(file.size, maxBytes, tooLargeMessage);
-      if (sizeError) {
-        setState({
-          ...IDLE_VIDEO_UPLOAD_STATE,
-          phase: 'failed',
-          error: { message: sizeError },
-        });
-        return;
-      }
-
       runIdRef.current += 1;
       const thisRun = runIdRef.current;
       controllerRef.current?.abort();
@@ -96,38 +91,47 @@ export function useVideoUpload<TResult extends object>({
       controllerRef.current = controller;
       const isCancelled = () => runIdRef.current !== thisRun || controller.signal.aborted;
 
-      // До ответа старта размер части знает только сервер; на полосе это не
-      // видно — отправлено ноль частей.
-      setState({ ...IDLE_VIDEO_UPLOAD_STATE, phase: 'uploading', totalBytes: file.size });
+      const upload = (prepared: Blob) =>
+        beginVideoUpload({
+          prepared,
+          transport: createTransport(),
+          signal: controller.signal,
+          isCancelled,
+          waitForResume,
+          setState,
+          onDone,
+          maxBytes,
+          tooLargeMessage,
+        });
 
-      // Колбэки без своей проверки isCancelled(): прогон (videoUploadRunner.ts)
-      // уже сверяет её синхронно перед каждым вызовом — второй раз то же самое
-      // значение здесь не изменится, а мёртвая ветка только путает читателя
-      // (CLAUDE.md «Дубли и мёртвый код»).
-      void runVideoUpload({
-        file,
-        transport: createTransport(),
-        signal: controller.signal,
-        isCancelled,
-        onProgress: (progress: VideoUploadProgressUpdate) => {
-          setState({
-            ...progress,
-            phase: 'uploading',
-            totalBytes: file.size,
-            error: null,
-          });
-        },
-        waitForResume,
-        onFailed: (error) => {
-          setState((prev) => ({ ...prev, phase: 'failed', error }));
-        },
-        onDone: (result) => {
-          onDone(result);
-          setState({ ...IDLE_VIDEO_UPLOAD_STATE, phase: 'done' });
-        },
+      if (!canCompressVideo(file.size)) {
+        setState({
+          ...IDLE_VIDEO_UPLOAD_STATE,
+          phase: 'uploading',
+          totalBytes: file.size,
+        });
+        upload(file);
+        return;
+      }
+      setState({
+        ...IDLE_VIDEO_UPLOAD_STATE,
+        phase: 'compressing',
+        totalBytes: file.size,
       });
+      // Отвергается сжатие только отменой — тогда выходим молча; любой другой
+      // сбой compress уже превратил в исходный файл.
+      void compress(file, {
+        signal: controller.signal,
+        onProgress: (fraction) =>
+          setState((prev) => ({ ...prev, compressProgress: fraction })),
+      }).then(
+        (prepared) => {
+          if (!isCancelled()) upload(prepared);
+        },
+        () => undefined,
+      );
     },
-    [createTransport, onDone, maxBytes, tooLargeMessage, waitForResume],
+    [createTransport, onDone, maxBytes, tooLargeMessage, waitForResume, compress],
   );
 
   return { state, selectFile, cancel, resumeNow: release };
