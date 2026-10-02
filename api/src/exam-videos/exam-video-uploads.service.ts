@@ -31,6 +31,8 @@ import {
 import { assertObjectId } from '../common/object-id';
 import { FileStoreService } from '../storage/file-store.service';
 import { assertAllPartsReceived } from '../video-uploads/video-upload-assemble';
+import { parseVideoPoster, setPosterIfAbsent } from '../video-uploads/video-poster';
+import { markVideoReady } from '../video-uploads/video-upload-ready';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { toExamVideoDto, type RawLeanExamVideo } from './exam-video.mapper';
 import { ExamVideoRecord } from './exam-video.schema';
@@ -87,23 +89,28 @@ export class ExamVideoUploadsService {
     return this.uploads.uploadPart(this.model, { doc, partNumber, body, now });
   }
 
-  async complete(id: string, userId: string, now: DateTime): Promise<ExamVideoDto> {
+  async complete(
+    id: string,
+    userId: string,
+    now: DateTime,
+    posterBase64?: string,
+  ): Promise<ExamVideoDto> {
     const doc = await this.loadOwn(id, userId);
+    // Неверный кадр — 400 до сборки в R2: видео остаётся незавершённым, и его
+    // завершает повтор без кадра (ADR-0165).
+    const poster = parseVideoPoster(posterBase64);
     // Готовое видео на повторе отдаёт тот же ответ: ответ первого вызова мог
-    // потеряться по дороге (F47, ADR-0165).
-    if (doc.status !== 'uploading') return toExamVideoDto(doc);
+    // потеряться по дороге (F47, ADR-0165). Кадр, которого у него ещё нет, ставится.
+    if (doc.status !== 'uploading') {
+      await setPosterIfAbsent(this.model, id, poster);
+      return toExamVideoDto(doc);
+    }
     if (!doc.uploadId) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
     assertAllPartsReceived(doc);
     await this.uploads.assemble(this.model, doc, doc.uploadId, now);
-    // Условный переход: из двух параллельных `complete` его делает один; ответ
-    // оба строят из одной записи.
-    await this.model.updateOne(
-      { _id: doc._id, status: 'uploading' },
-      {
-        $set: { status: 'ready', completedAt: now.toJSDate(), parts: [] },
-        $unset: { uploadId: 1, r2CompletedAt: 1 },
-      },
-    );
+    // Из двух параллельных `complete` переход делает один; ответ оба строят из
+    // одной записи.
+    await markVideoReady(this.model, doc._id, { now, poster });
     const ready = await this.model.findById(doc._id).lean<RawLeanExamVideo | null>();
     if (!ready) throw new Error('ExamVideoUploadsService.complete: запись пропала');
     return toExamVideoDto(ready);

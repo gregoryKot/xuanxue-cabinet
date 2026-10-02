@@ -5,6 +5,7 @@
 // приём, что ExamVideosController.getStatsSummary); get — без @Roles,
 // доступ решает сервис (владелец или штат).
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -22,8 +23,8 @@ import type {
 } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
-import type { VideoUrlOptions } from '../common/video-link';
 import { VideoRedirectController } from '../common/video-redirect';
+import { CompleteVideoUploadDto } from '../video-uploads/complete-video-upload.dto';
 import type { UserLean } from '../users/users.service';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
@@ -39,19 +40,10 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   constructor(
     private readonly partService: AnswerVideoPartService,
     private readonly completeService: AnswerVideoCompleteService,
-    private readonly service: AnswerVideosService,
+    service: AnswerVideosService,
     private readonly statsService: AnswerVideoStatsService,
   ) {
-    super();
-  }
-
-  protected signedUrl(
-    id: string,
-    user: UserLean,
-    now: DateTime,
-    options: VideoUrlOptions,
-  ): Promise<string> {
-    return this.service.signedUrl(id, user, now, options);
+    super(service);
   }
 
   @Put(':id/parts/:n')
@@ -73,9 +65,10 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   @HttpCode(HttpStatus.CREATED)
   complete(
     @Param('id') id: string,
+    @Body() body: CompleteVideoUploadDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamMediaDto> {
-    return this.completeService.complete(id, user.id, DateTime.utc());
+    return this.completeService.complete(id, user.id, DateTime.utc(), body.poster);
   }
 
   // Литеральный путь ДО `:id` — иначе Nest отдаст его хендлеру `get` с

@@ -87,8 +87,28 @@ describe('AnswerVideosController', () => {
     const complete = jest.fn().mockResolvedValue(media);
     const controller = await buildController({ completeService: { complete } });
 
-    await expect(controller.complete('v1', USER)).resolves.toEqual(media);
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime));
+    await expect(controller.complete('v1', {}, USER)).resolves.toEqual(media);
+    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), undefined);
+  });
+
+  // ADR-0165: кадр-превью приходит в теле complete и уходит сервису как есть.
+  it('complete() передаёт кадр из тела сервису', async () => {
+    const complete = jest.fn().mockResolvedValue({});
+    const controller = await buildController({ completeService: { complete } });
+
+    await controller.complete('v1', { poster: '/9j/4AAQ' }, USER);
+
+    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), '/9j/4AAQ');
+  });
+
+  it('GET poster спрашивает кадр у сервиса с пользователем сессии', async () => {
+    const loadPoster = jest.fn().mockResolvedValue(Buffer.from([0xff, 0xd8, 0xff]));
+    const controller = await buildController({ service: { loadPoster } });
+    const res = { setHeader: () => undefined, status: () => undefined };
+
+    await controller.poster('v1', USER, res);
+
+    expect(loadPoster).toHaveBeenCalledWith('v1', USER);
   });
 
   it('getStatsSummary() отдаёт то, что вернул сервис статистики', async () => {

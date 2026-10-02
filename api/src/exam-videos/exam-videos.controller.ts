@@ -24,9 +24,9 @@ import { DateTime } from 'luxon';
 import type { ExamVideoDto, ExamVideoStatsDto, VideoUploadDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
-import type { VideoUrlOptions } from '../common/video-link';
 import { VideoRedirectController } from '../common/video-redirect';
 import type { UserLean } from '../users/users.service';
+import { CompleteVideoUploadDto } from '../video-uploads/complete-video-upload.dto';
 import { StartExamVideoDto } from './dto/start-exam-video.dto';
 import { ExamVideoStatsService } from './exam-video-stats.service';
 import { ExamVideoUploadsService } from './exam-video-uploads.service';
@@ -43,16 +43,7 @@ export class ExamVideosController extends VideoRedirectController<UserLean> {
     private readonly statsService: ExamVideoStatsService,
     private readonly uploadsService: ExamVideoUploadsService,
   ) {
-    super();
-  }
-
-  protected signedUrl(
-    id: string,
-    user: UserLean,
-    now: DateTime,
-    options: VideoUrlOptions,
-  ): Promise<string> {
-    return this.service.signedUrl(id, user, now, options);
+    super(service);
   }
 
   // Прежняя загрузка одним сырым телом — уйдёт вместе со своим парсером и
@@ -98,9 +89,10 @@ export class ExamVideosController extends VideoRedirectController<UserLean> {
   @Roles('teacher', 'assistant', 'admin')
   complete(
     @Param('id') id: string,
+    @Body() body: CompleteVideoUploadDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamVideoDto> {
-    return this.uploadsService.complete(id, user.id, DateTime.utc());
+    return this.uploadsService.complete(id, user.id, DateTime.utc(), body.poster);
   }
 
   // Литеральный путь ДО `:id` (тот же приём, что ExamImagesController) —

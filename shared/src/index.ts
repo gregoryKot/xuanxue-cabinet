@@ -257,7 +257,13 @@ export type {
   VideoDownloadQuery,
   StartExamVideoInput,
 } from './exam-videos';
-export type { VideoUploadDto } from './video-uploads';
+export type { CompleteVideoUploadInput, VideoUploadDto } from './video-uploads';
+export {
+  VIDEO_POSTER_LIMITS,
+  VIDEO_POSTER_NOT_JPEG_MESSAGE,
+  VIDEO_POSTER_TOO_LARGE_MESSAGE,
+  VIDEO_POSTER_NOT_FOUND_MESSAGE,
+} from './video-uploads';
 export {
   EXAM_VIDEO_CONTENT_TYPES,
   EXAM_VIDEO_LIMITS,

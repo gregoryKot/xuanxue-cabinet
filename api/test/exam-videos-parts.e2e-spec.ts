@@ -21,6 +21,7 @@ import { MultipartStoreService } from '../src/storage/multipart-store.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { partBuffer, SMALL_SIZE } from './e2e-support/answer-video-fixtures';
 import { FakeFileStore } from './e2e-support/fake-file-store';
+import { createExamVideoPartsHelpers } from './e2e-support/exam-video-parts-fixtures';
 import { FakeMultipartStore } from './e2e-support/fake-multipart-store';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
@@ -54,36 +55,7 @@ describe('Видео вопроса частями (e2e, ADR-0165)', () => {
     multipart.objects.clear();
   });
 
-  function server(): ReturnType<TestApp['app']['getHttpServer']> {
-    return testApp.app.getHttpServer();
-  }
-
-  function start(
-    cookie: string | undefined,
-    sizeBytes: number,
-    fingerprint = `${sizeBytes}:1`,
-  ): request.Test {
-    const req = withCsrf(request(server()).post('/api/exam-videos/uploads'));
-    return (cookie ? req.set('Cookie', cookie) : req).send({ sizeBytes, fingerprint });
-  }
-
-  function putPart(
-    cookie: string | undefined,
-    id: string,
-    n: number,
-    bytes: Buffer,
-  ): request.Test {
-    const req = withCsrf(request(server()).put(`/api/exam-videos/${id}/parts/${n}`)).set(
-      'Content-Type',
-      'application/octet-stream',
-    );
-    return (cookie ? req.set('Cookie', cookie) : req).send(bytes);
-  }
-
-  function complete(cookie: string | undefined, id: string): request.Test {
-    const req = withCsrf(request(server()).post(`/api/exam-videos/${id}/complete`));
-    return cookie ? req.set('Cookie', cookie) : req;
-  }
+  const { server, start, putPart, complete } = createExamVideoPartsHelpers(() => testApp);
 
   function createItem(cookie: string, videoId: string): request.Test {
     return withCsrf(request(server()).post('/api/exam-items'))

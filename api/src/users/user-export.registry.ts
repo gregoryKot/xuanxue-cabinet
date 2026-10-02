@@ -159,6 +159,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       parts: 'служебные отметки принятых частей файла',
       fingerprint: 'служебный отпечаток файла для продолжения загрузки',
       r2CompletedAt: 'служебная отметка, что хранилище файлов уже собрало загрузку',
+      poster: 'кадр из видео: сам снимок не входит в выгрузку, как и видео',
     },
   },
   PaymentRecord: {

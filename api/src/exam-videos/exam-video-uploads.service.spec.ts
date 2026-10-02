@@ -7,6 +7,7 @@ import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import {
   EXAM_VIDEO_LIMITS,
+  VIDEO_POSTER_NOT_JPEG_MESSAGE,
   type StartExamVideoInput,
   type VideoUploadDto,
 } from '@xuanxue/shared';
@@ -26,6 +27,8 @@ import {
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { beforeModelCall } from '../test-support/before-model-call';
+import { readPoster } from '../video-uploads/video-poster';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { ExamVideoUploadsService } from './exam-video-uploads.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
@@ -322,6 +325,119 @@ describe('ExamVideoUploadsService', () => {
 
       expect(a).toEqual(b);
       expect(await model.countDocuments({ status: 'ready' })).toBe(1);
+    });
+  });
+
+  // ADR-0165: кадр-превью приходит в теле complete и ложится в запись видео.
+  describe('complete с кадром-превью', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+    const OTHER_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 9, 9]);
+
+    async function storedPoster(id: string): Promise<Buffer | null> {
+      const doc = await model.findById(id, '+poster').lean();
+      return doc && readPoster(doc);
+    }
+
+    it('с кадром: видео готово, кадр записан в ту же запись, ответ его не несёт', async () => {
+      const started = await uploaded();
+
+      const dto = await service.complete(
+        started.id,
+        TEACHER,
+        NOW,
+        JPEG.toString('base64'),
+      );
+
+      expect(await model.findById(started.id).lean()).toMatchObject({ status: 'ready' });
+      expect(await storedPoster(started.id)).toEqual(JPEG);
+      expect(dto).not.toHaveProperty('poster');
+    });
+
+    it('без кадра: видео готово, кадра нет', async () => {
+      const started = await uploaded();
+
+      await service.complete(started.id, TEACHER, NOW);
+
+      expect(await storedPoster(started.id)).toBeNull();
+    });
+
+    it('неверный кадр: 400 до сборки в R2, видео не тронуто и завершается повтором без кадра', async () => {
+      const started = await uploaded();
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2]).toString('base64');
+
+      const failure = service.complete(started.id, TEACHER, NOW, png);
+
+      await expect(failure).rejects.toBeInstanceOf(InvalidInputError);
+      await expect(failure).rejects.toThrow(VIDEO_POSTER_NOT_JPEG_MESSAGE);
+      expect(multipart.completeMultipartUpload).not.toHaveBeenCalled();
+      expect(await model.findById(started.id).lean()).toMatchObject({
+        status: 'uploading',
+      });
+      await expect(service.complete(started.id, TEACHER, NOW)).resolves.toMatchObject({
+        id: started.id,
+      });
+    });
+
+    it('чужой учитель с неверным кадром получает 404, а не разбор кадра', async () => {
+      const started = await uploaded();
+
+      await expect(
+        service.complete(started.id, OTHER_TEACHER, NOW, 'не-кадр'),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('повтор complete с кадром у готового видео без кадра — кадр ставится один раз', async () => {
+      const started = await uploaded();
+      await service.complete(started.id, TEACHER, NOW);
+
+      await service.complete(started.id, TEACHER, NOW, JPEG.toString('base64'));
+      await service.complete(started.id, TEACHER, NOW, OTHER_JPEG.toString('base64'));
+
+      expect(await storedPoster(started.id)).toEqual(JPEG);
+    });
+
+    it('повтор без кадра у готового с кадром — кадр цел', async () => {
+      const started = await uploaded();
+      await service.complete(started.id, TEACHER, NOW, JPEG.toString('base64'));
+
+      await service.complete(started.id, TEACHER, NOW);
+
+      expect(await storedPoster(started.id)).toEqual(JPEG);
+    });
+
+    it('неверный кадр на повторе у готового видео — тоже 400, кадр не появляется', async () => {
+      const started = await uploaded();
+      await service.complete(started.id, TEACHER, NOW);
+
+      await expect(
+        service.complete(started.id, TEACHER, NOW, 'не-кадр'),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+      expect(await storedPoster(started.id)).toBeNull();
+    });
+
+    // Параллельный complete без кадра успевает целиком, пока наш ещё собирает:
+    // наш переход в ready проигрывает, но кадр, который пришёл с ним, не теряется.
+    it('проиграл переход в ready параллельному complete без кадра — кадр всё равно записан', async () => {
+      const started = await uploaded();
+      beforeModelCall(model, 'updateOne', async () => {
+        await service.complete(started.id, TEACHER, NOW.plus({ seconds: 1 }));
+      });
+
+      await service.complete(started.id, TEACHER, NOW, JPEG.toString('base64'));
+
+      expect(await storedPoster(started.id)).toEqual(JPEG);
+      expect(await model.countDocuments({ status: 'ready' })).toBe(1);
+    });
+
+    it('списки и выборки с проекцией кадр не несут (select: false)', async () => {
+      const started = await uploaded();
+      await service.complete(started.id, TEACHER, NOW, JPEG.toString('base64'));
+
+      const list = await model.find({}).lean();
+      const projected = await model.find({}, { _id: 1, key: 1 }).lean();
+
+      expect(list[0]).not.toHaveProperty('poster');
+      expect(projected[0]).not.toHaveProperty('poster');
     });
   });
 });

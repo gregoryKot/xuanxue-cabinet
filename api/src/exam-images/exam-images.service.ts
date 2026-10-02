@@ -17,13 +17,13 @@ import {
   type ExamImageDto,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
+import { binaryToBuffer } from '../common/binary-to-buffer';
 import { assertObjectId } from '../common/object-id';
 import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
 import { encryptRecord } from '../utils/encryption';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import type { UserLean } from '../users/users.service';
 import {
-  binaryToBuffer,
   decryptExamImage,
   toExamImageDto,
   type RawLeanExamImage,

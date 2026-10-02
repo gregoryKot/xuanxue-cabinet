@@ -246,6 +246,31 @@ describe('AnswerVideoSweepService', () => {
     expect(await videoModel.countDocuments({ _id: id })).toBe(0);
   });
 
+  // ADR-0165: кадр-превью — снимок ученика в самой записи, живёт ровно столько же,
+  // сколько видео, и уходит вместе с ней (read-after-write: в базе его не остаётся).
+  it('истёк срок — вместе с записью уходит и кадр-превью', async () => {
+    const { id } = await makeVideo({
+      status: 'ready',
+      completedAt: NOW.minus({ days: 366 }).toJSDate(),
+    });
+    await videoModel.updateOne(
+      { _id: id },
+      { $set: { poster: Buffer.from([0xff, 0xd8, 0xff, 1]) } },
+    );
+    expect(
+      await videoModel.collection.countDocuments({
+        _id: new Types.ObjectId(id),
+        poster: { $exists: true },
+      }),
+    ).toBe(1);
+
+    await service.removeExpired(NOW);
+
+    expect(
+      await videoModel.collection.countDocuments({ _id: new Types.ObjectId(id) }),
+    ).toBe(0);
+  });
+
   it('проверена недавно (меньше 90 дней) и моложе года — не трогается', async () => {
     const attemptId = new Types.ObjectId();
     const { id } = await makeVideo({

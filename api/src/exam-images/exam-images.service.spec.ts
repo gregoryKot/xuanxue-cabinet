@@ -9,7 +9,7 @@ import type { UserLean } from '../users/users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { ExamAttemptRecord, ExamAttemptSchema } from '../exams/exam-attempt.schema';
-import { binaryToBuffer } from './exam-image.mapper';
+import { binaryToBuffer } from '../common/binary-to-buffer';
 import { ExamImageRecord, ExamImageSchema } from './exam-image.schema';
 import { ExamImagesService } from './exam-images.service';
 

@@ -3,7 +3,7 @@
 // что exam-attempts-fixtures.ts: файл-лимит спеков без дублей, CLAUDE.md
 // «Храповики»/jscpd).
 import request from 'supertest';
-import { ANSWER_VIDEO_LIMITS } from '@xuanxue/shared';
+import { ANSWER_VIDEO_LIMITS, type CompleteVideoUploadInput } from '@xuanxue/shared';
 import { withCsrf } from './http';
 import { mp4Bytes } from './exam-videos-fixtures';
 import type { TestApp } from './create-app';
@@ -48,11 +48,16 @@ export function createAnswerVideoTestHelpers(getApp: () => TestApp) {
       .send(bytes);
   }
 
-  function complete(cookie: string, id: string): request.Test {
-    return withCsrf(request(server()).post(`/api/answer-videos/${id}/complete`)).set(
+  function complete(
+    cookie: string,
+    id: string,
+    body?: CompleteVideoUploadInput,
+  ): request.Test {
+    const req = withCsrf(request(server()).post(`/api/answer-videos/${id}/complete`)).set(
       'Cookie',
       cookie,
     );
+    return body ? req.send(body) : req;
   }
 
   return { server, start, uploadPart, complete };
