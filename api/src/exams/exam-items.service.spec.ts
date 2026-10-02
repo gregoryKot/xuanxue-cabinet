@@ -706,6 +706,34 @@ describe('ExamItemsService', () => {
       ).resolves.toMatchObject({ status: 'draft' });
     });
 
+    // Ревью #535 к F63: переход archived → draft гейт сознательно не трогает —
+    // это путь восстановления вопроса, оказавшегося в архиве при живой форме
+    // (данные до гейта архивации). Если бы его заблокировали, чинить такой
+    // вопрос пришлось бы только руками в базе. Тест фиксирует границу: гейт
+    // держит published → draft и → archived, но не восстановление.
+    it('архивный вопрос в живой форме — в черновик возвращается без отказа (путь восстановления)', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Форма со старыми данными', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+      await examsService.update(exam.id, { status: 'published' });
+      // Мимо сервиса: через update() вопрос в живой форме в архив не уйдёт,
+      // а восстанавливать нужно именно такие, уже лежащие в базе.
+      await model.updateOne({ _id: published.id }, { $set: { status: 'archived' } });
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'archived',
+      });
+
+      await expect(
+        service.update(published.id, { status: 'draft' }, NOW),
+      ).resolves.toMatchObject({ status: 'draft' });
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'draft',
+      });
+    });
+
     it('правка без смены статуса у вопроса в форме — проходит, гейт не трогает', async () => {
       const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
       const published = await service.update(item.id, { status: 'published' }, NOW);

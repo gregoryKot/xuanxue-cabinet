@@ -7,6 +7,7 @@
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import type { ExamAttemptDto } from '@xuanxue/shared';
+import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
@@ -340,6 +341,30 @@ describe('ExamItemStatsService', () => {
       const query = findSpy.mock.results[0]?.value as { projection: () => unknown };
       expect(query.projection()).toEqual({ blocks: 1, answers: 1 });
       findSpy.mockRestore();
+    });
+
+    // Ревью #535 к F32: у обычного курсора `timeoutMode` по умолчанию
+    // `cursorLifetime` — весь проход с расшифровкой обязан был бы уложиться в
+    // MONGO_OPERATION_TIMEOUT_MS. Проверяется то, что дошло до драйвера
+    // (`collection.find`), а не вызов `.cursor()` в Mongoose: без явного
+    // `timeoutMS` драйвер `timeoutMode` отвергает, а у тестовой Mongo
+    // клиентского `timeoutMS` нет — оба параметра должны стоять на запросе.
+    it('курсор идёт с потаймаутом на итерацию, и параметры доходят до драйвера', async () => {
+      const { itemId, correctOptionId } = await createPublishedSingleChoiceItem();
+      const examId = await createPublishedExam(itemId);
+      await submitAnswer(examId, USER_A, itemId, [correctOptionId]);
+      const driverFindSpy = jest.spyOn(attemptModel.collection, 'find');
+
+      const summary = await statsService.getSummary();
+
+      expect(summary).toEqual({ strugglingCount: 0 });
+      expect(driverFindSpy).toHaveBeenCalledTimes(1);
+      expect(driverFindSpy.mock.calls[0]?.[1]).toMatchObject({
+        batchSize: 100,
+        timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
+        timeoutMode: 'iteration',
+      });
+      driverFindSpy.mockRestore();
     });
 
     it('результат совпадает с расчётом по полному списку попыток', async () => {

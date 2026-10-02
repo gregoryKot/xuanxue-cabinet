@@ -16,6 +16,16 @@
 // в памяти одновременно живёт один батч, а не вся коллекция. Результат тот
 // же — накопитель принимает попытки по частям (спек сверяет с расчётом по
 // полному списку).
+//
+// Ревью #535 к F32: у драйвера общий `timeoutMS` (MONGO_OPERATION_TIMEOUT_MS,
+// 20 с), а у обычного курсора `timeoutMode` по умолчанию `cursorLifetime` —
+// весь проход (все getMore плюс расшифровка попыток внутри цикла) обязан
+// был бы уложиться в 20 с, и статистика учителя падала бы по таймауту в день
+// экзамена, когда сданных попыток больше всего. `iteration` даёт бюджет на
+// каждую порцию (getMore), расшифровка между порциями в него не входит.
+// `timeoutMode` без явного `timeoutMS` драйвер отвергает
+// (MongoInvalidArgumentError), а клиентского `timeoutMS` у тестовой Mongo
+// нет — поэтому оба параметра стоят на самом запросе.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -26,6 +36,7 @@ import type {
   ExamItemStatsSummaryDto,
 } from '@xuanxue/shared';
 import { NOT_DELETED } from '../common/soft-delete';
+import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
 import { decryptRecord } from '../utils/encryption';
 import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
@@ -51,6 +62,13 @@ const OPTION_KINDS: ExamItemKind[] = ['single', 'multiple'];
 // молча врала бы учителю).
 const ATTEMPT_STATS_FIELDS = 'blocks answers';
 const ATTEMPT_STATS_BATCH_SIZE = 100;
+// Параметры курсора целиком; что именно они доходят до драйвера, сверяет
+// спек (ревью #535).
+const ATTEMPT_STATS_CURSOR_OPTIONS = {
+  batchSize: ATTEMPT_STATS_BATCH_SIZE,
+  timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
+  timeoutMode: 'iteration',
+} as const;
 
 // Строка попытки в проекции ATTEMPT_STATS_FIELDS: `blocks`/`answers` ещё
 // зашифрованная строка (encJson). Index-signature — требование
@@ -116,7 +134,7 @@ export class ExamItemStatsService {
       .find({ status: { $in: COUNTED_STATUSES } })
       .select(ATTEMPT_STATS_FIELDS)
       .lean<AttemptStatsRow[]>()
-      .cursor({ batchSize: ATTEMPT_STATS_BATCH_SIZE });
+      .cursor({ ...ATTEMPT_STATS_CURSOR_OPTIONS });
     for await (const row of cursor) {
       accumulateAttemptStats([decryptAttemptStatsRow(row)], byItem);
     }
