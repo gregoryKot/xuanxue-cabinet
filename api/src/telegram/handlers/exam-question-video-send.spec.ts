@@ -5,7 +5,7 @@
 // разделения).
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { Context } from 'telegraf';
+import { TelegramError, type Context } from 'telegraf';
 import type { UserLean } from '../../users/users.service';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import type { VideoAlbumEntry } from './exam-question-album';
@@ -22,6 +22,16 @@ const USER: UserLean = {
   studentMode: false,
 };
 const BYTES = Buffer.from([1, 2, 3]);
+
+/** Настоящий TelegramError, как его бросает telegraf: `code`/`description`
+ * — геттеры над ответом Bot API. */
+function telegramError(errorCode: number, description: string): TelegramError {
+  return new TelegramError({
+    error_code: errorCode,
+    description,
+    ...(errorCode === 429 ? { parameters: { retry_after: 5 } } : {}),
+  });
+}
 
 /** Байты — лениво (аудит 2026-10-01, F02): фейк считает, сколько раз их
  * прочитали, — с известным file_id ни разу. Новый объект на тест: jest.Mock
@@ -125,10 +135,12 @@ describe('sendOptionVideo', () => {
     expect(loaded.loadBytes).not.toHaveBeenCalled();
   });
 
-  it('Telegram отверг известный file_id — повтор байтами, file_id перезаписан', async () => {
+  it('Telegram отверг известный file_id (400) — повтор байтами, file_id перезаписан', async () => {
     const { ctx, sendVideo } = fakeCtx();
     sendVideo
-      .mockRejectedValueOnce(new Error('wrong file_id'))
+      .mockRejectedValueOnce(
+        telegramError(400, 'Bad Request: wrong file identifier/HTTP URL specified'),
+      )
       .mockResolvedValueOnce({ message_id: 2, video: { file_id: 'v-new' } });
     const loaded = video('stale-id');
     const port = fakeExamBotPort({
@@ -156,6 +168,51 @@ describe('sendOptionVideo', () => {
     expect(port.rememberVideoFileId).toHaveBeenCalledWith('vid-1', 'v-new');
     expect(loaded.loadBytes).toHaveBeenCalledTimes(1); // байты — только после отказа
   });
+
+  // Аудит 2026-10-01 (F02), ревью #531: 429 не про file_id — чтение объекта из
+  // R2 и повтор получили бы тот же отказ, а память под видео занята зря.
+  it.each([
+    ['429 Too Many Requests', telegramError(429, 'Too Many Requests: retry after 5')],
+    ['502 Bad Gateway', telegramError(502, 'Bad Gateway')],
+    [
+      '400 «file is too big» (не про file_id)',
+      telegramError(400, 'Bad Request: file is too big'),
+    ],
+    ['сеть оборвалась', new Error('socket hang up')],
+  ])(
+    'file_id известен, но отправка упала не из-за него (%s) — байты не читаются, false',
+    async (_name, failure) => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      const { ctx, sendVideo } = fakeCtx();
+      sendVideo.mockRejectedValue(failure);
+      const loaded = video('known-id');
+      const port = fakeExamBotPort({
+        loadOptionVideo: jest.fn().mockResolvedValue(loaded),
+      });
+
+      const sent = await sendOptionVideo(
+        ctx,
+        port,
+        USER,
+        CHAT_ID,
+        optionEntry(),
+        ATTEMPT_ID,
+        NOW,
+      );
+
+      expect(sent).toBe(false);
+      expect(loaded.loadBytes).not.toHaveBeenCalled();
+      expect(sendVideo).toHaveBeenCalledTimes(1);
+      expect(port.rememberVideoFileId).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('сбой отправки по file_id'),
+        expect.objectContaining({ videoId: 'vid-1' }),
+      );
+      warn.mockRestore();
+    },
+  );
 
   it('байты не читаются (R2 выключен, объект пропал) — false, warn, без исключения', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

@@ -3,6 +3,7 @@ import {
   CHAT_NOT_FOUND_MESSAGE,
   NOT_ADMIN_MESSAGE,
   TEMPORARY_MESSAGE,
+  isRejectedFileIdError,
   isRetryableTelegramCode,
   isTelegramApiError,
   messageForTelegramError,
@@ -116,5 +117,42 @@ describe('isTelegramApiError', () => {
     expect(isTelegramApiError(new Error('boom'))).toBe(false);
     expect(isTelegramApiError(null)).toBe(false);
     expect(isTelegramApiError('строка')).toBe(false);
+  });
+});
+
+describe('isRejectedFileIdError', () => {
+  it.each([
+    'Bad Request: wrong file identifier/HTTP URL specified',
+    'Bad Request: wrong remote file identifier specified: Wrong string length',
+    'Bad Request: wrong file_id or the file is temporarily unavailable',
+    'Bad Request: FILE_REFERENCE_EXPIRED',
+  ])('400 «%s» — отказ file_id', (description) => {
+    expect(isRejectedFileIdError({ code: 400, description })).toBe(true);
+  });
+
+  it('400 про другое («file is too big», «chat not found») — нет', () => {
+    expect(
+      isRejectedFileIdError({
+        code: 400,
+        description: 'Bad Request: file is too big',
+      }),
+    ).toBe(false);
+    expect(
+      isRejectedFileIdError({ code: 400, description: 'Bad Request: chat not found' }),
+    ).toBe(false);
+  });
+
+  it('429, 5xx и ошибка не Telegram — нет, даже если в тексте есть file_id', () => {
+    expect(
+      isRejectedFileIdError({
+        code: 429,
+        description: 'Too Many Requests: retry after 5',
+      }),
+    ).toBe(false);
+    expect(isRejectedFileIdError({ code: 502, description: 'wrong file_id' })).toBe(
+      false,
+    );
+    expect(isRejectedFileIdError(new Error('wrong file_id'))).toBe(false);
+    expect(isRejectedFileIdError({ code: 400 })).toBe(false);
   });
 });

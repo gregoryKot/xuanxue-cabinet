@@ -99,20 +99,31 @@ describe('ExamAttemptsService.saveAnswers({ toggleOption }) — против Mon
     const [a, b] = optionIds;
     if (!a || !b) throw new Error('unreachable: у вопроса три варианта');
 
-    await Promise.all([
-      ctx.service.saveAnswers(
-        attemptId,
-        USER_A,
-        { toggleOption: { itemId, optionId: a } },
-        NOW,
-      ),
-      ctx.service.saveAnswers(
-        attemptId,
-        USER_A,
-        { toggleOption: { itemId, optionId: b } },
-        NOW,
-      ),
-    ]);
+    // Без шпиона тест прошёл бы и при гонке, которой не было (второй вызов
+    // успел после первого), и при CAS, переставшем повторять, — но тогда бы
+    // потерялся один из ответов. Шпион проверяет сам повтор: два первых CAS,
+    // один из них промахнулся, плюс повторный — итого больше двух.
+    const casSpy = jest.spyOn(ctx.attemptModel, 'findOneAndUpdate');
+    try {
+      await Promise.all([
+        ctx.service.saveAnswers(
+          attemptId,
+          USER_A,
+          { toggleOption: { itemId, optionId: a } },
+          NOW,
+        ),
+        ctx.service.saveAnswers(
+          attemptId,
+          USER_A,
+          { toggleOption: { itemId, optionId: b } },
+          NOW,
+        ),
+      ]);
+
+      expect(casSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+    } finally {
+      casSpy.mockRestore();
+    }
 
     const saved = await ctx.service.getOwn(attemptId, USER_A, NOW);
     expect([...(saved.answers[0]?.optionIds ?? [])].sort()).toEqual([a, b].sort());

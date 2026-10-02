@@ -13,6 +13,7 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { InputFile } from 'telegraf/types';
 import type { ExamVideoContentType } from '@xuanxue/shared';
+import { isRejectedFileIdError } from '../../channels/telegram-errors';
 import { errorMessage } from '../../common/error-info';
 import type { UserLean } from '../../users/users.service';
 import type { BotOptionVideo, ExamBotPort } from '../exam-bot.port';
@@ -76,7 +77,7 @@ async function sendBytes(
  * ушло байтами (первый раз или после отказа кэша), писать в базу то же
  * значение, которым уже отправляли, незачем (тот же приём, что у картинки,
  * exam-question-album-send.ts). Второй и последний раз пробуем байтами,
- * если file_id, которым Telegram отказался слать (сменили бота). */
+ * если Telegram отказался принять сам file_id (сменили бота). */
 async function sendBytesOrFileId(
   ctx: Context,
   chatId: number,
@@ -91,6 +92,12 @@ async function sendBytesOrFileId(
       await ctx.telegram.sendVideo(chatId, video.telegramFileId, caption);
       return { sent: true, newFileId: null };
     } catch (err) {
+      // Байтами — только когда Telegram отверг сам file_id. 429/5xx/сеть:
+      // чтение объекта из R2 и повтор получат тот же отказ (F02, ревью #531).
+      if (!isRejectedFileIdError(err)) {
+        warn(attemptId, entry, 'сбой отправки по file_id', err);
+        return { sent: false };
+      }
       warn(attemptId, entry, 'Telegram отверг file_id, пробуем байтами', err);
     }
   }
