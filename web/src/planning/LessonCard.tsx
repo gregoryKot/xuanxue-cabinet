@@ -14,9 +14,10 @@
 // ведёт на экран тега (TagPillLinks.tsx), а <a> внутри <button> невалиден и
 // недоступен (CLAUDE.md «Доступность»).
 import type { CSSProperties } from 'react';
-import type { LessonDto } from '@xuanxue/shared';
+import { classDisplayName, type ClassDto, type LessonDto } from '@xuanxue/shared';
 import { TagPillLinks } from '../components/TagPillLinks';
 import { formatTime } from '../lib/formatDate';
+import { ClassPlace } from '../schedule/ClassPlace';
 import { CancelledBroadcastLink, LessonBroadcastBadge } from './LessonBroadcastBadge';
 
 const TAGS_GROUP_LABEL = 'Теги занятия';
@@ -62,21 +63,20 @@ const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize:
 const metaStyle: CSSProperties = { fontSize: 14, color: 'var(--ink-soft)' };
 const statusStyle: CSSProperties = { flexShrink: 0, fontSize: 13 };
 
+/** Занятие расписания, к которому относится дата: название с группой и
+ * место. Нет — класс не загрузился или удалён, строка пишет «—». */
+export type LessonClass = Pick<ClassDto, 'title' | 'groupLabel' | 'format' | 'location'>;
+
 interface LessonCardProps {
   lesson: LessonDto;
-  className: string;
+  cls: LessonClass | undefined;
   onSelect: () => void;
   /** Последняя строка карточки дня — без нижней волосяной линии
    * (LessonDayGroup.tsx, docs/adr/0043). */
   isLast?: boolean;
 }
 
-export function LessonCard({
-  lesson,
-  className,
-  onSelect,
-  isLast = false,
-}: LessonCardProps) {
+export function LessonCard({ lesson, cls, onSelect, isLast = false }: LessonCardProps) {
   const cancelled = lesson.status === 'cancelled';
   const broadcast = lesson.broadcast;
 
@@ -92,7 +92,9 @@ export function LessonCard({
       >
         <span style={timeStyle}>{formatTime(lesson.startsAt)}</span>
         <span style={contentStyle}>
-          <span style={titleStyle}>{className}</span>
+          <span style={titleStyle}>{cls ? classDisplayName(cls) : '—'}</span>
+          {/* Где занятие — парк, зал или Zoom (просьба владельца 2026-10-02). */}
+          {cls && <ClassPlace format={cls.format} location={cls.location} />}
           <span style={metaStyle}>
             {lesson.topic || 'Тема не задана'}
             {cancelled && ' · Отменено'}

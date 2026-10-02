@@ -10,7 +10,12 @@ import { PlanningToday } from './PlanningToday';
 
 const NOW = new Date('2026-09-08T09:00:00.000Z');
 const NEXT_MONTH_ISO = '2026-10-08T09:00:00.000Z';
-const CLASS_TITLES = new Map([['c1', 'Тайцзицюань, средняя группа']]);
+const CLASSES = new Map([
+  [
+    'c1',
+    { title: 'Тайцзицюань', groupLabel: 'средняя группа', format: 'online' as const },
+  ],
+]);
 
 function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
   return {
@@ -30,11 +35,7 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
 
 function renderToday(lessons: LessonDto[] | null, onOpenLesson = vi.fn()) {
   return render(
-    <PlanningToday
-      lessons={lessons}
-      classTitleById={CLASS_TITLES}
-      onOpenLesson={onOpenLesson}
-    />,
+    <PlanningToday lessons={lessons} classesById={CLASSES} onOpenLesson={onOpenLesson} />,
   );
 }
 
@@ -61,14 +62,15 @@ describe('PlanningToday — занятие сегодня', () => {
     renderToday([makeLesson()], onOpenLesson);
 
     expect(screen.getByText('Сегодня')).toBeInTheDocument();
-    expect(screen.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
+    expect(screen.getByText('Тайцзицюань · средняя группа')).toBeInTheDocument();
+    expect(screen.getByText('Онлайн')).toBeInTheDocument();
     expect(screen.getByText(/Пятое занятие/)).toBeInTheDocument();
 
     await user.click(screen.getByText(/Пятое занятие/));
     expect(onOpenLesson).toHaveBeenCalledWith('l1');
   });
 
-  it('класс занятия не найден в classTitleById — «—» вместо пустого места', () => {
+  it('класс занятия не найден в classesById — «—» вместо пустого места', () => {
     renderToday([makeLesson({ classId: 'неизвестный' })]);
 
     expect(screen.getByText('—')).toBeInTheDocument();

@@ -9,6 +9,7 @@ import { MATERIALS_PATH } from '../api/apiPaths';
 import { MaterialCard } from './MaterialCard';
 import { TagSection } from './TagSection';
 import { useMaterials } from './useMaterials';
+import { classNamesById } from '../lib/classSlotsLabel';
 
 const TITLE = 'Материалы';
 
@@ -22,10 +23,7 @@ interface TagMaterialsSectionProps {
 export function TagMaterialsSection({ tag, classes }: TagMaterialsSectionProps) {
   const { materials, loading, error, reload } = useMaterials('', tag);
   const navigate = useNavigate();
-  const classTitleById = useMemo(
-    () => new Map(classes.map((cls) => [cls.id, cls.title])),
-    [classes],
-  );
+  const classTitleById = useMemo(() => classNamesById(classes), [classes]);
 
   return (
     <TagSection

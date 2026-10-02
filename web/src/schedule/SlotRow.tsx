@@ -8,15 +8,12 @@
 // тридцать карточек шли лентой в четыре экрана (отзыв владельца
 // 2026-10-02). Теперь день — одна карточка (DaySlots.tsx), занятие — строка в
 // ней: начало крупно, конец тише, название с группой, место со значком.
-import { PlaceIcon } from './PlaceIcon';
-import { slotPlaceParts } from './slotPlace';
+import { ClassPlace } from './ClassPlace';
 import {
   bodyStyle,
   dangerStatusStyle,
   endStyle,
   groupStyle,
-  placePartStyle,
-  placeRowStyle,
   rowStyle,
   startStyle,
   statusRowStyle,
@@ -61,14 +58,7 @@ export function SlotRow({ slot, onSelect }: SlotRowProps) {
             </span>
           )}
         </span>
-        <span style={placeRowStyle}>
-          {slotPlaceParts(slot.format, slot.location).map((part) => (
-            <span key={part.kind} style={placePartStyle}>
-              <PlaceIcon kind={part.kind} />
-              {part.text}
-            </span>
-          ))}
-        </span>
+        <ClassPlace format={slot.format} location={slot.location} />
         {/* Постоянные теги курса — подписью, не пилюлями: в карточке дня
             они ничего не фильтруют (ADR-0072). */}
         {slot.tags.length > 0 && <span style={tagsStyle}>{slot.tags.join(', ')}</span>}

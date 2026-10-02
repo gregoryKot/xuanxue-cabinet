@@ -7,6 +7,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { LessonDto } from '@xuanxue/shared';
 import { TodayLessonCard } from './TodayLessonCard';
 
+const TUISHOU = {
+  title: 'Туйшоу',
+  groupLabel: 'группа 2',
+  format: 'both' as const,
+  location: 'Аркави 3, Тель-Авив',
+};
+
 const TZ = 'Asia/Jerusalem';
 const NOW = '2026-09-20T12:00:00.000Z'; // 15:00 в Иерусалиме
 
@@ -31,7 +38,7 @@ function renderCard(lesson: LessonDto) {
     <MemoryRouter>
       <TodayLessonCard
         lesson={lesson}
-        className="Туйшоу, группа 2"
+        cls={TUISHOU}
         onSelect={vi.fn()}
         timeZone={TZ}
         nowIso={NOW}
@@ -45,7 +52,10 @@ describe('TodayLessonCard', () => {
     renderCard(makeLesson());
 
     expect(screen.getByText('Сегодня, 19:00 · через 4 часа')).toBeInTheDocument();
-    expect(screen.getByText('Туйшоу, группа 2')).toBeInTheDocument();
+    expect(screen.getByText('Туйшоу · группа 2')).toBeInTheDocument();
+    // Место: зал и «и онлайн» (просьба владельца 2026-10-02).
+    expect(screen.getByText('Аркави 3, Тель-Авив')).toBeInTheDocument();
+    expect(screen.getByText('и онлайн')).toBeInTheDocument();
     expect(screen.getByText(/Одиночное толкание/)).toBeInTheDocument();
   });
 
@@ -61,7 +71,7 @@ describe('TodayLessonCard', () => {
       <MemoryRouter>
         <TodayLessonCard
           lesson={makeLesson()}
-          className="Туйшоу, группа 2"
+          cls={TUISHOU}
           onSelect={onSelect}
           timeZone={TZ}
           nowIso={NOW}

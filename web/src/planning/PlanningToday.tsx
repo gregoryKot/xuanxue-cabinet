@@ -3,19 +3,20 @@
 // PlanningScreen.tsx остался ≤150 строк (CLAUDE.md «Храповики»).
 import { useMemo } from 'react';
 import type { LessonDto } from '@xuanxue/shared';
+import type { LessonClass } from './LessonCard';
 import { nextLesson } from './nextLesson';
 import { TodaySection } from './TodaySection';
 import { pickTodayLessons } from './todayLessons';
 
 interface PlanningTodayProps {
   lessons: LessonDto[] | null;
-  classTitleById: Map<string, string>;
+  classesById: ReadonlyMap<string, LessonClass>;
   onOpenLesson: (lessonId: string) => void;
 }
 
 export function PlanningToday({
   lessons,
-  classTitleById,
+  classesById,
   onOpenLesson,
 }: PlanningTodayProps) {
   const today = useMemo(() => (lessons ? pickTodayLessons(lessons) : null), [lessons]);
@@ -29,7 +30,7 @@ export function PlanningToday({
   return (
     <TodaySection
       lessons={today}
-      classTitleById={classTitleById}
+      classesById={classesById}
       onOpenLesson={onOpenLesson}
       nextLesson={upcoming}
     />

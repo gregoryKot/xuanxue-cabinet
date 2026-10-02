@@ -10,6 +10,7 @@
 import type { CSSProperties } from 'react';
 import type { LessonDto } from '@xuanxue/shared';
 import { SkeletonList } from '../components/Skeleton';
+import type { LessonClass } from './LessonCard';
 import { TodayLessonCard } from './TodayLessonCard';
 
 const HEADING = 'Сегодня';
@@ -23,7 +24,7 @@ const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', 
 interface TodaySectionProps {
   /** `null` — занятия ещё грузятся. */
   lessons: LessonDto[] | null;
-  classTitleById: Map<string, string>;
+  classesById: ReadonlyMap<string, LessonClass>;
   onOpenLesson: (lessonId: string) => void;
   /** Ближайшее занятие после сегодня — только когда сегодня пусто. */
   nextLesson: LessonDto | null;
@@ -31,7 +32,7 @@ interface TodaySectionProps {
 
 export function TodaySection({
   lessons,
-  classTitleById,
+  classesById,
   onOpenLesson,
   nextLesson,
 }: TodaySectionProps) {
@@ -47,7 +48,7 @@ export function TodaySection({
             <TodayLessonCard
               key={lesson.id}
               lesson={lesson}
-              className={classTitleById.get(lesson.classId) ?? '—'}
+              cls={classesById.get(lesson.classId)}
               onSelect={() => onOpenLesson(lesson.id)}
             />
           ))}
@@ -61,7 +62,7 @@ export function TodaySection({
             <div className="xuanxue-today-grid">
               <TodayLessonCard
                 lesson={nextLesson}
-                className={classTitleById.get(nextLesson.classId) ?? '—'}
+                cls={classesById.get(nextLesson.classId)}
                 onSelect={() => onOpenLesson(nextLesson.id)}
               />
             </div>
