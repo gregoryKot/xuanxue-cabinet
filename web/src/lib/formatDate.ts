@@ -76,33 +76,3 @@ export function fromDatetimeLocalValue(local: string): string | null {
   const date = new Date(local);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
-
-/** ISO UTC → значение `<input type="date">` (YYYY-MM-DD) в поясе браузера —
- * та же идея, что toDatetimeLocalValue, без части времени (examDueInput.ts:
- * «Сдать до» хранит только день). */
-export function toDateInputValue(iso: string): string {
-  const date = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-/** Значение `<input type="date">` → ISO UTC конца этого дня (23:59:59.999) в
- * поясе браузера — «до какого числа включительно», час в поле не задан и не
- * должен угадываться. `null` — пустая строка или календарно невозможная дата
- * (месяц/день вне диапазона): многоаргументный `new Date(y, m, d, …)`
- * молча переносит такую дату на соседний месяц вместо ошибки, поэтому
- * результат сверяется с исходными числами. */
-export function endOfDayIsoFromDateValue(dateValue: string): string | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
-  if (!match) return null;
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const date = new Date(year, month - 1, day, 23, 59, 59, 999);
-  const roundTrips =
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day;
-  return roundTrips ? date.toISOString() : null;
-}

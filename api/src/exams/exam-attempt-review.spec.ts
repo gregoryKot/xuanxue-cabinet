@@ -274,3 +274,32 @@ describe('answered у вопроса с вариантами (ADR-0146)', () => 
     expect(review?.questions[0]?.askReason).toBe(true);
   });
 });
+
+// Аудит 2026-10-01, F62: карточка проверки отдаёт редакцию вопроса из
+// снимка — учителю видно, какую версию он оценивает, если банк с тех пор
+// правили. До фикса version стоял только на входе и ни разу не ожидался на
+// выходе — пробел спека, не провал гейта.
+describe('buildReviewBlocks — редакция вопроса', () => {
+  it('version берётся из снимка попытки', () => {
+    const blocks: AttemptBlockRecord[] = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        required: true,
+        questions: [
+          {
+            itemId: 'q1',
+            version: 3,
+            kind: 'single',
+            prompt: 'Вопрос',
+            options: OPTIONS,
+          },
+        ],
+      },
+    ];
+
+    const [block] = buildReviewBlocks(blocks, []);
+
+    expect(block?.questions[0]?.version).toBe(3);
+  });
+});

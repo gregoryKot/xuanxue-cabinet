@@ -2,10 +2,10 @@
 import type { AttemptAnswerDto } from '@xuanxue/shared';
 import {
   accumulateAttemptStats,
-  computeExamItemStats,
-  computeStrugglingCount,
   type AttemptStatsInput,
-} from './exam-item-stats';
+  type ItemStatsAccumulator,
+} from './exam-item-stats-accumulate';
+import { computeExamItemStats, computeStrugglingCount } from './exam-item-stats';
 import type { AttemptBlockRecord } from './exam-attempt.schema';
 import type { ExamItemOptionRecord } from './exam-item.schema';
 
@@ -47,7 +47,10 @@ describe('computeExamItemStats', () => {
     ];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS },
+      acc,
+    );
 
     expect(stats.askedCount).toBe(3);
     expect(stats.correctCount).toBe(2);
@@ -67,7 +70,10 @@ describe('computeExamItemStats', () => {
     const attempts = [attempt('i1', multi, [{ itemId: 'i1', optionIds: ['o1', 'o3'] }])];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'multiple', multi, acc);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'multiple', options: multi },
+      acc,
+    );
 
     expect(stats.askedCount).toBe(1);
     expect(stats.correctCount).toBe(0);
@@ -77,7 +83,7 @@ describe('computeExamItemStats', () => {
     const attempts = [attempt('i1', [], [{ itemId: 'i1', text: 'свободный ответ' }])];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'text', [], acc);
+    const stats = computeExamItemStats({ id: 'i1', kind: 'text', options: [] }, acc);
 
     expect(stats.askedCount).toBe(1);
     expect(stats.correctCount).toBeUndefined();
@@ -88,7 +94,10 @@ describe('computeExamItemStats', () => {
   it('вопрос, которого ещё не было ни в одной попытке — askedCount 0, доля не выдумана', () => {
     const acc = accumulateAttemptStats([]);
 
-    const stats = computeExamItemStats('never-asked', 'single', SINGLE_OPTIONS, acc);
+    const stats = computeExamItemStats(
+      { id: 'never-asked', kind: 'single', options: SINGLE_OPTIONS },
+      acc,
+    );
 
     expect(stats.askedCount).toBe(0);
     expect(stats.correctCount).toBe(0);
@@ -103,7 +112,10 @@ describe('computeExamItemStats', () => {
     const attempts = [attempt('i1', SINGLE_OPTIONS, [])];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS },
+      acc,
+    );
 
     expect(stats.askedCount).toBe(1);
     expect(stats.correctCount).toBe(0);
@@ -117,7 +129,10 @@ describe('computeExamItemStats', () => {
     ];
     const acc = accumulateAttemptStats([attempt('i1', withImage, [])]);
 
-    const stats = computeExamItemStats('i1', 'single', withImage, acc);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: withImage },
+      acc,
+    );
 
     expect(stats.options?.[0]?.imageId).toBe('img1');
     expect(stats.options?.[1]).not.toHaveProperty('imageId');
@@ -137,7 +152,10 @@ describe('computeExamItemStats — объяснение выбора (ADR-0146)'
     ];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS, askReason: true },
+      acc,
+    );
 
     expect(stats.askedCount).toBe(3);
     expect(stats.reasonAnsweredCount).toBe(2);
@@ -153,18 +171,24 @@ describe('computeExamItemStats — объяснение выбора (ADR-0146)'
     const acc = accumulateAttemptStats(attempts);
 
     expect(
-      computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc).reasonCount,
+      computeExamItemStats({ id: 'i1', kind: 'single', options: SINGLE_OPTIONS }, acc)
+        .reasonCount,
     ).toBeUndefined();
     expect(
-      computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, false)
-        .reasonAnsweredCount,
+      computeExamItemStats(
+        { id: 'i1', kind: 'single', options: SINGLE_OPTIONS, askReason: false },
+        acc,
+      ).reasonAnsweredCount,
     ).toBeUndefined();
   });
 
   it('askReason включён, но вариант ни разу не выбирали — 0 из 0, не мусор', () => {
     const acc = accumulateAttemptStats([]);
 
-    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS, askReason: true },
+      acc,
+    );
 
     expect(stats.reasonAnsweredCount).toBe(0);
     expect(stats.reasonCount).toBe(0);
@@ -176,7 +200,10 @@ describe('computeExamItemStats — объяснение выбора (ADR-0146)'
     ];
     const acc = accumulateAttemptStats(attempts);
 
-    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS, askReason: true },
+      acc,
+    );
 
     expect(stats.reasonAnsweredCount).toBe(1);
     expect(stats.reasonCount).toBe(0);
@@ -187,7 +214,10 @@ describe('computeExamItemStats — объяснение выбора (ADR-0146)'
       attempt('i1', [], [{ itemId: 'i1', text: 'X' }]),
     ]);
 
-    const stats = computeExamItemStats('i1', 'text', [], acc, true);
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'text', options: [], askReason: true },
+      acc,
+    );
 
     expect(stats.reasonCount).toBeUndefined();
     expect(stats.reasonAnsweredCount).toBeUndefined();
@@ -235,5 +265,114 @@ describe('computeStrugglingCount', () => {
     const acc = accumulateAttemptStats([]);
 
     expect(computeStrugglingCount([], acc)).toBe(0);
+  });
+});
+
+// Аудит 2026-10-01, F62: учитель заменил вариант в опубликованном вопросе —
+// утренний поток выбирал `o2`, в текущей редакции его нет. Раньше строка
+// пропадала вместе со всеми выборами, и сумма по вариантам не сходилась с
+// askedCount.
+describe('computeExamItemStats — вариант, которого в текущей редакции больше нет', () => {
+  const CURRENT: ExamItemOptionRecord[] = [
+    { id: 'o1', text: 'верно', correct: true },
+    { id: 'o3', text: 'новый неверный', correct: false },
+  ];
+  const HISTORY = [{ options: SINGLE_OPTIONS }];
+
+  it('выбранный id без текущего варианта — отдельная строка с текстом из истории и removed', () => {
+    const acc = accumulateAttemptStats([
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+      attempt('i1', CURRENT, [{ itemId: 'i1', optionIds: ['o1'] }]),
+    ]);
+
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: CURRENT, history: HISTORY },
+      acc,
+    );
+
+    expect(stats.options).toEqual([
+      { id: 'o1', text: 'верно', correct: true, chosenCount: 1 },
+      { id: 'o3', text: 'новый неверный', correct: false, chosenCount: 0 },
+      { id: 'o2', text: 'неверно', correct: false, chosenCount: 2, removed: true },
+    ]);
+    const chosenTotal = (stats.options ?? []).reduce((sum, o) => sum + o.chosenCount, 0);
+    expect(chosenTotal).toBe(stats.askedCount);
+  });
+
+  it('истории нет — строка всё равно есть, текст пустой (экран подпишет «Вариант N»)', () => {
+    const acc = accumulateAttemptStats([
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+    ]);
+
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: CURRENT },
+      acc,
+    );
+
+    expect(stats.options).toContainEqual({
+      id: 'o2',
+      text: '',
+      correct: false,
+      chosenCount: 1,
+      removed: true,
+    });
+  });
+
+  it('у живых вариантов ключа removed нет вовсе', () => {
+    const acc = accumulateAttemptStats([
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o1'] }]),
+    ]);
+
+    const stats = computeExamItemStats(
+      { id: 'i1', kind: 'single', options: SINGLE_OPTIONS },
+      acc,
+    );
+
+    expect(stats.options?.every((o) => !('removed' in o))).toBe(true);
+  });
+
+  // Правка текста на месте `id` сохраняет (mapOptions) — выборы остаются у
+  // той же строки под новым текстом. Это осознанно (шапка exam-item-stats.ts),
+  // не баг: тест закрепляет границу между «поправили» и «заменили».
+  it('текст варианта поменяли на месте, id тот же — выборы у той же строки, removed нет', () => {
+    const renamed: ExamItemOptionRecord[] = [
+      { id: 'o1', text: 'верно', correct: true },
+      { id: 'o2', text: 'неверно (уточнено)', correct: false },
+    ];
+    const acc = accumulateAttemptStats([
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+    ]);
+
+    const stats = computeExamItemStats(
+      {
+        id: 'i1',
+        kind: 'single',
+        options: renamed,
+        history: [{ options: SINGLE_OPTIONS }],
+      },
+      acc,
+    );
+
+    expect(stats.options).toEqual([
+      { id: 'o1', text: 'верно', correct: true, chosenCount: 0 },
+      { id: 'o2', text: 'неверно (уточнено)', correct: false, chosenCount: 1 },
+    ]);
+  });
+});
+
+// F32: накопитель кормят батчами курсора — результат тот же, что от одного
+// списка, иначе проекция и батчи в сервисе молча меняли бы числа.
+describe('accumulateAttemptStats — батчами и одним списком', () => {
+  it('тот же накопитель', () => {
+    const all = [
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o1'] }]),
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+      attempt('i2', [], [{ itemId: 'i2', text: 'ответ' }]),
+    ];
+    const batched = new Map<string, ItemStatsAccumulator>();
+    for (const one of all) accumulateAttemptStats([one], batched);
+
+    expect(batched).toEqual(accumulateAttemptStats(all));
   });
 });

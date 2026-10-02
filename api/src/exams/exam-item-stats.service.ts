@@ -5,12 +5,23 @@
 // таким запросом нельзя. Поэтому один `find` по статусу (индекс
 // `status+submittedAt`, exam-attempt.schema.ts) и один проход по
 // расшифрованным попыткам в памяти (accumulateAttemptStats,
-// exam-item-stats.ts) — без похода в базу за каждой попыткой (CLAUDE.md
-// «API»: без N+1). Школа на полсотни-сотню учеников — весь список сданных
-// попыток свободно умещается в памяти одного запроса.
+// exam-item-stats-accumulate.ts) — без похода в базу за каждой попыткой
+// (CLAUDE.md «API»: без N+1).
+//
+// Аудит 2026-10-01, F32: раньше `find` тянул попытки целиком и все разом —
+// «дай всё» (CLAUDE.md «API»), и каждое открытие «Экзаменов» расшифровывало
+// всю историю сдач. Теперь проекция двух нужных полей (`blocks`/`answers`) и
+// курсор батчами: в памяти один батч, не вся коллекция. Результат тот же —
+// накопитель принимает попытки по частям (спек сверяет с полным списком).
+//
+// Ревью #535: у драйвера общий `timeoutMS` (MONGO_OPERATION_TIMEOUT_MS, 20 с),
+// а у курсора `timeoutMode` по умолчанию `cursorLifetime` — весь проход с
+// расшифровкой обязан был бы уложиться в 20 с, и статистика падала бы по
+// таймауту в день экзамена. `iteration` даёт бюджет на каждую порцию (getMore).
+// `timeoutMode` без явного `timeoutMS` драйвер отвергает — оба стоят на запросе.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import type {
   ExamAttemptStatus,
   ExamItemKind,
@@ -18,16 +29,17 @@ import type {
   ExamItemStatsSummaryDto,
 } from '@xuanxue/shared';
 import { NOT_DELETED } from '../common/soft-delete';
-import { decryptAttemptsSkippingBroken } from './exam-attempt-decrypt-safe';
-import type { RawLeanExamAttempt } from './exam-attempt.mapper';
-import { ExamAttemptRecord } from './exam-attempt.schema';
+import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
+import { decryptRecord } from '../utils/encryption';
+import { logBrokenAttempt } from './exam-attempt-decrypt-safe';
+import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
 import {
   accumulateAttemptStats,
-  computeExamItemStats,
-  computeStrugglingCount,
+  type AttemptStatsInput,
   type ItemStatsAccumulator,
-} from './exam-item-stats';
+} from './exam-item-stats-accumulate';
+import { computeExamItemStats, computeStrugglingCount } from './exam-item-stats';
 import { decryptExamItem, type RawLeanExamItem } from './exam-item.mapper';
 import { ExamItemRecord } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
@@ -38,6 +50,49 @@ import { ExamRecord } from './exam.schema';
 const COUNTED_STATUSES: ExamAttemptStatus[] = ['submitted', 'graded'];
 // Только у этих типов вопроса вообще бывает «верно/неверно» (ТЗ 4.2, п.2).
 const OPTION_KINDS: ExamItemKind[] = ['single', 'multiple'];
+// F32: что читаем из попытки и по сколько документов за раз. Батч — размер
+// одной порции драйвера, не окно выборки: проход всё равно идёт по всем
+// сданным попыткам (ТЗ 4.8: статистика за всё время, усечённая выборка
+// молча врала бы учителю).
+const ATTEMPT_STATS_FIELDS = 'blocks answers';
+const ATTEMPT_STATS_BATCH_SIZE = 100;
+// Параметры курсора целиком; что они доходят до драйвера, сверяет спек.
+const ATTEMPT_STATS_CURSOR_OPTIONS = {
+  batchSize: ATTEMPT_STATS_BATCH_SIZE,
+  timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
+  timeoutMode: 'iteration',
+} as const;
+
+// Строка попытки в проекции ATTEMPT_STATS_FIELDS: `blocks`/`answers` ещё
+// зашифрованная строка (encJson). Index-signature — требование
+// `decryptRecord`, тот же приём, что у ReferencingExamRow (exam-item-references.ts).
+interface AttemptStatsRow {
+  [key: string]: unknown;
+  // Проекция `_id` не отключает: он нужен, чтобы назвать битую попытку в логе.
+  _id: Types.ObjectId;
+  blocks: string;
+  answers: string;
+}
+
+/** Тот же разбор и та же проверка формы, что у decryptAttempt
+ * (exam-attempt.mapper.ts), но для строки из двух полей — полный
+ * `RawLeanExamAttempt` сюда не приходит. Битая попытка — пропуск с error-логом
+ * (attemptId), не 500 на всю статистику (F55, аудит 2026-10-01; ревью #529). */
+function decryptAttemptStatsRowOrNull(row: AttemptStatsRow): AttemptStatsInput | null {
+  try {
+    const { blocks, answers } = decryptRecord(row, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
+    if (!Array.isArray(blocks) || !Array.isArray(answers)) {
+      throw new Error('blocks/answers — не массив');
+    }
+    return {
+      blocks: blocks as unknown as AttemptStatsInput['blocks'],
+      answers: answers as unknown as AttemptStatsInput['answers'],
+    };
+  } catch (err) {
+    logBrokenAttempt(row._id, err);
+    return null;
+  }
+}
 
 @Injectable()
 export class ExamItemStatsService {
@@ -56,13 +111,9 @@ export class ExamItemStatsService {
   async getStats(itemId: string): Promise<ExamItemStatsDto> {
     const item = await this.examItemsService.getById(itemId);
     const accByItem = await this.loadAccumulators();
-    const stats = computeExamItemStats(
-      item.id,
-      item.kind,
-      item.options,
-      accByItem,
-      item.askReason,
-    );
+    // DTO целиком: статистике нужны и прошлые редакции — текст варианта,
+    // которого в вопросе больше нет (F62, exam-item-stats.ts).
+    const stats = computeExamItemStats(item, accByItem);
     const { titles } = await findExamsReferencingItem(this.examModel, itemId);
     return { ...stats, usedInExamsCount: titles.length };
   }
@@ -83,10 +134,17 @@ export class ExamItemStatsService {
   }
 
   private async loadAccumulators(): Promise<Map<string, ItemStatsAccumulator>> {
-    const docs = await this.attemptModel
+    const byItem = new Map<string, ItemStatsAccumulator>();
+    const cursor = this.attemptModel
       .find({ status: { $in: COUNTED_STATUSES } })
-      .lean<RawLeanExamAttempt[]>();
-    // Битая попытка — пропуск с error-логом, не 500 на всю статистику (F55).
-    return accumulateAttemptStats(decryptAttemptsSkippingBroken(docs));
+      .select(ATTEMPT_STATS_FIELDS)
+      .lean<AttemptStatsRow[]>()
+      .cursor({ ...ATTEMPT_STATS_CURSOR_OPTIONS });
+    for await (const row of cursor) {
+      const input = decryptAttemptStatsRowOrNull(row);
+      if (!input) continue;
+      accumulateAttemptStats([input], byItem);
+    }
+    return byItem;
   }
 }

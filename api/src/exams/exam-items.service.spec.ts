@@ -670,6 +670,83 @@ describe('ExamItemsService', () => {
       });
     });
 
+    // Аудит 2026-10-01, F63: «Вернуть в черновик» у вопроса в живой форме
+    // блокировал любое её сохранение (даже смену срока) — тот же механизм,
+    // что у архивации, и тот же гейт.
+    it('опубликованный, стоящий в форме, — вернуть в черновик нельзя, форма сохраняется дальше', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Экзамен в разгаре', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+      await examsService.update(exam.id, { status: 'published' }, NOW);
+
+      await expect(
+        service.update(published.id, { status: 'draft' }, NOW),
+      ).rejects.toThrow(`Вернуть в черновик нельзя`);
+      await expect(
+        service.update(published.id, { status: 'draft' }, NOW),
+      ).rejects.toThrow(`«${exam.title}»`);
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'published',
+      });
+      // Read-after-write: форма по-прежнему сохраняется — ради этого и гейт.
+      await expect(
+        examsService.update(exam.id, { attemptsAllowed: 3 }, NOW),
+      ).resolves.toMatchObject({ attemptsAllowed: 3 });
+    });
+
+    it('опубликованный, нигде не стоящий, — в черновик возвращается свободно', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+
+      await expect(
+        service.update(published.id, { status: 'draft' }, NOW),
+      ).resolves.toMatchObject({ status: 'draft' });
+    });
+
+    // Ревью #535 к F63: переход archived → draft гейт сознательно не трогает —
+    // это путь восстановления вопроса, оказавшегося в архиве при живой форме
+    // (данные до гейта архивации). Если бы его заблокировали, чинить такой
+    // вопрос пришлось бы только руками в базе. Тест фиксирует границу: гейт
+    // держит published → draft и → archived, но не восстановление.
+    it('архивный вопрос в живой форме — в черновик возвращается без отказа (путь восстановления)', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Форма со старыми данными', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+      await examsService.update(exam.id, { status: 'published' }, NOW);
+      // Мимо сервиса: через update() вопрос в живой форме в архив не уйдёт,
+      // а восстанавливать нужно именно такие, уже лежащие в базе.
+      await model.updateOne({ _id: published.id }, { $set: { status: 'archived' } });
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'archived',
+      });
+
+      await expect(
+        service.update(published.id, { status: 'draft' }, NOW),
+      ).resolves.toMatchObject({ status: 'draft' });
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'draft',
+      });
+    });
+
+    it('правка без смены статуса у вопроса в форме — проходит, гейт не трогает', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      await examsService.create(
+        { title: 'Форма с вопросом', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+
+      await expect(
+        service.update(published.id, { prompt: 'p2', status: 'published' }, NOW),
+      ).resolves.toMatchObject({ prompt: 'p2', status: 'published' });
+    });
+
     it('форма удалена (ADR-0140) — архивация вопроса больше не заблокирована', async () => {
       const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
       const published = await service.update(item.id, { status: 'published' }, NOW);

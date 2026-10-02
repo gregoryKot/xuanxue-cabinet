@@ -1,20 +1,23 @@
 // Чистая логика статистики вопроса (ТЗ 4.8) — без похода в базу, юнит-тест
-// без Mongo (CLAUDE.md «Тесты»). Источник — снимок попытки
-// (AttemptBlockRecord/AttemptQuestionRecord, exam-attempt.schema.ts): именно
-// он хранит вопрос и отметку «верно» у варианта такими, какими их видел
-// сдающий (ADR-0022), поэтому «ответили верно» считается по данным снимка, а
-// не по сегодняшней редакции вопроса банка — иначе правка ответа задним
-// числом переписывала бы то, что уже произошло. Список вариантов для показа
-// учителю, наоборот, строится из текущего вопроса банка (ExamItemOptionRecord)
-// — учителю нужно решать, что делать с вопросом сегодня.
-import type { AttemptAnswerDto, ExamItemKind, ExamItemStatsDto } from '@xuanxue/shared';
-import { checkOptionAnswer } from './exam-attempt-review';
-import type { AttemptBlockRecord } from './exam-attempt.schema';
+// без Mongo (CLAUDE.md «Тесты»). «Ответили верно» считается по данным снимка
+// попытки (накопитель — exam-item-stats-accumulate.ts), а не по сегодняшней
+// редакции вопроса банка — иначе правка ответа задним числом переписывала бы
+// то, что уже произошло (ADR-0022). Список вариантов для показа учителю,
+// наоборот, строится из текущего вопроса банка: учителю нужно решать, что
+// делать с вопросом сегодня.
+//
+// Выборы считаются по `id` варианта. Правка текста варианта на месте `id`
+// сохраняет (редактор присылает его обратно, mapOptions) — выборы честно
+// остаются у той же строки, это осознанно. А вот вариант, который заменили
+// или удалили (нового `id` в текущей редакции нет), раньше из статистики
+// пропадал вместе со всеми, кто его выбирал: askedCount их считал, суммы по
+// вариантам — нет (аудит 2026-10-01, F62). Теперь такие `id` дописываются
+// отдельными строками с пометкой `removed` и текстом из истории редакций.
+import type { ExamItemKind, ExamItemStatsDto } from '@xuanxue/shared';
 import {
-  accumulateReasonStats,
-  emptyReasonAccumulator,
-  type ReasonStatsAccumulator,
-} from './exam-item-reason-stats';
+  emptyAccumulator,
+  type ItemStatsAccumulator,
+} from './exam-item-stats-accumulate';
 import type { ExamItemOptionRecord } from './exam-item.schema';
 
 // Не отдельный именованный экспорт из shared/src/index.ts (единственный
@@ -23,105 +26,78 @@ import type { ExamItemOptionRecord } from './exam-item.schema';
 // вместо двух.
 type ExamItemOptionStatsDto = NonNullable<ExamItemStatsDto['options']>[number];
 
-/** Один сданный ответ, каким его отдаёт `decryptAttempt` (exam-attempt.
- * mapper.ts) — сервис передаёт сюда только `blocks`/`answers`, остальные
- * поля попытки статистике не нужны. */
-export interface AttemptStatsInput {
-  blocks: readonly AttemptBlockRecord[];
-  answers: readonly AttemptAnswerDto[];
+/** Сегодняшний вопрос банка — то, что нужно статистике из `ExamItemDto`
+ * (структурно совместим, сервис передаёт DTO как есть). `history` — прошлые
+ * редакции, новейшая первой (exam-items.service.ts), только ради текста
+ * варианта, которого больше нет (F62). */
+export interface ItemStatsSource {
+  id: string;
+  kind: ExamItemKind;
+  options: readonly ExamItemOptionRecord[];
+  history?: readonly { options: readonly ExamItemOptionRecord[] }[];
+  // ADR-0146: сегодняшний флаг вопроса, не запись из снимка попытки.
+  askReason?: boolean;
 }
 
-/** Накопитель по одному вопросу за один проход. `reason` — объяснение выбора
- * (ADR-0146, exam-item-reason-stats.ts); показывать ли его — решает computeExamItemStats. */
-export interface ItemStatsAccumulator {
-  askedCount: number;
-  correctCount: number;
-  chosenById: Map<string, number>;
-  reason: ReasonStatsAccumulator;
-}
-
-function emptyAccumulator(): ItemStatsAccumulator {
+function toOptionStats(
+  option: ExamItemOptionRecord,
+  chosenCount: number,
+): ExamItemOptionStatsDto {
   return {
-    askedCount: 0,
-    correctCount: 0,
-    chosenById: new Map(),
-    reason: emptyReasonAccumulator(),
+    id: option.id,
+    text: option.text,
+    correct: option.correct,
+    chosenCount,
+    // Ключа нет вовсе, если картинки не было (ADR-0035) — строка
+    // статистики без подписи иначе не с чем сопоставить на экране.
+    ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
   };
 }
 
-/** Ответ «полностью верный» — то же правило, что у автопроверки в карточке
- * проверки (checkOptionAnswer, exam-attempt-review.ts): выбраны все верные
- * варианты и ни одного лишнего (CLAUDE.md «Одна механика — один компонент»:
- * не второе определение «верно» рядом с уже существующим). */
-function isFullyCorrect(
-  options: readonly ExamItemOptionRecord[],
-  selectedIds: readonly string[],
-): boolean {
-  const check = checkOptionAnswer(options, selectedIds);
-  return (
-    check.correctSelectedCount === check.correctTotalCount &&
-    check.incorrectSelectedCount === 0
-  );
-}
-
-/** Один проход по всем сданным попыткам — накопитель на каждый `itemId`,
- * встретившийся в блоке. Статус (`submitted`/`graded`, ТЗ 4.8) уже отобрал вызывающий. */
-export function accumulateAttemptStats(
-  attempts: readonly AttemptStatsInput[],
-): Map<string, ItemStatsAccumulator> {
-  const byItem = new Map<string, ItemStatsAccumulator>();
-  for (const attempt of attempts) {
-    const answerByItemId = new Map(attempt.answers.map((a) => [a.itemId, a]));
-    for (const block of attempt.blocks) {
-      for (const question of block.questions) {
-        const acc = byItem.get(question.itemId) ?? emptyAccumulator();
-        acc.askedCount += 1;
-        if (question.options.length > 0) {
-          const answer = answerByItemId.get(question.itemId);
-          const selectedIds = answer?.optionIds ?? [];
-          for (const id of selectedIds) {
-            acc.chosenById.set(id, (acc.chosenById.get(id) ?? 0) + 1);
-          }
-          if (isFullyCorrect(question.options, selectedIds)) acc.correctCount += 1;
-          accumulateReasonStats(acc.reason, answer, selectedIds);
-        }
-        byItem.set(question.itemId, acc);
-      }
-    }
+/** Строки по вариантам, которые выбирали, но которых в текущей редакции нет
+ * (F62): текст и отметка «верно» — из ближайшей прошлой редакции, где
+ * вариант ещё был; не нашлось (история обрезана) — пустой текст, экран
+ * подпишет «Вариант N» сам (formatOptionLabel). Порядок — по первому
+ * появлению в попытках, после текущих вариантов. */
+function removedOptionStats(
+  item: ItemStatsSource,
+  chosenById: ReadonlyMap<string, number>,
+): ExamItemOptionStatsDto[] {
+  const currentIds = new Set(item.options.map((option) => option.id));
+  const pastOptions = (item.history ?? []).flatMap((version) => version.options);
+  const rows: ExamItemOptionStatsDto[] = [];
+  for (const [id, chosenCount] of chosenById) {
+    if (currentIds.has(id)) continue;
+    const past = pastOptions.find((option) => option.id === id);
+    const option = past ?? { id, text: '', correct: false };
+    rows.push({ ...toOptionStats(option, chosenCount), removed: true });
   }
-  return byItem;
+  return rows;
 }
 
-/** Статистика одного вопроса — `currentOptions` берётся из сегодняшнего
- * вопроса банка (не из снимков попыток, см. комментарий в начале файла). Без
- * `usedInExamsCount`: отдельный запрос к базе добавляет его сам вызывающий
- * (exam-item-references.ts, ExamItemStatsService.getStats). */
+/** Статистика одного вопроса — варианты из сегодняшнего вопроса банка (не
+ * из снимков попыток, см. комментарий в начале файла) плюс строки удалённых
+ * вариантов. Без `usedInExamsCount`: отдельный запрос к базе добавляет его
+ * сам вызывающий (exam-item-references.ts, ExamItemStatsService.getStats). */
 export function computeExamItemStats(
-  itemId: string,
-  kind: ExamItemKind,
-  currentOptions: readonly ExamItemOptionRecord[],
+  item: ItemStatsSource,
   accByItem: ReadonlyMap<string, ItemStatsAccumulator>,
-  // ADR-0146: сегодняшний флаг вопроса, не запись из снимка попытки.
-  askReason = false,
 ): Omit<ExamItemStatsDto, 'usedInExamsCount'> {
-  const acc = accByItem.get(itemId) ?? emptyAccumulator();
-  const hasOptions = currentOptions.length > 0;
-  const showReason = hasOptions && askReason;
+  const acc = accByItem.get(item.id) ?? emptyAccumulator();
+  const hasOptions = item.options.length > 0;
+  const showReason = hasOptions && (item.askReason ?? false);
   const options: ExamItemOptionStatsDto[] | undefined = hasOptions
-    ? currentOptions.map((option) => ({
-        id: option.id,
-        text: option.text,
-        correct: option.correct,
-        chosenCount: acc.chosenById.get(option.id) ?? 0,
-        // Ключа нет вовсе, если картинки не было (ADR-0035) — строка
-        // статистики без подписи иначе не с чем сопоставить на экране.
-        ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
-      }))
+    ? [
+        ...item.options.map((option) =>
+          toOptionStats(option, acc.chosenById.get(option.id) ?? 0),
+        ),
+        ...removedOptionStats(item, acc.chosenById),
+      ]
     : undefined;
 
   return {
-    itemId,
-    kind,
+    itemId: item.id,
+    kind: item.kind,
     askedCount: acc.askedCount,
     correctCount: hasOptions ? acc.correctCount : undefined,
     correctRate:

@@ -5,6 +5,7 @@
 // Railway (CLAUDE.md «Логи»). Одиночная `decryptAttempt` (exam-attempt.mapper.ts)
 // по-прежнему бросает — там один документ и есть весь ответ.
 import { Logger } from '@nestjs/common';
+import type { Types } from 'mongoose';
 import { errorMessage } from '../common/error-info';
 import {
   decryptAttempt,
@@ -14,13 +15,19 @@ import {
 
 const logger = new Logger('decryptAttempt');
 
+/** Одна строка лога на пропущенную попытку: тот же логгер и формат у всех
+ * путей (список, тик закрытия, курсор статистики) — искать в Railway одно. */
+export function logBrokenAttempt(attemptId: Types.ObjectId | string, err: unknown): void {
+  logger.error(
+    `exam.attempt.decrypt: попытка ${attemptId.toString()} пропущена: ${errorMessage(err)}`,
+  );
+}
+
 export function decryptAttemptOrNull(doc: RawLeanExamAttempt): LeanExamAttempt | null {
   try {
     return decryptAttempt(doc);
   } catch (err) {
-    logger.error(
-      `exam.attempt.decrypt: попытка ${doc._id.toString()} пропущена: ${errorMessage(err)}`,
-    );
+    logBrokenAttempt(doc._id, err);
     return null;
   }
 }

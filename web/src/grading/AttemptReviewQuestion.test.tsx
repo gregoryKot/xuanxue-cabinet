@@ -462,3 +462,30 @@ describe('AttemptReviewQuestion — видео формулировки (ADR-013
     ).not.toBeInTheDocument();
   });
 });
+
+// Аудит 2026-10-01, F62: учитель видит, какую редакцию вопроса оценивает.
+describe('AttemptReviewQuestion — редакция вопроса', () => {
+  it('редакция выше первой — строка про редакцию видна', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ version: 2, answerText: 'ответ', answered: true })}
+      />,
+    );
+
+    expect(screen.getByText(/Редакция вопроса 2/)).toBeInTheDocument();
+  });
+
+  it('первая редакция — строки нет', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ version: 1, answerText: 'ответ', answered: true })}
+      />,
+    );
+
+    expect(screen.queryByText(/Редакция вопроса/)).not.toBeInTheDocument();
+  });
+});
