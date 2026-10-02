@@ -1,7 +1,7 @@
 {
   "api/src/analytics/analytics.controller.ts": 24,
   "api/src/analytics/analytics.module.ts": 8,
-  "api/src/answer-videos/answer-video-complete.ts": 131,
+  "api/src/answer-videos/answer-video-complete.ts": 101,
   "api/src/answer-videos/answer-video-part-body.ts": 25,
   "api/src/answer-videos/answer-video-part.ts": 136,
   "api/src/answer-videos/answer-video-start.controller.ts": 28,
@@ -736,7 +736,7 @@
   "api/src/users/user-deletion.service.ts": 143,
   "api/src/users/user-email.service.ts": 82,
   "api/src/users/user-export-value.ts": 34,
-  "api/src/users/user-export.registry.ts": 286,
+  "api/src/users/user-export.registry.ts": 287,
   "api/src/users/user-export.service.ts": 126,
   "api/src/users/user-model.module.ts": 16,
   "api/src/users/user-names.service.ts": 31,

@@ -51,7 +51,9 @@ export class AnswerVideoPartService {
     if (!doc || doc.userId.toString() !== userId) {
       throw new NotFoundError(ANSWER_VIDEO_NOT_FOUND_MESSAGE);
     }
-    if (doc.status !== 'uploading') {
+    // r2CompletedAt: файл в R2 уже собран (ADR-0165) — часть 1 открыла бы
+    // вторую загрузку на тот же ключ, и она осталась бы брошенной.
+    if (doc.status !== 'uploading' || doc.r2CompletedAt) {
       throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
     }
     const partCount = partCountFor(doc.sizeBytes);

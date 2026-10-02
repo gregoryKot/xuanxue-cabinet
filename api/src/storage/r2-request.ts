@@ -10,7 +10,13 @@ import type { ConfigService } from '@nestjs/config';
 import { FILE_STORAGE_FAILED_MESSAGE, FILE_STORAGE_OFF_MESSAGE } from '@xuanxue/shared';
 import { errorMessage } from '../common/error-info';
 import { NotAvailableError } from '../common/errors';
+import { MultipartUploadGoneError } from './r2-errors';
 import { readR2Config, type R2Config } from './r2.config';
+
+const HTTP_NOT_FOUND = 404;
+// Код ошибки S3 лежит в теле ответа: у 404 их несколько (NoSuchKey,
+// NoSuchBucket, NoSuchUpload), по статусу не различить.
+const NO_SUCH_UPLOAD_RE = /<Code>NoSuchUpload<\/Code>/;
 
 export function requireR2Config(config: ConfigService): R2Config {
   const found = readR2Config(config);
@@ -40,8 +46,11 @@ export async function fetchR2(
     throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
   }
   if (!res.ok) {
-    await res.text().catch(() => '');
+    const body = await res.text().catch(() => '');
     logger.error(`R2 ответил ${res.status} на ${method}`);
+    if (res.status === HTTP_NOT_FOUND && NO_SUCH_UPLOAD_RE.test(body)) {
+      throw new MultipartUploadGoneError(FILE_STORAGE_FAILED_MESSAGE);
+    }
     throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
   }
   return res;

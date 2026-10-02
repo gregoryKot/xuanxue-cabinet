@@ -2,11 +2,11 @@
 // в R2 и превратить видео-ответ в `media_assets` (`kind: 'file'`). Вынесено
 // из AnswerVideosService (файл-лимит CLAUDE.md «Храповики»).
 //
-// Новый файл к тому же вопросу заменяет прежний файл, пока работу не
-// проверили (ADR-0086, тот же приём, что upsertLinkMediaAsset у ссылки) —
-// здесь явным поиском и удалением, не upsert по индексу: у `kind: 'file'`
-// своего уникального индекса на (attemptId, itemId) нет, запись создаёт этот
-// же вызов, а не гонка параллельных upsert.
+// Повтор доводит загрузку до конца (ADR-0165, F47 аудита 2026-10-01): сборка в
+// R2 — answer-video-assemble.ts, запись и замена файла — answer-video-attach.ts,
+// переход в `ready` условный, поэтому уведомление уходит один раз. Готовое
+// видео на повторе отдаёт ту же запись: ответ на первый вызов мог потеряться
+// по дороге, и 409 на уже сохранённом файле выглядел бы для ученика сбоем.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
@@ -22,13 +22,13 @@ import {
 import { assertObjectId } from '../common/object-id';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
-import { insertMediaAsset } from '../media/media-asset-insert';
 import { MediaAssetRecord } from '../media/media-asset.schema';
 import { loadAttemptOwnerInfo } from '../media/media-attempt-owner';
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import { notifyVideoAdded } from '../media/notify-video-link-added';
-import { MultipartStoreService } from '../storage/multipart-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { AnswerVideoAssembleService } from './answer-video-assemble';
+import { attachFileMedia, findFileMedia } from './answer-video-attach';
 import { partCountFor, type RawLeanAnswerVideo } from './answer-video.mapper';
 import { AnswerVideoRecord } from './answer-video.schema';
 
@@ -40,7 +40,7 @@ export class AnswerVideoCompleteService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(MediaAssetRecord.name)
     private readonly mediaModel: Model<MediaAssetRecord>,
-    private readonly multipart: MultipartStoreService,
+    private readonly assembler: AnswerVideoAssembleService,
     private readonly orphans: StorageOrphansService,
     private readonly notifiers: ExamMediaNotifierRegistry,
   ) {}
@@ -51,9 +51,8 @@ export class AnswerVideoCompleteService {
     if (!doc || doc.userId.toString() !== userId) {
       throw new NotFoundError(ANSWER_VIDEO_NOT_FOUND_MESSAGE);
     }
-    if (doc.status !== 'uploading' || !doc.uploadId) {
-      throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
-    }
+    if (doc.status === 'ready') return this.completedEarlier(doc);
+    if (!doc.uploadId) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
     const partCount = partCountFor(doc.sizeBytes);
     const received = new Set(doc.parts.map((part) => part.n));
     for (let n = 1; n <= partCount; n += 1) {
@@ -70,62 +69,33 @@ export class AnswerVideoCompleteService {
       throw new ConflictError(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE);
     }
 
-    // ADR-0079: журнал раньше завершения — ключ уже создан на старте, но
-    // отметить его снова (upsert) перед решающим шагом безопаснее, чем
-    // положиться на запись недельной давности.
-    await this.orphans.track(doc.key);
-    await this.multipart.completeMultipartUpload({
-      key: doc.key,
-      uploadId: doc.uploadId,
-      parts: [...doc.parts]
-        .sort((a, b) => a.n - b.n)
-        .map((part) => ({ partNumber: part.n, etag: part.etag })),
+    await this.assembler.assemble(doc, doc.uploadId, now);
+    const media = await attachFileMedia(
+      { model: this.model, mediaModel: this.mediaModel, orphans: this.orphans },
+      doc,
       now,
-    });
+    );
 
-    await this.replacePreviousFile(attemptId, itemId, now);
-    const media = await insertMediaAsset(this.mediaModel, {
-      attemptId,
-      userId,
-      itemId,
-      kind: 'file',
-      sizeBytes: doc.sizeBytes,
-      answerVideoId: doc._id.toString(),
-      receivedAt: now,
-    });
-
-    await this.model.updateOne(
-      { _id: doc._id },
+    // Условный переход: из двух параллельных `complete` его делает один, он
+    // же и уведомляет — уведомление не должно уйти дважды.
+    const moved = await this.model.updateOne(
+      { _id: doc._id, status: 'uploading' },
       {
         $set: { status: 'ready', completedAt: now.toJSDate(), parts: [] },
-        $unset: { uploadId: 1 },
+        $unset: { uploadId: 1, r2CompletedAt: 1 },
       },
     );
-    await this.orphans.forget(doc.key);
-    notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
+    if (moved.modifiedCount > 0) {
+      notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
+    }
     return media;
   }
 
-  /** Заменяет предыдущий файл к тому же вопросу (ADR-0086/ADR-0137, см.
-   * шапку файла) — байты старого убираются журналом сирот, документы обоих
-   * коллекций удаляются. */
-  private async replacePreviousFile(
-    attemptId: string,
-    itemId: string,
-    now: DateTime,
-  ): Promise<void> {
-    const previous = await this.mediaModel
-      .find({ attemptId, itemId, kind: 'file' })
-      .lean<{ answerVideoId?: { toString(): string } }[]>();
-    for (const prev of previous) {
-      if (!prev.answerVideoId) continue;
-      const prevVideo = await this.model
-        .findById(prev.answerVideoId.toString())
-        .lean<RawLeanAnswerVideo | null>();
-      if (!prevVideo) continue;
-      await this.orphans.removeNow(prevVideo.key, now);
-      await this.model.deleteOne({ _id: prevVideo._id });
-    }
-    await this.mediaModel.deleteMany({ attemptId, itemId, kind: 'file' });
+  /** Видео уже `ready` — отдаём его запись. Записи нет (убрана уборщиком между
+   * вызовами) — то же 409, что и раньше: отдавать нечего. */
+  private async completedEarlier(doc: RawLeanAnswerVideo): Promise<ExamMediaDto> {
+    const media = await findFileMedia(this.mediaModel, doc._id);
+    if (!media) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
+    return media;
   }
 }

@@ -20,11 +20,13 @@ import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema'
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import type { FileStoreService } from '../storage/file-store.service';
 import type { MultipartStoreService } from '../storage/multipart-store.service';
+import type { ObjectHeadService } from '../storage/object-head.service';
 import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { AnswerVideoAssembleService } from './answer-video-assemble';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
 import { AnswerVideoStartService } from './answer-video-start';
@@ -145,7 +147,12 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       videoModel,
       attemptModel,
       mediaModel,
-      multipart as unknown as MultipartStoreService,
+      new AnswerVideoAssembleService(
+        videoModel,
+        multipart as unknown as MultipartStoreService,
+        {} as ObjectHeadService,
+        orphans,
+      ),
       orphans,
       new ExamMediaNotifierRegistry(),
     );
@@ -567,15 +574,6 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       await expect(completeService.complete(id, USER_A, NOW)).resolves.toMatchObject({
         kind: 'file',
       });
-    });
-
-    it('уже завершено (status: ready) — повторный complete ConflictError', async () => {
-      const { id } = await readyForComplete();
-      await completeService.complete(id, USER_A, NOW);
-
-      await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
-        ConflictError,
-      );
     });
 
     it('попытка исчезла между загрузкой и complete — NotFoundError', async () => {

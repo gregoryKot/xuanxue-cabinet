@@ -28,6 +28,10 @@ import {
 } from './media-asset.schema';
 
 export interface MediaAssetInsert {
+  /** Свой `_id` вместо случайного — для `kind: 'file'` это id видео-ответа
+   * (answer-videos/answer-video-attach.ts): уникальность `_id` не даёт
+   * записать запись о файле дважды при повторе или гонке `complete`. */
+  id?: string;
   attemptId: string;
   userId: string;
   itemId?: string;
@@ -66,6 +70,7 @@ export async function insertMediaAsset(
 ): Promise<ExamMediaDto> {
   const payload = encryptRecord(
     {
+      ...(data.id ? { _id: new Types.ObjectId(data.id) } : {}),
       attemptId: new Types.ObjectId(data.attemptId),
       userId: new Types.ObjectId(data.userId),
       itemId: data.itemId ? new Types.ObjectId(data.itemId) : undefined,
