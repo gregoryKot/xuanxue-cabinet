@@ -2,16 +2,18 @@
 // уникальный индекс tokenHash и TTL-индекс expiresAt должны действительно
 // существовать и работать, не только «сервис их не нарушает»). Время —
 // фиксированные DateTime, не DateTime.utc() (CLAUDE.md «Детерминизм»).
-import { EMAIL_LOGIN_CODE_RE } from '@xuanxue/shared';
+import {
+  EMAIL_LOGIN_CODE_RE,
+  EMAIL_LOGIN_RESEND_COOLDOWN_MIN,
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
+} from '@xuanxue/shared';
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { hashSecret } from './email-login-code';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import {
   EMAIL_LOGIN_CODE_MAX_ATTEMPTS,
-  EMAIL_LOGIN_RESEND_COOLDOWN_MIN,
   EMAIL_LOGIN_TOKEN_RE,
-  EMAIL_LOGIN_TOKEN_TTL_MIN,
   type IssuedEmailLogin,
   EmailLoginTokenService,
 } from './email-login-token.service';
