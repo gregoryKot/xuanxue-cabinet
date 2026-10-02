@@ -8,9 +8,8 @@
 // `blocks` — снимок формы на момент старта: `correct` варианта и критерии
 // проверки лежат здесь для будущей проверки, но за пределы документа не
 // выходят — маппер в ExamAttemptDto их не копирует (обязательный e2e-тест).
-// `answers` — свободный текст ответа. Оба — целиком строкой (`encJson`), тем
-// же приёмом, что `options`/`history` в exam-item.schema.ts: encryptRecord
-// шифрует только поля верхнего уровня документа.
+// `answers` — свободный текст ответа. Оба — целиком строкой (`encJson`), как
+// `options`/`history` в exam-item.schema.ts: encryptRecord шифрует лишь верхний уровень.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { EXAM_ATTEMPT_STATUSES } from '@xuanxue/shared';
@@ -136,16 +135,17 @@ export class ExamAttemptRecord {
 }
 
 export const ExamAttemptSchema = SchemaFactory.createForClass(ExamAttemptRecord);
-// Идемпотентность старта и лимит попыток (ТЗ 4.4, п.2–3): второй insert с
-// той же тройкой — гонка двух кликов или двух тиков, не вторая попытка.
+// Идемпотентность старта и лимит попыток (ТЗ 4.4, п.2–3): повтор тройки — гонка
+// двух кликов или двух тиков, не вторая попытка.
 ExamAttemptSchema.index({ examId: 1, userId: 1, attemptNo: 1 }, { unique: true });
 // Список ученика («Экзамены», кабинет — следующий слой) и его же фильтр по статусу.
 ExamAttemptSchema.index({ userId: 1, status: 1 });
 // Очередь проверки учителя (слой 4.6): что сдано и когда, недавнее сверху.
 ExamAttemptSchema.index({ status: 1, submittedAt: -1 });
-// Доступ ученика к картинке варианта — по снимку его попытки (ADR-0035).
+// Тик closeExpiredAttempts без скана in_progress (F58, scheduler-query-indexes.spec).
+ExamAttemptSchema.index({ status: 1, deadlineAt: 1 });
+// Доступ ученика к картинке/видео варианта — по снимку попытки (ADR-0035, ADR-0133).
 ExamAttemptSchema.index({ userId: 1, imageIds: 1 });
-// Доступ ученика к видео вопроса/варианта — тем же приёмом (ADR-0133).
 ExamAttemptSchema.index({ userId: 1, videoIds: 1 });
 
 export const EXAM_ATTEMPT_FIELD_POLICY: FieldPolicy = {

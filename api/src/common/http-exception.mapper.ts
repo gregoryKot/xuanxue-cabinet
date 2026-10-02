@@ -43,12 +43,17 @@ export function fromHttpException(
       requestId,
     };
   }
-  return {
-    statusCode: status,
-    code: codeForStatus(status),
-    message: typeof rawMessage === 'string' ? rawMessage : exception.message,
-    requestId,
-  };
+  // 400 со строкой — встроенные пайпы Nest (ParseIntPipe и т. п.) с английским
+  // текстом: свои BadRequestException в проекте идут только массивом
+  // (ветка выше), поэтому строка здесь — всегда чужой текст (аудит
+  // 2026-10-01, F46), наружу уходит общий.
+  const message =
+    status === 400
+      ? VALIDATION_MESSAGE
+      : typeof rawMessage === 'string'
+        ? rawMessage
+        : exception.message;
+  return { statusCode: status, code: codeForStatus(status), message, requestId };
 }
 
 // Числовые литералы вместо HttpStatus: `status` из exception.getStatus() —

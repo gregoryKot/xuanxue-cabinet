@@ -52,15 +52,27 @@ async function buildController(
 }
 
 describe('AnswerVideosController', () => {
-  it('uploadPart() передаёт id пользователя, номер части и req.body в сервис', async () => {
+  // Номер части приходит строкой из пути и приводится здесь, не ParseIntPipe:
+  // его английский текст уходил ученику (аудит 2026-10-01, F46); «abc» → NaN,
+  // и сервис отвечает своим текстом по VOICE.
+  it('uploadPart() передаёт id пользователя, номер части числом и req.body в сервис', async () => {
     const uploadPart = jest.fn().mockResolvedValue(UPLOAD_DTO);
     const controller = await buildController({ partService: { uploadPart } });
     const bytes = Buffer.from([1, 2, 3]);
 
-    await expect(controller.uploadPart('v1', 1, { body: bytes }, USER)).resolves.toEqual(
-      UPLOAD_DTO,
-    );
+    await expect(
+      controller.uploadPart('v1', '1', { body: bytes }, USER),
+    ).resolves.toEqual(UPLOAD_DTO);
     expect(uploadPart).toHaveBeenCalledWith('v1', 'u1', 1, bytes, expect.any(DateTime));
+
+    await controller.uploadPart('v1', 'abc', { body: bytes }, USER);
+    expect(uploadPart).toHaveBeenLastCalledWith(
+      'v1',
+      'u1',
+      NaN,
+      bytes,
+      expect.any(DateTime),
+    );
   });
 
   it('complete() передаёт id пользователя из сессии в сервис', async () => {

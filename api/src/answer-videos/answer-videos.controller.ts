@@ -10,7 +10,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Put,
   Req,
@@ -53,11 +52,14 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   @ApiRoute('PUT /answer-videos/:id/parts/:n')
   uploadPart(
     @Param('id') id: string,
-    @Param('n', ParseIntPipe) n: number,
+    // Не ParseIntPipe: его английский «Validation failed (numeric string is
+    // expected)» уходил ученику как есть (аудит 2026-10-01, F46). Сервис сам
+    // проверяет целое в диапазоне и отвечает текстом по VOICE.
+    @Param('n') n: string,
     @Req() req: RawBodyRequest,
     @CurrentUser() user: UserLean,
   ): Promise<AnswerVideoUploadDto> {
-    return this.partService.uploadPart(id, user.id, n, req.body, DateTime.utc());
+    return this.partService.uploadPart(id, user.id, Number(n), req.body, DateTime.utc());
   }
 
   @Post(':id/complete')

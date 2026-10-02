@@ -1,82 +1,17 @@
 // Юнит без Mongo (CLAUDE.md «Тесты»): обе зависимости — PersonalChats и
-// TelegramBotService — фейки, сервис сам ничего не читает из базы. Текст
-// сообщения — app-error-alert-message.spec.ts, здесь только дедуп, потолок
-// и адресация.
+// TelegramBotService — фейки (test-support/app-error-alerts-fakes.ts), сервис
+// сам ничего не читает из базы. Текст сообщения — app-error-alert-message.spec.ts,
+// здесь только дедуп, потолок и адресация; сигнатура без идентификаторов и
+// недоставка — telegram-app-error-alerts.delivery.spec.ts.
 import { Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
-import { DateTime } from 'luxon';
-import type { NotificationKind } from '@xuanxue/shared';
-import type {
-  AppErrorAlertContext,
-  ClientErrorAlertContext,
-} from '../common/app-error-alerts';
-import type { PersonalChat } from './personal-chats';
-import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
-import type { TelegramBotService } from './telegram-bot.service';
-
-const NOW = DateTime.fromISO('2026-09-18T10:00:00Z', { zone: 'utc' });
-const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Дима' };
-
-function fakePersonalChats(chats: PersonalChat[] = [CHAT]): {
-  listFor: jest.Mock<Promise<PersonalChat[]>, [NotificationKind, DateTime]>;
-} {
-  return {
-    listFor: jest
-      .fn<Promise<PersonalChat[]>, [NotificationKind, DateTime]>()
-      .mockResolvedValue(chats),
-  };
-}
-
-function fakeBot(): {
-  sendMessage: jest.Mock<Promise<boolean>, [string, string, unknown[][]?]>;
-} {
-  return {
-    sendMessage: jest
-      .fn<Promise<boolean>, [string, string, unknown[][]?]>()
-      .mockResolvedValue(true),
-  };
-}
-
-// PUBLIC_URL не задан по умолчанию — тексты сообщений тестируются отдельно
-// (app-error-alert-message.spec.ts); здесь важны только дедуп, потолок и
-// адресация.
-function fakeConfig(publicUrl?: string): ConfigService {
-  return { get: () => publicUrl } as unknown as ConfigService;
-}
-
-function buildAlerts(
-  personalChats = fakePersonalChats(),
-  bot = fakeBot(),
-): {
-  alerts: TelegramAppErrorAlerts;
-  personalChats: ReturnType<typeof fakePersonalChats>;
-  bot: ReturnType<typeof fakeBot>;
-} {
-  const alerts = new TelegramAppErrorAlerts(
-    personalChats as never,
-    bot as unknown as TelegramBotService,
-    fakeConfig(),
-  );
-  return { alerts, personalChats, bot };
-}
-
-function fakeContext(
-  overrides: Partial<AppErrorAlertContext> = {},
-): AppErrorAlertContext {
-  return {
-    requestId: 'req-1',
-    method: 'POST',
-    path: '/api/lessons',
-    message: 'x',
-    ...overrides,
-  };
-}
-
-function fakeClientContext(
-  overrides: Partial<ClientErrorAlertContext> = {},
-): ClientErrorAlertContext {
-  return { requestId: 'req-2', kind: 'render', path: '/exams', ...overrides };
-}
+import {
+  ALERTS_CHAT as CHAT,
+  ALERTS_NOW as NOW,
+  buildAlerts,
+  fakeClientContext,
+  fakeContext,
+  fakePersonalChats,
+} from './test-support/app-error-alerts-fakes';
 
 describe('TelegramAppErrorAlerts.notifyServerError', () => {
   it("шлёт всем из listFor('app_error')", async () => {
@@ -133,17 +68,19 @@ describe('TelegramAppErrorAlerts.notifyServerError', () => {
     expect(bot.sendMessage).toHaveBeenCalledTimes(2);
   });
 
+  // Пути вида `/api/route-N`, не `/api/N`: числовой сегмент — идентификатор,
+  // и сигнатура его схлопывает в `:id` (alertSignaturePath, F65).
   it('потолок 6 сообщений в час — седьмая разная сигнатура в тот же час не уходит', async () => {
     const { alerts, bot } = buildAlerts();
 
     for (let i = 0; i < 6; i += 1) {
       await alerts.notifyServerError(
-        fakeContext({ path: `/api/${i}` }),
+        fakeContext({ path: `/api/route-${i}` }),
         NOW.plus({ minutes: i }),
       );
     }
     await alerts.notifyServerError(
-      fakeContext({ path: '/api/7' }),
+      fakeContext({ path: '/api/route-7' }),
       NOW.plus({ minutes: 6 }),
     );
 
@@ -158,16 +95,16 @@ describe('TelegramAppErrorAlerts.notifyServerError', () => {
 
     for (let i = 0; i < 6; i += 1) {
       await alerts.notifyServerError(
-        fakeContext({ path: `/api/${i}` }),
+        fakeContext({ path: `/api/route-${i}` }),
         NOW.plus({ minutes: i }),
       );
     }
     await alerts.notifyServerError(
-      fakeContext({ path: '/api/7' }),
+      fakeContext({ path: '/api/route-7' }),
       NOW.plus({ minutes: 6 }),
     );
     await alerts.notifyServerError(
-      fakeContext({ path: '/api/8' }),
+      fakeContext({ path: '/api/route-8' }),
       NOW.plus({ minutes: 7 }),
     );
 
@@ -183,12 +120,12 @@ describe('TelegramAppErrorAlerts.notifyServerError', () => {
 
     for (let i = 0; i < 6; i += 1) {
       await alerts.notifyServerError(
-        fakeContext({ path: `/api/${i}` }),
+        fakeContext({ path: `/api/route-${i}` }),
         NOW.plus({ minutes: i }),
       );
     }
     await alerts.notifyServerError(
-      fakeContext({ path: '/api/7' }),
+      fakeContext({ path: '/api/route-7' }),
       NOW.plus({ minutes: 61 }),
     );
 
@@ -248,7 +185,7 @@ describe('TelegramAppErrorAlerts.notifyClientError', () => {
 
     for (let i = 0; i < 6; i += 1) {
       await alerts.notifyServerError(
-        fakeContext({ path: `/api/${i}` }),
+        fakeContext({ path: `/api/route-${i}` }),
         NOW.plus({ minutes: i }),
       );
     }

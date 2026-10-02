@@ -8,7 +8,7 @@ import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import type { ExamVideoTelegramType } from '../media/media-asset.schema';
 import { errorMessage, errorStack } from '../common/error-info';
 import { BotIdentityService } from './bot-identity.service';
-import { ensureBotInfo, registerWebhook } from './bot-startup';
+import { ensureBotInfo, registerWebhook, updateErrorLogLine } from './bot-startup';
 import { sendBotActionSafely } from './bot-send-safely';
 import { sendBotMessage } from './bot-send';
 import { sendBotExamVideo } from './bot-send-video';
@@ -64,9 +64,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     const bot = this.telegrafFactory(token);
     // Не встроенный обработчик telegraf: он пишет апдейт целиком в console.error
     // (PII мимо редакции pino) и ставит process.exitCode = 1.
-    bot.catch((err) => {
-      this.logger.error(`telegram.update: ${errorMessage(err)}`, errorStack(err));
-    });
+    bot.catch((err) => this.logger.error(updateErrorLogLine(err), errorStack(err)));
     registerHandlers(bot, {
       chatMemberHandler: this.chatMemberHandler,
       startHandler: this.startHandler,
