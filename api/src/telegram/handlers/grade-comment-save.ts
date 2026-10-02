@@ -18,8 +18,15 @@ import { examUserFacingError } from './exam-attempt-error';
 import { GRADE_ATTEMPT_NOT_FOUND_MESSAGE } from './grade-messages';
 import { GRADE_OUTCOME_LABELS } from './grade-outcome-buttons';
 
+// Не обещаем «получил» (аудит 2026-10-01, F57): уведомление в Telegram —
+// fire-and-forget (notifyExamGraded без await), у ученика может не быть чата
+// с ботом. Называем место, где итог виден всегда, — та же формулировка, что
+// IN_APP_ONLY_HINT в кабинете (web/src/grading/gradingDeliveryHint.ts).
 function confirmText(outcome: GradingOutcome): string {
-  return `«${GRADE_OUTCOME_LABELS[outcome]}» поставлено, ученик получил уведомление.`;
+  return (
+    `«${GRADE_OUTCOME_LABELS[outcome]}» поставлено. Ученик увидит итог в кабинете, ` +
+    'на «Заданиях»; в Telegram — если у него есть чат с ботом.'
+  );
 }
 
 export async function saveGradingAndReply(

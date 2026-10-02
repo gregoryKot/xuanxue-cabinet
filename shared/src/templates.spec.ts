@@ -188,21 +188,21 @@ describe('напоминание об оплате — свой allow-list (ADR-
           месяц: 'октябрь',
           сумма: '4 000 ₽',
           ссылка: 'https://t.me/xuanxue_bot',
-          контакт: 'Маше @marievyazova',
+          контакт: 'Маше Вязовой — например, в Telegram @marievyazova',
         },
         PAYMENT_REMINDER_PLACEHOLDERS,
       ),
     ).toBe(
-      'Анна, напоминаем об оплате за октябрь.\nСкриншот перевода пришлите Маше @marievyazova в Telegram.',
+      'Анна, напоминаем об оплате за октябрь.\nСкриншот об оплате отправьте Маше Вязовой — например, в Telegram @marievyazova.',
     );
   });
 
   it('своя подстановка {ссылка} остаётся доступной, пустая — без висячего пробела', () => {
     const template = 'Скриншот — {контакт}.[ Или боту: {ссылка}]';
-    const values = { контакт: 'Маше @marievyazova' };
+    const values = { контакт: 'Маше Вязовой — например, в Telegram @marievyazova' };
 
     expect(renderTemplate(template, values, PAYMENT_REMINDER_PLACEHOLDERS)).toBe(
-      'Скриншот — Маше @marievyazova.',
+      'Скриншот — Маше Вязовой — например, в Telegram @marievyazova.',
     );
     expect(
       renderTemplate(
@@ -210,7 +210,9 @@ describe('напоминание об оплате — свой allow-list (ADR-
         { ...values, ссылка: 'https://t.me/xuanxue_bot' },
         PAYMENT_REMINDER_PLACEHOLDERS,
       ),
-    ).toBe('Скриншот — Маше @marievyazova. Или боту: https://t.me/xuanxue_bot');
+    ).toBe(
+      'Скриншот — Маше Вязовой — например, в Telegram @marievyazova. Или боту: https://t.me/xuanxue_bot',
+    );
   });
 
   it('шаблон по умолчанию не содержит неизвестных подстановок', () => {

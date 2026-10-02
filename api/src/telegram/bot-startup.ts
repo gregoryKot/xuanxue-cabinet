@@ -1,6 +1,7 @@
-// Прогрев botInfo и регистрация вебхука при старте — вынесено из
-// telegram-bot.service.ts (файл-лимит 150 строк, CLAUDE.md «Храповики»):
-// самостоятельный кусок старта бота, не про маршрутизацию апдейтов.
+// Прогрев botInfo, регистрация вебхука и строка лога для `bot.catch` при
+// старте — вынесено из telegram-bot.service.ts (файл-лимит 150 строк,
+// CLAUDE.md «Храповики»): самостоятельный кусок старта бота, не про
+// маршрутизацию апдейтов.
 import type { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Telegraf } from 'telegraf';
@@ -8,6 +9,23 @@ import {
   TELEGRAM_CALL_TIMEOUT_MS,
   withTelegramSignal,
 } from '../channels/telegram-client';
+import { errorMessage } from '../common/error-info';
+
+// p-timeout внутри Telegraf.handleUpdate бросает ошибку с именем `TimeoutError`
+// по истечении handlerTimeout (TELEGRAF_HANDLER_TIMEOUT_MS, F52).
+const HANDLER_TIMEOUT_ERROR_NAME = 'TimeoutError';
+
+/** Строка error-лога для `bot.catch`: истёкший handlerTimeout помечается
+ * отдельно (`telegram.update.timeout`), чтобы в логах Railway отличать
+ * «Telegram молчит» от падения самого хендлера (RUNBOOK §8.2, аудит
+ * 2026-10-01, F52). */
+export function updateErrorLogLine(err: unknown): string {
+  const label =
+    err instanceof Error && err.name === HANDLER_TIMEOUT_ERROR_NAME
+      ? 'telegram.update.timeout'
+      : 'telegram.update';
+  return `${label}: ${errorMessage(err)}`;
+}
 
 // Литерал, не константа из app.setup.ts: там `app.setGlobalPrefix('api')` не
 // экспортирует префикс наружу — заводить экспорт ради одного потребителя

@@ -18,6 +18,22 @@ export function isTelegramApiError(err: unknown): err is TelegramApiErrorLike {
   );
 }
 
+// Отказ самого идентификатора файла: «wrong file identifier», «wrong remote
+// file identifier», «wrong file_id», FILE_REFERENCE_EXPIRED. «file is too big»
+// сюда не попадает — байты тот же лимит не обойдут (аудит 2026-10-01, F02).
+const REJECTED_FILE_ID_PATTERN = /file[_ ]id|file identifier|file[_ ]reference/i;
+
+/** Telegram не принял сам file_id (сменили бота, файл пропал у Telegram) —
+ * только тогда имеет смысл слать заново байтами. 429, 5xx, сеть и таймаут
+ * — нет: повтор с чтением объекта из R2 получит тот же отказ (F02). */
+export function isRejectedFileIdError(err: unknown): boolean {
+  return (
+    isTelegramApiError(err) &&
+    err.code === 400 &&
+    REJECTED_FILE_ID_PATTERN.test(err.description ?? '')
+  );
+}
+
 export const NOT_ADMIN_MESSAGE =
   'Бот не админ канала. Добавьте бота администратором и повторите тест.';
 export const CHAT_NOT_FOUND_MESSAGE = 'Чат не найден. Проверьте адрес канала.';

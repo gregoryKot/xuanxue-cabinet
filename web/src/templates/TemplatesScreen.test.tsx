@@ -641,7 +641,7 @@ describe('TemplatesScreen — контакт для новичков', () => {
   });
 });
 
-// Поле «Кому присылать скриншот перевода» (ADR-0159) — сам компонент и его
+// Поле «Кому и куда присылать скриншот об оплате» (ADR-0159) — сам компонент и его
 // сохранение проверены в PaymentContactField.test.tsx; здесь только то, что
 // экран «Шаблоны» его рисует и кладёт в него контакт из /settings.
 describe('TemplatesScreen — контакт для оплаты', () => {
@@ -655,7 +655,7 @@ describe('TemplatesScreen — контакт для оплаты', () => {
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
     expect(await screen.findByDisplayValue('Кате @katya_books')).toHaveAccessibleName(
-      'Кому присылать скриншот перевода',
+      'Кому и куда присылать скриншот об оплате',
     );
   });
 });

@@ -58,6 +58,41 @@ describe('saveGradingAndReply', () => {
     expect(reply).toHaveBeenCalledWith(expect.stringContaining('Зачёт'));
   });
 
+  // Аудит 2026-10-01 (F57): уведомление ученику — fire-and-forget, у него может
+  // не быть чата с ботом; текст не обещает «получил», называет кабинет.
+  it('итог не обещает доставку в Telegram — называет кабинет, где итог виден всегда', async () => {
+    const examBot = fakeExamBotPort({
+      gradeAttempt: jest.fn().mockResolvedValue({
+        id: 'grading1',
+        attemptId: ATTEMPT_ID,
+        examId: 'e1',
+        userId: 'u1',
+        graderId: GRADER.id,
+        outcome: 'failed',
+        gradedAt: NOW.toISO(),
+      }),
+    });
+    const reply = jest.fn<Promise<unknown>, [string]>().mockResolvedValue(undefined);
+
+    await saveGradingAndReply(
+      examBot,
+      fakeBotSessions() as unknown as BotSessionService,
+      111,
+      ATTEMPT_ID,
+      'failed',
+      undefined,
+      GRADER,
+      NOW,
+      reply,
+    );
+
+    const text = reply.mock.calls[0]?.[0] ?? '';
+    expect(text).toContain('поставлено');
+    expect(text).toContain('в кабинете');
+    expect(text).toContain('если у него есть чат с ботом');
+    expect(text).not.toContain('получил');
+  });
+
   it('попытка исчезла (null) — закрывает ожидание, честный текст', async () => {
     const examBot = fakeExamBotPort({ gradeAttempt: jest.fn().mockResolvedValue(null) });
     const botSessions = fakeBotSessions();

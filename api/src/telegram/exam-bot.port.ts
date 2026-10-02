@@ -22,6 +22,7 @@ import type {
   MyExamDto,
   PutGradingInput,
 } from '@xuanxue/shared';
+import type { ToggleOptionInput } from '../exams/exam-attempt-toggle-option';
 import type { UserLean } from '../users/users.service';
 
 /** Картинка варианта для показа в боте (слой 4б.2, ADR-0035) —
@@ -35,9 +36,11 @@ export interface BotOptionImage {
 
 /** Видео вопроса/варианта для отправки в бот (2026-09-27, «Уточнено»
  * ADR-0133) — тот же смысл, что BotOptionImage, `telegramFileId` кэширует
- * повторную отправку. */
+ * повторную отправку. Байты — лениво (аудит 2026-10-01, F02): отправитель
+ * зовёт `loadBytes()` только когда file_id нет или Telegram его отверг,
+ * иначе объект R2 до 50 МБ ложился в память при каждом показе вопроса. */
 export interface BotOptionVideo {
-  bytes: Buffer;
+  loadBytes: () => Promise<Buffer>;
   contentType: ExamVideoContentType;
   telegramFileId?: string;
 }
@@ -56,6 +59,15 @@ export interface ExamBotPort {
     attemptId: string,
     user: UserLean,
     answer: AttemptAnswerDto,
+    now: DateTime,
+  ): Promise<ExamAttemptDto>;
+  /** Кнопка-переключатель у `multiple` (аудит 2026-10-01, F27): «отмечен/снят»
+   * считает сервер внутри CAS-цикла по перечитанным ответам, не бот по снимку
+   * экрана — два быстрых нажатия А и Б дают [А, Б], а не [Б]. */
+  toggleOption(
+    attemptId: string,
+    user: UserLean,
+    input: ToggleOptionInput,
     now: DateTime,
   ): Promise<ExamAttemptDto>;
   submitAttempt(
