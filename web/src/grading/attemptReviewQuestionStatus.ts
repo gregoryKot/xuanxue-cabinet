@@ -2,10 +2,11 @@
 // направление «тихо и благородно») — рядом с формулировкой, как статус формы
 // на строке списка (exams/ExamCard.tsx, .xuanxue-status-label). Текст машина
 // не проверяет — «Смотрите вы». Видео-вопрос теперь отвечает на свой itemId
-// (ADR-0037), поэтому у него отдельная пара меток: медиа этого вопроса нет —
-// «Ответа нет» (учитель ждёт, ничего проверять пока не может), пришло —
-// «Есть ответ» (не «Верно»: видео ещё не проверено, jade — только для
-// автопроверенного полного совпадения вариантов, см. ниже). Вопрос без
+// (ADR-0037), поэтому у него отдельная тройка меток: медиа этого вопроса нет —
+// «Ответа нет» (учитель ждёт, ничего проверять пока не может), загрузка ещё
+// идёт (`pendingVideoItemIds` карточки, аудит 2026-10-01 F34) — «Видео
+// загружается», пришло — «Есть ответ» (не «Верно»: видео ещё не проверено,
+// jade — только для автопроверенного совпадения вариантов). Вопрос без
 // ответа (вариант или текст) — «Не отвечено» раньше любой другой ветки:
 // «не отвечено» и «отвечено неверно» — разные вещи для проверяющего (отзыв
 // владельца 2026-09-21, «0 из 3» стояло и там, и там). С вариантами и
@@ -29,6 +30,7 @@ export interface AttemptReviewQuestionStatus {
 const MANUAL_REVIEW_LABEL = 'Смотрите вы';
 const FULLY_CORRECT_LABEL = 'Верно';
 const VIDEO_NO_ANSWER_LABEL = 'Ответа нет';
+const VIDEO_UPLOADING_LABEL = 'Видео загружается';
 const VIDEO_HAS_ANSWER_LABEL = 'Есть ответ';
 const NOT_ANSWERED_LABEL = 'Не отвечено';
 
@@ -37,18 +39,22 @@ const NOT_ANSWERED_LABEL = 'Не отвечено';
  * когда есть и варианты, и ответ — exam-attempt-review.ts). Рисовать нечего,
  * ничего не выдумываем. `hasMedia` —
  * пришло ли видео этого вопроса (AttemptReviewQuestion сам фильтрует
- * `ExamMediaDto[]` попытки по `itemId`, ADR-0037); у вопросов без видео
- * значения не имеет. */
+ * `ExamMediaDto[]` попытки по `itemId`, ADR-0037); `isUploading` — видео
+ * этого вопроса ещё грузится (F34). Пришедшее видео сильнее загрузки: вторая
+ * запись к тому же вопросу не прячет первую. У вопросов без видео оба
+ * значения не имеют. */
 export function attemptReviewQuestionStatus(
   question: Pick<
     AttemptReviewQuestionDto,
     'kind' | 'options' | 'optionsCheck' | 'answered'
   >,
   hasMedia = false,
+  isUploading = false,
 ): AttemptReviewQuestionStatus | null {
   if (question.kind === 'video') {
-    return hasMedia
-      ? { label: VIDEO_HAS_ANSWER_LABEL, tone: 'neutral' }
+    if (hasMedia) return { label: VIDEO_HAS_ANSWER_LABEL, tone: 'neutral' };
+    return isUploading
+      ? { label: VIDEO_UPLOADING_LABEL, tone: 'neutral' }
       : { label: VIDEO_NO_ANSWER_LABEL, tone: 'neutral' };
   }
   if (!question.answered) return { label: NOT_ANSWERED_LABEL, tone: 'neutral' };

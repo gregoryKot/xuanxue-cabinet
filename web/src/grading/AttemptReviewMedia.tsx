@@ -23,6 +23,8 @@ import { AttemptReviewMediaItem } from './AttemptReviewMediaItem';
 import type { SendMediaState } from './useAttemptReviewMedia';
 
 const NO_MEDIA_TEXT = 'Видео пока не получено.';
+// F34 (аудит 2026-10-01): загрузка частями ещё идёт — это не «не прислал».
+const UPLOADING_TEXT = 'Видео загружается — подождите.';
 const titleStyle: CSSProperties = {
   margin: '0 0 8px',
   fontFamily: 'var(--font-display)',
@@ -53,6 +55,9 @@ interface AttemptReviewMediaProps {
    * (блок «без вопроса», AttemptReviewAnswers.tsx). У видео-вопроса не задан
    * по той же причине, что и heading. */
   description?: string;
+  /** Видео этого вопроса ещё грузится (`pendingVideoItemIds`, F34) —
+   * вместо «не получено» честное «загружается». */
+  uploading?: boolean;
   /** Только там, где у видео есть свой вопрос: без него нечего отмечать. */
   onMarkManual?: () => Promise<boolean>;
   marking?: boolean;
@@ -70,6 +75,7 @@ export function AttemptReviewMedia({
   media,
   heading,
   description,
+  uploading = false,
   onMarkManual,
   marking = false,
   markError = null,
@@ -89,7 +95,9 @@ export function AttemptReviewMedia({
 
       {media.length === 0 ? (
         <>
-          <p style={{ margin: '0 0 8px' }}>{NO_MEDIA_TEXT}</p>
+          <p style={{ margin: '0 0 8px' }}>
+            {uploading ? UPLOADING_TEXT : NO_MEDIA_TEXT}
+          </p>
           {onMarkManual && (
             <Button
               variant="secondary"

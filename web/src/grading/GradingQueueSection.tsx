@@ -5,7 +5,7 @@
 // повтор» через общий ListScreenBody, различаются только заголовком,
 // данными и пустым сообщением. Вынесено отдельным файлом, чтобы сам экран
 // оставался под лимитом CLAUDE.md «Храповики» (150 строк).
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import type { ExamAttemptQueueItemDto } from '@xuanxue/shared';
 import type { CSSProperties } from 'react';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { oneCardListStyle } from '../components/listCardStyles';
@@ -16,7 +16,7 @@ const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', 
 
 interface GradingQueueSectionProps {
   title: string;
-  attempts: ExamAttemptDto[] | null;
+  attempts: ExamAttemptQueueItemDto[] | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;

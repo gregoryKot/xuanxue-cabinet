@@ -39,6 +39,37 @@ describe('attemptReviewQuestionStatus — видео (ADR-0037, свой itemId)
       tone: 'neutral',
     });
   });
+
+  // Аудит 2026-10-01 F34: загрузка частями ещё идёт — это не «не прислал».
+  it('видео ещё грузится — «Видео загружается», не «Ответа нет»', () => {
+    expect(
+      attemptReviewQuestionStatus(
+        { kind: 'video', options: [], answered: false },
+        false,
+        true,
+      ),
+    ).toEqual({ label: 'Видео загружается', tone: 'neutral' });
+  });
+
+  it('видео уже пришло, а вторая запись грузится — «Есть ответ» сильнее загрузки', () => {
+    expect(
+      attemptReviewQuestionStatus(
+        { kind: 'video', options: [], answered: false },
+        true,
+        true,
+      ),
+    ).toEqual({ label: 'Есть ответ', tone: 'neutral' });
+  });
+
+  it('загрузка у не-видео вопроса значения не имеет', () => {
+    expect(
+      attemptReviewQuestionStatus(
+        { kind: 'text', options: [], answered: false },
+        false,
+        true,
+      ),
+    ).toEqual({ label: 'Не отвечено', tone: 'neutral' });
+  });
 });
 
 describe('attemptReviewQuestionStatus — вопрос без ответа (отзыв владельца 2026-09-21)', () => {

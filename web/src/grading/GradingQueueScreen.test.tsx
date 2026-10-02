@@ -75,8 +75,8 @@ function renderScreen(queue: unknown, graded: unknown = [], me: MeDto = TEACHER)
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': {},
-    '/attempts?status=submitted': queue,
-    '/attempts?status=graded': graded,
+    '/attempts/queue?status=submitted': queue,
+    '/attempts/queue?status=graded': graded,
   });
 
   return render(
@@ -109,7 +109,7 @@ describe('GradingQueueScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
     const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
 
-    mockApiByPath({ '/attempts?status=submitted': [makeAttempt()] });
+    mockApiByPath({ '/attempts/queue?status=submitted': [makeAttempt()] });
     await user.click(retry);
 
     expect(await screen.findByText('Иван Иванов')).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('GradingQueueScreen — сбой загрузки', () => {
     const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
 
     mockApiByPath({
-      '/attempts?status=graded': [
+      '/attempts/queue?status=graded': [
         makeAttempt({ id: 'g1', status: 'graded', outcome: 'passed', userName: 'Пётр' }),
       ],
     });

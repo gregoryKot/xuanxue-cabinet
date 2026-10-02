@@ -27,6 +27,7 @@ function makeVideo(
 ): AttemptReviewVideoControls {
   return {
     media: [],
+    pendingItemIds: [],
     markMediaManual: () => Promise.resolve(true),
     markMediaStateFor: () => ({ pending: false, error: null }),
     sendMediaToMe: () => Promise.resolve(true),
@@ -354,6 +355,33 @@ describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой 
     await user.click(screen.getByRole('button', { name: 'Отметить, что видео принято' }));
 
     expect(markMediaManual).toHaveBeenCalledWith('q1');
+  });
+
+  // Аудит 2026-10-01 F34: учитель ставил «доработать», пока видео ещё шло.
+  it('видео этого вопроса ещё грузится — метка и текст «загружается», не «ответа нет»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({ pendingItemIds: ['q1'] })}
+      />,
+    );
+
+    expect(screen.getByText('Видео загружается')).toBeInTheDocument();
+    expect(screen.getByText('Видео загружается — подождите.')).toBeInTheDocument();
+    expect(screen.queryByText('Ответа нет')).not.toBeInTheDocument();
+  });
+
+  it('грузится видео другого вопроса — у этого по-прежнему «Ответа нет»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({ pendingItemIds: ['q2'] })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
   });
 
   it('видео этого вопроса пришло — метка «Есть ответ», строка получения видна', () => {

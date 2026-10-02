@@ -8,7 +8,9 @@ import { apiRoutePath } from './apiRoute';
 
 /** Query очередей «Проверки работ» (docs/PLAN.md §4.6): хук зовёт `apiRoute`
  * с ним, строка пути ниже — для таблицы предзагрузки, ключ кэша
- * prefetchCache.ts у них общий (PLAN §17.1). Порядок полей — часть строки. */
+ * prefetchCache.ts у них общий (PLAN §17.1). Порядок полей — часть строки.
+ * Маршрут — `GET /attempts/queue`, строки без снимка формы (аудит 2026-10-01
+ * F33, ADR-0126 «Последствия»): карточке списка снимок не нужен. */
 export const GRADING_QUEUE_QUERY: ListAttemptsQuery = {
   status: 'submitted',
   limit: LIST_LIMIT_MAX,
@@ -18,10 +20,10 @@ export const GRADED_ATTEMPTS_QUERY: ListAttemptsQuery = {
   status: 'graded',
   limit: LIST_LIMIT_MAX,
 };
-export const GRADING_QUEUE_PATH = apiRoutePath('GET /attempts', {
+export const GRADING_QUEUE_PATH = apiRoutePath('GET /attempts/queue', {
   query: GRADING_QUEUE_QUERY,
 });
-export const GRADED_ATTEMPTS_PATH = apiRoutePath('GET /attempts', {
+export const GRADED_ATTEMPTS_PATH = apiRoutePath('GET /attempts/queue', {
   query: GRADED_ATTEMPTS_QUERY,
 });
 

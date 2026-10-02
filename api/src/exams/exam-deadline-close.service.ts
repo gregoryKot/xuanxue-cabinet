@@ -9,7 +9,8 @@
 // тихий отказ (CLAUDE.md «Логи»). Этот шаг проверяет дедлайны сам, раз в
 // минуту, независимо от того, зашёл ли кто-то в кабинет: закрывает попытку и
 // шлёт учителю то же уведомление, что и обычная сдача
-// (attemptSubmittedCallback/notifyAttemptSubmitted, слой 4.7).
+// (attemptSubmittedAwaitedCallback/notifyAttemptSubmittedAndWait, слой 4.7),
+// по одной попытке за раз, не веером (F11).
 //
 // Провайдер — в SchedulerModule, не в ExamsModule (тот же приём, что у
 // RecordingPromptService/ManualPromptService — их провайдер тоже в
@@ -28,11 +29,16 @@ import type { Model } from 'mongoose';
 import { closeExpiredAttempts } from './exam-attempt-lifecycle';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
-import { attemptSubmittedCallback } from './notify-attempt-submitted';
+import { attemptSubmittedAwaitedCallback } from './notify-attempt-submitted';
 
-// Кандидатов на тик — не «дай всё» (CLAUDE.md «API»): следующий тик (раз в
-// минуту) доберёт остаток, тот же порядок, что у соседних шагов планировщика.
-const DEADLINE_BATCH_LIMIT = 50;
+/** Кандидатов на тик — не «дай всё» (CLAUDE.md «API»): следующий тик (раз в
+ * минуту) доберёт остаток. Десять, а не пятьдесят (аудит 2026-10-01 F11,
+ * ADR-0167): уведомления идут по одному с ожиданием (closeExpiredAttempts),
+ * худший тик ≈ 10 × (закрытие + ~1 с на уведомление) укладывается в минуту,
+ * а в чат учителя уходит ≤10 сообщений в минуту — ниже порога 429 Telegram
+ * на чат. Ученик, который сам тронул попытку, закрывается лениво сразу
+ * (closeIfExpiredAttempt в start/list/loadOwn) — для него ничего не меняется. */
+export const DEADLINE_BATCH_LIMIT = 10;
 
 export interface ExamDeadlineCloseResult {
   closed: number;
@@ -50,7 +56,7 @@ export class ExamDeadlineCloseService {
       this.model,
       now,
       DEADLINE_BATCH_LIMIT,
-      attemptSubmittedCallback(this.examNotifier, now),
+      attemptSubmittedAwaitedCallback(this.examNotifier, now),
     );
     return { closed };
   }

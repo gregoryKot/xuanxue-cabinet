@@ -1,9 +1,7 @@
 // Видео карточки проверки (ADR-0023, ADR-0037) — вынесено из
-// useAttemptReview.ts, который перевалил за 150 строк с четвёртым способом
-// увидеть видео («Прислать мне в Telegram», CLAUDE.md «Храповики» — выносить
-// хук, не двигать бейслайн). Тот же приём, что useAttempt.ts/useAttemptMedia.ts
-// на экране сдачи: useAttemptReview.ts зовёт этот хук и отдаёт наружу тот же
-// состав полей, что раньше, — AttemptReviewScreen.tsx не меняется.
+// useAttemptReview.ts (CLAUDE.md «Храповики» — выносить хук, не двигать
+// бейслайн), тот же приём, что useAttempt.ts/useAttemptMedia.ts на экране
+// сдачи: useAttemptReview.ts зовёт этот хук и отдаёт наружу те же поля.
 import { useCallback, useState } from 'react';
 import type { ExamMediaDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
@@ -43,6 +41,8 @@ export interface AttemptReviewVideoControls {
   /** Всё видео попытки — вопрос сам выбирает своё по `itemId`, «без
    * вопроса» — записи без него (AttemptReviewAnswers.tsx). */
   media: ExamMediaDto[];
+  /** Вопросы, чьё видео ещё грузится (`pendingVideoItemIds`, F34). */
+  pendingItemIds: readonly string[];
   markMediaManual: (itemId: string) => Promise<boolean>;
   markMediaStateFor: (itemId: string) => MarkMediaState;
   /** Переслать запись из Telegram себе ещё раз (POST .../media/:mediaId/send-to-me) —

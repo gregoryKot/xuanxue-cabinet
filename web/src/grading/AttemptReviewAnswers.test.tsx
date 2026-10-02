@@ -25,6 +25,7 @@ function makeVideo(
 ): AttemptReviewVideoControls {
   return {
     media: [],
+    pendingItemIds: [],
     markMediaManual: () => Promise.resolve(true),
     markMediaStateFor: () => ({ pending: false, error: null }),
     sendMediaToMe: () => Promise.resolve(true),

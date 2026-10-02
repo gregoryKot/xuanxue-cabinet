@@ -4,6 +4,10 @@
 // CLAUDE.md «Файлы»/«Храповики», jscpd). Сборка сервисов поверх моделей —
 // exam-attempts-services.test-support.ts (тот же файл-лимит).
 import type { Connection, Model } from 'mongoose';
+import {
+  AnswerVideoRecord,
+  AnswerVideoSchema,
+} from '../answer-videos/answer-video.schema';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import {
   NotificationPrefsRecord,
@@ -75,6 +79,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamSeenMarkRecord.name,
     ExamSeenMarkSchema,
   );
+  const answerVideoModel = connection.model<AnswerVideoRecord>(
+    AnswerVideoRecord.name,
+    AnswerVideoSchema,
+  );
   const services = buildAttemptsServices({
     attemptModel,
     examModel,
@@ -86,6 +94,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     channelModel,
     notificationPrefsModel,
     notificationModel,
+    answerVideoModel,
   });
   return {
     memory,
@@ -100,6 +109,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     notificationPrefsModel,
     notificationModel,
     seenMarkModel,
+    answerVideoModel,
     ...services,
   };
 }
@@ -116,6 +126,7 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.notificationPrefsModel.deleteMany({});
   await ctx.notificationModel.deleteMany({});
   await ctx.seenMarkModel.deleteMany({});
+  await ctx.answerVideoModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.
   ctx.examNotifier.notifyAttemptSubmitted.mockClear();
