@@ -464,3 +464,74 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     await waitFor(() => expect(transport.start).toHaveBeenCalled());
   });
 });
+
+// Закрытие вкладки посреди загрузки браузер переспрашивает — у всех видов
+// видео одинаково, потому что включает его общий хук (ADR-0165).
+describe('useVideoUpload — предупреждение при закрытии вкладки', () => {
+  function closeTab(): Event {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event;
+  }
+
+  it('пока загрузка идёт — закрытие вкладки переспрашивается, после отмены — нет', () => {
+    const transport = makeFakeTransport({ start: () => new Promise(() => {}) });
+    const { result } = renderUpload(transport);
+
+    expect(closeTab().defaultPrevented).toBe(false);
+    act(() => result.current.selectFile(makeFile()));
+    expect(closeTab().defaultPrevented).toBe(true);
+
+    act(() => result.current.cancel());
+    expect(closeTab().defaultPrevented).toBe(false);
+  });
+
+  it('после успешной загрузки предупреждение снято', async () => {
+    const { result } = renderUpload();
+
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(result.current.state.phase).toBe('done'));
+
+    expect(closeTab().defaultPrevented).toBe(false);
+  });
+});
+
+describe('useVideoUpload — reset', () => {
+  it('забывает ошибку отказа: «Убрать видео» не оставляет старый текст', async () => {
+    const transport = makeFakeTransport({
+      uploadPart: () =>
+        Promise.reject(
+          new ApiError(ANSWER_VIDEO_PART_INVALID_MESSAGE, 400, 'invalid_input'),
+        ),
+    });
+    const { result } = renderUpload(transport);
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(result.current.state.phase).toBe('failed'));
+
+    act(() => result.current.reset());
+
+    expect(result.current.state).toMatchObject({ phase: 'idle', error: null });
+  });
+
+  it('обрывает идущую загрузку, и поздний ответ её не воскрешает', async () => {
+    let resolveStart!: (session: VideoUploadSession) => void;
+    const transport = makeFakeTransport({
+      start: () =>
+        new Promise((resolve) => {
+          resolveStart = resolve;
+        }),
+    });
+    const { result } = renderUpload(transport);
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(transport.start).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.reset());
+    await act(async () => {
+      resolveStart(fakeSession());
+      await Promise.resolve();
+    });
+
+    expect(result.current.state.phase).toBe('idle');
+    expect(transport.uploadPart).not.toHaveBeenCalled();
+  });
+});

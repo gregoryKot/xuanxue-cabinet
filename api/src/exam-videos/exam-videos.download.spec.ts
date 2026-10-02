@@ -11,7 +11,6 @@ import { NotFoundError } from '../common/errors';
 import { VIEW_VIDEO } from '../common/video-link';
 import { ExamAttemptRecord, ExamAttemptSchema } from '../exams/exam-attempt.schema';
 import type { FileStoreService, SignedDownload } from '../storage/file-store.service';
-import type { StorageOrphansService } from '../storage/storage-orphans.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
 import { ExamVideosService } from './exam-videos.service';
 
@@ -51,12 +50,7 @@ describe('ExamVideosService.signedUrl — скачивание', () => {
         return `https://fake-r2.example/${key}`;
       },
     } as unknown as FileStoreService;
-    service = new ExamVideosService(
-      videoModel,
-      attemptModel,
-      fileStore,
-      {} as StorageOrphansService,
-    );
+    service = new ExamVideosService(videoModel, attemptModel, fileStore);
   }, 60_000);
 
   afterAll(async () => {

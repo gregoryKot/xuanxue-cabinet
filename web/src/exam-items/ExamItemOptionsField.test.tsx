@@ -6,6 +6,7 @@ import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 import { useExamImageUpload } from './useExamImageUpload';
+import { IDLE_VIDEO_UPLOAD_STATE } from '../video-upload/videoUploadState';
 import { useExamVideoField } from './useExamVideoField';
 
 // Загрузка картинки — своя логика с полным покрытием в
@@ -24,12 +25,13 @@ mockedUseUpload.mockReturnValue({ upload: vi.fn(), pending: false, error: null }
 vi.mock('./useExamVideoField');
 const mockedUseVideoField = vi.mocked(useExamVideoField);
 mockedUseVideoField.mockImplementation(() => ({
-  uploadPending: false,
-  uploadProgress: null,
+  upload: IDLE_VIDEO_UPLOAD_STATE,
   error: null,
   urlDraft: '',
   setUrlDraft: vi.fn(),
   uploadFile: vi.fn(),
+  cancelUpload: vi.fn(),
+  resumeUpload: vi.fn(),
   commitUrl: vi.fn(),
   clear: vi.fn(),
 }));

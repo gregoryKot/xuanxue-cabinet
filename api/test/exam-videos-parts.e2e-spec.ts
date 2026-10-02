@@ -3,7 +3,10 @@
 // продолжать загрузку может тот, кто её начал (`createdBy`), чужому — 404,
 // как несуществующей (SECURITY §3). R2 не поднимаем — FakeFileStore и
 // FakeMultipartStore с Map вместо сети (тот же приём, что answer-videos.e2e-spec.ts).
-// Прежняя сырая загрузка и роли на ней — exam-videos.e2e-spec.ts.
+// Раздача, снимок попытки и число для раздела — exam-videos.e2e-spec.ts; тело
+// части (чужой тип, потолок парсера) — exam-videos-part-body.e2e-spec.ts. Сырой
+// загрузки одним телом больше нет: что она проверяла (роли, 503 без R2,
+// сигнатура, лишний тип, потолок тела), проверено на частях.
 import request from 'supertest';
 import type {
   ApiErrorBody,
@@ -105,7 +108,9 @@ describe('Видео вопроса частями (e2e, ADR-0165)', () => {
       sizeBytes: TWO_PART_SIZE,
     });
     expect(video.createdAt).toMatch(/Z$/);
-    expect(done.body as Record<string, unknown>).not.toHaveProperty('key');
+    for (const hidden of ['key', '_id', '__v', 'uploadId', 'fingerprint']) {
+      expect(done.body as Record<string, unknown>).not.toHaveProperty(hidden);
+    }
     expect(multipart.objects.size).toBe(1);
 
     const item = await createItem(teacher, upload.id);

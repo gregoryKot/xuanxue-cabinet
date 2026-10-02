@@ -81,6 +81,24 @@ describe('VideoUploadProgress — compressing', () => {
   });
 });
 
+describe('VideoUploadProgress — просьба не закрывать страницу', () => {
+  it.each(['compressing', 'uploading', 'waiting'] as const)(
+    'в фазе %s строка есть, у всех видов видео одна',
+    (phase) => {
+      renderProgress(stateIn(phase));
+
+      expect(screen.getByText(/Не закрывайте страницу/)).toBeInTheDocument();
+      expect(screen.getByText('грузится').tagName).toBe('STRONG');
+    },
+  );
+
+  it.each(['cancelled', 'failed'] as const)('в фазе %s строки уже нет', (phase) => {
+    renderProgress(stateIn(phase));
+
+    expect(screen.queryByText(/Не закрывайте страницу/)).not.toBeInTheDocument();
+  });
+});
+
 describe('VideoUploadProgress — waiting', () => {
   it('тихая строка про пропавшую связь и «Продолжить сейчас»', async () => {
     const { onResume } = renderProgress(stateIn('waiting', 2));

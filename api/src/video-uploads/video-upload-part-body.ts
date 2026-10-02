@@ -1,7 +1,7 @@
 // Предикат для сырого парсера тела (app.setup.ts) — маршруты частей видео,
-// четвёртый вид сырого тела (SECURITY §4, ADR-0137), тем же приёмом, что
-// exam-video-body.ts: метод, путь, заявленный тип, подписанная сессия
-// последней. Заявленному типу не верим (SECURITY §4) — формат части решает
+// последний вид сырого тела (SECURITY §4, ADR-0137), тем же приёмом, что
+// exam-image-body.ts и material-file-body.ts: метод, путь, заявленный тип,
+// подписанная сессия последней. Заявленному типу не верим (SECURITY §4) — формат части решает
 // сигнатура первого байта (video-upload-part.ts, `sniffVideoSignature`),
 // здесь только включение парсера.
 //
@@ -21,7 +21,7 @@ export const VIDEO_PART_PATH_PATTERNS: readonly RegExp[] = [
 ];
 
 /** Фабрика — секрет сессии из DI замыкается один раз в app.setup.ts, тем же
- * приёмом, что makeIsExamVideoUpload. */
+ * приёмом, что makeIsMaterialFileUpload. */
 export function makeIsVideoPart(
   secret: string,
   pathPatterns: readonly RegExp[],

@@ -1,6 +1,7 @@
 // Что человек видит, пока видео сжимается, грузится и после (ADR-0137,
 // ADR-0165): полоса прогресса (при сжатии — «Сжимаем видео — 40%», при загрузке
-// по частям — «N из M»), «Отменить», на паузе — «Продолжить сейчас»;
+// по частям — «N из M»), просьба не закрывать страницу, «Отменить», на паузе —
+// «Продолжить сейчас»;
 // после «Отменить» — подсказка выбрать тот же файл; после отказа — текст
 // сервера. Выбор файла и объяснение «откуда это и зачем» остаются за экраном
 // вида видео: они у каждого свои. Только вёрстка по состоянию хука
@@ -15,6 +16,11 @@ import { videoUploadProgress } from './videoUploadParts';
 
 const UPLOAD_BAR_LABEL = 'Загрузка видео';
 const COMPRESS_BAR_LABEL = 'Сжатие видео';
+// Отзыв владельца с телефона 2026-09-27: «нужно ли оставаться на странице?».
+// Одна строка для всех видов видео; браузер тем же переспросит при закрытии
+// вкладки (useWarnBeforeUnload в useVideoUpload.ts).
+const STAY_ON_PAGE_HINT =
+  'Не закрывайте страницу, пока видео **грузится**: загрузка остановится.';
 const CANCEL_LABEL = 'Отменить';
 const RESUME_LABEL = 'Продолжить сейчас';
 const WAITING_TEXT = 'Связь пропала — продолжим сами, как только она вернётся.';
@@ -96,6 +102,9 @@ export function VideoUploadProgress({
               <TextLinkButton onClick={onResume}>{RESUME_LABEL}</TextLinkButton>
             </div>
           )}
+          <p style={progressTextStyle}>
+            <RichText text={STAY_ON_PAGE_HINT} />
+          </p>
           <TextLinkButton onClick={onCancel} danger>
             {CANCEL_LABEL}
           </TextLinkButton>

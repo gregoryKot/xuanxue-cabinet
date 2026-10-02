@@ -1,99 +1,138 @@
+// Файл грузит общий загрузчик (video-upload/useVideoUpload.ts); здесь —
+// подключение к нему поля видео вопроса: что уходит в форму по готовности,
+// потолок 50 МБ, отмена, ссылка без R2. Сеть — фейковый транспорт, подставленный
+// вместо examVideoTransport (маршруты — examVideoTransport.test.ts), так что
+// ни сети, ни `mockResolvedValueOnce` (check-once-mock-ratchet.mjs).
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { EXAM_VIDEO_LIMITS, EXAM_VIDEO_TOO_LARGE_MESSAGE } from '@xuanxue/shared';
 import { ApiError } from '../api/apiError';
-import { uploadWithProgress } from '../api/uploadWithProgress';
+import { makeFakeTransport } from '../test-support/fakeVideoTransport';
 import { useExamVideoField } from './useExamVideoField';
 
-// Мок отдельного модуля, не apiFetch: mockApiByPath (test-support) заточен
-// под сеть apiFetch, а видео грузится через отдельную функцию с прогрессом.
-vi.mock('../api/uploadWithProgress', () => ({ uploadWithProgress: vi.fn() }));
-const mockedUploadWithProgress = vi.mocked(uploadWithProgress);
+// vi.mock поднимается выше импортов, поэтому транспорт передаётся через
+// vi.hoisted: тест кладёт его перед каждым прогоном.
+const holder = vi.hoisted((): { transport: unknown } => ({ transport: undefined }));
+vi.mock('./examVideoTransport', () => ({ examVideoTransport: () => holder.transport }));
 
-const FILE = new File([new Uint8Array(4)], 'clip.mp4', { type: 'video/mp4' });
+const FILE = new File([new Uint8Array(20)], 'clip.mp4', { type: 'video/mp4' });
+
+function useFakeTransport(overrides: Parameters<typeof makeFakeTransport>[0] = {}) {
+  const transport = makeFakeTransport(overrides);
+  holder.transport = transport;
+  return transport;
+}
 
 describe('useExamVideoField — загрузка файла', () => {
-  it('успех — POST на /exam-videos, onChange получает videoId', async () => {
-    mockedUploadWithProgress.mockResolvedValue({
-      id: 'vid1',
-      contentType: 'video/mp4',
-      sizeBytes: 4,
-      createdAt: '2026-09-27T10:00:00.000Z',
-    });
+  it('успех — onChange получает videoId готового видео, поле в покое', async () => {
+    const transport = useFakeTransport();
     const onChange = vi.fn();
     const { result } = renderHook(() => useExamVideoField(onChange));
 
-    await act(async () => {
-      await result.current.uploadFile(FILE);
-    });
+    act(() => result.current.uploadFile(FILE));
 
-    expect(mockedUploadWithProgress).toHaveBeenCalledWith(
-      '/exam-videos',
-      expect.objectContaining({ method: 'POST', body: FILE }),
-    );
-    expect(onChange).toHaveBeenCalledWith({ videoId: 'vid1' });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith({ videoId: 'm1' }));
+    expect(transport.start).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
-    expect(result.current.uploadPending).toBe(false);
+    expect(result.current.upload.phase).toBe('done');
   });
 
-  it('pending — true во время запроса, false после; прогресс доходит в uploadProgress', async () => {
-    let onProgress: ((fraction: number) => void) | undefined;
-    let resolveUpload: (value: unknown) => void = () => undefined;
-    mockedUploadWithProgress.mockImplementation((_path, init) => {
-      onProgress = init.onProgress;
-      return new Promise((resolve) => (resolveUpload = resolve));
-    });
-    const { result } = renderHook(() => useExamVideoField(vi.fn()));
-
-    let uploadPromise!: Promise<void>;
-    act(() => {
-      uploadPromise = result.current.uploadFile(FILE);
-    });
-    await waitFor(() => expect(result.current.uploadPending).toBe(true));
-    expect(result.current.uploadProgress).toBeNull();
-
-    act(() => onProgress?.(0.42));
-    expect(result.current.uploadProgress).toBe(0.42);
-
-    await act(async () => {
-      resolveUpload({
-        id: 'vid1',
-        contentType: 'video/mp4',
-        sizeBytes: 4,
-        createdAt: '2026-09-27T10:00:00.000Z',
-      });
-      await uploadPromise;
-    });
-
-    expect(result.current.uploadPending).toBe(false);
-    // Сброшен после завершения — следующая загрузка не наследует чужой процент.
-    expect(result.current.uploadProgress).toBeNull();
-  });
-
-  it('503 — R2 не подключён, текст сервера в error, onChange не зовётся', async () => {
-    mockedUploadWithProgress.mockRejectedValue(
-      new ApiError('Загрузка файлов не подключена.', 503, 'unknown'),
-    );
+  it('пока файл грузится — фаза uploading, onChange ещё не зовётся', () => {
+    useFakeTransport({ start: () => new Promise(() => {}) });
     const onChange = vi.fn();
     const { result } = renderHook(() => useExamVideoField(onChange));
 
-    await act(async () => {
-      await result.current.uploadFile(FILE);
-    });
+    act(() => result.current.uploadFile(FILE));
 
+    expect(result.current.upload.phase).toBe('uploading');
     expect(onChange).not.toHaveBeenCalled();
-    expect(result.current.error).toBe('Загрузка файлов не подключена.');
   });
 
-  it('брошено не-Error значение — запасной текст, не «undefined»', async () => {
-    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- нарочно не-Error: тест бьёт по ветке `err instanceof Error === false`.
-    mockedUploadWithProgress.mockImplementation(() => Promise.reject('не Error'));
-    const { result } = renderHook(() => useExamVideoField(vi.fn()));
+  it('файл больше 50 МБ — сразу отказ прежним текстом, в сеть не ходит', () => {
+    const transport = useFakeTransport();
+    const big = new File([new Uint8Array(1)], 'big.mp4', { type: 'video/mp4' });
+    Object.defineProperty(big, 'size', { value: EXAM_VIDEO_LIMITS.maxBytes + 1 });
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useExamVideoField(onChange));
 
-    await act(async () => {
-      await result.current.uploadFile(FILE);
+    act(() => result.current.uploadFile(big));
+
+    expect(result.current.upload).toMatchObject({
+      phase: 'failed',
+      error: { message: EXAM_VIDEO_TOO_LARGE_MESSAGE },
     });
+    expect(transport.start).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 
-    expect(result.current.error).toBe('Не удалось загрузить видео. Попробуйте ещё раз.');
+  it('отказ сервера (4xx) — его текст в upload.error, onChange не зовётся', async () => {
+    useFakeTransport({
+      start: () =>
+        Promise.reject(
+          new ApiError(
+            'Такой формат не подходит. Загрузите видео в MP4, MOV или WebM.',
+            400,
+            'invalid_input',
+          ),
+        ),
+    });
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useExamVideoField(onChange));
+
+    act(() => result.current.uploadFile(FILE));
+
+    await waitFor(() => expect(result.current.upload.phase).toBe('failed'));
+    expect(result.current.upload.error?.message).toMatch(/Такой формат не подходит/);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('«Отменить» — загрузка прерывается, видео в форму не попадает', async () => {
+    const transport = useFakeTransport({ start: () => new Promise(() => {}) });
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useExamVideoField(onChange));
+    act(() => result.current.uploadFile(FILE));
+    await waitFor(() => expect(transport.start).toHaveBeenCalled());
+
+    act(() => result.current.cancelUpload());
+
+    expect(result.current.upload.phase).toBe('cancelled');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('связь пропала — пауза, «Продолжить сейчас» доводит загрузку до конца', async () => {
+    let part1Attempts = 0;
+    useFakeTransport({
+      uploadPart: (_uploadId, partNumber) => {
+        if (partNumber === 1 && (part1Attempts += 1) === 1) {
+          return Promise.reject(new ApiError('Нет связи с сервером.', 0, 'network'));
+        }
+        return Promise.resolve({
+          id: 'u1',
+          partBytes: 8,
+          partCount: 3,
+          receivedParts: Array.from({ length: partNumber }, (_, index) => index + 1),
+        });
+      },
+    });
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useExamVideoField(onChange));
+    act(() => result.current.uploadFile(FILE));
+    await waitFor(() => expect(result.current.upload.phase).toBe('waiting'));
+
+    act(() => result.current.resumeUpload());
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith({ videoId: 'm1' }));
+  });
+
+  it('пока файл грузится, закрытие вкладки переспрашивается (как у видео-ответа)', () => {
+    useFakeTransport({ start: () => new Promise(() => {}) });
+    const { result } = renderHook(() => useExamVideoField(vi.fn()));
+    act(() => result.current.uploadFile(FILE));
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });
 
@@ -137,5 +176,18 @@ describe('useExamVideoField — clear', () => {
     expect(onChange).toHaveBeenCalledWith({});
     expect(result.current.error).toBeNull();
     expect(result.current.urlDraft).toBe('');
+  });
+
+  it('забывает и прошлый отказ загрузки: «Убрать видео» не оставляет старую ошибку', () => {
+    useFakeTransport();
+    const big = new File([new Uint8Array(1)], 'big.mp4');
+    Object.defineProperty(big, 'size', { value: EXAM_VIDEO_LIMITS.maxBytes + 1 });
+    const { result } = renderHook(() => useExamVideoField(vi.fn()));
+    act(() => result.current.uploadFile(big));
+    expect(result.current.upload.phase).toBe('failed');
+
+    act(() => result.current.clear());
+
+    expect(result.current.upload).toMatchObject({ phase: 'idle', error: null });
   });
 });

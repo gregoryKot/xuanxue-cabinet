@@ -1,76 +1,55 @@
-// Оркестрация одного поля видео (ExamVideoField.tsx, ADR-0133) — загрузка
+// Оркестрация одного поля видео (useVideoAttach.tsx, ADR-0133) — загрузка
 // файла в R2 или ссылка, состояние и ошибки формы, без React в самой логике
-// проверки ссылки (examVideoFormInput.ts, CLAUDE.md «Тесты»). Один хук на обе
-// механики (не два), потому что видно разом только одна из них —
-// `fileStorageEnabled` решает, что показывать (ADR-0133): второй хук держал
-// бы состояние, которое экран никогда не покажет вместе с первым.
+// проверки ссылки (examVideoFormInput.ts, CLAUDE.md «Тесты»). Файл грузит
+// общий загрузчик (video-upload/useVideoUpload.ts, ADR-0165) — тот же, что у
+// видео-ответа ученика: сжатие в браузере, части с продолжением после обрыва,
+// «Отменить», экран не гаснет. Один хук на обе механики (не два), потому что
+// видно разом только одна из них — `fileStorageEnabled` решает, что показывать
+// (ADR-0133): второй хук держал бы состояние, которое экран никогда не
+// покажет вместе с первым.
 import { useState } from 'react';
-import type { ExamVideoDto } from '@xuanxue/shared';
-import { EXAM_VIDEOS_PATH } from '../api/examVideoPaths';
-import { uploadWithProgress } from '../api/uploadWithProgress';
+import { EXAM_VIDEO_LIMITS, EXAM_VIDEO_TOO_LARGE_MESSAGE } from '@xuanxue/shared';
+import { useVideoUpload } from '../video-upload/useVideoUpload';
+import type { VideoUploadState } from '../video-upload/videoUploadState';
+import { examVideoTransport } from './examVideoTransport';
 import { validateExamVideoUrl, type ExamVideoValue } from './examVideoFormInput';
 
-// И сетевой ApiError (413 «Видео больше 50 МБ», 503 «R2 не подключён» и
-// т.п.), и Error любого другого источника несут готовый текст по VOICE — этот
-// запасной только на непредвиденное исключение, которое ни один не бросает.
-const UPLOAD_ERROR_MESSAGE = 'Не удалось загрузить видео. Попробуйте ещё раз.';
-
 export interface UseExamVideoFieldResult {
-  /** Идёт загрузка файла в R2. */
-  uploadPending: boolean;
-  /** Доля отправленного файла (0..1) — `null`, пока событий прогресса ещё не
-   * было (запрос завязывается) или загрузка не идёт вовсе. */
-  uploadProgress: number | null;
-  /** Ошибка загрузки файла или сохранения ссылки — виден только один способ
-   * разом, поэтому один общий слот, не два. */
+  /** Ход загрузки файла: сжатие, части, пауза, отмена, отказ сервера (его
+   * текст — в `upload.error`, рисует VideoUploadProgress). */
+  upload: VideoUploadState;
+  /** Ошибка сохранения ссылки — файл и ссылка не видны разом, поэтому слот
+   * один. Ошибки загрузки файла сюда не попадают: они в `upload`. */
   error: string | null;
   /** Черновик ссылки, пока она не подтверждена (`commitUrl`) — своя ссылка на
    * YouTube и подобное вводится по буквам, коммитить её на каждый символ
    * означало бы дёргать превью и валидацию посреди набора. */
   urlDraft: string;
   setUrlDraft: (value: string) => void;
-  uploadFile: (file: File) => Promise<void>;
+  uploadFile: (file: File) => void;
+  /** «Отменить» на полосе загрузки. */
+  cancelUpload: () => void;
+  /** «Продолжить сейчас» на паузе перед повтором. */
+  resumeUpload: () => void;
   /** Подтверждает `urlDraft` — валидный `https://` уходит в форму через
    * `onChange`, невалидный останется в поле с текстом ошибки под ним. */
   commitUrl: () => void;
-  /** Снимает видео (и файл, и ссылку) — «Убрать видео» в ExamVideoField. */
+  /** Снимает видео (и файл, и ссылку) — «Убрать видео» в useVideoAttach. */
   clear: () => void;
 }
 
 export function useExamVideoField(
   onChange: (next: ExamVideoValue) => void,
 ): UseExamVideoFieldResult {
-  const [uploadPending, setUploadPending] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [urlDraft, setUrlDraft] = useState('');
-
-  async function uploadFile(file: File): Promise<void> {
-    setUploadPending(true);
-    setUploadProgress(null);
-    setError(null);
-    try {
-      // Файл уходит как есть, без лишнего прохода через canvas (в отличие от
-      // картинки, exam-items/useExamImageUpload.ts) — короткий клип движения
-      // сервер и так примет только до 50 МБ (EXAM_VIDEO_LIMITS.maxBytes),
-      // сжимать видео в браузере — отдельная задача, которую этот PR не
-      // берёт (ADR-0133 не просит переупаковку, только приём байтов).
-      // uploadWithProgress, не apiFetch: только XHR отдаёт прогресс отправки
-      // тела, и таймаут здесь — по бездействию, не общий потолок на весь
-      // запрос (клип на медленном мобильном аплинке грузится минутами).
-      const dto = await uploadWithProgress<ExamVideoDto>(EXAM_VIDEOS_PATH, {
-        method: 'POST',
-        body: file,
-        onProgress: setUploadProgress,
-      });
-      onChange({ videoId: dto.id });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : UPLOAD_ERROR_MESSAGE);
-    } finally {
-      setUploadPending(false);
-      setUploadProgress(null);
-    }
-  }
+  const { state, selectFile, cancel, resumeNow, reset } = useVideoUpload({
+    createTransport: examVideoTransport,
+    // Готовое видео уходит в форму ровно так же, как раньше: только id.
+    onDone: (video) => onChange({ videoId: video.id }),
+    maxBytes: EXAM_VIDEO_LIMITS.maxBytes,
+    tooLargeMessage: EXAM_VIDEO_TOO_LARGE_MESSAGE,
+  });
 
   function commitUrl(): void {
     const trimmed = urlDraft.trim();
@@ -85,18 +64,20 @@ export function useExamVideoField(
   }
 
   function clear(): void {
+    reset();
     setUrlDraft('');
     setError(null);
     onChange({});
   }
 
   return {
-    uploadPending,
-    uploadProgress,
+    upload: state,
     error,
     urlDraft,
     setUrlDraft,
-    uploadFile,
+    uploadFile: selectFile,
+    cancelUpload: cancel,
+    resumeUpload: resumeNow,
     commitUrl,
     clear,
   };

@@ -15,6 +15,7 @@ import {
 } from './videoUploadState';
 import type { VideoUploadTransport } from './videoUploadTypes';
 import { beginVideoUpload } from './beginVideoUpload';
+import { useWarnBeforeUnload } from '../hooks/useWarnBeforeUnload';
 import { canCompressVideo, compressVideo } from './compressVideo';
 import { useScreenWakeLock } from './useScreenWakeLock';
 import { realSleep, useUploadPause } from './useUploadPause';
@@ -45,6 +46,9 @@ export interface UseVideoUploadResult {
   cancel: () => void;
   /** «Продолжить сейчас» — не ждать таймера паузы. */
   resumeNow: () => void;
+  /** Обрывает загрузку и забывает всё, что она оставила на экране — ошибку или
+   * «отменено»: «Убрать видео» не должно оставлять за собой старую ошибку. */
+  reset: () => void;
 }
 
 export function useVideoUpload<TResult extends object>({
@@ -57,8 +61,11 @@ export function useVideoUpload<TResult extends object>({
 }: UseVideoUploadOptions<TResult>): UseVideoUploadResult {
   const [state, setState] = useState<VideoUploadState>(IDLE_VIDEO_UPLOAD_STATE);
   // Пока видео готовится, грузится или ждёт повтора — экран не гаснет (ADR-0165):
-  // iOS усыпляет страницу с погасшим экраном, и загрузка встаёт.
-  useScreenWakeLock(isVideoUploadActive(state));
+  // iOS усыпляет страницу с погасшим экраном, и загрузка встаёт. Закрыть
+  // вкладку в это время браузер тоже переспросит: так у всех видов видео.
+  const isActive = isVideoUploadActive(state);
+  useScreenWakeLock(isActive);
+  useWarnBeforeUnload(isActive);
   const runIdRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
 
@@ -134,5 +141,10 @@ export function useVideoUpload<TResult extends object>({
     [createTransport, onDone, maxBytes, tooLargeMessage, waitForResume, compress],
   );
 
-  return { state, selectFile, cancel, resumeNow: release };
+  const reset = useCallback(() => {
+    cancel();
+    setState(IDLE_VIDEO_UPLOAD_STATE);
+  }, [cancel]);
+
+  return { state, selectFile, cancel, resumeNow: release, reset };
 }
