@@ -63,12 +63,10 @@ describe('classOptionLabel', () => {
 
 describe('classNamesById', () => {
   it('каждому id — название с группой', () => {
-    const names = classNamesById(
-      new Map([
-        ['a', { title: 'Тайцзицюань', groupLabel: 'новички' }],
-        ['b', { title: 'Нейгун', groupLabel: '' }],
-      ]),
-    );
+    const names = classNamesById([
+      { id: 'a', title: 'Тайцзицюань', groupLabel: 'новички' },
+      { id: 'b', title: 'Нейгун', groupLabel: '' },
+    ]);
     expect([...names]).toEqual([
       ['a', 'Тайцзицюань · новички'],
       ['b', 'Нейгун'],

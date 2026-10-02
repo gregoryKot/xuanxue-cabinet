@@ -12,11 +12,13 @@
 // ушла в 06:30» из макета мы не показываем — это придумало бы факт, которого
 // кабинет не знает (см. отчёт PR).
 import type { CSSProperties } from 'react';
-import type { LessonDto } from '@xuanxue/shared';
+import { classDisplayName, type LessonDto } from '@xuanxue/shared';
 import { capitalize, relativeDayLabel } from '../lib/relativeDay';
 import { formatTime } from '../lib/formatDate';
 import { lessonCountdownLabel } from '../lib/lessonCountdown';
+import { ClassPlace } from '../schedule/ClassPlace';
 import { CancelledBroadcastLink, LessonBroadcastBadge } from './LessonBroadcastBadge';
+import type { LessonClass } from './LessonCard';
 
 const cardStyle: CSSProperties = {
   display: 'flex',
@@ -46,7 +48,7 @@ const statusStyle: CSSProperties = { fontSize: 13 };
 
 interface TodayLessonCardProps {
   lesson: LessonDto;
-  className: string;
+  cls: LessonClass | undefined;
   onSelect: () => void;
   /** Пояс и «сейчас» — тестам нужны фиксированные (CI гоняет vitest ещё и под
    * TZ=Australia/Sydney, CLAUDE.md «Время»); карточке на экране подходят
@@ -57,7 +59,7 @@ interface TodayLessonCardProps {
 
 export function TodayLessonCard({
   lesson,
-  className,
+  cls,
   onSelect,
   timeZone,
   nowIso,
@@ -79,7 +81,8 @@ export function TodayLessonCard({
         onClick={onSelect}
       >
         <span className="xuanxue-eyebrow">{eyebrow}</span>
-        <span style={titleStyle}>{className}</span>
+        <span style={titleStyle}>{cls ? classDisplayName(cls) : '—'}</span>
+        {cls && <ClassPlace format={cls.format} location={cls.location} />}
         <span style={descriptionStyle}>
           {lesson.topic || 'Тема не задана'}
           {cancelled && ' · Отменено'}

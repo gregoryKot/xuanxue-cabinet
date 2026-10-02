@@ -30,6 +30,7 @@ import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
 import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
+import { classNamesById } from '../lib/classSlotsLabel';
 
 const TITLE = 'Материалы';
 const EXPLANATION = 'Книги, статьи и видео, которыми вы делитесь с учениками.';
@@ -53,7 +54,7 @@ export default function MaterialsScreen() {
   const isFiltered = kind !== '' || tag !== '';
 
   const classTitleById = useMemo(
-    () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls.title])),
+    () => classNamesById(classesState.classes ?? []),
     [classesState.classes],
   );
 

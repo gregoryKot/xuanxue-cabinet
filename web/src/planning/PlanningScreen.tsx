@@ -19,7 +19,6 @@ import { screenHintStyle, screenSectionStyle } from '../components/screenLayout'
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
-import { classNamesById } from '../lib/classSlotsLabel';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { LessonDayGroup } from './LessonDayGroup';
@@ -72,7 +71,6 @@ export default function PlanningScreen() {
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls])),
     [classesState.classes],
   );
-  const classTitleById = useMemo(() => classNamesById(classesById), [classesById]);
   const groups = useMemo(
     () => upcomingDayGroups(lessonsState.lessons ?? []),
     [lessonsState.lessons],
@@ -121,7 +119,7 @@ export default function PlanningScreen() {
       {!lessonsError && (
         <PlanningToday
           lessons={lessonsState.lessons}
-          classTitleById={classTitleById}
+          classesById={classesById}
           onOpenLesson={openLesson}
         />
       )}

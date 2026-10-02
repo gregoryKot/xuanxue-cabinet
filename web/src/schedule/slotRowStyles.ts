@@ -55,23 +55,6 @@ export const titleStyle: CSSProperties = {
 export const groupStyle: CSSProperties = { fontWeight: 400, color: 'var(--ink-soft)' };
 // Информационный текст — --ink-soft, не --ink-faint (CLAUDE.md
 // «Доступность»: у --ink-faint контраст с бумагой ниже AA).
-export const placeRowStyle: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  columnGap: 10,
-  rowGap: 2,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-  overflowWrap: 'anywhere',
-};
-// Значок по первой строке текста, а не по середине: длинный адрес
-// переносится, и значок по центру висел бы между строк.
-export const placePartStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'flex-start',
-  gap: 5,
-  lineHeight: '18px',
-};
 export const tagsStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',

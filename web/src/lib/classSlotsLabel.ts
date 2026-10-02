@@ -47,10 +47,10 @@ export function classOptionLabel(cls: {
   return slots ? `${classDisplayName(cls)} (${slots})` : classDisplayName(cls);
 }
 
-/** Название с группой по id занятия — для экранов, где строка даты знает только
- * `classId` («Занятия», «Сегодня»). */
+/** Название с группой по id занятия — для экранов, где материал знает только
+ * `classIds` («Материалы», страница тега). */
 export function classNamesById(
-  classes: ReadonlyMap<string, { title: string; groupLabel?: string }>,
+  classes: readonly { id: string; title: string; groupLabel?: string }[],
 ): Map<string, string> {
-  return new Map([...classes].map(([id, cls]) => [id, classDisplayName(cls)]));
+  return new Map(classes.map((cls) => [cls.id, classDisplayName(cls)]));
 }

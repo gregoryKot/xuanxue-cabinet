@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { LessonDto } from '@xuanxue/shared';
 import { LessonCard } from './LessonCard';
 
+const ONLINE_CLASS = { title: 'Тайцзицюань', groupLabel: '', format: 'online' as const };
+
 function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
   return {
     id: 'l1',
@@ -26,7 +28,7 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
 function renderCard(lesson: LessonDto) {
   return render(
     <MemoryRouter>
-      <LessonCard lesson={lesson} className="Тайцзицюань" onSelect={vi.fn()} />
+      <LessonCard lesson={lesson} cls={ONLINE_CLASS} onSelect={vi.fn()} />
     </MemoryRouter>,
   );
 }
@@ -41,7 +43,7 @@ describe('LessonCard', () => {
   it('класс не найден — «—» вместо пустого места', () => {
     render(
       <MemoryRouter>
-        <LessonCard lesson={makeLesson()} className="—" onSelect={vi.fn()} />
+        <LessonCard lesson={makeLesson()} cls={undefined} onSelect={vi.fn()} />
       </MemoryRouter>,
     );
     expect(screen.getByText('—')).toBeInTheDocument();
@@ -107,7 +109,7 @@ describe('LessonCard', () => {
       <MemoryRouter>
         <LessonCard
           lesson={makeLesson({ broadcast: { status: 'cancelled', kind: 'lesson_link' } })}
-          className="Тайцзицюань"
+          cls={ONLINE_CLASS}
           onSelect={onSelect}
         />
       </MemoryRouter>,
@@ -116,5 +118,37 @@ describe('LessonCard', () => {
     const link = screen.getByRole('link', { name: /почему.*Рассылках/ });
     expect(link).toHaveAttribute('href', '/broadcasts');
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  // Просьба владельца 2026-10-02: на «Занятиях» видно, где занятие и какой
+  // группы — семь «Тайцзицюань» подряд без этого неотличимы.
+  it('название с группой и место — парк, или «Онлайн»', () => {
+    render(
+      <ul>
+        <LessonCard
+          lesson={makeLesson()}
+          cls={{
+            title: 'Тайцзицюань',
+            groupLabel: 'новички',
+            format: 'offline',
+            location: 'Парк Гонда, Тель-Авив',
+          }}
+          onSelect={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByText('Тайцзицюань · новички')).toBeInTheDocument();
+    expect(screen.getByText('Парк Гонда, Тель-Авив')).toBeInTheDocument();
+  });
+
+  it('класса нет — «—» и без строки места', () => {
+    render(
+      <ul>
+        <LessonCard lesson={makeLesson()} cls={undefined} onSelect={vi.fn()} />
+      </ul>,
+    );
+
+    expect(screen.queryByText('Онлайн')).not.toBeInTheDocument();
   });
 });

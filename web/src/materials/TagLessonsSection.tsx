@@ -23,8 +23,8 @@ interface TagLessonsSectionProps {
 export function TagLessonsSection({ tag, classes }: TagLessonsSectionProps) {
   const { lessons, loading, error, reload } = useLessonsByTag(tag);
   const navigate = useNavigate();
-  const classTitleById = useMemo(
-    () => new Map(classes.map((cls) => [cls.id, cls.title])),
+  const classesById = useMemo(
+    () => new Map(classes.map((cls) => [cls.id, cls])),
     [classes],
   );
 
@@ -40,7 +40,7 @@ export function TagLessonsSection({ tag, classes }: TagLessonsSectionProps) {
         <LessonCard
           key={lesson.id}
           lesson={lesson}
-          className={classTitleById.get(lesson.classId) ?? '—'}
+          cls={classesById.get(lesson.classId)}
           onSelect={() => void navigate(`${LESSON_EDITOR_PATH}/${lesson.id}`)}
           isLast={index === all.length - 1}
         />

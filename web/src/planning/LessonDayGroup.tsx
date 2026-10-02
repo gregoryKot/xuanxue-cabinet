@@ -12,7 +12,7 @@
 // рассылок и списка экзаменов/учеников (components/listCardStyles.ts:
 // oneCardListStyle).
 import type { CSSProperties } from 'react';
-import { classDisplayName, type ClassDto } from '@xuanxue/shared';
+import type { ClassDto } from '@xuanxue/shared';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { LessonCard } from './LessonCard';
 import type { LessonDayGroupData } from './groupLessonsByDay';
@@ -34,18 +34,15 @@ export function LessonDayGroup({
     <div style={groupStyle}>
       <span className="xuanxue-eyebrow">{group.heading}</span>
       <ul style={oneCardListStyle}>
-        {group.lessons.map((lesson, index) => {
-          const cls = classesById.get(lesson.classId);
-          return (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              className={cls ? classDisplayName(cls) : '—'}
-              onSelect={() => onSelectLesson(lesson.id)}
-              isLast={index === group.lessons.length - 1}
-            />
-          );
-        })}
+        {group.lessons.map((lesson, index) => (
+          <LessonCard
+            key={lesson.id}
+            lesson={lesson}
+            cls={classesById.get(lesson.classId)}
+            onSelect={() => onSelectLesson(lesson.id)}
+            isLast={index === group.lessons.length - 1}
+          />
+        ))}
       </ul>
     </div>
   );
