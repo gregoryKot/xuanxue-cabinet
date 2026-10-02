@@ -9,7 +9,12 @@
 // `PUBLIC_URL`: без него — сообщение без ссылки, не «undefined» в тексте
 // (ADR-0009: ссылки только от PUBLIC_URL, не от заголовка Host).
 import type { AttemptReviewDto } from '@xuanxue/shared';
-import { attemptAnswersSummary } from './attempt-answers-summary';
+import {
+  attemptAnswersSummary,
+  TELEGRAM_MESSAGE_MAX_LENGTH,
+} from './attempt-answers-summary';
+
+const SEPARATOR = '\n\n';
 
 export function attemptSubmittedMessage(
   review: AttemptReviewDto,
@@ -21,9 +26,16 @@ export function attemptSubmittedMessage(
   const header = `Работа от ${review.userName} по «${review.examTitle}» — ждёт вашей проверки.`;
   // Ссылка на кабинет — один раз, в подвале (footer ниже), не в каждом
   // длинном ответе построчной сводки (attempt-answers-summary.ts).
-  const body = attemptAnswersSummary(review.blocks, review.media ?? []);
   const footer = link ? `Открыть в кабинете: ${link}` : undefined;
+  // Сводке — то, что останется от лимита Telegram после шапки и подвала
+  // (аудит 2026-10-01, F31): сообщение длиннее лимита не доходит вовсе.
+  const budget =
+    TELEGRAM_MESSAGE_MAX_LENGTH -
+    header.length -
+    SEPARATOR.length -
+    (footer ? footer.length + SEPARATOR.length : 0);
+  const body = attemptAnswersSummary(review.blocks, review.media ?? [], budget);
   return [header, body, footer]
     .filter((part): part is string => Boolean(part))
-    .join('\n\n');
+    .join(SEPARATOR);
 }

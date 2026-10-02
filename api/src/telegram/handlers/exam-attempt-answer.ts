@@ -9,7 +9,7 @@ import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { GENERIC_ERROR } from './callback-actions';
-import { examUserFacingError } from './exam-attempt-error';
+import { reportExamActionError } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
 import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
@@ -108,7 +108,7 @@ export async function handleExamOption(
       now,
     );
   } catch (err) {
-    await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
+    await reportExamActionError(ctx, err, 'answer');
   }
 }
 
@@ -136,6 +136,6 @@ export async function handleExamSubmit(
       now,
     );
   } catch (err) {
-    await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
+    await reportExamActionError(ctx, err, 'answer');
   }
 }

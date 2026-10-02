@@ -214,3 +214,46 @@ describe('attemptAnswersSummary', () => {
     expect(text).toContain('Отмечено вручную, без комментария.');
   });
 });
+
+// Аудит 2026-10-01 (F31): «Форма 1» на 56 вопросов давала 4087–4279 знаков,
+// Telegram отвергал сообщение целиком, и учитель не получал «работу сдали».
+describe('attemptAnswersSummary — бюджет длины', () => {
+  const many = Array.from({ length: 60 }, (_, i) =>
+    question({
+      itemId: `i${i}`,
+      kind: 'single',
+      prompt: `Вопрос номер ${i + 1} про стойку и дыхание в движении формы`,
+      options: SOME_OPTION,
+      answered: true,
+      optionsCheck: {
+        correctSelectedCount: 1,
+        correctTotalCount: 1,
+        incorrectSelectedCount: 0,
+      },
+    }),
+  );
+
+  it('без бюджета — все вопросы, как раньше', () => {
+    const text = attemptAnswersSummary(blocks(many), []);
+    expect(text).toContain('60. Вопрос номер 60');
+    expect(text).not.toContain('Остальные ответы');
+  });
+
+  it('не влезает — первые вопросы целиком и честная строка про остальные, длина в бюджете', () => {
+    const text = attemptAnswersSummary(blocks(many), [], 1000);
+
+    expect(text.length).toBeLessThanOrEqual(1000);
+    expect(text).toContain('1. Вопрос номер 1');
+    expect(text).toMatch(/Остальные ответы \(ещё \d+\) — в кабинете\.$/);
+    const shown = (text.match(/^\d+\. Вопрос/gm) ?? []).length;
+    const rest = Number(/ещё (\d+)/.exec(text)?.[1]);
+    expect(shown + rest).toBe(60);
+    expect(text).not.toContain(`${shown + 1}. Вопрос`);
+  });
+
+  it('влезает ровно — без строки про остальные', () => {
+    const two = many.slice(0, 2);
+    const full = attemptAnswersSummary(blocks(two), []);
+    expect(attemptAnswersSummary(blocks(two), [], full.length)).toBe(full);
+  });
+});

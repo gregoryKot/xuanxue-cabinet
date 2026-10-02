@@ -13,6 +13,7 @@
 // обрывал свои запросы, и ученик думал, что видео ушло. Пока часть файла в
 // полёте (activeUploads.ts), отправка отказывает словами, не молча.
 import { useCallback, useState } from 'react';
+import { ApiError } from '../api/http';
 import type { FormError } from '../components/FormServerError';
 import { hasActiveUploads } from './activeUploads';
 
@@ -44,8 +45,12 @@ export function useAttemptSubmitFlow(
     setFlushing(true);
     try {
       await flush();
-    } catch {
-      setFlushError({ message: FLUSH_ERROR_MESSAGE });
+    } catch (err) {
+      // Текст сервера доходит до ученика (429 «подождите минуту», «попытка
+      // уже сдана») — «проверьте интернет» только там, где интернета и нет
+      // (аудит 2026-10-01, F37).
+      const serverAnswer = err instanceof ApiError && err.status !== 0;
+      setFlushError({ message: serverAnswer ? err.message : FLUSH_ERROR_MESSAGE });
       return;
     } finally {
       setFlushing(false);

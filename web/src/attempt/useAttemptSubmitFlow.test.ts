@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/http';
 import { markUploadActive, resetActiveUploads } from './activeUploads';
 import {
   FLUSH_ERROR_MESSAGE,
@@ -33,6 +34,17 @@ describe('useAttemptSubmitFlow', () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(result.current.flushError).toEqual({ message: FLUSH_ERROR_MESSAGE });
     expect(result.current.flushing).toBe(false);
+  });
+
+  it('flush отверг сервер (429, «уже сдана») — его текст, не «проверьте интернет»', async () => {
+    const flush = vi
+      .fn()
+      .mockRejectedValue(new ApiError('Слишком много запросов', 429, 'rate_limited'));
+    const { result } = renderHook(() => useAttemptSubmitFlow(flush, vi.fn()));
+
+    await act(() => result.current.handleSubmit());
+
+    expect(result.current.flushError).toEqual({ message: 'Слишком много запросов' });
   });
 
   // Аудит 2026-10-01 (H): «Отправить» размонтировало блок загрузки видео и

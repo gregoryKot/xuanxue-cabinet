@@ -225,6 +225,19 @@ describe('ExamAttemptsService', () => {
   // до срока разрешено как обычно, после срока новую попытку не завести, а
   // уже идущую срок не трогает никогда (предупреждение владельца: иначе
   // сдающий прямо сейчас получил бы отказ на «Продолжить» при перезагрузке).
+  // Мутационная проба аудита 2026-10-01: отказ старта на архивной форме
+  // держался только тестом на черновик.
+  it('форма в архиве — старт отказывает, попытка не создаётся', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.examsService.update(examId, { status: 'archived' });
+
+    await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
+      'не открыт для сдачи',
+    );
+    expect(await ctx.attemptModel.countDocuments({})).toBe(0);
+  });
+
   it('срок сдачи ещё не наступил — старт как обычно', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({
