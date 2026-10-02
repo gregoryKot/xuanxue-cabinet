@@ -42,6 +42,9 @@ export function VideoFilePlayer({ src, title, size }: VideoFilePlayerProps) {
 
   return (
     <div style={{ ...wrapStyle, height: size === 'tile' ? '100%' : undefined }}>
+      {/* Кадр-превью отдаёт сервер с теми же правами, что и видео (ADR-0165). У
+          старого видео кадра нет — ответ 404, браузер молча рисует чёрный
+          прямоугольник, как раньше; отдельной проверки «есть ли кадр» нет. */}
       {/* Субтитров нет: у видео вопроса это короткий клип движения без речи
           (ADR-0133, «Контекст» — «референс учителя»), у видео-ответа —
           снятая учеником форма, тоже без слов (ADR-0137), не запись занятия. */}
@@ -51,6 +54,7 @@ export function VideoFilePlayer({ src, title, size }: VideoFilePlayerProps) {
         controls
         preload="metadata"
         playsInline
+        poster={`${src}/poster`}
         src={src}
         aria-label={title}
         style={{

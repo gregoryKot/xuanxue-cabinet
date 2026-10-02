@@ -144,7 +144,7 @@ describe('runVideoUpload — happy path напрямую', () => {
     expect(request?.timeoutMs).toBeGreaterThan(UPLOAD_TIMEOUT_MS);
     // Старт и завершение — на общем таймауте, без своего.
     expect(transport.start.mock.calls[0]?.[1]).toEqual({ signal: controller.signal });
-    expect(transport.complete.mock.calls[0]?.[1]).toEqual({ signal: controller.signal });
+    expect(transport.complete.mock.calls[0]?.[2]).toEqual({ signal: controller.signal });
   });
 
   it('продолжение: части, уже принятые сервером, не шлёт заново', async () => {
@@ -230,5 +230,80 @@ describe('runVideoUpload — файл не читается при подсчё�
     await runVideoUpload(baseParams({ file, onFailed, isCancelled: () => true }));
 
     expect(onFailed).not.toHaveBeenCalled();
+  });
+});
+
+// Кадр-превью (ADR-0165): снимается параллельно частям, ждётся только перед
+// `complete`, а его отсутствие или сбой видео не мешают.
+describe('runVideoUpload — кадр-превью', () => {
+  it('кадр уходит в complete, а снимок начат сразу, до старта на сервере', async () => {
+    const transport = makeFakeTransport();
+    const capturePoster = vi.fn(() => Promise.resolve<string | null>('QkFTRTY0'));
+
+    await runVideoUpload(baseParams({ transport, capturePoster }));
+
+    expect(transport.complete.mock.calls[0]?.[1]).toBe('QkFTRTY0');
+    expect(capturePoster).toHaveBeenCalledTimes(1);
+    expect(capturePoster.mock.invocationCallOrder[0]).toBeLessThan(
+      transport.start.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it('части не ждут кадр, а complete ждёт', async () => {
+    let finishCapture!: (poster: string | null) => void;
+    const transport = makeFakeTransport();
+    const capturePoster = () =>
+      new Promise<string | null>((resolve) => {
+        finishCapture = resolve;
+      });
+    const run = runVideoUpload(baseParams({ transport, capturePoster }));
+
+    await vi.waitFor(() => expect(transport.uploadPart).toHaveBeenCalledTimes(3));
+    expect(transport.complete).not.toHaveBeenCalled();
+    finishCapture('QkFTRTY0');
+    await run;
+
+    expect(transport.complete.mock.calls[0]?.[1]).toBe('QkFTRTY0');
+  });
+
+  it.each([
+    ['снять не вышло (null)', () => Promise.resolve(null)],
+    ['снимок упал', () => Promise.reject(new Error('нет кодека'))],
+  ])('%s — видео завершается без кадра', async (_name, capturePoster) => {
+    const transport = makeFakeTransport();
+    const onDone = vi.fn();
+
+    await runVideoUpload(baseParams({ transport, capturePoster, onDone }));
+
+    expect(transport.complete.mock.calls[0]?.[1]).toBeUndefined();
+    expect(onDone).toHaveBeenCalledWith(FAKE_UPLOAD_RESULT);
+  });
+
+  it('без снятия кадра вовсе — complete без кадра, как раньше', async () => {
+    const transport = makeFakeTransport();
+
+    await runVideoUpload(baseParams({ transport }));
+
+    expect(transport.complete.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it('отмена, пока ждали кадр, — complete не зовётся', async () => {
+    let cancelled = false;
+    let finishCapture!: (poster: string | null) => void;
+    const transport = makeFakeTransport();
+    const capturePoster = () =>
+      new Promise<string | null>((resolve) => {
+        finishCapture = resolve;
+      });
+    const run = runVideoUpload(
+      baseParams({ transport, capturePoster, isCancelled: () => cancelled }),
+    );
+    await vi.waitFor(() => expect(transport.uploadPart).toHaveBeenCalledTimes(3));
+
+    cancelled = true;
+    finishCapture('QkFTRTY0');
+    await run;
+
+    expect(transport.complete).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@
 // useVideoUpload.ts (файловый лимит, CLAUDE.md «Храповики»): хук ведёт выбор
 // файла и сжатие, а этот шаг одинаков для сжатого и исходного файла.
 import type { Dispatch, SetStateAction } from 'react';
+import { captureVideoPoster } from './captureVideoPoster';
 import { checkVideoFileSize } from './videoUploadParts';
 import { runVideoUpload } from './videoUploadRunner';
 import { IDLE_VIDEO_UPLOAD_STATE, type VideoUploadState } from './videoUploadState';
@@ -56,6 +57,7 @@ export function beginVideoUpload<TResult extends object>(
       });
     },
     waitForResume: params.waitForResume,
+    capturePoster: () => captureVideoPoster(prepared, { signal: params.signal }),
     onFailed: (error) => {
       setState((prev) => ({ ...prev, phase: 'failed', error }));
     },

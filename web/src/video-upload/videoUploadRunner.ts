@@ -36,6 +36,10 @@ export interface RunVideoUploadParams<TResult extends object> {
   waitForResume: (delaySec: number) => Promise<void>;
   onFailed: (error: FormError) => void;
   onDone: (result: TResult) => void;
+  /** Снимает кадр-превью того, что грузится (captureVideoPoster.ts, ADR-0165).
+   * Запускается сразу, параллельно частям, и ждётся только перед `complete`;
+   * `null` и любой сбой — видео завершается без кадра. */
+  capturePoster?: () => Promise<string | null>;
 }
 
 function toProgress(session: VideoUploadSession): VideoUploadProgressUpdate {
@@ -50,13 +54,15 @@ export async function runVideoUpload<TResult extends object>(
   params: RunVideoUploadParams<TResult>,
 ): Promise<void> {
   const { file, transport, signal, isCancelled, onProgress, waitForResume } = params;
-  const { onFailed, onDone } = params;
+  const { onFailed, onDone, capturePoster } = params;
   const fingerprint = await computeVideoFingerprint(file).catch(() => null);
   if (isCancelled()) return;
   if (fingerprint === null) {
     onFailed({ message: FILE_UNREADABLE_MESSAGE });
     return;
   }
+  // Кадр снимается, пока идут части: первая часть не ждёт его ни секунды.
+  const poster = capturePoster?.().catch(() => null);
   const retry = <T>(step: () => Promise<T>) =>
     withRetry(step, { isCancelled, waitForResume, onFailed });
 
@@ -84,7 +90,11 @@ export async function runVideoUpload<TResult extends object>(
     next = nextMissingVideoPart(current.partCount, current.receivedParts);
   }
 
-  const result = await retry(() => transport.complete(current.id, { signal }));
+  const posterBase64 = (await poster) ?? undefined;
+  if (isCancelled()) return;
+  const result = await retry(() =>
+    transport.complete(current.id, posterBase64, { signal }),
+  );
   if (!result || isCancelled()) return;
   onDone(result);
 }

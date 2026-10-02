@@ -103,15 +103,27 @@ describe('answerVideoTransport — маршруты', () => {
     });
   });
 
-  it('complete: POST /answer-videos/:id/complete без тела', async () => {
+  it('complete: POST /answer-videos/:id/complete с кадром-превью в теле', async () => {
     mockedApiFetch.mockResolvedValue(MEDIA);
 
-    await expect(transport.complete('u1', { signal })).resolves.toEqual(MEDIA);
+    await expect(transport.complete('u1', 'QkFTRTY0', { signal })).resolves.toEqual(
+      MEDIA,
+    );
 
     expect(mockedApiFetch).toHaveBeenCalledWith(completePath('u1'), {
       method: 'POST',
+      body: { poster: 'QkFTRTY0' },
       signal,
     });
+  });
+
+  it('complete без кадра: в теле нет poster, видео завершается так же', async () => {
+    mockedApiFetch.mockResolvedValue(MEDIA);
+
+    await transport.complete('u1', undefined, { signal });
+
+    const [, init] = mockedApiFetch.mock.calls[0] ?? [];
+    expect(JSON.stringify(init?.body)).toBe('{}');
   });
 });
 

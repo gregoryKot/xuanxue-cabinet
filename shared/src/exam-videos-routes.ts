@@ -5,7 +5,7 @@
 // для `<video src>` — в карту не входит.
 import type { ExamVideoDto, ExamVideoStatsDto, StartExamVideoInput } from './exam-videos';
 import type { RawBody } from './raw-body';
-import type { VideoUploadDto } from './video-uploads';
+import type { CompleteVideoUploadInput, VideoUploadDto } from './video-uploads';
 
 export interface ExamVideosRoutes {
   'GET /exam-videos/stats-summary': {
@@ -25,7 +25,7 @@ export interface ExamVideosRoutes {
   };
   'POST /exam-videos/:id/complete': {
     query: undefined;
-    body: undefined;
+    body: CompleteVideoUploadInput;
     response: ExamVideoDto;
   };
 }

@@ -1,8 +1,9 @@
 // Записи карты маршрутов (api-routes.ts, ADR-0148) — видео-ответ ученика,
 // загрузка частями через сервер (ADR-0137): старт → части → complete, плюс
 // число раздела «Экзамены». Часть уходит сырым телом байтов (RawBody), не
-// JSON. Адрес плеера `GET /answer-videos/:id` — 302 на подписанную ссылку R2,
-// его открывает браузер (`<video src>`), не `apiFetch`, поэтому в карте его нет.
+// JSON; `complete` несёт необязательный кадр-превью (ADR-0165). Адрес плеера
+// `GET /answer-videos/:id` — 302 на подписанную ссылку R2, его открывает
+// браузер (`<video src>`), не `apiFetch`, поэтому в карте его нет.
 import type {
   AnswerVideoStatsDto,
   AnswerVideoUploadDto,
@@ -10,6 +11,7 @@ import type {
 } from './answer-videos';
 import type { ExamMediaDto } from './exam-media';
 import type { RawBody } from './raw-body';
+import type { CompleteVideoUploadInput } from './video-uploads';
 
 export interface AnswerVideosRoutes {
   'POST /attempts/:id/answer-video': {
@@ -24,7 +26,7 @@ export interface AnswerVideosRoutes {
   };
   'POST /answer-videos/:id/complete': {
     query: undefined;
-    body: undefined;
+    body: CompleteVideoUploadInput;
     response: ExamMediaDto;
   };
   'GET /answer-videos/stats-summary': {
