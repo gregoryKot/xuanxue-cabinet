@@ -3,7 +3,7 @@
 // дефолт контакта для оплаты, а текст, который учитель писал сам, не тронуть
 // (ADR-0159).
 import type { Connection, Model } from 'mongoose';
-import { paymentContactWithChannel } from './0019-payment-contact-with-channel.migration';
+import { paymentContactWithChannel } from './0020-payment-contact-with-channel.migration';
 import { SettingsRecord, SETTINGS_SCHOOL_ID } from '../settings/settings.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
@@ -22,7 +22,7 @@ interface RawSettings {
   updatedAt?: Date;
 }
 
-describe('Миграция 0019-payment-contact-with-channel', () => {
+describe('Миграция 0020-payment-contact-with-channel', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let settingsModel: Model<SettingsRecord>;

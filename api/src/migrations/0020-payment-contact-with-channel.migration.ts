@@ -36,7 +36,7 @@ const PREVIOUS_CONTACT = 'Маше @marievyazova';
 const NEW_CONTACT = 'Маше Вязовой — например, в Telegram @marievyazova';
 
 export const paymentContactWithChannel = {
-  id: '0019-payment-contact-with-channel',
+  id: '0020-payment-contact-with-channel',
   async up(db: Db): Promise<void> {
     const settings = db.collection(SETTINGS);
     const now = new Date();

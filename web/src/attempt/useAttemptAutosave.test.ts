@@ -5,7 +5,7 @@ import {
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { apiFetch, ApiError } from '../api/http';
+import { apiFetch, ApiError, KEEPALIVE_BODY_MAX_BYTES } from '../api/http';
 import { useAttemptAutosave } from './useAttemptAutosave';
 
 vi.mock('../api/http', async () => {
@@ -15,6 +15,12 @@ vi.mock('../api/http', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const ATTEMPT_ID = 'attempt-1';
+
+/** `keepalive` из init последнего вызова apiFetch (аудит 2026-10-01, F43). */
+function lastKeepalive(): boolean | undefined {
+  const call = mockedApiFetch.mock.calls.at(-1) as [string, { keepalive?: boolean }];
+  return call[1].keepalive;
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -402,7 +408,9 @@ describe('useAttemptAutosave — какой сбой повторять (attempt
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
     expect(onExpired).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe('error');
+    // F44: отказ навсегда — refused с текстом сервера, не «попробуем ещё раз».
+    expect(result.current.status).toBe('refused');
+    expect(result.current.refusal).toBe(ATTEMPT_NOT_IN_PROGRESS_MESSAGE);
   });
 
   it('429 с Retry-After: 60 — повтор через минуту, а не через 4 с', async () => {
@@ -452,7 +460,51 @@ describe('useAttemptAutosave — какой сбой повторять (attempt
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
     expect(onExpired).not.toHaveBeenCalled();
+    // Аудит 2026-10-01, F44: повтора не будет — строка несёт текст сервера,
+    // а не обещание «попробуем ещё раз».
+    expect(result.current.status).toBe('refused');
+    expect(result.current.refusal).toBe('Слишком длинный ответ');
+  });
+
+  // Аудит 2026-10-01, F44: учитель заблокировал ученика посреди попытки —
+  // AuthGuard отвечает 403 на каждый PATCH. Таймер повтора не ставится,
+  // статус терминальный с текстом сервера; экран перечитывает попытку.
+  it('403 посреди попытки — без повтора, статус refused с текстом сервера', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError('Доступ закрыт.', 403, 'forbidden'));
+    const onExpired = vi.fn();
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [], onExpired));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('refused');
+    expect(result.current.refusal).toBe('Доступ закрыт.');
+  });
+
+  it('500 — статус error и повтор через 4 с, как раньше', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Сервер не ответил', 500, 'internal_error'),
+    );
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
     expect(result.current.status).toBe('error');
+    expect(result.current.refusal).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -475,6 +527,42 @@ describe('useAttemptAutosave — закрытие вкладки', () => {
     });
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    // Аудит 2026-10-01, F43: без keepalive браузер обрывал этот PATCH вместе
+    // с вкладкой — ответ оставался только в localStorage-черновике.
+    expect(lastKeepalive()).toBe(true);
+  });
+
+  it('дебаунс-сохранение — без keepalive: потолок 64 КиБ общий на все живые keepalive', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(lastKeepalive()).toBeUndefined();
+  });
+
+  it('черновик больше потолка keepalive + pagehide — запрос уходит, но обычным fetch', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    // Кириллица — два байта на знак: семь ответов по 5000 знаков — ~70 КиБ.
+    const answersCount = Math.ceil(KEEPALIVE_BODY_MAX_BYTES / (5000 * 2)) + 1;
+    act(() => {
+      for (let i = 0; i < answersCount; i += 1) {
+        result.current.setText(`item-${i}`, 'ж'.repeat(5000));
+      }
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(lastKeepalive()).toBeUndefined();
   });
 
   // Гейт: check-vitest-coverage-ratchet.mjs (functions) — `run()` в
@@ -509,6 +597,7 @@ describe('useAttemptAutosave — закрытие вкладки', () => {
     });
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(lastKeepalive()).toBe(true);
   });
 
   it('visibilitychange не в hidden (вернулись на вкладку) — запроса нет', async () => {

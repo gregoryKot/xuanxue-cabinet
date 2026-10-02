@@ -70,7 +70,7 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
     tags: doc.tags ?? [],
     ...urlEntry(doc),
     ...fileEntry(doc),
-    createdBy: doc.createdBy.toString(),
+    createdBy: doc.createdBy?.toString(),
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

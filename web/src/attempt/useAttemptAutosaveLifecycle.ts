@@ -7,12 +7,20 @@
 // — статус уже 'error', следующая правка или новый `online` подхватят сами
 // (в отличие от flush() перед submit в AttemptInProgress.tsx, где сбой
 // обязан остановить отправку).
+//
+// `keepalive` (аудит 2026-10-01, F43): страница выгружается, и обычный fetch
+// браузер обрывает вместе с ней — PATCH с последним ответом не доходил, а
+// localStorage-черновик не спасал того, кто до дедлайна попытку больше не
+// открыл. Только здесь: дебаунс, повтор и flush перед submit идут как раньше.
 import { useEffect } from 'react';
+import type { AttemptFlushOptions } from './useAttemptSaveRunner';
 
-export function useAttemptAutosaveLifecycle(flush: () => Promise<void>): void {
+export function useAttemptAutosaveLifecycle(
+  flush: (options?: AttemptFlushOptions) => Promise<void>,
+): void {
   useEffect(() => {
     const run = () => {
-      flush().catch(() => {
+      flush({ keepalive: true }).catch(() => {
         /* фоновая попытка — сбой уже виден в status, повторять здесь нечем */
       });
     };

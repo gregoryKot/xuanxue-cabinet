@@ -83,6 +83,9 @@ interface FilePickerButtonProps {
    * экрана, где выбор файла — единственное главное действие (видео-ответ,
    * ADR-0137). По умолчанию `'text'` — прежний вид, действие второго плана. */
   variant?: 'text' | 'primary';
+  /** Показ без права выбрать (предпросмотр «глазами ученика»): вид тот же,
+   * не приглушён, — гаснут только input и курсор. */
+  disabled?: boolean;
 }
 
 export function FilePickerButton({
@@ -92,7 +95,11 @@ export function FilePickerButton({
   onFile,
   inputLabel,
   variant = 'text',
+  disabled,
 }: FilePickerButtonProps) {
+  const cursorStyle: CSSProperties | undefined = disabled
+    ? { cursor: 'default' }
+    : undefined;
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -109,11 +116,15 @@ export function FilePickerButton({
 
   if (variant === 'primary') {
     return (
-      <label className="xuanxue-file-label" style={primaryLabelStyle}>
+      <label
+        className="xuanxue-file-label"
+        style={{ ...primaryLabelStyle, ...cursorStyle }}
+      >
         {label}
         <input
           type="file"
           accept={accept}
+          disabled={disabled}
           aria-label={inputLabel ?? label}
           style={hiddenInputStyle}
           onChange={handleChange}
@@ -123,11 +134,12 @@ export function FilePickerButton({
   }
 
   return (
-    <label className="xuanxue-file-label" style={labelStyle}>
+    <label className="xuanxue-file-label" style={{ ...labelStyle, ...cursorStyle }}>
       <span style={textLinkLineStyle}>{label}</span>
       <input
         type="file"
         accept={accept}
+        disabled={disabled}
         aria-label={inputLabel ?? label}
         style={hiddenInputStyle}
         onChange={handleChange}

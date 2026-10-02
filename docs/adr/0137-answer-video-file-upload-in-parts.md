@@ -3,7 +3,8 @@
 Дата: 2026-09-27. Статус: принято. Уточняет
 [ADR-0023](0023-exam-video-via-telegram-and-links.md),
 [ADR-0084](0084-video-link-is-the-main-path.md) и
-[ADR-0133](0133-question-video-r2-or-link.md).
+[ADR-0133](0133-question-video-r2-or-link.md). Загрузка и плеер уточнены
+[ADR-0165](0165-one-video-pipeline.md): сжатие в браузере, кадр-превью, общее ядро.
 
 ## Контекст
 

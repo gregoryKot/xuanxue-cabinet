@@ -13,20 +13,29 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { AttemptAnswerDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
-import { clearAttemptDraft, forgetSavedAnswers } from './attemptLocalDraft';
-import { classifyAttemptSaveError } from './attemptSaveError';
+import { forgetSavedAnswers } from './attemptLocalDraft';
+import { applyAttemptSaveFailure, type AutosaveStatus } from './attemptSaveFailure';
+import { keepaliveFor } from './attemptSaveKeepalive';
 
-export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type { AutosaveStatus } from './attemptSaveFailure';
 
 const DEBOUNCE_MS = 2000;
 const RETRY_DELAY_MS = 4000;
+
+export interface AttemptFlushOptions {
+  /** Пережить выгрузку страницы (useAttemptAutosaveLifecycle.ts, аудит
+   * 2026-10-01 F43); тело сверх потолка — обычным fetch (attemptSaveKeepalive.ts). */
+  keepalive?: boolean;
+}
 
 export interface UseAttemptSaveRunnerResult {
   scheduleSave: () => void;
   /** Резолвится, когда все правки реально на сервере; реджектится при сбое —
    * без ожидания фонового повтора (комментарий в шапке файла). */
-  flush: () => Promise<void>;
+  flush: (options?: AttemptFlushOptions) => Promise<void>;
   status: AutosaveStatus;
+  /** Текст сервера при статусе `refused` (attemptSaveFailure.ts), иначе null. */
+  refusal: string | null;
 }
 
 export function useAttemptSaveRunner(
@@ -43,9 +52,10 @@ export function useAttemptSaveRunner(
   // ждёт тот же исход.
   const inFlight = useRef<Promise<void> | null>(null);
   const [status, setStatus] = useState<AutosaveStatus>('idle');
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const runSave = useCallback(
-    async (options?: { propagate?: boolean }): Promise<void> => {
+    async (options?: AttemptFlushOptions & { propagate?: boolean }): Promise<void> => {
       if (dirty.current.size === 0) return;
       if (saving.current) {
         // Уже летит PATCH с этими правками — не второй запрос, а ожидание
@@ -69,6 +79,7 @@ export function useAttemptSaveRunner(
       const attempt = apiRoute('PATCH /attempts/:id/answers', {
         params: { id: attemptId },
         body,
+        keepalive: keepaliveFor(body, options?.keepalive),
       })
         .then(() => {
           for (const id of ids) dirty.current.delete(id);
@@ -77,23 +88,18 @@ export function useAttemptSaveRunner(
           setStatus('saved');
         })
         .catch((err: unknown) => {
-          setStatus('error');
-          // Не всякий сбой — повод повторять (attemptSaveError.ts, аудит
-          // 2026-10-01): «уже сдана» из другой вкладки и 429 троттлера
-          // раньше крутили PATCH каждые 4 с без конца.
-          const verdict = classifyAttemptSaveError(err, RETRY_DELAY_MS);
-          if (verdict.kind === 'expired') {
-            // Попытка закрыта дедлайном — черновик убирается целиком.
-            clearAttemptDraft(attemptId);
-            onExpired?.();
-          } else if (verdict.kind === 'stale') {
-            // Сервер отверг навсегда — не повторяем, перечитываем попытку:
-            // экран покажет правду с сервера («Отправлено», нет доступа).
-            onExpired?.();
-          } else if (verdict.kind === 'retry') {
-            if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-            retryTimer.current = window.setTimeout(() => void runSave(), verdict.delayMs);
-          }
+          // Повтор, перечитывание или честный отказ — attemptSaveFailure.ts.
+          const failure = applyAttemptSaveFailure(err, {
+            attemptId,
+            retryDelayMs: RETRY_DELAY_MS,
+            onExpired,
+            scheduleRetry: (delayMs) => {
+              if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
+              retryTimer.current = window.setTimeout(() => void runSave(), delayMs);
+            },
+          });
+          setStatus(failure.status);
+          setRefusal(failure.status === 'refused' ? failure.message : null);
           throw err;
         })
         .finally(() => {
@@ -119,13 +125,16 @@ export function useAttemptSaveRunner(
     debounceTimer.current = window.setTimeout(() => void runSave(), DEBOUNCE_MS);
   }, [runSave]);
 
-  const flush = useCallback((): Promise<void> => {
-    if (debounceTimer.current !== null) {
-      window.clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-    }
-    return runSave({ propagate: true });
-  }, [runSave]);
+  const flush = useCallback(
+    (options?: AttemptFlushOptions): Promise<void> => {
+      if (debounceTimer.current !== null) {
+        window.clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      return runSave({ ...options, propagate: true });
+    },
+    [runSave],
+  );
 
   // Размонтирование — снимаем таймеры, ничего не улетает в пустоту.
   useEffect(() => {
@@ -135,5 +144,5 @@ export function useAttemptSaveRunner(
     };
   }, []);
 
-  return { scheduleSave, flush, status };
+  return { scheduleSave, flush, status, refusal };
 }

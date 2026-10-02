@@ -58,7 +58,7 @@ export interface MaterialDto {
   /** Файл в хранилище (ADR-0057): скачивается отдельным запросом, байты в
    * JSON не ходят. */
   file?: MaterialFileDto;
-  createdBy: string;
+  createdBy?: string; // нет, если аккаунт автора удалён (USER_REFERENCE_PATHS)
   createdAt: string; // ISO UTC с Z
   updatedAt: string; // ISO UTC с Z
 }

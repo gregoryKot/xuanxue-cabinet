@@ -9,7 +9,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXAM_LIMITS } from '@xuanxue/shared';
+import { ATTEMPTS_ALLOWED_TIP, EXAM_LIMITS } from '@xuanxue/shared';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
@@ -524,6 +524,20 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
 
     await openTip(user, 'Время, мин');
     expect(screen.getByText('Пусто — без ограничения.')).toBeInTheDocument();
+  });
+
+  // Аудит 2026-10-01, F60: учитель поднимал «Попыток», чтобы вернуть ученику
+  // экзамен, а повтор удалял просроченную непроверенную работу (ADR-0131) —
+  // редактор об этом не говорил.
+  it('у «Попыток» подсказка про замену просроченной непроверенной работы', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await screen.findByLabelText('Попыток');
+
+    await openTip(user, 'Попыток');
+    expect(screen.getByText(ATTEMPTS_ALLOWED_TIP)).toBeInTheDocument();
   });
 
   it('срок сдачи (ADR-0125, ADR-0139) — поле только даты, подсказка во всплывающей подсказке', async () => {

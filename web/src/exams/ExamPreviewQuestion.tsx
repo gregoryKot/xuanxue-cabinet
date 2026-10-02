@@ -1,12 +1,16 @@
 // Один вопрос в предпросмотре «глазами ученика» (ТЗ 4.3): формулировка и поле
 // ответа по типу — общий AttemptAnswerFields.tsx (те же компоненты, что у
 // сдачи, но всегда неактивные): предпросмотр показывает сохранённый экзамен,
-// а не форму сдачи, отвечать здесь нельзя. Строка вопроса — общий
-// components/QuestionRow.tsx (его же комментарий-шапка про то, почему общий).
+// а не форму сдачи, отвечать здесь нельзя. Видео-вопрос — тот же
+// AttemptQuestionVideo.tsx, что видит ученик, с `disabled` (отзыв владельца
+// 2026-10-02: раньше здесь стояла своя заглушка в одну строку). Строка
+// вопроса — общий components/QuestionRow.tsx (его же комментарий-шапка про то,
+// почему общий).
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { AttemptAnswerFields } from '../attempt/AttemptAnswerFields';
-import { AttemptQuestionVideoNote } from '../attempt/AttemptQuestionVideo';
+import { AttemptQuestionVideo } from '../attempt/AttemptQuestionVideo';
+import type { AttemptVideoControls } from '../attempt/useAttemptMedia';
 import { QuestionRow } from '../components/QuestionRow';
 
 const MISSING_NOTE = 'Вопрос недоступен — его удалили или спрятали в черновик.';
@@ -23,9 +27,16 @@ interface ExamPreviewQuestionProps {
   /** Отметка ★ «обязательный» (ADR-0082, дополнение) — попадает каждому
    * сдающему при любой случайной выборке; без неё пропуск. */
   required?: boolean;
+  /** Управление блоком видео-вопроса (previewVideoControls.ts). */
+  video: AttemptVideoControls;
 }
 
-export function ExamPreviewQuestion({ index, item, required }: ExamPreviewQuestionProps) {
+export function ExamPreviewQuestion({
+  index,
+  item,
+  required,
+  video,
+}: ExamPreviewQuestionProps) {
   if (!item) {
     return (
       <QuestionRow
@@ -56,7 +67,9 @@ export function ExamPreviewQuestion({ index, item, required }: ExamPreviewQuesti
           askReason={item.askReason}
         />
       )}
-      {item.kind === 'video' && <AttemptQuestionVideoNote />}
+      {item.kind === 'video' && (
+        <AttemptQuestionVideo itemId={item.id} video={video} disabled />
+      )}
     </QuestionRow>
   );
 }

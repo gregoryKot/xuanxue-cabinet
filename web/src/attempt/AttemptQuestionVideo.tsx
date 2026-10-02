@@ -27,17 +27,19 @@
 // AttemptVideoAnswered.tsx (ADR-0086): форма ссылки там не прячется, потому
 // что заменить ошибочную ссылку больше нечем, а у проверенной работы нет ни
 // формы, ни бота — бэкенд ответа уже не примет.
+//
+// Предпросмотр учителя «глазами ученика» (exams/ExamPreviewQuestion.tsx) —
+// этот же блок с `disabled`: раньше у видео-вопроса там была своя заглушка в
+// одну строку, и учитель не видел, что на самом деле получает ученик
+// (отзыв владельца 2026-10-02).
 import { RichText } from '../components/RichText';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
+import { AttemptBotLink } from './AttemptBotLink';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
 import { AttemptVideoAnswered } from './AttemptVideoAnswered';
 import { AttemptVideoHowTo } from './AttemptVideoHowTo';
 import { AttemptVideoUpload } from './AttemptVideoUpload';
-import {
-  attemptVideoHintStyle,
-  attemptVideoTelegramLinkStyle,
-} from './attemptVideoStyles';
-import { buildExamMediaTelegramLink } from './examMediaDeepLink';
+import { attemptVideoHintStyle } from './attemptVideoStyles';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
 // Объяснение стоит до первого действия (CLAUDE.md «откуда это и зачем»):
@@ -70,19 +72,19 @@ const BOT_BUTTON_EXPLANATION =
 const TELEGRAM_NOT_LINKED_EXPLANATION =
   'Свяжите Telegram — и видео можно будет прислать боту **одним сообщением**.';
 
-/** Объяснение видео-вопроса без кнопок и формы — для предпросмотра учителя
- * (exams/ExamPreviewQuestion.tsx): там отвечать нельзя, но зачем нужно
- * видео, видно тем же текстом, что и ученику. */
-export function AttemptQuestionVideoNote() {
-  return <p style={{ margin: 0 }}>{VIDEO_ANSWER_EXPLANATION}</p>;
-}
-
 interface AttemptQuestionVideoProps {
   itemId: string;
   video: AttemptVideoControls;
+  /** Предпросмотр «глазами ученика» (exams/ExamPreviewQuestion.tsx): тот же
+   * блок, что видит ученик, но отправить через него ничего нельзя. */
+  disabled?: boolean;
 }
 
-export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProps) {
+export function AttemptQuestionVideo({
+  itemId,
+  video,
+  disabled,
+}: AttemptQuestionVideoProps) {
   const received = video.media.filter((item) => item.itemId === itemId);
   const { telegramBotUsername } = video;
   const { pending, error } = video.linkStateFor(itemId);
@@ -93,11 +95,13 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
 
   return (
     <>
-      <AttemptQuestionVideoNote />
+      <p style={{ margin: 0 }}>{VIDEO_ANSWER_EXPLANATION}</p>
 
       {/* Загрузка файлом — первый путь там, где подключён R2 (ADR-0137);
           без него экран остаётся прежним (ссылка → инструкция → бот). */}
-      {video.fileUploadEnabled && <AttemptVideoUpload itemId={itemId} video={video} />}
+      {video.fileUploadEnabled && (
+        <AttemptVideoUpload itemId={itemId} video={video} disabled={disabled} />
+      )}
 
       <p style={attemptVideoHintStyle}>
         <RichText
@@ -109,6 +113,7 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
         onSubmit={(url) => video.addMediaLink(itemId, url)}
         pending={pending}
         error={error}
+        disabled={disabled}
       />
 
       {telegramBotUsername && video.telegramLinked && (
@@ -116,18 +121,12 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
           <p style={attemptVideoHintStyle}>
             <RichText text={BOT_BUTTON_EXPLANATION} />
           </p>
-          <a
-            href={buildExamMediaTelegramLink(
-              telegramBotUsername,
-              video.attemptId,
-              itemId,
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={attemptVideoTelegramLinkStyle}
-          >
-            Открыть чат с ботом
-          </a>
+          <AttemptBotLink
+            telegramBotUsername={telegramBotUsername}
+            attemptId={video.attemptId}
+            itemId={itemId}
+            disabled={disabled}
+          />
         </>
       )}
 

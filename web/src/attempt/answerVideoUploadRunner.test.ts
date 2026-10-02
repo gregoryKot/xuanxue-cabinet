@@ -7,7 +7,9 @@ import type { AnswerVideoUploadDto, ExamMediaDto } from '@xuanxue/shared';
 import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import type { FormError } from '../components/FormServerError';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { computeAnswerVideoFingerprint } from './answerVideoFingerprint';
 import { runAnswerVideoUpload } from './answerVideoUploadRunner';
 
 vi.mock('../api/http', async () => {
@@ -168,5 +170,98 @@ describe('runAnswerVideoUpload — happy path напрямую', () => {
     await runAnswerVideoUpload(baseParams({ onDone }));
 
     expect(onDone).toHaveBeenCalledWith(MEDIA);
+  });
+});
+
+/** Ответы сети на весь прогон одной загрузки в одну часть — для тестов, где
+ * важно не само продолжение, а то, что ушло в старт. */
+function answerWholeUpload(): void {
+  const done: AnswerVideoUploadDto = {
+    id: 'u1',
+    partBytes: 64,
+    partCount: 1,
+    receivedParts: [1],
+  };
+  mockedApiFetch.mockImplementation((path: string) => {
+    if (path === START_PATH) return Promise.resolve({ ...done, receivedParts: [] });
+    if (path === answerVideoPartPath('u1', 1)) return Promise.resolve(done);
+    if (path === answerVideoCompletePath('u1')) return Promise.resolve(MEDIA);
+    return Promise.reject(new Error(`неожиданный путь: ${path}`));
+  });
+}
+
+function startBodies(): unknown[] {
+  return mockedApiFetch.mock.calls
+    .filter(([path]) => path === START_PATH)
+    .map(([, init]) => init?.body);
+}
+
+describe('runAnswerVideoUpload — отпечаток по содержимому (F18)', () => {
+  it('в старт уходит отпечаток по содержимому, а не «размер:дата»', async () => {
+    answerWholeUpload();
+    const file = new File([new Uint8Array(20).fill(3)], 'form.mp4', {
+      lastModified: 12345,
+    });
+
+    await runAnswerVideoUpload(baseParams({ file }));
+
+    const fingerprint = await computeAnswerVideoFingerprint(file);
+    expect(fingerprint).toMatch(/^20:[0-9a-f]{64}$/);
+    expect(startBodies()).toEqual([{ itemId: ITEM_ID, sizeBytes: 20, fingerprint }]);
+  });
+
+  it('те же байты с новой датой изменения (iPhone, «Фото») шлют тот же отпечаток', async () => {
+    answerWholeUpload();
+    const bytes = new Uint8Array(20).fill(7);
+    const exported = (lastModified: number) =>
+      new File([bytes], 'IMG.MOV', { type: 'video/quicktime', lastModified });
+
+    await runAnswerVideoUpload(baseParams({ file: exported(1) }));
+    await runAnswerVideoUpload(baseParams({ file: exported(2) }));
+
+    const [first, second] = startBodies();
+    expect(second).toEqual(first);
+  });
+});
+
+describe('runAnswerVideoUpload — файл не читается при подсчёте отпечатка', () => {
+  it('onFailed с понятным текстом, в сеть не ходит', async () => {
+    const file = makeFile();
+    vi.spyOn(file, 'arrayBuffer').mockRejectedValue(new Error('NotReadableError'));
+    const onFailed = vi.fn<(error: FormError) => void>();
+
+    await runAnswerVideoUpload(baseParams({ file, onFailed }));
+
+    expect(onFailed).toHaveBeenCalledTimes(1);
+    expect(onFailed.mock.calls[0]?.[0].message).toContain('Не удалось прочитать файл');
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it('отмена, пока считается отпечаток, — старт не уходит', async () => {
+    const file = makeFile();
+    let finishReading!: (buffer: ArrayBuffer) => void;
+    vi.spyOn(file, 'arrayBuffer').mockReturnValue(
+      new Promise((resolve) => {
+        finishReading = resolve;
+      }),
+    );
+    let cancelled = false;
+    const run = runAnswerVideoUpload(baseParams({ file, isCancelled: () => cancelled }));
+
+    cancelled = true;
+    finishReading(new ArrayBuffer(file.size));
+    await run;
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it('отмена и сбой чтения вместе — тихо: после «Отмены» ошибки не показываем', async () => {
+    const file = makeFile();
+    vi.spyOn(file, 'arrayBuffer').mockRejectedValue(new Error('NotReadableError'));
+    const onFailed = vi.fn();
+
+    await runAnswerVideoUpload(baseParams({ file, onFailed, isCancelled: () => true }));
+
+    expect(onFailed).not.toHaveBeenCalled();
   });
 });

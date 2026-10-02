@@ -35,7 +35,7 @@ export function toGradingCommentPresetDto(
     id: doc._id.toString(),
     text: doc.text,
     title: doc.title,
-    createdBy: doc.createdBy.toString(),
+    createdBy: doc.createdBy?.toString(),
     createdAt: toIsoUtc(doc.createdAt),
   };
 }

@@ -41,10 +41,21 @@ describe('toMaterialDto', () => {
       lessonIds: [lessonId.toString()],
       access: doc.access,
       tags: doc.tags,
-      createdBy: doc.createdBy.toString(),
+      createdBy: doc.createdBy?.toString(),
       createdAt: '2026-09-10T08:00:00.000Z',
       updatedAt: '2026-09-12T09:30:00.000Z',
     });
+  });
+
+  // Регрессия инцидента 2026-10-02: GET /api/materials → 500 после удаления
+  // аккаунта автора — удаление делает $unset createdBy, маппер звал `.toString()`.
+  it('документ без createdBy (аккаунт автора удалён) — не падает, поля в ответе нет', () => {
+    const { createdBy: _createdBy, ...doc } = material();
+
+    const dto = toMaterialDto(doc);
+
+    expect(dto.createdBy).toBeUndefined();
+    expect(dto.title).toBe(doc.title);
   });
 
   // Материалы, созданные до ADR-0058, не имеют поля в документе — `.lean()`
