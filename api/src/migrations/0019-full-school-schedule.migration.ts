@@ -24,21 +24,25 @@
 //
 // Сырые документы через драйвер, как в 0001: умолчания схемы выписаны явно.
 import { mongo } from 'mongoose';
+import { WEEKDAYS, type ClassFormat } from '@xuanxue/shared';
 import {
-  DEFAULT_LEAD_MINUTES,
-  SCHOOL_TZ,
-  WEEKDAYS,
-  type ClassFormat,
-  type Weekday,
-} from '@xuanxue/shared';
+  momentOf,
+  newSlotDocument,
+  readBroadcastChannelIds,
+  readZoomOf,
+  rulesOf,
+  type ClassDoc,
+  type Classes,
+  type SeedRule,
+  type SlotShape,
+  type StoredRule,
+} from './school-schedule-docs';
 
 // `mongo` — тот же драйвер, что внутри mongoose, поэтому типы совпадают (см. 0001).
 const { ObjectId } = mongo;
 type Db = mongo.Db;
-type Id = mongo.ObjectId;
 
 const CLASSES = 'classes';
-const CHANNELS = 'channels';
 
 const DEFAULT_DURATION_MIN = 60;
 // Порядок как у WEEKDAYS: 0 — воскресенье … 6 — суббота.
@@ -51,12 +55,6 @@ const WOLFSON = 'Парк Вольфсон, Тель-Авив';
 const ARKAVI = 'Аркави 3, Тель-Авив';
 const ONLINE = null; // зала нет, `location` в документ не пишется
 
-interface SeedRule {
-  weekday: Weekday;
-  time: string;
-  durationMin: number;
-}
-
 /** Слот так, как его создала 0001: по нему узнаём «свой» слот в базе. */
 interface LegacySlot {
   title: string;
@@ -64,11 +62,7 @@ interface LegacySlot {
   rules: SeedRule[];
 }
 
-interface ScheduleSlot {
-  title: string;
-  groupLabel: string;
-  format: ClassFormat;
-  location: string | null;
+export interface ScheduleSlot extends SlotShape {
   rules: SeedRule[];
   /** Есть — слот вырастает из слота 0001, нет — заводится новым. */
   grownFrom: LegacySlot | undefined;
@@ -139,7 +133,7 @@ const SAME_ZOOM_AS: Record<number, string> = {
   21: 'Ср 18:30',
 };
 
-const SCHEDULE: ScheduleSlot[] = ROWS.map(
+export const SCHEDULE: ScheduleSlot[] = ROWS.map(
   ([title, groupLabel, format, location, rules], index) => {
     const grown = GROWN_FROM[index + 1];
     const zoomMoment = SAME_ZOOM_AS[index + 1];
@@ -158,28 +152,6 @@ const SCHEDULE: ScheduleSlot[] = ROWS.map(
     };
   },
 );
-
-/** Сырой документ `classes`: только поля, которые миграция читает. */
-interface ClassDoc extends mongo.Document {
-  _id: Id;
-  title: string;
-  groupLabel?: string;
-  format?: string;
-  location?: string;
-  zoomLink?: string;
-  zoomPassword?: string;
-  rules?: StoredRule[];
-}
-
-type Classes = mongo.Collection<ClassDoc>;
-type StoredRule = SeedRule & { _id: Id };
-
-// Документ без правил — только заведённый руками мимо схемы: слот без моментов,
-// а не повод уронить старт приложения.
-const rulesOf = (doc: Pick<ClassDoc, 'rules'>): StoredRule[] => doc.rules ?? [];
-
-const momentOf = (rule: Pick<SeedRule, 'weekday' | 'time'>): string =>
-  `${rule.weekday} ${rule.time}`;
 
 /** Наборы правил равны как множества: порядок в документе значения не имеет. */
 function isSameRuleSet(have: readonly SeedRule[], want: readonly SeedRule[]): boolean {
@@ -232,30 +204,6 @@ async function growLegacySlot(classes: Classes, slot: ScheduleSlot, now: Date) {
   );
 }
 
-/** Тот же отбор, что `ClassesService.defaultTelegramChannelIds`: личный канал
- * ученика (`broadcastEligible: false`, ADR-0027) получателем занятия не бывает. */
-async function readBroadcastChannelIds(db: Db): Promise<Id[]> {
-  const channels = await db
-    .collection(CHANNELS)
-    .find(
-      { type: 'telegram', active: true, broadcastEligible: { $ne: false } },
-      { projection: { _id: 1 } },
-    )
-    .toArray();
-  return channels.map((channel) => channel._id);
-}
-
-/** Ссылка и пароль слота из той же комнаты Zoom — копией, как лежат в базе. */
-async function readZoomOf(classes: Classes, { weekday, time }: SeedRule) {
-  const source = await classes.findOne({
-    rules: { $elemMatch: { weekday, time } },
-    zoomLink: { $type: 'string', $ne: '' },
-  });
-  if (!source?.zoomLink) return {};
-  const { zoomLink, zoomPassword } = source;
-  return zoomPassword ? { zoomLink, zoomPassword } : { zoomLink };
-}
-
 /** Фаза 2: новые слоты — на моменты, которые никто не занял. */
 async function insertNewSlots(db: Db, classes: Classes, now: Date): Promise<void> {
   const docs = await classes.find({}, { projection: { rules: 1 } }).toArray();
@@ -268,23 +216,7 @@ async function insertNewSlots(db: Db, classes: Classes, now: Date): Promise<void
     rules.forEach((rule) => taken.add(momentOf(rule)));
 
     const zoom = slot.sameZoomAs ? await readZoomOf(classes, slot.sameZoomAs) : {};
-    await classes.insertOne({
-      _id: new ObjectId(),
-      title: slot.title,
-      groupLabel: slot.groupLabel,
-      format: slot.format,
-      ...(slot.location === null ? {} : { location: slot.location }),
-      ...zoom,
-      // Правило — субдокумент с собственным `_id`: на него ссылается `lessons.ruleId`.
-      rules: rules.map((rule) => ({ _id: new ObjectId(), ...rule })),
-      tz: SCHOOL_TZ,
-      channelIds,
-      leadMinutes: DEFAULT_LEAD_MINUTES,
-      active: true,
-      tags: [],
-      createdAt: now,
-      updatedAt: now,
-    });
+    await classes.insertOne(newSlotDocument({ slot, rules, channelIds, zoom, now }));
   }
 }
 

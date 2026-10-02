@@ -114,7 +114,8 @@ export class MigrationRunner implements OnApplicationBootstrap {
     for (const migration of migrations) {
       if (applied.has(migration.id)) continue;
       this.logger.log(`Применяю миграцию ${migration.id}`);
-      await migration.up(db);
+      const report = await migration.up(db);
+      for (const line of report ?? []) this.logger.log(`${migration.id}: ${line}`);
       await this.recordApplied(collection, migration.id);
     }
   }

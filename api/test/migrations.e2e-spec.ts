@@ -8,8 +8,9 @@ import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor } from './e2e-support/http';
 
-// 24 слота: 11 из 0001, доведённых до полного расписания, и 13 новых (0019).
-const EXPECTED_CLASSES = 24;
+// 25 слотов: 11 из 0001, доведённых до полного расписания, 13 новых (0019)
+// и веер для начинающих в пятницу 19:30 (0022).
+const EXPECTED_CLASSES = 25;
 
 describe('Миграции при старте (e2e)', () => {
   let testApp: TestApp;
