@@ -5,16 +5,14 @@
 // колбэки, тестируется без DOM.
 import type { ExamMediaDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
-import { errorFrom, type FormError } from '../components/FormServerError';
-import {
-  answerVideoRetryDelaySeconds,
-  classifyAnswerVideoError,
-  computeAnswerVideoFingerprint,
-  nextMissingAnswerVideoPart,
-  sliceAnswerVideoPart,
-} from './answerVideoUpload';
+import type { FormError } from '../components/FormServerError';
+import { computeAnswerVideoFingerprint } from './answerVideoFingerprint';
+import { withRetry } from './answerVideoRetry';
+import { nextMissingAnswerVideoPart, sliceAnswerVideoPart } from './answerVideoUpload';
 
-const UPLOAD_FAILED_MESSAGE = 'Не удалось загрузить видео. Попробуйте ещё раз.';
+// Файл не читается (iOS убрал временную копию из «Фото», нет прав): без
+// отпечатка загрузку не начать, а тихо зависнуть в «Загружаем» — худший исход.
+const FILE_UNREADABLE_MESSAGE = 'Не удалось прочитать файл. Выберите его ещё раз.';
 
 export interface AnswerVideoUploadProgress {
   sentParts: number;
@@ -58,7 +56,12 @@ export async function runAnswerVideoUpload(
     onFailed,
     onDone,
   } = params;
-  const fingerprint = computeAnswerVideoFingerprint(file);
+  const fingerprint = await computeAnswerVideoFingerprint(file).catch(() => null);
+  if (isCancelled()) return;
+  if (fingerprint === null) {
+    onFailed({ message: FILE_UNREADABLE_MESSAGE });
+    return;
+  }
   const retry = <T>(step: () => Promise<T>) =>
     withRetry(step, { isCancelled, waitForResume, onFailed });
 
@@ -108,40 +111,4 @@ export async function runAnswerVideoUpload(
   );
   if (!media || isCancelled()) return;
   onDone(media);
-}
-
-interface WithRetryOptions {
-  isCancelled: () => boolean;
-  waitForResume: (delaySec: number) => Promise<void>;
-  onFailed: (error: FormError) => void;
-}
-
-/** Повторяет `step()` на сетевой сбой/занятость сервера (503) с паузой по
- * расписанию (answerVideoRetryDelaySeconds); отказ сервера (4xx) —
- * `onFailed` и стоп. `undefined` — шаг не завершился успехом (отказ или
- * отмена снаружи), вызывающий обязан выйти. */
-async function withRetry<T>(
-  step: () => Promise<T>,
-  options: WithRetryOptions,
-): Promise<T | undefined> {
-  const { isCancelled, waitForResume, onFailed } = options;
-  let attempt = 1;
-  for (;;) {
-    if (isCancelled()) return undefined;
-    try {
-      return await step();
-    } catch (err) {
-      if (isCancelled()) return undefined;
-      const classified = classifyAnswerVideoError(err);
-      if (classified.kind === 'stop') {
-        onFailed(errorFrom(err, UPLOAD_FAILED_MESSAGE));
-        return undefined;
-      }
-      await waitForResume(
-        answerVideoRetryDelaySeconds(attempt, classified.retryAfterSec),
-      );
-      if (isCancelled()) return undefined;
-      attempt += 1;
-    }
-  }
 }
