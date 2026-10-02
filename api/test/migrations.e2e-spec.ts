@@ -9,8 +9,8 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor } from './e2e-support/http';
 
 // 25 слотов: 11 из 0001, доведённых до полного расписания, 13 новых (0019)
-// и веер для начинающих в пятницу 19:30 (0022).
-const EXPECTED_CLASSES = 25;
+// веер для начинающих в пятницу 19:30 (0022) и занятие для преподавателей (0024).
+const EXPECTED_CLASSES = 26;
 
 describe('Миграции при старте (e2e)', () => {
   let testApp: TestApp;
