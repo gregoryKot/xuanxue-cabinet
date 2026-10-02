@@ -339,6 +339,136 @@ describe('ClassEditorScreen — дни и время (RuleFields)', () => {
   });
 });
 
+const FRIDAY_BIWEEKLY_RULE = {
+  id: 'r1',
+  weekday: 5 as const,
+  time: '20:00',
+  durationMin: 90,
+  everyWeeks: 2 as const,
+  startsOn: '2026-10-02',
+};
+
+describe('ClassEditorScreen — «раз в две недели» (ADR-0168)', () => {
+  it('у еженедельного правила поля даты нет, выбор «Раз в две недели» открывает его с подсказкой про день', async () => {
+    const user = userEvent.setup();
+    mockClass(
+      makeClass({ rules: [{ id: 'r1', weekday: 5, time: '20:00', durationMin: 90 }] }),
+    );
+
+    renderAt('/schedule/c1');
+    await user.selectOptions(await screen.findByLabelText('Как часто'), '2');
+
+    expect(screen.getByLabelText('Первое занятие')).toHaveValue('');
+    expect(screen.getByText('пятницу')).toBeInTheDocument();
+  });
+
+  it('открытое двухнедельное занятие — «Раз в две недели» и дата как в базе', async () => {
+    mockClass(makeClass({ rules: [FRIDAY_BIWEEKLY_RULE] }));
+
+    renderAt('/schedule/c1');
+
+    expect(await screen.findByLabelText('Как часто')).toHaveValue('2');
+    expect(screen.getByLabelText('Первое занятие')).toHaveValue('2026-10-02');
+  });
+
+  it('частота и дата первого занятия уходят в PATCH вместе с правилом', async () => {
+    const user = userEvent.setup();
+    mockClass(
+      makeClass({ rules: [{ id: 'r1', weekday: 5, time: '20:00', durationMin: 90 }] }),
+    );
+
+    renderAt('/schedule/c1');
+    await user.selectOptions(await screen.findByLabelText('Как часто'), '2');
+    fireEvent.change(screen.getByLabelText('Первое занятие'), {
+      target: { value: '2026-10-02' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const options = callsWithMethod('PATCH')[0]?.[1] as { body: { rules: unknown[] } };
+    expect(options.body.rules).toEqual([
+      expect.objectContaining({
+        id: 'r1',
+        weekday: 5,
+        everyWeeks: 2,
+        startsOn: '2026-10-02',
+      }),
+    ]);
+  });
+
+  it('без даты запроса нет: ошибка под названием, страница остаётся', async () => {
+    const user = userEvent.setup();
+    mockClass(
+      makeClass({ rules: [{ id: 'r1', weekday: 5, time: '20:00', durationMin: 90 }] }),
+    );
+
+    renderAt('/schedule/c1');
+    await user.selectOptions(await screen.findByLabelText('Как часто'), '2');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Впишите дату первого занятия: от неё занятие идёт через неделю.',
+    );
+    expect(callsWithMethod('PATCH')).toHaveLength(0);
+    expect(screen.queryByText(SCHEDULE_MARKER)).not.toBeInTheDocument();
+  });
+
+  // Кнопка «Сохранить» внизу страницы, ошибка правила — у названия наверху:
+  // без прокрутки нажатие выглядело бы как «ничего не произошло» (ADR-0052).
+  it('провал проверки прокручивает к ошибке', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      mockClass(
+        makeClass({ rules: [{ id: 'r1', weekday: 5, time: '20:00', durationMin: 90 }] }),
+      );
+
+      renderAt('/schedule/c1');
+      await user.selectOptions(await screen.findByLabelText('Как часто'), '2');
+      await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    }
+  });
+
+  it('дата в другой день недели — ошибка называет оба дня, запроса нет', async () => {
+    const user = userEvent.setup();
+    mockClass(makeClass({ rules: [FRIDAY_BIWEEKLY_RULE] }));
+
+    renderAt('/schedule/c1');
+    await user.selectOptions(await screen.findByLabelText('День недели'), '2');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Дата первого занятия выпадает на пятницу, а правило стоит на вторник.',
+    );
+    expect(callsWithMethod('PATCH')).toHaveLength(0);
+  });
+
+  it('обратно на «Каждую неделю» — поле даты уходит, в теле нет ни частоты, ни даты', async () => {
+    const user = userEvent.setup();
+    mockClass(makeClass({ rules: [FRIDAY_BIWEEKLY_RULE] }));
+
+    renderAt('/schedule/c1');
+    await user.selectOptions(await screen.findByLabelText('Как часто'), '1');
+    expect(screen.queryByLabelText('Первое занятие')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const options = callsWithMethod('PATCH')[0]?.[1] as {
+      body: { rules: Record<string, unknown>[] };
+    };
+    expect(options.body.rules[0]).not.toHaveProperty('everyWeeks');
+    expect(options.body.rules[0]).not.toHaveProperty('startsOn');
+  });
+});
+
 describe('ClassEditorScreen — каналы рассылки', () => {
   it('отметка канала уходит в channelIds при сохранении', async () => {
     const user = userEvent.setup();

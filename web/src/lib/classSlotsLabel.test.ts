@@ -3,7 +3,11 @@
 import { describe, expect, it } from 'vitest';
 import { classNamesById, classOptionLabel, classSlotsLabel } from './classSlotsLabel';
 
-const slot = (weekday: number, time: string) => ({ weekday, time, durationMin: 60 });
+const slot = (weekday: number, time: string) => ({
+  weekday,
+  time,
+  durationMin: 60,
+});
 
 describe('classSlotsLabel', () => {
   it('дни с одним временем склеены через запятую: «вс, ср · 08:00»', () => {
@@ -36,6 +40,30 @@ describe('classSlotsLabel', () => {
     expect(classSlotsLabel([{ weekday: 2, time: '00:00', durationMin: 90 }])).toBe(
       'вт · 00:00',
     );
+  });
+
+  // ADR-0168: занятие для преподавателей — пятница 20:00 раз в две недели.
+  it('раз в две недели — подпись «раз в 2 недели» в конце части', () => {
+    expect(classSlotsLabel([{ ...slot(5, '20:00'), everyWeeks: 2 }])).toBe(
+      'пт · 20:00 · раз в 2 недели',
+    );
+  });
+
+  it('одно время, но разный ритм — две части: еженедельная раньше', () => {
+    expect(
+      classSlotsLabel([{ ...slot(3, '19:00'), everyWeeks: 2 }, slot(1, '19:00')]),
+    ).toBe('пн · 19:00; ср · 19:00 · раз в 2 недели');
+  });
+
+  it('дни одного времени и ритма склеены, everyWeeks: 1 — то же, что нет поля', () => {
+    expect(
+      classSlotsLabel([
+        { ...slot(1, '19:00'), everyWeeks: 1 },
+        slot(3, '19:00'),
+        { ...slot(0, '19:00'), everyWeeks: 2 },
+        { ...slot(6, '19:00'), everyWeeks: 2 },
+      ]),
+    ).toBe('пн, ср · 19:00; вс, сб · 19:00 · раз в 2 недели');
   });
 
   it('правил нет — пустая строка', () => {

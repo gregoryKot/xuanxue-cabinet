@@ -94,6 +94,29 @@ describe('listLessonScopeClasses', () => {
     ]);
   });
 
+  // ADR-0168: ученику хватает «раз в 2 недели» — дата первого занятия в слот
+  // не попадает.
+  it('слот раз в две недели несёт everyWeeks, но не дату первого занятия', async () => {
+    await createClass({
+      rules: [
+        {
+          weekday: 5,
+          time: '20:00',
+          durationMin: 90,
+          everyWeeks: 2,
+          startsOn: '2026-10-02',
+        },
+      ],
+    });
+
+    const [item] = await listLessonScopeClasses(model);
+
+    expect(item?.slots).toEqual([
+      { weekday: 5, time: '20:00', durationMin: 90, everyWeeks: 2 },
+    ]);
+    expect(item?.slots[0]).not.toHaveProperty('startsOn');
+  });
+
   it('занятие без слотов — пустой список слотов', async () => {
     await createClass({ rules: [] });
 

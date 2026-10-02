@@ -17,6 +17,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     startTime: '19:00',
     endTime: '20:00',
     startMinutes: 19 * 60,
+    isBiweekly: false,
     active: true,
     linkMissing: false,
     channelCount: 1,
@@ -192,6 +193,30 @@ describe('SlotRow — пометки', () => {
     expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(3);
 
     rerender(<SlotRow slot={makeSlot()} onSelect={vi.fn()} />);
+    expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(0);
+  });
+});
+
+describe('SlotRow — «раз в 2 недели» (ADR-0168)', () => {
+  it('слот раз в две недели — тихая строка сразу под местом', () => {
+    renderRow({ isBiweekly: true });
+
+    const note = screen.getByText('раз в 2 недели');
+    expect(note.previousElementSibling).toHaveTextContent('Онлайн');
+  });
+
+  it('еженедельный слот — подписи нет', () => {
+    renderRow({ isBiweekly: false });
+
+    expect(screen.queryByText(/раз в 2 недели/)).not.toBeInTheDocument();
+  });
+
+  it('подпись не красная и не в списке пометок о проблемах: это ритм, а не беда', () => {
+    const { container } = renderRow({ isBiweekly: true });
+
+    expect(screen.getByText('раз в 2 недели')).not.toHaveStyle({
+      color: 'var(--danger)',
+    });
     expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(0);
   });
 });

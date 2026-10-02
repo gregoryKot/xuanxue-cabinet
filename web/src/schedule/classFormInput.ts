@@ -14,24 +14,21 @@ import {
   CLASS_LIMITS,
   DEFAULT_LEAD_MINUTES,
   parseTagsText,
-  RULE_TIME_RE,
   SCHOOL_TZ,
   type ChannelDto,
   type ClassDto,
   type ClassFormat,
   type CreateClassInput,
-  type ScheduleRuleInput,
   type UpdateClassInput,
-  type Weekday,
 } from '@xuanxue/shared';
+import { isValidInt } from '../exams/examQuestions';
 import { longTagError } from '../lib/longTagError';
-
-export interface RuleDraft {
-  id?: string;
-  weekday: Weekday;
-  time: string;
-  durationMinText: string;
-}
+import {
+  draftsToRules,
+  ruleToDraft,
+  validateRuleDrafts,
+  type RuleDraft,
+} from './ruleDraft';
 
 export interface ClassFormState {
   title: string;
@@ -80,52 +77,22 @@ export function initialClassFormState(
     channelIds: classDto?.channelIds ?? defaultChannelIds(channels),
     leaderId: classDto?.leaderId ?? '',
     tagsText: classDto?.tags.join(', ') ?? '',
-    rules:
-      classDto?.rules.map((rule) => ({
-        id: rule.id,
-        weekday: rule.weekday,
-        time: rule.time,
-        durationMinText: String(rule.durationMin),
-      })) ?? [],
+    rules: classDto?.rules.map(ruleToDraft) ?? [],
   };
-}
-
-function isValidInt(text: string, min: number, max: number): boolean {
-  const value = Number(text);
-  return text.trim() !== '' && Number.isInteger(value) && value >= min && value <= max;
 }
 
 /** `null` — форма валидна, иначе текст первой найденной ошибки. */
 export function validateClassForm(state: ClassFormState): string | null {
   if (!state.title.trim()) return 'Впишите название занятия.';
   if (state.rules.length === 0) return 'Добавьте хотя бы один день.';
-  for (const rule of state.rules) {
-    if (!RULE_TIME_RE.test(rule.time)) return 'Выберите время для каждого дня.';
-    if (
-      !isValidInt(
-        rule.durationMinText,
-        CLASS_LIMITS.durationMinMin,
-        CLASS_LIMITS.durationMinMax,
-      )
-    ) {
-      return `Длительность — целое число от ${CLASS_LIMITS.durationMinMin} до ${CLASS_LIMITS.durationMinMax} минут.`;
-    }
-  }
+  const ruleError = validateRuleDrafts(state.rules);
+  if (ruleError !== null) return ruleError;
   if (!isValidInt(state.leadMinutesText, 0, CLASS_LIMITS.leadMinutesMax)) {
     return `За сколько минут слать — целое число от 0 до ${CLASS_LIMITS.leadMinutesMax}.`;
   }
   // Почему длину тега проверяем на клиенте — шапка lib/longTagError.ts, тот
   // же приём, что у materialFormInput.ts.
   return longTagError(state.tagsText);
-}
-
-function toRules(rules: RuleDraft[]): ScheduleRuleInput[] {
-  return rules.map((rule) => ({
-    id: rule.id,
-    weekday: rule.weekday,
-    time: rule.time,
-    durationMin: Number(rule.durationMinText),
-  }));
 }
 
 export function toCreateInput(state: ClassFormState): CreateClassInput {
@@ -141,7 +108,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
     tz: state.tz,
     channelIds: state.channelIds,
     tags: parseTagsText(state.tagsText),
-    rules: toRules(state.rules),
+    rules: draftsToRules(state.rules),
   };
 }
 
@@ -161,6 +128,6 @@ export function toUpdateInput(state: ClassFormState): UpdateClassInput {
     tz: state.tz,
     channelIds: state.channelIds,
     tags: parseTagsText(state.tagsText),
-    rules: toRules(state.rules),
+    rules: draftsToRules(state.rules),
   };
 }

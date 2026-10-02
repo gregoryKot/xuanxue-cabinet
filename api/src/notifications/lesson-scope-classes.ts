@@ -5,7 +5,12 @@
 // схему класса. Шифруемых полей среди читаемых нет (title, groupLabel, tz,
 // rules — `plain`, class.schema.ts), расшифровка не нужна.
 import type { Model, Types } from 'mongoose';
-import { LIST_LIMIT_MAX, SCHOOL_TZ, type LessonScopeClassDto } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_MAX,
+  SCHOOL_TZ,
+  type LessonScopeClassDto,
+  type ScheduleRule,
+} from '@xuanxue/shared';
 import type { ClassRecord } from '../classes/class.schema';
 
 // Потолок списка — максимум API (CLAUDE.md «API»: «дай всё» запрещено).
@@ -21,7 +26,9 @@ interface LeanScopeClass {
   title: string;
   groupLabel?: string;
   tz?: string;
-  rules: { weekday: number; time: string; durationMin: number }[];
+  rules: (Pick<ScheduleRule, 'time' | 'durationMin' | 'everyWeeks'> & {
+    weekday: number;
+  })[];
 }
 
 function toLessonScopeClassDto(doc: LeanScopeClass): LessonScopeClassDto {
@@ -30,11 +37,14 @@ function toLessonScopeClassDto(doc: LeanScopeClass): LessonScopeClassDto {
     title: doc.title,
     groupLabel: doc.groupLabel ?? '',
     tz: doc.tz ?? SCHOOL_TZ,
-    // Поля правила перечислены явно: `_id` субдокумента — деталь хранения.
+    // Поля правила перечислены явно: `_id` субдокумента — деталь хранения, а
+    // дата первого занятия ученику не нужна — ему хватает «раз в 2 недели»
+    // (ADR-0168).
     slots: doc.rules.map((rule) => ({
       weekday: rule.weekday,
       time: rule.time,
       durationMin: rule.durationMin,
+      ...(rule.everyWeeks === undefined ? {} : { everyWeeks: rule.everyWeeks }),
     })),
   };
 }

@@ -2,14 +2,26 @@
 // логика без React и сети: сколько раз в неделю школа напоминает человеку, пока
 // он ничего не отмечал, и как это звучит. Число считает из расписания, которое
 // экран уже получил: отдельного запроса за ним нет.
-import { pluralRu, type LessonScopeClassDto, type PluralForms } from '@xuanxue/shared';
+import {
+  EVERY_WEEK,
+  pluralRu,
+  type LessonScopeClassDto,
+  type PluralForms,
+} from '@xuanxue/shared';
 
 const TIMES_FORMS: PluralForms = { one: 'раз', few: 'раза', many: 'раз', other: 'раза' };
 
-/** Сколько занятий в неделю в расписании школы: каждый слот правила — одно
- * занятие. В режиме «все» (дефолт) столько напоминаний и приходит. */
+/** Сколько занятий в неделю в расписании школы: слот правила — одно занятие, а
+ * слот «раз в две недели» — половина (ADR-0168), итог округляется до целого.
+ * В режиме «все» (дефолт) столько напоминаний в неделю в среднем и приходит. */
 export function weeklyLessonCount(classes: readonly LessonScopeClassDto[]): number {
-  return classes.reduce((sum, item) => sum + item.slots.length, 0);
+  const perWeek = classes.reduce(
+    (sum, item) =>
+      sum +
+      item.slots.reduce((slots, slot) => slots + 1 / (slot.everyWeeks ?? EVERY_WEEK), 0),
+    0,
+  );
+  return Math.round(perWeek);
 }
 
 /** «Напоминаем обо всех занятиях школы — **16 раз в неделю**». Число — факт,

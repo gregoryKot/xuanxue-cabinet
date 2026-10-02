@@ -46,6 +46,33 @@ describe('ruleEndTime', () => {
   });
 });
 
+describe('buildScheduleGrid — раз в две недели (ADR-0168)', () => {
+  it('слот двухнедельного правила помечен isBiweekly, еженедельный — нет', () => {
+    const grid = buildScheduleGrid([
+      makeClass({
+        rules: [
+          {
+            id: 'r1',
+            weekday: 5,
+            time: '20:00',
+            durationMin: 90,
+            everyWeeks: 2,
+            startsOn: '2026-10-02',
+          },
+          { id: 'r2', weekday: 5, time: '09:00', durationMin: 60 },
+          { id: 'r3', weekday: 5, time: '12:00', durationMin: 60, everyWeeks: 1 },
+        ],
+      }),
+    ]);
+
+    expect(grid[5].map((slot) => [slot.ruleId, slot.isBiweekly])).toEqual([
+      ['r2', false],
+      ['r3', false],
+      ['r1', true],
+    ]);
+  });
+});
+
 describe('buildScheduleGrid', () => {
   it('пустой список занятий — все 7 дней пустые', () => {
     const grid = buildScheduleGrid([]);

@@ -1617,7 +1617,7 @@
   "web/src/schedule/ScheduleScreen.tsx": 98,
   "web/src/schedule/SlotRow.tsx": 93,
   "web/src/schedule/channelCountLabel.ts": 15,
-  "web/src/schedule/classFormInput.ts": 166,
+  "web/src/schedule/classFormInput.ts": 133,
   "web/src/schedule/classFormatLabels.ts": 9,
   "web/src/schedule/scheduleGrid.ts": 120,
   "web/src/schedule/slotPlace.ts": 32,

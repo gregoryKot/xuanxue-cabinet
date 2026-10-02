@@ -3,7 +3,6 @@
 // расписанию, рубрика с названием, поля занятия, дни и время, каналы
 // рассылки, подвал с сохранением и удалением. Удаление — с подтверждением
 // через ConfirmDialog (раньше в старом листе срабатывало с одного касания).
-import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
@@ -20,7 +19,7 @@ import {
   editorPageStyle,
   editorSectionStyle,
 } from '../components/editorLayout';
-import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
+import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useTeachers } from '../people/useTeachers';
 import { ClassChannelsField } from './ClassChannelsField';
 import { ClassFormFields } from './ClassFormFields';
@@ -58,18 +57,21 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
     editor.update,
     editor.remove,
   );
-  const removeConfirm = useConfirmedRemove(form.remove, goToSchedule);
+  // Провал сохранения прокручивает к первой ошибке: «Сохранить» стоит внизу, а
+  // ошибка правила («Впишите дату первого занятия», ADR-0168) — у названия
+  // наверху, без прокрутки нажатие выглядело бы как «ничего не произошло».
+  const { formRef, handleSubmit, removeConfirm } = useEditorFormActions(
+    form.submit,
+    form.changeStatus,
+    form.remove,
+    goToSchedule,
+  );
   const teachersState = useTeachers();
   const noRules = form.state.rules.length === 0;
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (await form.submit()) goToSchedule();
-  }
-
   return (
     <>
-      <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
+      <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
         <Link to={SCHEDULE_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>

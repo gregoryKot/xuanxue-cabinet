@@ -3,7 +3,7 @@
 // окна — всегда параметром, не Date.now().
 import { DateTime } from 'luxon';
 import type { Types } from 'mongoose';
-import { RULE_TIME_RE, type Weekday } from '@xuanxue/shared';
+import { EVERY_TWO_WEEKS, RULE_TIME_RE, type Weekday } from '@xuanxue/shared';
 import type { LeanScheduleRule } from '../classes/class.schema';
 
 // Школа хранит день недели как 0 = воскресенье … 6 = суббота (ADR-0003,
@@ -27,26 +27,54 @@ export function parseRuleTime(time: string): { hour: number; minute: number } {
   return { hour: Number(hourGroup), minute: Number(time.slice(3)) };
 }
 
+const DAYS_IN_WEEK = 7;
+
+/** Попадает ли локальный день (в поясе слота) в чередование правила
+ * (ADR-0168). Еженедельное — любой день. «Раз в две недели» — день не раньше
+ * `startsOn` и с чётным числом целых недель от него: первое занятие — нулевая
+ * неделя, через одну — вторая.
+ *
+ * Считаем по календарным датам, а не по моментам: обе даты кладутся в UTC на
+ * полночь, и разница в днях целая в любую неделю года, переход на летнее время
+ * её не двигает (в Израиле 25 октября 2026 сутки длиннее на час, но «через
+ * неделю» остаётся через семь календарных дней). Дата начала не из календаря,
+ * как и двухнедельное правило без неё, — занятий нет: битый документ не должен
+ * тихо стать еженедельным и разослать лишнюю ссылку. */
+function ruleWeekFilter(
+  rule: Pick<LeanScheduleRule, 'everyWeeks' | 'startsOn'>,
+): (day: DateTime) => boolean {
+  if (rule.everyWeeks !== EVERY_TWO_WEEKS) return () => true;
+  if (rule.startsOn === undefined) return () => false;
+  const first = DateTime.fromISO(rule.startsOn, { zone: 'utc' });
+  return (day) => {
+    const days = DateTime.utc(day.year, day.month, day.day).diff(first, 'days').days;
+    const weeks = Math.floor(days / DAYS_IN_WEEK);
+    return weeks >= 0 && weeks % 2 === 0;
+  };
+}
+
 /**
  * Моменты начала по правилу в окне `[from, to)` — в UTC. Перебор дней в
  * поясе `tz`: `from.setZone(tz).startOf('day')` до `to`, для дня с нужным
- * `weekday` — `DateTime.fromObject({ ...дата, hour, minute }, { zone: tz })`
- * и `toUTC()`. Несуществующее локальное время (час перехода вперёд) Luxon
- * сдвигает сам — тест на DST фиксирует это поведение, не оборачивает его.
+ * `weekday` (и своей недели у правила «раз в две недели», `ruleWeekFilter`) —
+ * `DateTime.fromObject({ ...дата, hour, minute }, { zone: tz })` и `toUTC()`.
+ * Несуществующее локальное время (час перехода вперёд) Luxon сдвигает сам —
+ * тест на DST фиксирует это поведение, не оборачивает его.
  */
 export function planOccurrences(
-  rule: Pick<LeanScheduleRule, 'weekday' | 'time'>,
+  rule: Pick<LeanScheduleRule, 'weekday' | 'time' | 'everyWeeks' | 'startsOn'>,
   tz: string,
   from: DateTime,
   to: DateTime,
 ): DateTime[] {
   const { hour, minute } = parseRuleTime(rule.time);
   const targetWeekday = toLuxonWeekday(rule.weekday);
+  const isOnWeek = ruleWeekFilter(rule);
   const occurrences: DateTime[] = [];
 
   let cursor = from.setZone(tz).startOf('day');
   while (cursor < to) {
-    if (cursor.weekday === targetWeekday) {
+    if (cursor.weekday === targetWeekday && isOnWeek(cursor)) {
       const localMoment = DateTime.fromObject(
         { year: cursor.year, month: cursor.month, day: cursor.day, hour, minute },
         { zone: tz },

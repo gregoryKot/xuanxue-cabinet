@@ -1,6 +1,7 @@
 // «О каких занятиях напоминать» (ADR-0162): человек сам выбирает занятия
 // расписания, о которых получает уведомления. Отдельный файл, а не дописанный
 // `notifications.ts`: тот стоит на границе храповика размера (150 строк).
+import type { RuleEveryWeeks } from './domain';
 import type { NotificationKind } from './notifications';
 
 /** `all` — обо всех занятиях школы, как было до ADR-0162 (дефолт: ученик ничего
@@ -29,7 +30,14 @@ export interface LessonScopeClassDto {
   title: string;
   groupLabel: string;
   tz: string;
-  slots: { weekday: number; time: string; durationMin: number }[];
+  /** `everyWeeks` — только чтобы подписать «раз в 2 недели» (ADR-0168); дата
+   * первого занятия ученику не нужна и сюда не попадает. */
+  slots: {
+    weekday: number;
+    time: string;
+    durationMin: number;
+    everyWeeks?: RuleEveryWeeks;
+  }[];
 }
 
 // «За сколько напомнить» (ADR-0162, п. 3): короткий список вместо свободного

@@ -60,6 +60,28 @@ async function setRuleTime(
   );
 }
 
+// «Раз в две недели» (ADR-0168): пятница 20:00. NOW — тоже пятница, 20.03.
+const FRIDAY_20 = { weekday: 5 as const, time: '20:00', durationMin: 90 };
+
+async function setRuleRecurrence(
+  model: Model<ClassRecord>,
+  cls: ClassDoc,
+  recurrence: { everyWeeks: 1 | 2; startsOn?: string } | null,
+): Promise<void> {
+  const ruleFilter = { _id: cls._id, 'rules._id': cls.rules[0]?._id };
+  await model.updateOne(
+    ruleFilter,
+    recurrence === null
+      ? { $unset: { 'rules.$.everyWeeks': '', 'rules.$.startsOn': '' } }
+      : {
+          $set: {
+            'rules.$.everyWeeks': recurrence.everyWeeks,
+            'rules.$.startsOn': recurrence.startsOn,
+          },
+        },
+  );
+}
+
 describe('LessonPlannerService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
@@ -380,6 +402,121 @@ describe('LessonPlannerService', () => {
     expect(result.created).toBe(4); // только валидный класс
     const lessons = await lessonModel.find({}).lean();
     expect(lessons.every((l) => String(l.classId) === ok._id.toString())).toBe(true);
+  });
+
+  describe('раз в две недели (ADR-0168)', () => {
+    const startsAtOf = (lessons: Array<{ startsAt: Date }>) =>
+      lessons.map((l) => l.startsAt.toISOString());
+
+    it('правило сразу двухнедельное: на 4 недели вперёд два занятия, часы по поясу школы до и после перехода', async () => {
+      await createClass(classModel, {
+        rules: [{ ...FRIDAY_20, everyWeeks: 2, startsOn: '2026-03-20' }],
+      });
+
+      const result = await service.plan(NOW);
+
+      expect(result).toEqual({ created: 2, removed: 0 });
+      const lessons = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      // 20.03 — до перехода на летнее время (+02:00), 03.04 — после (+03:00).
+      expect(startsAtOf(lessons)).toEqual([
+        '2026-03-20T18:00:00.000Z',
+        '2026-04-03T17:00:00.000Z',
+      ]);
+    });
+
+    it('смена «каждую неделю» → «раз в две недели»: лишние нетронутые пятницы уходят, тронутая остаётся, второй тик ничего не меняет', async () => {
+      const cls = await createClass(classModel, { rules: [FRIDAY_20] });
+      await service.plan(NOW);
+      expect(await lessonModel.countDocuments({})).toBe(4); // 20.03, 27.03, 03.04, 10.04
+      const [, second] = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      await lessonModel.updateOne(
+        { _id: second?._id },
+        { $set: { topic: 'Тема 27.03' } },
+      );
+
+      await setRuleRecurrence(classModel, cls, { everyWeeks: 2, startsOn: '2026-03-20' });
+      const result = await service.plan(NOW);
+
+      // Нетронутая 10.04 лишняя и удалена; 27.03 лишняя тоже, но с темой —
+      // планировщик такое не удаляет (docs/PLAN.md §6).
+      expect(result).toEqual({ created: 0, removed: 1 });
+      const lessons = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      expect(startsAtOf(lessons)).toEqual([
+        '2026-03-20T18:00:00.000Z',
+        '2026-03-27T17:00:00.000Z',
+        '2026-04-03T17:00:00.000Z',
+      ]);
+      expect(await service.plan(NOW)).toEqual({ created: 0, removed: 0 });
+    });
+
+    it('сдвиг startsOn на соседнюю неделю переставляет чередование', async () => {
+      const cls = await createClass(classModel, {
+        rules: [{ ...FRIDAY_20, everyWeeks: 2, startsOn: '2026-03-20' }],
+      });
+      await service.plan(NOW);
+
+      await setRuleRecurrence(classModel, cls, { everyWeeks: 2, startsOn: '2026-03-27' });
+      const result = await service.plan(NOW);
+
+      expect(result).toEqual({ created: 2, removed: 2 });
+      const lessons = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      expect(startsAtOf(lessons)).toEqual([
+        '2026-03-27T17:00:00.000Z',
+        '2026-04-10T17:00:00.000Z',
+      ]);
+    });
+
+    it('смена «раз в две недели» → «каждую неделю»: недостающие пятницы добавляются, прежние остаются', async () => {
+      const cls = await createClass(classModel, {
+        rules: [{ ...FRIDAY_20, everyWeeks: 2, startsOn: '2026-03-20' }],
+      });
+      await service.plan(NOW);
+      const before = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+
+      await setRuleRecurrence(classModel, cls, null);
+      const result = await service.plan(NOW);
+
+      expect(result).toEqual({ created: 2, removed: 0 });
+      const lessons = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      expect(lessons).toHaveLength(4);
+      const keptIds = lessons.map((l) => String(l._id));
+      expect(keptIds).toContain(String(before[0]?._id));
+      expect(keptIds).toContain(String(before[1]?._id));
+    });
+
+    it('смена времени двухнедельного правила переносит занятие, а не пересоздаёт', async () => {
+      const cls = await createClass(classModel, {
+        rules: [{ ...FRIDAY_20, everyWeeks: 2, startsOn: '2026-03-20' }],
+      });
+      await service.plan(NOW);
+      const [first] = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      await lessonModel.updateOne({ _id: first?._id }, { $set: { topic: 'Тема' } });
+
+      await setRuleTime(classModel, cls, 0, '19:00');
+      const result = await service.plan(NOW);
+
+      expect(result).toEqual({ created: 0, removed: 0 });
+      const moved = await lessonModel.findById(first?._id).lean();
+      expect(moved?.startsAt.toISOString()).toBe('2026-03-20T17:00:00.000Z');
+      expect(moved?.topic).toBe('Тема');
+    });
+
+    it('осень: startsOn до окна, между ними конец летнего времени — чередование не сбилось, часы по зимнему', async () => {
+      // 25.10.2026 в Израиле часы переводят назад. Первое занятие 02.10, окно
+      // начинается 19.10: пятницы 30.10 и 13.11 по счёту от 02.10 (16.10 и
+      // 27.11 — вне окна).
+      await createClass(classModel, {
+        rules: [{ ...FRIDAY_20, everyWeeks: 2, startsOn: '2026-10-02' }],
+      });
+
+      await service.plan(DateTime.fromISO('2026-10-19T00:00:00Z', { zone: 'utc' }));
+
+      const lessons = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+      expect(startsAtOf(lessons)).toEqual([
+        '2026-10-30T18:00:00.000Z',
+        '2026-11-13T18:00:00.000Z',
+      ]);
+    });
   });
 
   it('DST на реальных датах: startsAt в UTC учитывает переход времени', async () => {

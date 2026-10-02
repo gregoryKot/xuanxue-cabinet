@@ -8,6 +8,7 @@
 // тридцать карточек шли лентой в четыре экрана (отзыв владельца
 // 2026-10-02). Теперь день — одна карточка (DaySlots.tsx), занятие — строка в
 // ней: начало крупно, конец тише, название с группой, место со значком.
+import { EVERY_TWO_WEEKS_NOTE_RU } from '@xuanxue/shared';
 import { ClassPlace } from './ClassPlace';
 import {
   bodyStyle,
@@ -59,6 +60,9 @@ export function SlotRow({ slot, onSelect }: SlotRowProps) {
           )}
         </span>
         <ClassPlace format={slot.format} location={slot.location} />
+        {/* «Раз в 2 недели» (ADR-0168) — тихой строкой под местом: неделя
+            показывает правила, и без неё слот читался бы как «каждую неделю». */}
+        {slot.isBiweekly && <span style={tagsStyle}>{EVERY_TWO_WEEKS_NOTE_RU}</span>}
         {/* Постоянные теги курса — подписью, не пилюлями: в карточке дня
             они ничего не фильтруют (ADR-0072). */}
         {slot.tags.length > 0 && <span style={tagsStyle}>{slot.tags.join(', ')}</span>}

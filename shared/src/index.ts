@@ -10,6 +10,7 @@ export type {
   BroadcastKind,
   BroadcastStatus,
   DeliveryStatus,
+  RuleEveryWeeks,
   ScheduleRule,
   Recording,
 } from './domain';
@@ -26,6 +27,9 @@ export {
   DELIVERY_STALE_LOCK_MIN,
   SCHOOL_TZ,
   RULE_TIME_RE,
+  EVERY_WEEK,
+  EVERY_TWO_WEEKS,
+  RULE_EVERY_WEEKS,
   DEFAULT_LEAD_MINUTES,
   PLANNING_HORIZON_WEEKS,
   DEFAULT_PREVIEW_MINUTES,
@@ -33,6 +37,14 @@ export {
   DEFAULT_NEWCOMER_CONTACT,
   DEFAULT_PAYMENT_CONTACT,
 } from './domain';
+export {
+  RULE_DATE_RE,
+  EVERY_WEEKS_LABELS_RU,
+  EVERY_TWO_WEEKS_NOTE_RU,
+  WEEKDAY_ACCUSATIVE_RU,
+  weekdayOfDate,
+  ruleRecurrenceError,
+} from './schedule-recurrence';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
   TEMPLATE_PLACEHOLDERS,

@@ -1,7 +1,9 @@
-// Правила расписания занятия — повторяемый список (день, время, длительность)
-// с добавлением/удалением строк (CLAUDE.md «Одна механика — один компонент»).
-// aria-label вместо видимой подписи у каждого поля строки: сама строка не
-// умещает три подписанных поля на 360px, а разметку списка озвучивает legend.
+// Правила расписания занятия — повторяемый список (день, время, длительность,
+// «как часто») с добавлением/удалением строк (CLAUDE.md «Одна механика — один
+// компонент»). aria-label вместо видимой подписи у трёх полей первой строки:
+// она не умещает три подписанных поля на 360px, а разметку списка озвучивает
+// legend. «Как часто» (RuleRecurrenceFields.tsx) — второй строкой, с видимыми
+// подписями.
 // Время — type="time" (нативный пикер, без ручного разбора HH:mm);
 // длительность — текст с inputMode="numeric": пустое поле не подменяется
 // нулём молча, форма покажет ошибку при сохранении (ревью п.10).
@@ -10,7 +12,8 @@ import { CLASS_LIMITS, WEEKDAYS, WEEKDAY_LABELS_RU, type Weekday } from '@xuanxu
 import { Button } from '../components/Button';
 import { inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
-import type { RuleDraft } from './classFormInput';
+import { RuleRecurrenceFields } from './RuleRecurrenceFields';
+import { newRuleDraft, type RuleDraft } from './ruleDraft';
 
 const fieldsetStyle: CSSProperties = {
   border: 'none',
@@ -21,6 +24,16 @@ const fieldsetStyle: CSSProperties = {
   gap: 8,
 };
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
+// Правило — две строки (день, время, длительность и «как часто») одним блоком в
+// рамке: без неё «как часто» первого правила читалось бы как строка второго.
+const ruleStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: 12,
+  border: '1px solid var(--line-soft)',
+  borderRadius: 'var(--radius-control)',
+};
 const rowStyle: CSSProperties = {
   display: 'flex',
   gap: 8,
@@ -31,8 +44,6 @@ const narrowInputStyle: CSSProperties = { ...inputStyle, width: 90 };
 // Тот же узкий столбец 90px и для обёртки select'а дня недели — саму
 // геометрию задаёт обёртка (Select.tsx), не select внутри неё.
 const narrowSelectWrapStyle: CSSProperties = { width: 90 };
-
-const NEW_RULE: RuleDraft = { weekday: 0, time: '19:00', durationMinText: '60' };
 
 interface RuleFieldsProps {
   rules: RuleDraft[];
@@ -52,45 +63,51 @@ export function RuleFields({ rules, onChange }: RuleFieldsProps) {
     <fieldset style={fieldsetStyle}>
       <legend style={legendStyle}>Дни и время</legend>
       {rules.map((rule, index) => (
-        <div key={rule.id ?? `new-${index}`} style={rowStyle}>
-          <Select
-            aria-label="День недели"
-            style={narrowSelectWrapStyle}
-            value={rule.weekday}
-            onChange={(e) =>
-              updateRule(index, { weekday: Number(e.target.value) as Weekday })
-            }
-          >
-            {WEEKDAYS.map((day) => (
-              <option key={day} value={day}>
-                {WEEKDAY_LABELS_RU[day]}
-              </option>
-            ))}
-          </Select>
-          <input
-            type="time"
-            aria-label="Время начала"
-            style={narrowInputStyle}
-            value={rule.time}
-            onChange={(e) => updateRule(index, { time: e.target.value })}
+        <div key={rule.id ?? `new-${index}`} style={ruleStyle}>
+          <div style={rowStyle}>
+            <Select
+              aria-label="День недели"
+              style={narrowSelectWrapStyle}
+              value={rule.weekday}
+              onChange={(e) =>
+                updateRule(index, { weekday: Number(e.target.value) as Weekday })
+              }
+            >
+              {WEEKDAYS.map((day) => (
+                <option key={day} value={day}>
+                  {WEEKDAY_LABELS_RU[day]}
+                </option>
+              ))}
+            </Select>
+            <input
+              type="time"
+              aria-label="Время начала"
+              style={narrowInputStyle}
+              value={rule.time}
+              onChange={(e) => updateRule(index, { time: e.target.value })}
+            />
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label={`Длительность, минут (от ${CLASS_LIMITS.durationMinMin} до ${CLASS_LIMITS.durationMinMax})`}
+              style={narrowInputStyle}
+              value={rule.durationMinText}
+              onChange={(e) => updateRule(index, { durationMinText: e.target.value })}
+            />
+            <Button type="button" variant="danger" onClick={() => removeRule(index)}>
+              Убрать
+            </Button>
+          </div>
+          <RuleRecurrenceFields
+            rule={rule}
+            onChange={(patch) => updateRule(index, patch)}
           />
-          <input
-            type="text"
-            inputMode="numeric"
-            aria-label={`Длительность, минут (от ${CLASS_LIMITS.durationMinMin} до ${CLASS_LIMITS.durationMinMax})`}
-            style={narrowInputStyle}
-            value={rule.durationMinText}
-            onChange={(e) => updateRule(index, { durationMinText: e.target.value })}
-          />
-          <Button type="button" variant="danger" onClick={() => removeRule(index)}>
-            Убрать
-          </Button>
         </div>
       ))}
       <Button
         type="button"
         variant="secondary"
-        onClick={() => onChange([...rules, { ...NEW_RULE }])}
+        onClick={() => onChange([...rules, newRuleDraft()])}
       >
         Добавить время
       </Button>

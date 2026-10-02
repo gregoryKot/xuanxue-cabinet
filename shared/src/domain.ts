@@ -57,12 +57,23 @@ export const DELIVERY_RETRY_DELAYS_MIN = [2, 10] as const;
  * тика подбирает доставку заново, а не ждёт её вечно. */
 export const DELIVERY_STALE_LOCK_MIN = 10;
 
+/** Как часто идёт слот: каждую неделю или через неделю (ADR-0168). */
+export const EVERY_WEEK = 1;
+export const EVERY_TWO_WEEKS = 2;
+export const RULE_EVERY_WEEKS = [EVERY_WEEK, EVERY_TWO_WEEKS] as const;
+export type RuleEveryWeeks = (typeof RULE_EVERY_WEEKS)[number];
+
 /** Правило расписания в поясе класса (ADR-0003) — разворачивается в UTC. */
 export interface ScheduleRule {
   weekday: Weekday;
   /** "HH:mm" в поясе класса, не UTC. */
   time: string;
   durationMin: number;
+  /** Нет поля — каждую неделю, как до ADR-0168. `1` сервер не хранит. */
+  everyWeeks?: RuleEveryWeeks;
+  /** Дата первого занятия «ГГГГ-ММ-ДД» (день недели — `weekday`), от неё идёт
+   * счёт «через неделю». Есть только при `everyWeeks: 2`. */
+  startsOn?: string;
 }
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */

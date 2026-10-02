@@ -36,6 +36,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   weekday: 'День недели',
   time: 'Время',
   durationMin: 'Длительность',
+  everyWeeks: 'Как часто', // ADR-0168
+  startsOn: 'Первое занятие',
 
   // lessons — /lessons.
   classId: 'Занятие',
@@ -79,17 +81,15 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // users — /users (экран «Люди»).
   roles: 'Роли',
 
-  // exam-items — /exam-items (вопросы экзамена). kind — общая подпись
-  // «Тип» выше (broadcasts.kind), здесь свой тип вопроса — тот же смысл.
+  // exam-items — /exam-items (вопросы экзамена). kind — «Тип» выше (broadcasts.kind).
   // hint/criteria/tags вопроса убраны из продукта (ADR-0128) — подписи ниже
   // теперь только про материалы (tags/tag, ADR-0058).
   prompt: 'Формулировка',
   options: 'Варианты ответа',
   correct: 'Правильный вариант',
   imageId: 'Картинка варианта',
-  // videoId/videoUrl — общие для вопроса и варианта (ADR-0133): поле одно и
-  // то же по смыслу что у ExamItemFieldsDto, что у ExamItemOptionDto, второй
-  // подписи не требуется.
+  // videoId/videoUrl — общие для вопроса и варианта (ADR-0133): второй подписи
+  // не требуется.
   videoId: 'Видео',
   videoUrl: 'Ссылка на видео',
   // ADR-0146: требование объяснить выбранный вариант.
