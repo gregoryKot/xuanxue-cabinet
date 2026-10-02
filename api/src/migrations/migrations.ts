@@ -21,6 +21,7 @@ import { paymentContactWithChannel } from './0020-payment-contact-with-channel.m
 import { examVideosReady } from './0021-exam-videos-ready.migration';
 import { scheduleByMoment } from './0022-school-schedule-by-moment.migration';
 import { ownerDurations } from './0023-owner-durations.migration';
+import { teachersClass } from './0024-teachers-class.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -69,4 +70,5 @@ export const MIGRATIONS: Migration[] = [
   examVideosReady,
   scheduleByMoment,
   ownerDurations,
+  teachersClass,
 ];
