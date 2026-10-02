@@ -131,6 +131,42 @@ describe('installGlobalErrorReporting', () => {
     expect(reportClientErrorMock).not.toHaveBeenCalled();
   });
 
+  // Инцидент 2026-10-02 (код обращения df76fa51-7a82-404e-ad36-15ebf0523271):
+  // Brave на iPhone выполнил код кошелька прямо в странице `/join/…`. WebKit
+  // подписал его адресом самого документа, и фильтр принял ошибку за нашу.
+  const WALLET_ERROR_TEXT =
+    "undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')";
+
+  it('код, выполненный прямо в странице (filename — адрес страницы), не уходит', () => {
+    installGlobalErrorReporting();
+
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        error: new TypeError(WALLET_ERROR_TEXT),
+        message: WALLET_ERROR_TEXT,
+        filename: window.location.href,
+      }),
+    );
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  // Тот же инцидент, путь через промис: filename нет, адрес страницы виден
+  // только в кадре стека Safari.
+  it('отклонённый промис из кода, выполненного в странице (стек — адрес страницы), не уходит', () => {
+    installGlobalErrorReporting();
+    const reason = {
+      message: WALLET_ERROR_TEXT,
+      stack: `global code@${window.location.href}:1:35`,
+    };
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: reason });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
   it('ошибка из файла нашего origin (filename) уходит', () => {
     installGlobalErrorReporting();
     const error = ownError('кабум');

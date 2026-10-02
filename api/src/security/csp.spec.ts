@@ -17,6 +17,10 @@ describe('CSP_DIRECTIVES', () => {
     ]);
   });
 
+  // Без 'unsafe-inline' и 'unsafe-eval' на этом держится и фильтр отчётов о
+  // сбоях: место броска с адресом самой страницы считается чужим кодом
+  // (web/src/errors/errorSource.ts, ADR-0071, инцидент 2026-10-02). Ослабить
+  // scriptSrc — значит сначала пересмотреть то правило.
   it('scriptSrc не пускает произвольные домены — только self', () => {
     expect(CSP_DIRECTIVES.scriptSrc).toEqual(["'self'"]);
   });

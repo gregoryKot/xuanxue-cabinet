@@ -14,9 +14,28 @@
 // скриптов у страницы нет (recorder PostHog приезжает импортом в наш бандл),
 // значит всё, что бросил не наш origin, починить в кабинете нельзя.
 //
+// Инцидент 2026-10-02: «Сбой в браузере» с `/join/…`, текст `undefined is not an
+// object (evaluating 'window.ethereum.selectedAddress = undefined')`, Brave на
+// iPhone. `ethereum` в кабинете нет нигде — приложение выполнило код кошелька
+// прямо в странице (WKWebView `evaluateJavaScript`). Мимо фильтра он прошёл
+// потому, что WebKit подписывает такой код адресом самого документа, если
+// приложение не дало свой sourceURL: и `filename`, и кадры стека
+// (`global code@https://xuanxue.su/join/…:1:35`) начинаются с нашего origin.
+// Поэтому место броска, равное адресу самой страницы, — тоже чужой код. Это
+// безопасно из-за той же CSP: ни `'unsafe-inline'`, ни `'unsafe-eval'`, значит
+// инлайн-скриптов, обработчиков-атрибутов и строкового `setTimeout` у страницы
+// нет, весь наш код — в файлах `/assets/*.js`. «Кодом из адреса страницы»
+// бывает только то, что впрыснул браузер или приложение, и чинить нечего.
+//
 // Обратный выбор — если место броска не определить (нет ни `filename`, ни
 // кадра с адресом), ошибка считается нашей и уходит отчётом: лишний отчёт
 // дешевле потерянного, а тихий отказ в этом продукте — самая дорогая ошибка.
+
+/** Адрес страницы: `window.location` подходит как есть. */
+export interface PageLocation {
+  origin: string;
+  href: string;
+}
 
 export interface ErrorSource {
   /** `ErrorEvent.filename` — у события `unhandledrejection` его нет. */
@@ -51,13 +70,26 @@ function findThrowingUrl(stack: string): string | undefined {
   return undefined;
 }
 
+/** Адрес без фрагмента: у документа он входит в адрес, а `unhandledrejection`
+ * приходит позже броска, и фрагмент мог смениться (`replaceState` в
+ * useTelegramAuthResultLogin.ts убирает `#tgAuthResult=`). Query остаётся —
+ * это часть адреса документа. */
+function withoutFragment(url: string): string {
+  const hash = url.indexOf('#');
+  return hash === -1 ? url : url.slice(0, hash);
+}
+
 /** `true` — место, где брошена ошибка, точно не наш код (расширение браузера,
- * скрипт с чужого домена) и отчёт о ней владельцу не нужен. `false` — наш код
- * либо источник определить не удалось. Сравнение с `${origin}/`, а не с голым
- * `origin`: иначе `https://xuanxue.su.evil.com` сошёл бы за наш. */
-export function isForeignScriptError(source: ErrorSource, origin: string): boolean {
+ * скрипт с чужого домена, код, впрыснутый приложением в страницу) и отчёт о ней
+ * владельцу не нужен. `false` — наш код либо источник определить не удалось.
+ * Сравнение с `${origin}/`, а не с голым `origin`: иначе
+ * `https://xuanxue.su.evil.com` сошёл бы за наш. */
+export function isForeignScriptError(source: ErrorSource, page: PageLocation): boolean {
   // Непустой `filename` браузер уже выбрал сам — это первый не-нативный кадр.
   const url = source.filename || findThrowingUrl(readStack(source.error) ?? '');
   if (!url) return false;
-  return !url.startsWith(`${origin}/`);
+  // Узкое правило: только адрес самой страницы. Другой адрес на нашем origin
+  // (`/schedule` при открытом `/join/…`) решает проверка origin ниже.
+  if (withoutFragment(url) === withoutFragment(page.href)) return true;
+  return !url.startsWith(`${page.origin}/`);
 }
