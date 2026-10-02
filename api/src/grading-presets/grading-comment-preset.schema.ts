@@ -18,8 +18,11 @@ export class GradingCommentPresetRecord {
   @Prop({ type: String, required: false })
   title?: string;
 
-  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
-  createdBy!: Types.ObjectId;
+  // Не required: удаление аккаунта учителя делает $unset этого поля
+  // (USER_REFERENCE_PATHS), заготовка школы остаётся (инцидент 2026-10-02,
+  // GET /api/materials → 500).
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
+  createdBy?: Types.ObjectId;
 }
 
 export const GradingCommentPresetSchema = SchemaFactory.createForClass(
