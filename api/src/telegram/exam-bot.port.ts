@@ -35,9 +35,11 @@ export interface BotOptionImage {
 
 /** Видео вопроса/варианта для отправки в бот (2026-09-27, «Уточнено»
  * ADR-0133) — тот же смысл, что BotOptionImage, `telegramFileId` кэширует
- * повторную отправку. */
+ * повторную отправку. Байты — лениво (аудит 2026-10-01, F02): отправитель
+ * зовёт `loadBytes()` только когда file_id нет или Telegram его отверг,
+ * иначе объект R2 до 50 МБ ложился в память при каждом показе вопроса. */
 export interface BotOptionVideo {
-  bytes: Buffer;
+  loadBytes: () => Promise<Buffer>;
   contentType: ExamVideoContentType;
   telegramFileId?: string;
 }

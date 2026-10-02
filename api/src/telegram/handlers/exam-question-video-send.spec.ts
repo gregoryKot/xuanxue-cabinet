@@ -8,8 +8,8 @@ import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { UserLean } from '../../users/users.service';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
-import type { VideoAlbumEntry, VideoLinkAlbumEntry } from './exam-question-album';
-import { sendOptionVideo, sendVideoLink } from './exam-question-video-send';
+import type { VideoAlbumEntry } from './exam-question-album';
+import { sendOptionVideo } from './exam-question-video-send';
 
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
 const CHAT_ID = 111;
@@ -21,7 +21,22 @@ const USER: UserLean = {
   status: 'active',
   studentMode: false,
 };
-const VIDEO = { bytes: Buffer.from([1, 2, 3]), contentType: 'video/mp4' as const };
+const BYTES = Buffer.from([1, 2, 3]);
+
+/** Байты — лениво (аудит 2026-10-01, F02): фейк считает, сколько раз их
+ * прочитали, — с известным file_id ни разу. Новый объект на тест: jest.Mock
+ * внутри общей константы копил бы вызовы между тестами. */
+function video(telegramFileId?: string): {
+  loadBytes: jest.Mock<Promise<Buffer>, []>;
+  contentType: 'video/mp4';
+  telegramFileId?: string;
+} {
+  return {
+    loadBytes: jest.fn<Promise<Buffer>, []>().mockResolvedValue(BYTES),
+    contentType: 'video/mp4',
+    ...(telegramFileId ? { telegramFileId } : {}),
+  };
+}
 
 function optionEntry(overrides: Partial<VideoAlbumEntry> = {}): VideoAlbumEntry {
   return {
@@ -45,7 +60,10 @@ function fakeCtx(): { ctx: Context; sendVideo: jest.Mock; sendMessage: jest.Mock
 describe('sendOptionVideo', () => {
   it('видео байтами — sendVideo с InputFile и подписью, file_id запоминается', async () => {
     const { ctx, sendVideo } = fakeCtx();
-    const port = fakeExamBotPort({ loadOptionVideo: jest.fn().mockResolvedValue(VIDEO) });
+    const loaded = video();
+    const port = fakeExamBotPort({
+      loadOptionVideo: jest.fn().mockResolvedValue(loaded),
+    });
     const entry = optionEntry();
 
     const sent = await sendOptionVideo(ctx, port, USER, CHAT_ID, entry, ATTEMPT_ID, NOW);
@@ -57,15 +75,18 @@ describe('sendOptionVideo', () => {
       { caption: string },
     ];
     expect(chatId).toBe(CHAT_ID);
-    expect(media.source).toBe(VIDEO.bytes);
+    expect(media.source).toBe(BYTES);
     expect(media.filename).toBe('variant-1.mp4');
     expect(extra.caption).toBe('Вариант 1');
     expect(port.rememberVideoFileId).toHaveBeenCalledWith('vid-1', 'v-1');
+    expect(loaded.loadBytes).toHaveBeenCalledTimes(1); // без file_id — ровно одно чтение
   });
 
   it('видео вопроса (без optionIndex/caption) — имя файла question.*, без caption', async () => {
     const { ctx, sendVideo } = fakeCtx();
-    const port = fakeExamBotPort({ loadOptionVideo: jest.fn().mockResolvedValue(VIDEO) });
+    const port = fakeExamBotPort({
+      loadOptionVideo: jest.fn().mockResolvedValue(video()),
+    });
     const entry: VideoAlbumEntry = { kind: 'video', videoId: 'own-1' };
 
     await sendOptionVideo(ctx, port, USER, CHAT_ID, entry, ATTEMPT_ID, NOW);
@@ -79,12 +100,12 @@ describe('sendOptionVideo', () => {
     expect(extra.caption).toBeUndefined();
   });
 
-  it('известный file_id — шлётся строкой, не байтами, повторно не запоминается', async () => {
+  // Аудит 2026-10-01 (F02): с известным file_id объект R2 в память не ложится.
+  it('известный file_id — шлётся строкой, байты не читаются, повторно не запоминается', async () => {
     const { ctx, sendVideo } = fakeCtx();
+    const loaded = video('known-id');
     const port = fakeExamBotPort({
-      loadOptionVideo: jest
-        .fn()
-        .mockResolvedValue({ ...VIDEO, telegramFileId: 'known-id' }),
+      loadOptionVideo: jest.fn().mockResolvedValue(loaded),
     });
 
     const sent = await sendOptionVideo(
@@ -101,6 +122,7 @@ describe('sendOptionVideo', () => {
     const [, media] = sendVideo.mock.calls[0] as [number, string, unknown];
     expect(media).toBe('known-id');
     expect(port.rememberVideoFileId).not.toHaveBeenCalled();
+    expect(loaded.loadBytes).not.toHaveBeenCalled();
   });
 
   it('Telegram отверг известный file_id — повтор байтами, file_id перезаписан', async () => {
@@ -108,10 +130,9 @@ describe('sendOptionVideo', () => {
     sendVideo
       .mockRejectedValueOnce(new Error('wrong file_id'))
       .mockResolvedValueOnce({ message_id: 2, video: { file_id: 'v-new' } });
+    const loaded = video('stale-id');
     const port = fakeExamBotPort({
-      loadOptionVideo: jest
-        .fn()
-        .mockResolvedValue({ ...VIDEO, telegramFileId: 'stale-id' }),
+      loadOptionVideo: jest.fn().mockResolvedValue(loaded),
     });
 
     const sent = await sendOptionVideo(
@@ -131,15 +152,47 @@ describe('sendOptionVideo', () => {
       { source: Buffer },
       unknown,
     ];
-    expect(secondMedia.source).toBe(VIDEO.bytes);
+    expect(secondMedia.source).toBe(BYTES);
     expect(port.rememberVideoFileId).toHaveBeenCalledWith('vid-1', 'v-new');
+    expect(loaded.loadBytes).toHaveBeenCalledTimes(1); // байты — только после отказа
+  });
+
+  it('байты не читаются (R2 выключен, объект пропал) — false, warn, без исключения', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { ctx, sendVideo } = fakeCtx();
+    const loaded = video();
+    loaded.loadBytes.mockRejectedValue(new Error('R2 выключен'));
+    const port = fakeExamBotPort({
+      loadOptionVideo: jest.fn().mockResolvedValue(loaded),
+    });
+
+    const sent = await sendOptionVideo(
+      ctx,
+      port,
+      USER,
+      CHAT_ID,
+      optionEntry(),
+      ATTEMPT_ID,
+      NOW,
+    );
+
+    expect(sent).toBe(false);
+    expect(sendVideo).not.toHaveBeenCalled();
+    expect(port.rememberVideoFileId).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('сбой отправки'),
+      expect.objectContaining({ videoId: 'vid-1' }),
+    );
+    warn.mockRestore();
   });
 
   it('полный сбой отправки (без кэша file_id) — false, warn, без исключения', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { ctx, sendVideo } = fakeCtx();
     sendVideo.mockRejectedValue(new Error('сеть недоступна'));
-    const port = fakeExamBotPort({ loadOptionVideo: jest.fn().mockResolvedValue(VIDEO) });
+    const port = fakeExamBotPort({
+      loadOptionVideo: jest.fn().mockResolvedValue(video()),
+    });
 
     const sent = await sendOptionVideo(
       ctx,
@@ -157,7 +210,7 @@ describe('sendOptionVideo', () => {
     warn.mockRestore();
   });
 
-  it('R2 выключен/объект пропал (порт вернул null) — false, warn, без исключения', async () => {
+  it('записи нет или не своё (порт вернул null) — false, warn, без исключения', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { ctx, sendVideo } = fakeCtx();
     const port = fakeExamBotPort({ loadOptionVideo: jest.fn().mockResolvedValue(null) });
@@ -199,42 +252,5 @@ describe('sendOptionVideo', () => {
     expect(sendVideo).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
-  });
-});
-
-describe('sendVideoLink', () => {
-  it('ссылка варианта — sendMessage с превью и префиксом', async () => {
-    const { ctx, sendMessage } = fakeCtx();
-    const entry: VideoLinkAlbumEntry = {
-      kind: 'videoLink',
-      url: 'https://youtu.be/x',
-      optionIndex: 0,
-      caption: 'Вариант 1',
-    };
-
-    await sendVideoLink(ctx, CHAT_ID, entry);
-
-    expect(sendMessage).toHaveBeenCalledWith(CHAT_ID, 'Вариант 1: https://youtu.be/x', {
-      link_preview_options: { is_disabled: false, url: 'https://youtu.be/x' },
-    });
-  });
-
-  it('ссылка вопроса (без caption) — голой ссылкой', async () => {
-    const { ctx, sendMessage } = fakeCtx();
-    const entry: VideoLinkAlbumEntry = { kind: 'videoLink', url: 'https://youtu.be/own' };
-
-    await sendVideoLink(ctx, CHAT_ID, entry);
-
-    expect(sendMessage).toHaveBeenCalledWith(CHAT_ID, 'https://youtu.be/own', {
-      link_preview_options: { is_disabled: false, url: 'https://youtu.be/own' },
-    });
-  });
-
-  it('sendMessage упал — не бросает исключение', async () => {
-    const { ctx, sendMessage } = fakeCtx();
-    sendMessage.mockRejectedValue(new Error('сеть недоступна'));
-    const entry: VideoLinkAlbumEntry = { kind: 'videoLink', url: 'https://youtu.be/own' };
-
-    await expect(sendVideoLink(ctx, CHAT_ID, entry)).resolves.toBeUndefined();
   });
 });

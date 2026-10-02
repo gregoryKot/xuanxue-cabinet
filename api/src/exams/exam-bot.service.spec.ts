@@ -20,7 +20,10 @@ const USER: UserLean = {
   status: 'active',
   studentMode: false,
 };
-const VIDEO = { bytes: Buffer.from([1]), contentType: 'video/mp4' as const };
+const VIDEO = {
+  loadBytes: () => Promise.resolve(Buffer.from([1])),
+  contentType: 'video/mp4' as const,
+};
 
 function service(
   overrides: { loadForBot?: jest.Mock; rememberTelegramFileId?: jest.Mock } = {},

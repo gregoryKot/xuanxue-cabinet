@@ -229,16 +229,17 @@ describe('ExamVideosService', () => {
   });
 
   // 2026-09-27, «Уточнено» ADR-0133 — бот скачивает байты сам, доступ тот же,
-  // что у signedUrl (loadAccessibleDoc), вторую проверку не пишем.
+  // что у signedUrl (loadAccessibleDoc), вторую проверку не пишем. Байты —
+  // лениво, `loadBytes()` (аудит 2026-10-01, F02).
   describe('loadForBot', () => {
-    it('штат — байты и тип, telegramFileId не задан у нового видео', async () => {
+    it('штат — байты по loadBytes и тип, telegramFileId не задан у нового видео', async () => {
       const dto = await service.upload(MP4, undefined, NOW);
       const loaded = await service.loadForBot(
         dto.id,
         userLean({ roles: ['teacher'] }),
         NOW,
       );
-      expect(loaded.bytes).toEqual(MP4);
+      await expect(loaded.loadBytes()).resolves.toEqual(MP4);
       expect(loaded.contentType).toBe('video/mp4');
       expect(loaded.telegramFileId).toBeUndefined();
     });
@@ -256,28 +257,57 @@ describe('ExamVideosService', () => {
       await seedAttempt(user.id, [dto.id]);
 
       const loaded = await service.loadForBot(dto.id, user, NOW);
-      expect(loaded.bytes).toEqual(MP4);
+      await expect(loaded.loadBytes()).resolves.toEqual(MP4);
     });
 
-    it('R2 выключен — NotAvailableError (бот показывает деградацию, не отказ)', async () => {
+    it('R2 выключен — запись отдаётся, NotAvailableError бросает только loadBytes()', async () => {
       const dto = await service.upload(MP4, undefined, NOW);
       store.enabled.value = false;
-
-      await expect(
-        service.loadForBot(dto.id, userLean({ roles: ['teacher'] }), NOW),
-      ).rejects.toBeInstanceOf(NotAvailableError);
-    });
-
-    it('запомненный telegramFileId возвращается расшифрованным', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
-      await service.rememberTelegramFileId(dto.id, 'tg-file-1');
 
       const loaded = await service.loadForBot(
         dto.id,
         userLean({ roles: ['teacher'] }),
         NOW,
       );
+      await expect(loaded.loadBytes()).rejects.toBeInstanceOf(NotAvailableError);
+    });
+
+    // F02: с известным file_id объект R2 (до 50 МБ) в память не ложится.
+    it('запомненный telegramFileId возвращается расшифрованным, хранилище не читается', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      await service.rememberTelegramFileId(dto.id, 'tg-file-1');
+      const get = jest.spyOn(store.fileStore, 'get');
+
+      const loaded = await service.loadForBot(
+        dto.id,
+        userLean({ roles: ['teacher'] }),
+        NOW,
+      );
+
       expect(loaded.telegramFileId).toBe('tg-file-1');
+      expect(get).not.toHaveBeenCalled();
+      get.mockRestore();
+    });
+
+    // F02: N учеников открыли один видео-вопрос — один объект из R2 на всех.
+    it('N параллельных loadBytes одного видео — одно чтение из хранилища', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      const get = jest.spyOn(store.fileStore, 'get');
+      const staff = userLean({ roles: ['teacher'] });
+
+      const loaded = await Promise.all([
+        service.loadForBot(dto.id, staff, NOW),
+        service.loadForBot(dto.id, staff, NOW),
+        service.loadForBot(dto.id, staff, NOW),
+      ]);
+      const bytes = await Promise.all(loaded.map((video) => video.loadBytes()));
+
+      expect(bytes).toEqual([MP4, MP4, MP4]);
+      expect(get).toHaveBeenCalledTimes(1);
+      // Полёт закончился — следующее чтение идёт в хранилище заново.
+      await loaded[0]?.loadBytes();
+      expect(get).toHaveBeenCalledTimes(2);
+      get.mockRestore();
     });
   });
 

@@ -385,7 +385,7 @@ describe('presentAttemptScreen', () => {
     const { ctx, replies } = fakeCtx();
     const port = fakeExamBotPort({
       loadOptionVideo: jest.fn().mockResolvedValue({
-        bytes: Buffer.from([1]),
+        loadBytes: () => Promise.resolve(Buffer.from([1])),
         contentType: 'video/mp4',
       }),
     });
