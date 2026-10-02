@@ -6,10 +6,15 @@
 // видео. Здесь только React state machine поверх них: idle → uploading →
 // waiting (пауза перед повтором) → done | failed | cancelled.
 import { useCallback, useRef, useState } from 'react';
-import { IDLE_VIDEO_UPLOAD_STATE, type VideoUploadState } from './videoUploadState';
+import {
+  IDLE_VIDEO_UPLOAD_STATE,
+  isVideoUploadActive,
+  type VideoUploadState,
+} from './videoUploadState';
 import { checkVideoFileSize } from './videoUploadParts';
 import { runVideoUpload } from './videoUploadRunner';
 import type { VideoUploadProgressUpdate, VideoUploadTransport } from './videoUploadTypes';
+import { useScreenWakeLock } from './useScreenWakeLock';
 import { realSleep, useUploadPause } from './useUploadPause';
 
 export interface UseVideoUploadOptions<TResult extends object> {
@@ -46,6 +51,9 @@ export function useVideoUpload<TResult extends object>({
   sleep = realSleep,
 }: UseVideoUploadOptions<TResult>): UseVideoUploadResult {
   const [state, setState] = useState<VideoUploadState>(IDLE_VIDEO_UPLOAD_STATE);
+  // Пока видео готовится, грузится или ждёт повтора — экран не гаснет (ADR-0165):
+  // iOS усыпляет страницу с погасшим экраном, и загрузка встаёт.
+  useScreenWakeLock(isVideoUploadActive(state));
   const runIdRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
 
