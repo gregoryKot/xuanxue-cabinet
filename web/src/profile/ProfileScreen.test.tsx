@@ -51,7 +51,11 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 // Контакт бухгалтера приезжает ученику в его же /me/payments (ADR-0159).
-const MY_PAYMENTS_PAGE = { month: '2026-09', rows: [], contact: 'Маше @marievyazova' };
+const MY_PAYMENTS_PAGE = {
+  month: '2026-09',
+  rows: [],
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
+};
 
 // hasEmail: true — почта уже подтверждена (тот же ключ, которым вошли),
 // Telegram не связан: ровно один ключ есть, SecondLoginKey (ADR-0059)
@@ -225,9 +229,9 @@ describe('ProfileScreen — секция «Абонемент» спрятана
     renderScreen(STUDENT);
 
     expect(await screen.findByRole('heading', { name: 'Оплата' })).toBeInTheDocument();
-    const note = await screen.findByText(/Скриншот перевода присылайте/);
+    const note = await screen.findByText(/Отправьте скриншот об оплате/);
     expect(note).toHaveTextContent(
-      'Скриншот перевода присылайте Маше @marievyazova в Telegram.',
+      'Отправьте скриншот об оплате Маше Вязовой — например, в Telegram @marievyazova.',
     );
     expect(within(note).getByRole('link', { name: '@marievyazova' })).toHaveAttribute(
       'href',

@@ -65,7 +65,7 @@ describe('myPaymentLines', () => {
     const { current, others } = myPaymentLines({
       month: '2026-09',
       rows: [],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     });
 
     expect(current).toEqual({
@@ -82,7 +82,7 @@ describe('myPaymentLines', () => {
     const { current } = myPaymentLines({
       month: '2026-09',
       rows: [PAID],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     });
 
     expect(current.status).toBe('paid');
@@ -93,7 +93,7 @@ describe('myPaymentLines', () => {
     const { current } = myPaymentLines({
       month: '2026-09',
       rows: [AWAITING],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     });
 
     expect(current.text).toBe('Ждём подтверждения');
@@ -103,7 +103,7 @@ describe('myPaymentLines', () => {
   it('остальные месяцы — в порядке сервера, без текущего', () => {
     const page: MyPaymentsPageDto = {
       month: '2026-09',
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
       rows: [
         AWAITING,
         { ...PAID, month: '2026-08', confirmedAt: '2026-08-04T09:00:00.000Z' },
@@ -128,7 +128,7 @@ describe('myPaymentLines', () => {
       const { current } = myPaymentLines({
         month: '2026-09',
         rows: [],
-        contact: 'Маше @marievyazova',
+        contact: 'Маше Вязовой — например, в Telegram @marievyazova',
       });
       expect(current.month).toBe('2026-09');
       expect(current.title).toBe('Сентябрь 2026');

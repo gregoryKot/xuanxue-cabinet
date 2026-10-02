@@ -5,7 +5,7 @@ const BASE = {
   template: DEFAULT_PAYMENT_REMINDER.template,
   name: 'Ваня',
   month: '2026-09',
-  contact: 'Маше @marievyazova',
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
 };
 
 describe('buildPaymentReminderText', () => {
@@ -13,7 +13,7 @@ describe('buildPaymentReminderText', () => {
     const text = buildPaymentReminderText({ ...BASE, botUsername: 'xuanxue_bot' });
 
     expect(text).toBe(
-      'Ваня, напоминаем об оплате за сентябрь 2026.\nСкриншот перевода пришлите Маше @marievyazova в Telegram.',
+      'Ваня, напоминаем об оплате за сентябрь 2026.\nСкриншот об оплате отправьте Маше Вязовой — например, в Telegram @marievyazova.',
     );
   });
 
@@ -29,7 +29,7 @@ describe('buildPaymentReminderText', () => {
     const template = 'Пришлите {контакт}.[ {ссылка}]';
     const text = buildPaymentReminderText({ ...BASE, template });
 
-    expect(text).toBe('Пришлите Маше @marievyazova.');
+    expect(text).toBe('Пришлите Маше Вязовой — например, в Telegram @marievyazova.');
     expect(text).not.toContain('t.me');
   });
 

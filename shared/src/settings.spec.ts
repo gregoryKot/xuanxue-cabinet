@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RULE_TIME_RE } from './domain';
+import { DEFAULT_PAYMENT_CONTACT, RULE_TIME_RE } from './domain';
 import { DEFAULT_PAYMENT_REMINDER, SETTINGS_LIMITS } from './settings';
 import { PAYMENT_REMINDER_PLACEHOLDERS, findUnknownPlaceholders } from './templates';
 
@@ -25,5 +25,20 @@ describe('DEFAULT_PAYMENT_REMINDER', () => {
 
   it('по умолчанию выключено — слои «Оплаты» и ученика ещё не сделаны', () => {
     expect(DEFAULT_PAYMENT_REMINDER.enabled).toBe(false);
+  });
+});
+
+describe('DEFAULT_PAYMENT_CONTACT', () => {
+  it('влезает в предел поля, иначе форма «Шаблоны» не дала бы его сохранить', () => {
+    expect(DEFAULT_PAYMENT_CONTACT.length).toBeLessThanOrEqual(
+      SETTINGS_LIMITS.paymentContactMaxLength,
+    );
+  });
+
+  // Способ связи — внутри контакта, а не в шаблоне (ADR-0159): учитель может
+  // вписать WhatsApp, и фраза «…отправьте {контакт}.» не должна обещать Telegram.
+  it('способ связи в самом контакте, а не в шаблоне напоминания', () => {
+    expect(DEFAULT_PAYMENT_CONTACT).toContain('Telegram');
+    expect(DEFAULT_PAYMENT_REMINDER.template).not.toContain('Telegram');
   });
 });

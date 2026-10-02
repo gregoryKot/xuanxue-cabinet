@@ -48,7 +48,7 @@ const UPLOAD_PATH = '/me/payments/2026-09/screenshot';
 const EMPTY_PAGE: MyPaymentsPageDto = {
   month: '2026-09',
   rows: [],
-  contact: 'Маше @marievyazova',
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
 };
 
 function renderSection(
@@ -199,7 +199,7 @@ describe('MyPaymentsSection — оплачено и история', () => {
   it('оплаченный месяц — дата подтверждения и никакого действия', async () => {
     renderSection(ME_NO_TELEGRAM, {
       month: '2026-09',
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
       rows: [
         {
           month: '2026-09',
@@ -228,7 +228,7 @@ describe('MyPaymentsSection — оплачено и история', () => {
   it('прошлые месяцы — списком, свежие сверху, дата по часам зрителя', async () => {
     renderSection(ME_NO_TELEGRAM, {
       month: '2026-09',
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
       rows: [
         {
           month: '2026-08',
