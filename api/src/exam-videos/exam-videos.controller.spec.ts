@@ -63,9 +63,11 @@ describe('ExamVideosController', () => {
       },
     };
 
-    await controller.get('v1', USER, res);
+    await controller.get('v1', {}, USER, res);
 
-    expect(signedUrl).toHaveBeenCalledWith('v1', USER, expect.any(DateTime));
+    expect(signedUrl).toHaveBeenCalledWith('v1', USER, expect.any(DateTime), {
+      download: false,
+    });
     expect(headers['Cache-Control']).toBe('no-store');
     expect(headers['Location']).toBe(
       'https://fake-r2.example/exam-videos/v1?X-Amz-Signature=ab',
@@ -80,5 +82,19 @@ describe('ExamVideosController', () => {
 
     await expect(controller.getStatsSummary()).resolves.toEqual(stats);
     expect(getSummary).toHaveBeenCalledWith();
+  });
+
+  it('get() с download=1 просит у сервиса ссылку на скачивание', async () => {
+    const signedUrl = jest
+      .fn()
+      .mockResolvedValue('https://fake-r2.example/exam-videos/v1');
+    const controller = await buildController({ signedUrl });
+    const res = { setHeader: () => undefined, status: () => undefined };
+
+    await controller.get('v1', { download: '1' }, USER, res);
+
+    expect(signedUrl).toHaveBeenCalledWith('v1', USER, expect.any(DateTime), {
+      download: true,
+    });
   });
 });

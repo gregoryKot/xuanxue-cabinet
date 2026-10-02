@@ -15,31 +15,34 @@
 // videoRecoveryController.ts.
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { attachVideoRecovery } from './videoRecoveryController';
+import type { VideoFailure } from './videoRecoveryRules';
 
-/** `failed` — три перезагрузки подряд не помогли, пора показать кнопку;
- * `retry` — её обработчик. Подписка пересоздаётся при смене `src`. */
+/** `failure` — видео не играет и сама починка кончилась: `network` (три
+ * перезагрузки подряд не помогли) или `unsupported` (браузер не открывает
+ * формат, ADR-0165); `retry` — обработчик «Загрузить снова». Подписка
+ * пересоздаётся при смене `src`. */
 export function useVideoRecovery(
   videoRef: RefObject<HTMLVideoElement | null>,
   src: string,
-): { failed: boolean; retry: () => void } {
-  const [failed, setFailed] = useState(false);
+): { failure: VideoFailure | null; retry: () => void } {
+  const [failure, setFailure] = useState<VideoFailure | null>(null);
   const retryRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const recovery = attachVideoRecovery(video, setFailed);
+    const recovery = attachVideoRecovery(video, setFailure);
     retryRef.current = recovery.retry;
     return () => {
       recovery.detach();
       retryRef.current = null;
       // Новый источник начинает с чистого листа: плашка прошлого видео не
       // должна висеть над следующим.
-      setFailed(false);
+      setFailure(null);
     };
   }, [videoRef, src]);
 
   const retry = useCallback(() => retryRef.current?.(), []);
 
-  return { failed, retry };
+  return { failure, retry };
 }

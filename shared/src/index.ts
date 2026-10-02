@@ -254,6 +254,7 @@ export type {
   ExamVideoContentType,
   ExamVideoDto,
   ExamVideoStatsDto,
+  VideoDownloadQuery,
 } from './exam-videos';
 export {
   EXAM_VIDEO_CONTENT_TYPES,
@@ -262,6 +263,8 @@ export {
   EXAM_VIDEO_UNSUPPORTED_MESSAGE,
   EXAM_VIDEO_TOO_LARGE_MESSAGE,
   EXAM_VIDEO_NOT_FOUND_MESSAGE,
+  VIDEO_DOWNLOAD_QUERY_PARAM,
+  VIDEO_DOWNLOAD_QUERY_VALUE,
 } from './exam-videos';
 export type {
   StartAnswerVideoInput,

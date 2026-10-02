@@ -20,13 +20,19 @@ import {
 } from 'vitest';
 import { ExamVideoPlayer } from './ExamVideoPlayer';
 import { useVideoRecovery } from './useVideoRecovery';
-import { MAX_AUTO_RELOADS, STALL_RELOAD_MS } from './videoRecoveryController';
+import { MAX_AUTO_RELOADS, STALL_RELOAD_MS } from './videoRecoveryRules';
 
 const RESUME_SECOND = 42;
 const PROGRESS_INTERVAL_MS = 4000;
 const NETWORK_ERROR = { code: 2 };
+// MEDIA_ERR_SRC_NOT_SUPPORTED: браузер не умеет декодировать файл (iPhone HEVC
+// в Firefox) — код приходит до первых метаданных.
+const UNSUPPORTED_ERROR = { code: 4 };
 const DROPPED_TEXT = /Видео не догрузилось/;
+const UNSUPPORTED_TEXT = /Этот браузер не открывает такое видео/;
+const UNSUPPORTED_TILE_TEXT = /Браузер не открывает это видео/;
 const RETRY_NAME = 'Загрузить снова';
+const DOWNLOAD_NAME = 'Скачать';
 
 interface MediaState {
   readyState: number;
@@ -79,8 +85,9 @@ function stubMedia(video: HTMLVideoElement, initial: Partial<MediaState>): Media
 function renderPlayer(
   initial: Partial<MediaState>,
   size: 'thumb' | 'tile' | 'full' = 'full',
+  ids: { videoId?: string; answerVideoId?: string } = { videoId: 'vid1' },
 ) {
-  const view = render(<ExamVideoPlayer videoId="vid1" title="Вопрос" size={size} />);
+  const view = render(<ExamVideoPlayer {...ids} title="Вопрос" size={size} />);
   const video = view.container.querySelector('video');
   if (!video) throw new Error('video не отрисован');
   const state = stubMedia(video, initial);
@@ -93,6 +100,19 @@ function fire(target: Element | Document | Window, type: string) {
 
 function failTimes(video: HTMLVideoElement, times: number) {
   for (let i = 0; i < times; i += 1) fire(video, 'error');
+}
+
+// `load()` в заглушке сбрасывает ошибку, как настоящий, поэтому каждый следующий
+// отказ надо выставить заново.
+function failWith(video: HTMLVideoElement, state: MediaState, error: { code: number }) {
+  state.error = error;
+  fire(video, 'error');
+}
+
+// Формат не открывается: тот же код дважды подряд, метаданных не было.
+function failAsUnsupported(video: HTMLVideoElement, state: MediaState) {
+  failWith(video, state, UNSUPPORTED_ERROR);
+  failWith(video, state, UNSUPPORTED_ERROR);
 }
 
 function advance(ms: number) {
@@ -137,10 +157,10 @@ afterEach(() => {
 // нечего, и кнопка «Загрузить снова» не должна падать.
 function HarnessWithoutVideo() {
   const ref = useRef<HTMLVideoElement>(null);
-  const { failed, retry } = useVideoRecovery(ref, '/api/exam-videos/none');
+  const { failure, retry } = useVideoRecovery(ref, '/api/exam-videos/none');
   return (
     <button type="button" onClick={retry}>
-      {failed ? 'сбой' : 'норма'}
+      {failure ? 'сбой' : 'норма'}
     </button>
   );
 }
@@ -473,22 +493,24 @@ describe('видео — плашка «Загрузить снова»', () => 
     expect(loadSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('миниатюра в 96px: на плашке только кнопка, без текста', () => {
+  it('миниатюра в 96px: на плашке только «Загрузить снова», без текста и без «Скачать»', () => {
     const { video } = renderPlayer(PLAYING, 'thumb');
 
     failTimes(video, MAX_AUTO_RELOADS + 1);
 
     expect(screen.getByRole('button', { name: RETRY_NAME })).toBeInTheDocument();
     expect(screen.queryByText(DROPPED_TEXT)).toBeNull();
+    expect(screen.queryByRole('link', { name: DOWNLOAD_NAME })).toBeNull();
   });
 
-  it('плитка: на плашке и текст, и кнопка', () => {
+  it('плитка (160px): обе кнопки без текста — вместе с ним они не влезают', () => {
     const { video } = renderPlayer(PLAYING, 'tile');
 
     failTimes(video, MAX_AUTO_RELOADS + 1);
 
-    expect(screen.getByRole('status')).toHaveTextContent(DROPPED_TEXT);
     expect(screen.getByRole('button', { name: RETRY_NAME })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toBeInTheDocument();
+    expect(screen.getByRole('status')).not.toHaveTextContent(DROPPED_TEXT);
   });
 
   it('другое видео в том же плеере начинает с чистого листа', () => {
@@ -525,5 +547,173 @@ describe('видео — размонтирование', () => {
 
     expect(loadSpy).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('видео — формат не открывается (ADR-0165)', () => {
+  it('первая «не поддерживается» без метаданных — одна перезагрузка, вердикта ещё нет', () => {
+    const { video, state } = renderPlayer(PLAYING);
+
+    failWith(video, state, UNSUPPORTED_ERROR);
+
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('вторая такая же — плашка «браузер не открывает», перезагрузок больше нет', () => {
+    const { video, state } = renderPlayer(PLAYING);
+
+    failAsUnsupported(video, state);
+
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(UNSUPPORTED_TEXT);
+    expect(screen.getByText('в плеере телефона или компьютера').tagName).toBe('STRONG');
+    expect(status).not.toHaveTextContent(DROPPED_TEXT);
+    expect(screen.queryByRole('button', { name: RETRY_NAME })).toBeNull();
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toBeInTheDocument();
+  });
+
+  it('после вердикта ни online, ни возвращение в приложение, ни тишина, ни новая ошибка не качают заново', () => {
+    const { video, state } = renderPlayer(PLAYING);
+    failAsUnsupported(video, state);
+
+    fire(window, 'online');
+    setHidden(false);
+    fire(video, 'waiting');
+    advance(STALL_RELOAD_MS * 2);
+    failWith(video, state, UNSUPPORTED_ERROR);
+
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(UNSUPPORTED_TEXT);
+  });
+
+  it('метаданные уже были — «не поддерживается» остаётся обрывом: три перезагрузки и «Загрузить снова»', async () => {
+    const { video, state } = renderPlayer(PLAYING);
+    await fireLoadedMetadata(video);
+
+    for (let i = 0; i < MAX_AUTO_RELOADS + 1; i += 1) {
+      failWith(video, state, UNSUPPORTED_ERROR);
+    }
+
+    expect(loadSpy).toHaveBeenCalledTimes(MAX_AUTO_RELOADS);
+    expect(screen.getByRole('status')).toHaveTextContent(DROPPED_TEXT);
+    expect(screen.getByRole('button', { name: RETRY_NAME })).toBeInTheDocument();
+  });
+
+  it('между двумя «не поддерживается» была ошибка сети — подряд не вышло, вердикта нет', () => {
+    const { video, state } = renderPlayer(PLAYING);
+
+    failWith(video, state, UNSUPPORTED_ERROR);
+    failWith(video, state, NETWORK_ERROR);
+    failWith(video, state, UNSUPPORTED_ERROR);
+
+    expect(loadSpy).toHaveBeenCalledTimes(3);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('связи нет (navigator.onLine === false) — это обрыв, а не формат: плашка про связь', () => {
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    const { video, state } = renderPlayer(PLAYING);
+
+    for (let i = 0; i < MAX_AUTO_RELOADS + 1; i += 1) {
+      failWith(video, state, UNSUPPORTED_ERROR);
+    }
+
+    expect(loadSpy).toHaveBeenCalledTimes(MAX_AUTO_RELOADS);
+    expect(screen.getByRole('status')).toHaveTextContent(DROPPED_TEXT);
+  });
+
+  it('первая ошибка пришла в фоне: перезагрузка при возвращении, вторая такая же — вердикт', () => {
+    const { video, state } = renderPlayer(PLAYING);
+
+    hidden = true;
+    failWith(video, state, UNSUPPORTED_ERROR);
+    expect(loadSpy).not.toHaveBeenCalled();
+
+    setHidden(false);
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    failWith(video, state, UNSUPPORTED_ERROR);
+
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(UNSUPPORTED_TEXT);
+  });
+
+  it('другое видео в том же плеере начинает с чистого листа: вердикт снят, одна перезагрузка снова', () => {
+    const { video, state, rerender } = renderPlayer(PLAYING);
+    failAsUnsupported(video, state);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    rerender(<ExamVideoPlayer videoId="vid2" title="Вопрос" />);
+    expect(screen.queryByRole('status')).toBeNull();
+
+    failWith(video, state, UNSUPPORTED_ERROR);
+    expect(loadSpy).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('миниатюра в 96px: только «Скачать», без текста и без «Загрузить снова»', () => {
+    const { video, state } = renderPlayer(PLAYING, 'thumb');
+
+    failAsUnsupported(video, state);
+
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: RETRY_NAME })).toBeNull();
+    expect(screen.queryByText(UNSUPPORTED_TEXT)).toBeNull();
+    expect(screen.queryByText(UNSUPPORTED_TILE_TEXT)).toBeNull();
+  });
+
+  it('плитка (160px): короткий текст и «Скачать»', () => {
+    const { video, state } = renderPlayer(PLAYING, 'tile');
+
+    failAsUnsupported(video, state);
+
+    expect(screen.getByRole('status')).toHaveTextContent(UNSUPPORTED_TILE_TEXT);
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: RETRY_NAME })).toBeNull();
+  });
+});
+
+describe('видео — «Скачать» (ADR-0165)', () => {
+  it('обрыв: рядом с «Загрузить снова» обычная ссылка на ?download=1 видео вопроса', () => {
+    const { video } = renderPlayer(PLAYING);
+
+    failTimes(video, MAX_AUTO_RELOADS + 1);
+
+    expect(screen.getByRole('button', { name: RETRY_NAME })).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: DOWNLOAD_NAME });
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '/api/exam-videos/vid1?download=1');
+    // Файл сохраняет заголовок attachment у подписанной ссылки; атрибут
+    // `download` у ссылки с редиректом на другой домен браузер игнорирует.
+    expect(link).not.toHaveAttribute('target');
+  });
+
+  it('у видео-ответа ссылка ведёт на /api/answer-videos/:id?download=1', () => {
+    const { video } = renderPlayer(PLAYING, 'full', { answerVideoId: 'ans1' });
+
+    failTimes(video, MAX_AUTO_RELOADS + 1);
+
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toHaveAttribute(
+      'href',
+      '/api/answer-videos/ans1?download=1',
+    );
+  });
+
+  it('при неподдерживаемом формате ссылка та же', () => {
+    const { video, state } = renderPlayer(PLAYING, 'full', { answerVideoId: 'ans1' });
+
+    failAsUnsupported(video, state);
+
+    expect(screen.getByRole('link', { name: DOWNLOAD_NAME })).toHaveAttribute(
+      'href',
+      '/api/answer-videos/ans1?download=1',
+    );
+  });
+
+  it('здоровое видео ссылки не показывает', () => {
+    renderPlayer(PLAYING);
+
+    expect(screen.queryByRole('link', { name: DOWNLOAD_NAME })).toBeNull();
   });
 });

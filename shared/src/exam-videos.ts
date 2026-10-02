@@ -19,6 +19,19 @@ export const EXAM_VIDEO_CONTENT_TYPES = [
 ] as const;
 export type ExamVideoContentType = (typeof EXAM_VIDEO_CONTENT_TYPES)[number];
 
+/** Параметр `?download=1` у адреса видео (`/api/exam-videos/:id`,
+ * `/api/answer-videos/:id`): редирект ведёт на подписанную ссылку с
+ * `Content-Disposition: attachment`, браузер сохраняет файл, а не играет его
+ * (ADR-0165, «Плеер»). Одна пара констант на api и web, чтобы валидатор
+ * и ссылка «Скачать» не разошлись. */
+export const VIDEO_DOWNLOAD_QUERY_PARAM = 'download';
+export const VIDEO_DOWNLOAD_QUERY_VALUE = '1';
+
+/** Query GET /exam-videos/:id и GET /answer-videos/:id. */
+export interface VideoDownloadQuery {
+  [VIDEO_DOWNLOAD_QUERY_PARAM]?: typeof VIDEO_DOWNLOAD_QUERY_VALUE;
+}
+
 export interface ExamVideoDto {
   id: string;
   contentType: ExamVideoContentType;

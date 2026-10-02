@@ -1,39 +1,22 @@
 // Подписка на события `<video>`, которая перезагружает оборванную загрузку
 // (зачем — в useVideoRecovery.ts). Без React: состояние живёт в замыкании
 // подписки и пропадает с ней, смена `src` не тащит старую позицию в новое видео.
-
-/** Элемент ждёт данные, а `progress` не приходит столько времени — загрузчик
- * мёртв. Живая, но слабая связь шлёт `progress` каждые ~350 мс (HTML spec),
- * её таймер не трогает: перезагрузка срабатывает только на настоящей тишине. */
-export const STALL_RELOAD_MS = 12_000;
-
-/** Сколько раз подряд перезагружаем сами, пока между попытками не пришло ни
- * байта. Телефон без сети или файл, который не играет, не должны крутиться
- * вечно и жечь трафик: после трёх попыток показываем кнопку. */
-export const MAX_AUTO_RELOADS = 3;
-
-/** После этих событий ждать данные не нужно: они есть (`playing`, `canplay`)
- * либо браузер сам остановил загрузку (`pause`, `suspend`). Без `suspend`
- * здоровое видео на паузе — он приходит после метаданных при
- * `preload="metadata"` — перезагружалось бы каждые 12 секунд до «ошибки». */
-const DISARM_EVENTS = ['playing', 'pause', 'canplay', 'suspend'] as const;
-
-/** Данные нужны, если нет даже метаданных, либо видео играет, а впереди пусто.
- * Стадии берём константами HTMLMediaElement, а не числами: видно, о чём речь. */
-function needsData(video: HTMLVideoElement): boolean {
-  return (
-    video.readyState < HTMLMediaElement.HAVE_METADATA ||
-    (!video.paused && video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA)
-  );
-}
+import {
+  DISARM_EVENTS,
+  MAX_AUTO_RELOADS,
+  STALL_RELOAD_MS,
+  isUnsupportedFormat,
+  needsData,
+  type VideoFailure,
+} from './videoRecoveryRules';
 
 type Listener = [event: string, handler: () => void];
 
 export function attachVideoRecovery(
   video: HTMLVideoElement,
-  onFailedChange: (failed: boolean) => void,
+  onFailureChange: (failure: VideoFailure | null) => void,
 ): { retry: () => void; detach: () => void } {
-  let failed = false;
+  let failure: VideoFailure | null = null;
   // `resumeAt === null` — перезагрузка не идёт. Пока идёт, позицию не
   // перечитываем: у только что загруженного элемента `currentTime` равен 0.
   let resumeAt: number | null = null;
@@ -41,10 +24,13 @@ export function attachVideoRecovery(
   let autoReloads = 0;
   let pendingWhileHidden = false;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
+  // Чем отличить «формат не открывается» от обрыва (videoRecoveryRules.ts).
+  let lastErrorCode: number | null = null;
+  let hasMetadata = false;
 
-  const setFailed = (value: boolean) => {
-    failed = value;
-    onFailedChange(value);
+  const setFailure = (value: VideoFailure | null) => {
+    failure = value;
+    onFailureChange(value);
   };
   const disarm = () => {
     if (stallTimer === null) return;
@@ -70,6 +56,7 @@ export function attachVideoRecovery(
   };
 
   const autoRecover = () => {
+    if (failure === 'unsupported') return; // перезагрузкой формат не вылечить
     // В фоне не качаем: мобильный трафик уйдёт впустую, а iOS всё равно
     // придушит. Вернёмся на `visibilitychange`.
     if (document.hidden) {
@@ -79,20 +66,33 @@ export function attachVideoRecovery(
     pendingWhileHidden = false;
     if (autoReloads >= MAX_AUTO_RELOADS) {
       disarm();
-      setFailed(true);
+      setFailure('network');
       return;
     }
     autoReloads += 1;
     reload();
   };
 
+  const onError = () => {
+    const previousCode = lastErrorCode;
+    lastErrorCode = video.error?.code ?? null;
+    if (isUnsupportedFormat({ code: lastErrorCode, previousCode, hasMetadata })) {
+      disarm();
+      setFailure('unsupported');
+      return;
+    }
+    autoRecover();
+  };
+
   const retry = () => {
     autoReloads = 0;
-    setFailed(false);
+    lastErrorCode = null;
+    setFailure(null);
     reload();
   };
 
   const onLoadedMetadata = () => {
+    hasMetadata = true;
     disarm();
     if (resumeAt === null) return;
     const position = resumeAt;
@@ -119,16 +119,16 @@ export function attachVideoRecovery(
 
   const onVisibilityChange = () => {
     if (document.hidden) return;
-    if (failed) retry();
+    if (failure === 'network') retry();
     else if (pendingWhileHidden || video.error) autoRecover();
   };
 
   const onOnline = () => {
-    if (failed || video.error) retry();
+    if (failure === 'network' || (failure === null && video.error)) retry();
   };
 
   const videoListeners: Listener[] = [
-    ['error', autoRecover],
+    ['error', onError],
     ['waiting', onStall],
     ['stalled', onStall],
     ['progress', onProgress],
