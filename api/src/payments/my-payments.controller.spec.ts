@@ -29,7 +29,7 @@ const MY_PAYMENTS: MyPaymentDto[] = [
 const MY_PAGE: MyPaymentsPageDto = {
   month: '2026-09',
   rows: MY_PAYMENTS,
-  contact: 'Маше @marievyazova',
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
 };
 
 async function buildController(

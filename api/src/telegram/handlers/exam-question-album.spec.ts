@@ -25,7 +25,11 @@ const USER: UserLean = {
   studentMode: false,
 };
 const IMAGE = { bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' as const };
-const VIDEO = { bytes: Buffer.from([9, 9]), contentType: 'video/mp4' as const };
+// Байты видео — лениво (аудит 2026-10-01, F02), здесь только порядок отправки.
+const VIDEO = {
+  loadBytes: () => Promise.resolve(Buffer.from([9, 9])),
+  contentType: 'video/mp4' as const,
+};
 
 function question(overrides: Partial<AttemptQuestionDto> = {}): AttemptQuestionDto {
   return {

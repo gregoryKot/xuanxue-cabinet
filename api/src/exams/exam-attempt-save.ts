@@ -23,12 +23,14 @@ import type { Model } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   ATTEMPT_SAVE_CONFLICT_MESSAGE,
+  type AttemptAnswerDto,
   type SaveAttemptAnswersInput,
 } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { encryptRecord } from '../utils/encryption';
 import { assertAnswersKnown, mergeAnswers } from './exam-attempt-answers';
+import { toggleOptionAnswer, type ToggleOptionInput } from './exam-attempt-toggle-option';
 import { assertOpenForChange, closeIfExpiredAttempt } from './exam-attempt-lifecycle';
 import {
   decryptAttempt,
@@ -48,12 +50,27 @@ import { attemptSubmittedCallback } from './notify-attempt-submitted';
 // вставки в start(): понятный отказ вместо зависшего запроса.
 const MAX_SAVE_RETRIES = 5;
 
+/** Что менять: готовые ответы (кабинет, `PATCH /attempts/:id/answers`) или
+ * переключение одного варианта у `multiple` (бот) — второе считается внутри
+ * цикла по перечитанным ответам, не по снимку клиента (F27, комментарий в
+ * exam-attempt-toggle-option.ts). */
+export type AttemptAnswersChange =
+  SaveAttemptAnswersInput | { toggleOption: ToggleOptionInput };
+
+function resolveIncoming(
+  change: AttemptAnswersChange,
+  current: readonly AttemptAnswerDto[],
+): AttemptAnswerDto[] {
+  if ('answers' in change) return change.answers;
+  return [toggleOptionAnswer(current, change.toggleOption)];
+}
+
 export async function saveAttemptAnswers(
   model: Model<ExamAttemptRecord>,
   examNotifier: ExamNotifier,
   attemptId: string,
   userId: string,
-  input: SaveAttemptAnswersInput,
+  change: AttemptAnswersChange,
   now: DateTime,
 ): Promise<LeanExamAttempt> {
   assertObjectId(attemptId, ATTEMPT_NOT_FOUND_MESSAGE);
@@ -74,9 +91,12 @@ export async function saveAttemptAnswers(
       onExpiredClose,
     );
     assertOpenForChange(current);
-    assertAnswersKnown(current.blocks, input.answers);
+    // Входящее — по `current` этой итерации: переключение варианта увидит
+    // то, что параллельный вызов успел записать до нас (F27).
+    const incoming = resolveIncoming(change, current.answers);
+    assertAnswersKnown(current.blocks, incoming);
 
-    const merged = mergeAnswers(current.answers, input.answers);
+    const merged = mergeAnswers(current.answers, incoming);
     const encryptedAnswers = encryptRecord(
       { answers: merged },
       EXAM_ATTEMPT_ENCRYPT_SCHEMA,

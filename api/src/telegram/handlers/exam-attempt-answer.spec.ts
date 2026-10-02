@@ -3,7 +3,7 @@
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
-  ATTEMPT_NOT_FOUND_MESSAGE,
+  ATTEMPT_NOT_FOUND_BOT_MESSAGE,
   type AttemptQuestionDto,
   type ExamAttemptDto,
 } from '@xuanxue/shared';
@@ -244,7 +244,7 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
     const { ctx, edits, buttonTexts } = fakeCtx();
 
@@ -258,12 +258,15 @@ describe('handleExamOption', () => {
       NOW,
     );
 
-    expect(port.saveAnswer).toHaveBeenCalledWith(
+    // Аудит 2026-10-01 (F27): «отмечен/снят» считает сервер внутри CAS, бот
+    // шлёт только какой вариант нажат — снимок экрана мог устареть.
+    expect(port.toggleOption).toHaveBeenCalledWith(
       ATTEMPT_ID,
       USER,
-      { itemId: 'i1', optionIds: ['o1', 'o2'] },
+      { itemId: 'i1', optionId: 'o2' },
       NOW,
     );
+    expect(port.saveAnswer).not.toHaveBeenCalled();
     expect(edits[0]).toContain('Вопрос 1 из 1');
     expect(buttonTexts[0]).toContain('☑ B');
   });
@@ -284,7 +287,7 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
     const { ctx, edits, deletes, sendPhoto } = fakeCtx();
 
@@ -304,7 +307,7 @@ describe('handleExamOption', () => {
     expect(port.loadOptionImage).not.toHaveBeenCalled();
   });
 
-  it('multiple — повторное нажатие снимает отметку', async () => {
+  it('multiple — повторное нажатие рисует экран по ответу сервера (отметка снята)', async () => {
     const current = attempt([MULTIPLE_Q], {
       answers: [{ itemId: 'i1', optionIds: ['o1', 'o2'] }],
     });
@@ -313,9 +316,9 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
-    const { ctx } = fakeCtx();
+    const { ctx, buttonTexts } = fakeCtx();
 
     await handleExamOption(
       ctx,
@@ -327,17 +330,20 @@ describe('handleExamOption', () => {
       NOW,
     );
 
-    expect(port.saveAnswer).toHaveBeenCalledWith(
+    expect(port.toggleOption).toHaveBeenCalledWith(
       ATTEMPT_ID,
       USER,
-      { itemId: 'i1', optionIds: ['o2'] },
+      { itemId: 'i1', optionId: 'o1' },
       NOW,
     );
+    expect(buttonTexts[0]).toContain('☐ A');
+    expect(buttonTexts[0]).toContain('☑ B');
   });
 
-  it('чужая/несуществующая попытка — ATTEMPT_NOT_FOUND_MESSAGE', async () => {
+  // F51: текст бота, не «Обновите страницу», и всегда с кнопкой «В меню».
+  it('чужая/несуществующая попытка — ATTEMPT_NOT_FOUND_BOT_MESSAGE с кнопкой «В меню»', async () => {
     const port = fakeExamBotPort({ loadOwnAttempt: jest.fn().mockResolvedValue(null) });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await handleExamOption(
       ctx,
@@ -349,7 +355,8 @@ describe('handleExamOption', () => {
       NOW,
     );
 
-    expect(edits).toEqual([ATTEMPT_NOT_FOUND_MESSAGE]);
+    expect(edits).toEqual([ATTEMPT_NOT_FOUND_BOT_MESSAGE]);
+    expect(buttonTexts[0]).toEqual(['В меню']);
     expect(port.saveAnswer).not.toHaveBeenCalled();
   });
 
@@ -375,11 +382,11 @@ describe('handleExamOption', () => {
     expect(edits).toHaveLength(1);
   });
 
-  it('устаревший/подделанный индекс варианта — общий текст, не падает', async () => {
+  it('устаревший/подделанный индекс варианта — общий текст с кнопкой «В меню», не падает', async () => {
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(attempt([SINGLE_Q])),
     });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await handleExamOption(
       ctx,
@@ -392,6 +399,7 @@ describe('handleExamOption', () => {
     );
 
     expect(edits).toEqual([GENERIC_ERROR]);
+    expect(buttonTexts[0]).toEqual(['В меню']);
     expect(port.saveAnswer).not.toHaveBeenCalled();
   });
 
@@ -400,7 +408,7 @@ describe('handleExamOption', () => {
       loadOwnAttempt: jest.fn().mockResolvedValue(attempt([SINGLE_Q])),
       saveAnswer: jest.fn().mockRejectedValue(new Error('время вышло')),
     });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await expect(
       handleExamOption(
@@ -415,6 +423,7 @@ describe('handleExamOption', () => {
     ).resolves.toBeUndefined();
 
     expect(edits).toEqual([GENERIC_ERROR]);
+    expect(buttonTexts[0]).toEqual(['В меню']); // F51: ошибка не оставляет без кнопок
   });
 
   it('сообщение недоступно (удалено/бот выкинут) — не падает', async () => {

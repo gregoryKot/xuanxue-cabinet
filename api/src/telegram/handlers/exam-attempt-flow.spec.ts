@@ -118,7 +118,7 @@ describe('бот — второй клиент ExamAttemptsService (интегр
     expect(reread.buttonTexts[0]).toContain('✓ Три');
   });
 
-  it('чужая попытка не отвечает — ATTEMPT_NOT_FOUND_MESSAGE, не содержимое', async () => {
+  it('чужая попытка не отвечает — ATTEMPT_NOT_FOUND_BOT_MESSAGE, не содержимое', async () => {
     const { examId } = await publishedExam('single');
     const start = fakeCtx();
     await handleExamStart(
@@ -145,7 +145,9 @@ describe('бот — второй клиент ExamAttemptsService (интегр
       { attemptId, index: 0 },
       NOW,
     );
-    expect(stranger.edits).toEqual(['Попытка не найдена. Обновите страницу.']);
+    expect(stranger.edits).toEqual([
+      'Попытка не найдена. Откройте /exams и продолжите оттуда.',
+    ]);
 
     const strangerOption = fakeCtx();
     await handleExamOption(
@@ -157,7 +159,9 @@ describe('бот — второй клиент ExamAttemptsService (интегр
       { attemptId, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
-    expect(strangerOption.edits).toEqual(['Попытка не найдена. Обновите страницу.']);
+    expect(strangerOption.edits).toEqual([
+      'Попытка не найдена. Откройте /exams и продолжите оттуда.',
+    ]);
   });
 
   it('«Сдать» переводит попытку в submitted — видно в следующем чтении', async () => {

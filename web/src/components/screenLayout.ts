@@ -21,8 +21,8 @@ export const screenSectionStyle: CSSProperties = {
   width: '100%',
 };
 
-/** Экран, которому нужна вся ширина (недельная сетка расписания): те же
- * отступы и ритм, но без предела по ширине. */
+/** Экран, которому нужна вся ширина (разбор попытки — видео рядом с
+ * вопросами): те же отступы и ритм, но без предела по ширине. */
 export const wideScreenSectionStyle: CSSProperties = {
   ...screenSectionStyle,
   maxWidth: 'none',

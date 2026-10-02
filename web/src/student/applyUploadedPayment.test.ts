@@ -18,12 +18,12 @@ describe('applyUploadedPayment', () => {
     const page: MyPaymentsPageDto = {
       month: '2026-09',
       rows: [august],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     };
 
     expect(applyUploadedPayment(page, awaiting)).toEqual({
       month: '2026-09',
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
       rows: [awaiting, august],
     });
   });
@@ -42,7 +42,7 @@ describe('applyUploadedPayment', () => {
     const page: MyPaymentsPageDto = {
       month: '2026-09',
       rows: [unpaid, august],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     };
 
     expect(applyUploadedPayment(page, awaiting)?.rows).toEqual([awaiting, august]);
@@ -52,7 +52,7 @@ describe('applyUploadedPayment', () => {
     const page: MyPaymentsPageDto = {
       month: '2026-09',
       rows: [],
-      contact: 'Маше @marievyazova',
+      contact: 'Маше Вязовой — например, в Telegram @marievyazova',
     };
 
     applyUploadedPayment(page, awaiting);

@@ -14,7 +14,6 @@ import {
   LIST_LIMIT_DEFAULT,
   type ExamAttemptDto,
   type ListAttemptsQuery,
-  type SaveAttemptAnswersInput,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import { UserNamesService } from '../users/user-names.service';
@@ -33,7 +32,7 @@ import {
   resumeAttemptById,
 } from './exam-attempt-lifecycle';
 import { assertExamNotPastDue, assertExamPublished } from './exam-start-guards';
-import { saveAttemptAnswers } from './exam-attempt-save';
+import { saveAttemptAnswers, type AttemptAnswersChange } from './exam-attempt-save';
 import { assertReasonsGiven } from './exam-attempt-submit-reason';
 import { resolveSubmitConflict } from './exam-attempt-submit-outcome';
 import {
@@ -114,11 +113,12 @@ export class ExamAttemptsService {
    * дедлайна; ответы заменяют по `itemId`, остальные не трогаются; чужой
    * `itemId` — 400. Атомарный апдейт с оптимистичной блокировкой
    * (exam-attempt-save.ts, находка аудита PR #175, docs/PLAN.md §11) —
-   * бот и кабинет одной секундой не затирают ответ друг друга. */
+   * бот и кабинет одной секундой не затирают ответ друг друга; переключение
+   * варианта бота (`toggleOption`, F27) считается внутри того же цикла. */
   async saveAnswers(
     attemptId: string,
     userId: string,
-    input: SaveAttemptAnswersInput,
+    input: AttemptAnswersChange,
     now: DateTime,
   ): Promise<ExamAttemptDto> {
     const attempt = await saveAttemptAnswers(

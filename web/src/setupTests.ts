@@ -47,8 +47,8 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-// jsdom не реализует matchMedia (useIsMobile.ts, переключатель список/сетка
-// расписания на 768px) — по умолчанию «не мобильный», тесты конкретной ветки
+// jsdom не реализует matchMedia (useIsMobile.ts, боковое меню / нижняя панель
+// AppShell на 768px) — по умолчанию «не мобильный», тесты конкретной ветки
 // переопределяют через vi.stubGlobal('matchMedia', ...).
 if (!window.matchMedia) {
   window.matchMedia = (query: string) =>

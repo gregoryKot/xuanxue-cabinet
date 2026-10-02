@@ -70,7 +70,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   previewMinutes: 'За сколько минут показывать черновик поста',
   lessonReminderMinutes: 'За сколько минут напомнить ученикам о занятии',
   newcomerContact: 'Кому писать, если человек ещё не в школе',
-  paymentContact: 'Кому присылать скриншот перевода',
+  paymentContact: 'Кому и куда присылать скриншот об оплате',
   dataControllerName: 'Кто отвечает за данные учеников',
   dataControllerContact: 'Как связаться с ответственным за данные',
   paymentReminder: 'Напоминание об оплате',

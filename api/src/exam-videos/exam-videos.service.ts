@@ -20,6 +20,7 @@ import {
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
+import { SingleFlight } from '../common/single-flight';
 import { encryptRecord } from '../utils/encryption';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -38,17 +39,21 @@ import { EXAM_VIDEO_ENCRYPT_SCHEMA, ExamVideoRecord } from './exam-video.schema'
 // же подписанному адресу всё время, пока его смотрят и перематывают.
 const SIGNED_URL_TTL_SECONDS = 3600;
 
-/** Видео для бота (2026-09-27, «Уточнено» ADR-0133) — байты, чтобы отправить
- * в Telegram напрямую, и кэш `telegramFileId`, тем же приёмом, что
- * LoadedExamImage (exam-images.service.ts). */
+/** Видео для бота (2026-09-27, «Уточнено» ADR-0133): кэш `telegramFileId`
+ * и байты — лениво, `loadBytes()`, не в поле (аудит 2026-10-01, F02): с
+ * известным file_id бот шлёт строку, и объект R2 (до 50 МБ) в память не
+ * ложится вовсе; без него читается один раз на всех, кто ждёт (SingleFlight). */
 export interface LoadedExamVideo {
-  bytes: Buffer;
+  loadBytes: () => Promise<Buffer>;
   contentType: ExamVideoContentType;
   telegramFileId?: string;
 }
 
 @Injectable()
 export class ExamVideosService {
+  // Один объект R2 за раз на видео (F02, комментарий у LoadedExamVideo).
+  private readonly bytesInFlight = new SingleFlight<Buffer>();
+
   constructor(
     @InjectModel(ExamVideoRecord.name) private readonly model: Model<ExamVideoRecord>,
     @InjectModel(ExamAttemptRecord.name)
@@ -119,16 +124,16 @@ export class ExamVideosService {
     return this.fileStore.signedGetUrl(doc.key, SIGNED_URL_TTL_SECONDS, now);
   }
 
-  /** Бот скачивает байты сам и шлёт их в Telegram, не редиректом на
-   * подписанную ссылку (2026-09-27, «Уточнено» ADR-0133: владелец сообщил,
-   * что видео в боте не видно вовсе). `NotAvailableError` — R2 выключен или
-   * объект пропал (FileStoreService.get) — вызывающий слой (ExamBotService)
-   * это деградация показа, не отказ всего экрана. */
+  /** Бот скачивает байты сам и шлёт их в Telegram, не редиректом на подписанную
+   * ссылку (2026-09-27, «Уточнено» ADR-0133). `NotAvailableError` (R2 выключен,
+   * объект пропал — FileStoreService.get) бросает уже `loadBytes()`, не этот метод:
+   * отправитель (exam-question-video-send.ts) считает это деградацией, не отказом. */
   async loadForBot(id: string, user: UserLean, now: DateTime): Promise<LoadedExamVideo> {
     const doc = await this.loadAccessibleDoc(id, user);
     const { telegramFileId } = decryptExamVideo(doc);
-    const bytes = await this.fileStore.get(doc.key, now);
-    return { bytes, contentType: doc.contentType, telegramFileId };
+    const loadBytes = () =>
+      this.bytesInFlight.run(id, () => this.fileStore.get(doc.key, now));
+    return { loadBytes, contentType: doc.contentType, telegramFileId };
   }
 
   /** Кэш file_id после удачной отправки в бот — тот же приём, что

@@ -7,7 +7,7 @@
 // по параметру callback data (SECURITY §3/§4). Обвязка —
 // exam-attempt-flow.test-support.ts.
 import { DateTime } from 'luxon';
-import { ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import { ATTEMPT_NOT_FOUND_BOT_MESSAGE } from '@xuanxue/shared';
 import { UsersService } from '../../users/users.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { handleExamMediaDeepLink } from './exam-media-deep-link';
@@ -89,10 +89,10 @@ describe('владение попыткой в боте — по telegramId от
     // Б подделал кнопку с attemptId ученика А: ответ, переход, «Сдать».
     const optionId = buildOptionId(attempt.id, 0, 0);
     expect((await press(CHAT_B, 'eo', optionId)).edits).toEqual([
-      ATTEMPT_NOT_FOUND_MESSAGE,
+      ATTEMPT_NOT_FOUND_BOT_MESSAGE,
     ]);
     expect((await press(CHAT_B, 'es', attempt.id)).edits).toEqual([
-      ATTEMPT_NOT_FOUND_MESSAGE,
+      ATTEMPT_NOT_FOUND_BOT_MESSAGE,
     ]);
 
     // Незнакомый Telegram (нет записи в users) — молчание, как для любой чужой кнопки.

@@ -59,3 +59,21 @@ export function pathWithoutQuery(url: string): string {
 export function userAgentOf(request: RequestLike): string | undefined {
   return asSingleHeader(request.headers?.['user-agent']);
 }
+
+// Сегмент пути, который в сигнатуре дедупа заменяется на `:id`: ObjectId
+// (24 hex), UUID, чистое число (`/parts/3`).
+const ID_SEGMENT_RE =
+  /^(?:[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)$/i;
+
+/** Путь-шаблон для сигнатуры дедупа алёртов (ADR-0053): один сбой у 60
+ * учеников на `/api/attempts/<id>/answers` — одна сигнатура, а не 60, иначе
+ * часовой потолок сгорал бы за секунды (аудит 2026-10-01, F65). Только для
+ * сигнатуры: в тексте сообщения и в журнале id остаётся — по нему ищут сбой.
+ * Регулярка, а не `req.route.path` Express: RequestLike сознательно не знает
+ * Express, а чистая функция тестируется без HTTP. */
+export function alertSignaturePath(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => (ID_SEGMENT_RE.test(segment) ? ':id' : segment))
+    .join('/');
+}

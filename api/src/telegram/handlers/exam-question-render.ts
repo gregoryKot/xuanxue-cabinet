@@ -28,6 +28,7 @@ import type { UserLean } from '../../users/users.service';
 import type { BotMenu } from './bot-menu';
 import { buildOptionAlbum, type OptionAlbumEntry } from './exam-question-album';
 import { sendOptionAlbum } from './exam-question-album-send';
+import { replyScreenOrFallback } from './exam-question-screen-send';
 import {
   buildFinishedScreen,
   buildQuestionScreen,
@@ -105,10 +106,6 @@ export async function presentAttemptScreen(
     return;
   }
 
-  // Старое сообщение-экран убираем ТОЛЬКО когда оно было (кнопка,
-  // editMessageText) — у ответа текстом/видео (via: 'reply') сообщения-
-  // экрана, которое можно было бы отредактировать, не было вовсе.
-  if (options.via === 'edit') await ctx.deleteMessage().catch(() => null);
   const { questionVideoFailed } = await sendOptionAlbum(
     ctx,
     deps.examBot,
@@ -124,5 +121,13 @@ export async function presentAttemptScreen(
   const text = questionVideoFailed
     ? `${view.text}\n\n${ITEM_VIDEO_IN_CABINET_NOTE}`
     : view.text;
-  await ctx.reply(text, extra).catch(() => null);
+  // Сначала новый экран, потом удаление старого (аудит 2026-10-01, F25): до
+  // этого старое сообщение удалялось ДО отправки, и сбой reply (429, сеть)
+  // оставлял ученика без единой кнопки. Теперь при сбое старый экран с
+  // рабочими кнопками остаётся над альбомом — «Дальше» перерисует всё заново.
+  if (!(await replyScreenOrFallback(ctx, deps.attemptId, text, extra))) return;
+  // Старое сообщение-экран убираем ТОЛЬКО когда оно было (кнопка,
+  // editMessageText) — у ответа текстом/видео (via: 'reply') сообщения-
+  // экрана, которое можно было бы отредактировать, не было вовсе.
+  if (options.via === 'edit') await ctx.deleteMessage().catch(() => null);
 }

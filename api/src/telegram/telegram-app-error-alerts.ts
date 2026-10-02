@@ -15,14 +15,20 @@ import type {
   AppErrorAlerts,
   ClientErrorAlertContext,
 } from '../common/app-error-alerts';
+import { alertSignaturePath } from '../common/request-info';
 import { appErrorAlertMessage, clientErrorAlertMessage } from './app-error-alert-message';
 import { PersonalChats } from './personal-chats';
 import { TelegramBotService } from './telegram-bot.service';
 
-// Та же сигнатура (метод+путь) повторно не будит админа чаще раза в 10
-// минут — иначе зависший провайдер или упавшая база слали бы сообщение на
-// каждый следующий запрос с тем же путём.
+// Та же сигнатура (метод + путь-шаблон без идентификаторов, alertSignaturePath)
+// повторно не будит админа чаще раза в 10 минут — иначе зависший провайдер
+// или упавшая база слали бы сообщение на каждый следующий запрос с тем же путём.
 const SAME_SIGNATURE_INTERVAL_MIN = 10;
+// Доставка не удалась ни одному чату (Telegram 429/таймаут, аудит 2026-10-01,
+// F36): бюджет часа возвращаем, а повтор той же сигнатуры разрешаем через
+// минуту, не сразу — при лежащем Telegram одна сигнатура даёт не больше одного
+// исходящего вызова в минуту, а не на каждую 500.
+const RETRY_AFTER_FAILURE_MIN = 1;
 // Общий потолок на случай нескольких разных сигнатур сразу (несколько
 // маршрутов посыпались одновременно): не больше шести сообщений в час суммарно.
 const HOURLY_LIMIT = 6;
@@ -49,7 +55,7 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
 
   async notifyServerError(context: AppErrorAlertContext, now: DateTime): Promise<void> {
     await this.send(
-      `${context.method} ${context.path}`,
+      `${context.method} ${alertSignaturePath(context.path)}`,
       appErrorAlertMessage(context, this.config.get<string>('PUBLIC_URL')),
       now,
     );
@@ -63,7 +69,7 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
     now: DateTime,
   ): Promise<void> {
     await this.send(
-      `${context.kind} ${context.path}`,
+      `${context.kind} ${alertSignaturePath(context.path)}`,
       clientErrorAlertMessage(context, this.config.get<string>('PUBLIC_URL')),
       now,
     );
@@ -79,7 +85,22 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
       this.logger.error(text);
       return;
     }
-    await Promise.all(chats.map((chat) => this.bot.sendMessage(chat.chatId, text)));
+    const delivered = await Promise.all(
+      chats.map((chat) => this.bot.sendMessage(chat.chatId, text)),
+    );
+    if (delivered.some(Boolean)) return;
+    // sendMessage сам не бросает (bot-send-safely.ts) — `false` на каждый чат
+    // и есть недоставка. Текст — в error-лог: RUNBOOK ищет сбой по requestId.
+    // Зажим снизу: недоставка могла растянуться через границу часа, и счётчик
+    // уже нового окна не должен уйти в минус (ревью PR #525, F36).
+    this.hourlyCount = Math.max(0, this.hourlyCount - 1);
+    this.lastSentAtBySignature.set(
+      signature,
+      now.minus({ minutes: SAME_SIGNATURE_INTERVAL_MIN - RETRY_AFTER_FAILURE_MIN }),
+    );
+    this.logger.error(
+      `app_error alert: доставка не удалась ни одному из ${delivered.length} чатов; ${text}`,
+    );
   }
 
   private isTooSoon(signature: string, now: DateTime): boolean {
