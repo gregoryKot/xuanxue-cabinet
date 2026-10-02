@@ -7,8 +7,7 @@
 // Статус в строку не входит — показывает его отдельной меткой справа
 // (ExamCard.tsx, макет 2b-exams.html, docs/adr/0043), а не текстом в общей
 // строке. pluralRu — общий
-// примитив склонения (shared/src/plural-ru.ts), по образцу
-// schedule/channelCountLabel.ts.
+// примитив склонения (shared/src/plural-ru.ts).
 import {
   formatDurationRu,
   pluralRu,

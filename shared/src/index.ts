@@ -104,6 +104,7 @@ export {
   ACCESS_MESSAGE,
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
   EMAIL_LOGIN_EXPIRED_MESSAGE,
+  EMAIL_LOGIN_QUOTA_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
 } from './auth';
 export type { UpdateMyProfileInput } from './person-name';
@@ -201,11 +202,13 @@ export type {
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
 } from './exam-attempts';
+export type { ExamAttemptQueueItemDto } from './exam-attempt-queue';
 export {
   EXAM_ATTEMPT_STATUSES,
   ATTEMPT_LIMITS,
   EXAM_ATTEMPT_RETENTION_YEARS,
   ATTEMPT_NOT_FOUND_MESSAGE,
+  ATTEMPT_NOT_FOUND_BOT_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
   ATTEMPT_EXPIRED_MESSAGE,

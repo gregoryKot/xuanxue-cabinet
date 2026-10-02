@@ -90,6 +90,14 @@ export class AnswerVideoRecord {
 
   @Prop({ type: Date, required: false })
   completedAt?: Date;
+
+  // R2 подтвердил сборку файла (CompleteMultipartUpload), остальные шаги
+  // `complete` ещё идут (ADR-0165, F47 аудита 2026-10-01): по метке повтор
+  // после сбоя Mongo не зовёт R2 второй раз — тот ответил бы NoSuchUpload, и
+  // загрузка не завершилась бы никогда. Снимается ($unset) на `ready`
+  // вместе с uploadId. Дата, не текст о человеке — шифрования не требует.
+  @Prop({ type: Date, required: false })
+  r2CompletedAt?: Date;
 }
 
 export const AnswerVideoSchema = SchemaFactory.createForClass(AnswerVideoRecord);

@@ -3,32 +3,25 @@
 // создание занятия — своя страница `/schedule/new` и `/schedule/:classId`
 // (ClassEditorScreen.tsx, ADR-0033): отсюда только переход. Одно главное
 // действие — «Добавить занятие» (CLAUDE.md «Продукт»: одна очевидная кнопка
-// на экран) — в шапке рядом с заголовком, а не под сеткой. <768px —
-// вертикальный список по дням, ≥768px — сетка семи колонок (CLAUDE.md
-// «Мобильный экран первым»).
+// на экран) — в шапке рядом с заголовком, а не под неделей. Неделя — дни
+// карточками в столбцы по ширине экрана (ScheduleDayList.tsx): на телефоне
+// один, на мониторе три (CLAUDE.md «Мобильный экран первым»).
 //
-// Облик — направление «Тёплая школа» (docs/adr/0043), сетка — с макета
-// Schedule.dc.html: заголовок антиквой со строкой объяснения, недельная сетка
-// на волосяных линиях, а слоты в ней — мягкие карточки (SlotCard.tsx).
+// Облик — направление «Тёплая школа» (docs/adr/0043): заголовок антиквой со
+// строкой объяснения, день — карточка, занятие — строка в ней (SlotRow.tsx).
 // Переключателя «Неделя / Список» с макета здесь нет: список ближайших
-// занятий — соседний экран «Занятия», а вид сетки выбирает ширина экрана, и
-// второй способ выбирать то же самое сбивал бы с толку.
+// занятий — соседний экран «Занятия», и второй способ смотреть то же самое
+// сбивал бы с толку.
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { useChannels } from '../channels/useChannels';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import {
-  primaryActionStyle,
-  screenSectionStyle,
-  wideScreenSectionStyle,
-} from '../components/screenLayout';
+import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
-import { useIsMobile } from '../hooks/useIsMobile';
 import { ScheduleDayList } from './ScheduleDayList';
-import { ScheduleGridView } from './ScheduleGridView';
 import { buildScheduleGrid } from './scheduleGrid';
 import { scheduleTzNote } from './timezoneLabel';
 import { useClasses } from './useClasses';
@@ -39,13 +32,12 @@ const SCHEDULE_PATH = '/schedule';
 
 export default function ScheduleScreen() {
   const { classes, loading, error, reload } = useClasses();
-  // Активные каналы нужны самой сетке: SlotCard считает по ним, сколько
-  // каналов реально получит рассылку (ревью п.4).
+  // Активные каналы нужны самой неделе: SlotRow по ним видит, что ссылку
+  // некому разослать (ревью п.4).
   const { channels: activeChannels } = useChannels(true);
-  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Только id — SlotCard/channelCountLabel считают пересечение с
+  // Только id — scheduleGrid/channelCountLabel считают пересечение с
   // channelIds занятия, чтобы выключенный канал не попадал в счётчик
   // (ревью п.4).
   const activeChannelIds = useMemo(
@@ -70,8 +62,7 @@ export default function ScheduleScreen() {
   const openEdit = (classId: string) => void navigate(`${SCHEDULE_PATH}/${classId}`);
 
   return (
-    // Сетка недели занимает всю ширину, список на телефоне — обычную колонку.
-    <section style={isMobile ? screenSectionStyle : wideScreenSectionStyle}>
+    <section style={screenSectionStyle}>
       <ScreenHeader
         title={TITLE}
         explanation={EXPLANATION}
@@ -99,12 +90,8 @@ export default function ScheduleScreen() {
         <p style={{ margin: 0 }}>Пока в расписании нет занятий.</p>
       )}
 
-      {!loading && !error && totalSlots > 0 && isMobile && (
+      {!loading && !error && totalSlots > 0 && (
         <ScheduleDayList grid={grid} onSelectSlot={openEdit} />
-      )}
-
-      {!loading && !error && totalSlots > 0 && !isMobile && (
-        <ScheduleGridView grid={grid} onSelectSlot={openEdit} />
       )}
     </section>
   );

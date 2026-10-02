@@ -1,6 +1,6 @@
-// Переключатель список/сетка расписания на 768px (CLAUDE.md «Мобильный экран
-// первым»): matchMedia — без слушателя на каждый пиксель resize, как у
-// window.innerWidth-подхода.
+// Переключатель боковое меню / нижняя панель в AppShell на 768px (CLAUDE.md
+// «Мобильный экран первым»): matchMedia — без слушателя на каждый пиксель
+// resize, как у window.innerWidth-подхода.
 import { useEffect, useState } from 'react';
 
 const DEFAULT_BREAKPOINT_PX = 768;

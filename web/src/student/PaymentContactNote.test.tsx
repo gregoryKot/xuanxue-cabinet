@@ -24,7 +24,7 @@ const PATH = '/me/payments';
 const PAGE: MyPaymentsPageDto = {
   month: '2026-09',
   rows: [],
-  contact: 'Маше @marievyazova',
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
 };
 
 const DAY_PATH = '/me/payments/reminder-day';
@@ -132,9 +132,23 @@ describe('PaymentContactNote — контакт бухгалтера', () => {
     const link = await screen.findByRole('link', { name: '@marievyazova' });
     expect(link).toHaveAttribute('href', 'https://t.me/marievyazova');
     expect(link.parentElement).toHaveTextContent(
-      'Скриншот перевода присылайте Маше @marievyazova в Telegram.',
+      'Отправьте скриншот об оплате Маше Вязовой — например, в Telegram @marievyazova.',
     );
     expect(screen.getByRole('heading', { name: 'Оплата' })).toBeInTheDocument();
+  });
+
+  // Способ связи — целиком в контакте (ADR-0159): из кода «в Telegram» убрано,
+  // поэтому WhatsApp или телефон не ломают фразу.
+  it('контакт без Telegram — фраза не обещает Telegram', async () => {
+    mockApiByPath({
+      [PATH]: { ...PAGE, contact: 'Маше Вязовой — в WhatsApp по телефону' },
+    });
+    render(<PaymentContactNote />);
+
+    expect(await screen.findByText(/Отправьте скриншот об оплате/)).toHaveTextContent(
+      'Отправьте скриншот об оплате Маше Вязовой — в WhatsApp по телефону.',
+    );
+    expect(screen.queryByText(/Telegram/)).not.toBeInTheDocument();
   });
 
   it('пока идёт загрузка — скелетон вместо строки, заголовок на месте', () => {
@@ -142,7 +156,7 @@ describe('PaymentContactNote — контакт бухгалтера', () => {
     render(<PaymentContactNote />);
 
     expect(screen.getByRole('heading', { name: 'Оплата' })).toBeInTheDocument();
-    expect(screen.queryByText(/Скриншот перевода/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Отправьте скриншот об оплате/)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -151,7 +165,7 @@ describe('PaymentContactNote — контакт бухгалтера', () => {
     render(<PaymentContactNote />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервер занят.');
-    expect(screen.queryByText(/Скриншот перевода/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Отправьте скриншот об оплате/)).not.toBeInTheDocument();
 
     mockApiByPath({ [PATH]: PAGE });
     await userEvent.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));

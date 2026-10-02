@@ -8,6 +8,8 @@
 // здесь только то, что сервис зовёт ExamVideosService через этот хелпер и
 // отдаёт результат наружу как есть.
 import { DateTime } from 'luxon';
+import type { ExamAttemptDto } from '@xuanxue/shared';
+import { NotFoundError } from '../common/errors';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { UserLean } from '../users/users.service';
 import { ExamBotService } from './exam-bot.service';
@@ -20,20 +22,34 @@ const USER: UserLean = {
   status: 'active',
   studentMode: false,
 };
-const VIDEO = { bytes: Buffer.from([1]), contentType: 'video/mp4' as const };
+const VIDEO = {
+  loadBytes: () => Promise.resolve(Buffer.from([1])),
+  contentType: 'video/mp4' as const,
+};
+
+const ATTEMPT = {
+  id: 'a1',
+  status: 'in_progress',
+  answers: [],
+} as unknown as ExamAttemptDto;
 
 function service(
-  overrides: { loadForBot?: jest.Mock; rememberTelegramFileId?: jest.Mock } = {},
+  overrides: {
+    loadForBot?: jest.Mock;
+    rememberTelegramFileId?: jest.Mock;
+    attempts?: Partial<Record<'getOwn' | 'list' | 'saveAnswers', jest.Mock>>;
+  } = {},
 ): ExamBotService {
   const examVideosService = {
     loadForBot: overrides.loadForBot ?? jest.fn().mockResolvedValue(VIDEO),
     rememberTelegramFileId: overrides.rememberTelegramFileId ?? jest.fn(),
   };
+  const mediaAssetsService = { listForAttempt: jest.fn().mockResolvedValue([]) };
   return new ExamBotService(
     {} as never,
+    (overrides.attempts ?? {}) as never,
     {} as never,
-    {} as never,
-    {} as never,
+    mediaAssetsService as never,
     {} as never,
     examVideosService as never,
     {} as never,
@@ -41,6 +57,52 @@ function service(
     new ExamBotPortRegistry(),
   );
 }
+
+// Аудит 2026-10-01 (F26): до фикса метод шёл list(limit 200) и искал по id.
+describe('ExamBotService.loadOwnAttempt', () => {
+  it('зовёт getOwn по владельцу, не list, и подмешивает media', async () => {
+    const getOwn = jest.fn().mockResolvedValue(ATTEMPT);
+    const list = jest.fn();
+    const bot = service({ attempts: { getOwn, list } });
+
+    await expect(bot.loadOwnAttempt('a1', USER, NOW)).resolves.toEqual({
+      ...ATTEMPT,
+      media: [],
+    });
+    expect(getOwn).toHaveBeenCalledWith('a1', USER.id, NOW);
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it('NotFoundError (чужой/битый id) — null, прочая ошибка — наружу', async () => {
+    const notFound = service({
+      attempts: { getOwn: jest.fn().mockRejectedValue(new NotFoundError('нет')) },
+    });
+    await expect(notFound.loadOwnAttempt('a1', USER, NOW)).resolves.toBeNull();
+
+    const broken = service({
+      attempts: { getOwn: jest.fn().mockRejectedValue(new Error('mongo упал')) },
+    });
+    await expect(broken.loadOwnAttempt('a1', USER, NOW)).rejects.toThrow('mongo упал');
+  });
+});
+
+// Аудит 2026-10-01 (F27): переключение — внутри CAS сервиса, не по снимку бота.
+describe('ExamBotService.toggleOption', () => {
+  it('передаёт toggleOption в saveAnswers по владельцу и подмешивает media', async () => {
+    const saveAnswers = jest.fn().mockResolvedValue(ATTEMPT);
+    const bot = service({ attempts: { saveAnswers } });
+
+    await expect(
+      bot.toggleOption('a1', USER, { itemId: 'i1', optionId: 'o1' }, NOW),
+    ).resolves.toEqual({ ...ATTEMPT, media: [] });
+    expect(saveAnswers).toHaveBeenCalledWith(
+      'a1',
+      USER.id,
+      { toggleOption: { itemId: 'i1', optionId: 'o1' } },
+      NOW,
+    );
+  });
+});
 
 describe('ExamBotService.loadOptionVideo', () => {
   it('делегирует ExamVideosService.loadForBot и отдаёт результат как есть', async () => {

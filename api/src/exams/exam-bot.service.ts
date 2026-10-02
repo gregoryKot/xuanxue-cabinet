@@ -11,7 +11,7 @@
 // exam-question-screen.ts) нужно знать, привязано ли уже видео, а сервис
 // попыток сам этого не знает (media_assets — коллекция MediaModule).
 import { Injectable } from '@nestjs/common';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import {
   LIST_LIMIT_MAX,
   type AttemptAnswerDto,
@@ -29,6 +29,8 @@ import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamVideosService } from '../exam-videos/exam-videos.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia, withReviewMedia } from './exam-attempt-media';
+import type { AttemptAnswersChange } from './exam-attempt-save';
+import type { ToggleOptionInput } from './exam-attempt-toggle-option';
 import { degradeNotFound } from './exam-bot-degrade';
 import { loadOptionImageForBot, loadOptionVideoForBot } from './exam-bot-media';
 import { validateExamDraftInput } from './exam-draft-validate';
@@ -66,59 +68,55 @@ export class ExamBotService implements ExamBotPort {
     return this.myExamsService.list({}, user.id, now);
   }
 
-  async startAttempt(
-    examId: string,
-    user: UserLean,
-    now: DateTime,
-  ): Promise<ExamAttemptDto> {
-    const attempt = await this.examAttemptsService.start(examId, user.id, now);
-    return withAttemptMedia(this.mediaAssetsService, attempt);
-  }
+  // `.media` — шапка файла; один помощник на все пути, что отдают попытку.
+  private readonly withMedia = (attempt: Promise<ExamAttemptDto>) =>
+    attempt.then((dto) => withAttemptMedia(this.mediaAssetsService, dto));
 
-  /** `GET /attempts/:id` у сервиса нет — тот же приём, что у веб-кабинета
-   * (web/src/attempt/useAttempt.ts): берём список СВОИХ попыток и находим
-   * нужную. `roles: []` — попытка «своя», даже если её открывает учитель или
-   * админ (ТЗ 4.4: штат проходит форму теми же маршрутами, что ученик) — а
-   * список просим не «как штат», иначе он отдал бы ВСЕ попытки школы, и
-   * чужой attemptId в callback data (кто угодно мог подделать кнопку) утёк
-   * бы штатному сотруднику вместо честного «попытка не найдена». */
-  async loadOwnAttempt(
+  startAttempt = (examId: string, user: UserLean, now: DateTime) =>
+    this.withMedia(this.examAttemptsService.start(examId, user.id, now));
+
+  /** Тот же getOwn, что `GET /attempts/:id` (ADR-0126): владение в фильтре
+   * findOne (SECURITY §3), не список из 200 с поиском на клиенте (аудит
+   * 2026-10-01, F26); NotFoundError чужого/битого id — `null`. Отличие от списка:
+   * попытки мягко удалённых форм (ADR-0140) не вычитаются — как на экране сдачи. */
+  loadOwnAttempt(
     attemptId: string,
     user: UserLean,
     now: DateTime,
   ): Promise<ExamAttemptDto | null> {
-    const attempts = await this.examAttemptsService.list(
-      { limit: LIST_LIMIT_MAX },
-      { ...user, roles: [] },
-      now,
+    return degradeNotFound(() =>
+      this.withMedia(this.examAttemptsService.getOwn(attemptId, user.id, now)),
     );
-    const attempt = attempts.find((a) => a.id === attemptId);
-    return attempt ? withAttemptMedia(this.mediaAssetsService, attempt) : null;
   }
 
-  async saveAnswer(
+  private applyAnswers(
+    attemptId: string,
+    user: UserLean,
+    change: AttemptAnswersChange,
+    now: DateTime,
+  ): Promise<ExamAttemptDto> {
+    return this.withMedia(
+      this.examAttemptsService.saveAnswers(attemptId, user.id, change, now),
+    );
+  }
+
+  saveAnswer = (
     attemptId: string,
     user: UserLean,
     answer: AttemptAnswerDto,
     now: DateTime,
-  ): Promise<ExamAttemptDto> {
-    const attempt = await this.examAttemptsService.saveAnswers(
-      attemptId,
-      user.id,
-      { answers: [answer] },
-      now,
-    );
-    return withAttemptMedia(this.mediaAssetsService, attempt);
-  }
+  ) => this.applyAnswers(attemptId, user, { answers: [answer] }, now);
 
-  async submitAttempt(
+  // Переключение считает сервер внутри CAS (F27, exam-attempt-toggle-option.ts).
+  toggleOption = (
     attemptId: string,
     user: UserLean,
+    input: ToggleOptionInput,
     now: DateTime,
-  ): Promise<ExamAttemptDto> {
-    const attempt = await this.examAttemptsService.submit(attemptId, user.id, now);
-    return withAttemptMedia(this.mediaAssetsService, attempt);
-  }
+  ) => this.applyAnswers(attemptId, user, { toggleOption: input }, now);
+
+  submitAttempt = (attemptId: string, user: UserLean, now: DateTime) =>
+    this.withMedia(this.examAttemptsService.submit(attemptId, user.id, now));
 
   // NotFoundError → `null`: логика в exam-bot-media.ts (файл-лимит, комментарий там же).
   loadOptionImage = (imageId: string, user: UserLean): Promise<BotOptionImage | null> =>
@@ -169,7 +167,7 @@ export class ExamBotService implements ExamBotPort {
   // проверяющий уже штат, дальше решать вызывающему хендлеру, что сказать.
   loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null> {
     return degradeNotFound(async () => {
-      const review = await this.examGradingsService.getReview(attemptId);
+      const review = await this.examGradingsService.getReview(attemptId, DateTime.utc());
       return withReviewMedia(this.mediaAssetsService, review);
     });
   }

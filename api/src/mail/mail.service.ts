@@ -7,14 +7,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  EMAIL_LOGIN_QUOTA_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
   EMAIL_LOGIN_TOKEN_TTL_MIN,
 } from '@xuanxue/shared';
 import { errorMessage } from '../common/error-info';
 import { NotAvailableError } from '../common/errors';
+import { resendQuotaErrorName } from './resend-quota';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const RESEND_TIMEOUT_MS = 10_000;
+const QUOTA_LOG = 'Квота Resend исчерпана';
 const SUBJECT = 'Вход в кабинет «Сюань-Сюэ»';
 const CONFIRM_SUBJECT = 'Подтвердите почту в кабинете «Сюань-Сюэ»';
 
@@ -79,8 +82,16 @@ export class MailService {
       throw this.failedToSend(subject, errorMessage(err));
     }
 
+    if (res.ok) return;
+    // Квота Resend исчерпана (resend-quota.ts, F48): ученику — совет войти
+    // через Telegram, владельцу — warn с тегом mail.quota (RUNBOOK §8.24).
+    const quota = await resendQuotaErrorName(res);
+    if (quota !== undefined) {
+      this.logger.warn({ tag: 'mail.quota', status: res.status, name: quota }, QUOTA_LOG);
+      throw new NotAvailableError(EMAIL_LOGIN_QUOTA_MESSAGE);
+    }
     // Тело ответа Resend в лог не идёт: может содержать адрес получателя.
-    if (!res.ok) throw this.failedToSend(subject, `Resend ответил ${res.status}`);
+    throw this.failedToSend(subject, `Resend ответил ${res.status}`);
   }
 
   /** Причина — нам в лог, человеку — один и тот же текст: ошибку, которую

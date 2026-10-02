@@ -1,24 +1,24 @@
-// Общий блок «подпись дня + слоты» — переиспользуется мобильным списком
-// (ScheduleDayList) и недельной сеткой (ScheduleGridView), которые
-// отличаются только внешним контейнером (вертикальная группа vs колонка).
-// Раньше блок дублировался в обоих файлах (jscpd-храповик, CLAUDE.md «Дубли»).
+// Блок «название дня + занятия» недели расписания (ScheduleDayList.tsx).
 //
-// Подпись дня — растяжка-заглавные `.xuanxue-eyebrow` (макет Schedule.dc.html):
-// день недели служебная метка над столбцом, а не заголовок наравне с
-// названием занятия. Числа месяца рядом с ней, как на макете, здесь нет:
-// сетка показывает правила расписания («каждый вторник»), а не конкретную
-// неделю с датами.
+// День — одна карточка, занятия в ней разделены волосяной линией
+// (oneCardListStyle, ADR-0043): пять отдельных карточек подряд в каждом дне
+// делали неделю из тридцати занятий лентой в четыре экрана телефона (отзыв
+// владельца 2026-10-02). Название дня — растяжка-заглавные
+// `.xuanxue-eyebrow`, служебная метка над карточкой, а не заголовок наравне с
+// названием занятия; числа месяца нет — неделя показывает правила
+// («каждый вторник»), а не конкретную неделю.
 import type { CSSProperties } from 'react';
-import { WEEKDAY_LABELS_RU, type Weekday } from '@xuanxue/shared';
-import { SlotCard } from './SlotCard';
+import type { Weekday } from '@xuanxue/shared';
+import { oneCardListStyle } from '../components/listCardStyles';
+import { SlotRow } from './SlotRow';
 import type { ScheduleSlot } from './scheduleGrid';
+import { WEEKDAY_NAMES_RU } from './weekdayNames';
 
-// День без занятий в недельной сетке: пустой столбец читается как «данные не
-// загрузились» (макет Schedule.dc.html подписывает такой день словами).
-// Мобильный список пустые дни не показывает вовсе и сюда не приходит.
-const NO_SLOTS_TEXT = 'Занятий нет';
+const headingStyle: CSSProperties = { margin: 0, fontWeight: 400 };
 
-const emptyStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
+function rowStyle(isLast: boolean): CSSProperties {
+  return { borderBottom: isLast ? 'none' : '1px solid var(--line-soft)' };
+}
 
 interface DaySlotsProps {
   day: Weekday;
@@ -29,16 +29,17 @@ interface DaySlotsProps {
 
 export function DaySlots({ day, slots, onSelectSlot, containerStyle }: DaySlotsProps) {
   return (
-    <div style={containerStyle}>
-      <span className="xuanxue-eyebrow">{WEEKDAY_LABELS_RU[day]}</span>
-      {slots.length === 0 && <span style={emptyStyle}>{NO_SLOTS_TEXT}</span>}
-      {slots.map((slot) => (
-        <SlotCard
-          key={slot.ruleId}
-          slot={slot}
-          onSelect={() => onSelectSlot(slot.classId)}
-        />
-      ))}
-    </div>
+    <section style={containerStyle} aria-label={WEEKDAY_NAMES_RU[day]}>
+      <h2 className="xuanxue-eyebrow" style={headingStyle}>
+        {WEEKDAY_NAMES_RU[day]}
+      </h2>
+      <ul style={oneCardListStyle}>
+        {slots.map((slot, index) => (
+          <li key={slot.ruleId} style={rowStyle(index === slots.length - 1)}>
+            <SlotRow slot={slot} onSelect={() => onSelectSlot(slot.classId)} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -4,7 +4,9 @@
 // не завершается, event.waitUntil в service worker висит (CLAUDE.md,
 // «Храповики» п.5 и «Логи и наблюдаемость»). Сегодня таймаут есть у всех
 // вызовов — гейт держит это, как check-route-collisions.mjs держит
-// уникальность маршрутов.
+// уникальность маршрутов. Вызовы Bot API через `ctx.*` внутри хендлеров
+// Telegraf (api/src/telegram, без `signal`) гейт не видит — их держит
+// `handlerTimeout` инстанса (TELEGRAF_HANDLER_TIMEOUT_MS, аудит 2026-10-01, F52).
 //
 // Разбор — в чистой функции без fs (findFetchesWithoutSignal) поверх общего
 // сканера scripts/source-text.mjs (он же гасит литералы трём гейтам сразу):

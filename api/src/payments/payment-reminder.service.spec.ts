@@ -33,7 +33,7 @@ const TZ = 'Asia/Jerusalem';
 // 5 сентября 2026, 10:00 в Израиле (UTC+3).
 const NOW = DateTime.fromISO('2026-09-05T07:00:00Z', { zone: 'utc' });
 const BOT_NAME = 'xuanxue_bot';
-const PAYMENT_CONTACT = 'Маше @marievyazova';
+const PAYMENT_CONTACT = 'Маше Вязовой — например, в Telegram @marievyazova';
 
 function utc(iso: string): DateTime {
   return DateTime.fromISO(iso, { zone: 'utc' });
@@ -162,7 +162,7 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     expect(chatId).toBe(`chat-${id}`);
     expect(text).toContain('Ваня, напоминаем об оплате за сентябрь 2026');
     // Дефолт ведёт к бухгалтеру напрямую, не к боту (ADR-0159).
-    expect(text).toContain(`пришлите ${PAYMENT_CONTACT} в Telegram.`);
+    expect(text).toContain(`Скриншот об оплате отправьте ${PAYMENT_CONTACT}.`);
     expect(text).not.toContain('t.me');
     const doc = await paymentModel.findOne({ userId: id, month: '2026-09' }).lean();
     expect(doc?.status).toBe('unpaid');

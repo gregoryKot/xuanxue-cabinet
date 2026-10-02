@@ -105,12 +105,20 @@ export async function closeIfExpiredAttempt(
  *
  * `limit` — не «дай всё» (CLAUDE.md «API»): при массовом наплыве просрочек
  * (сотни учеников на одном экзамене) следующий тик доберёт остаток, тот же
- * приём, что у RecordingPromptService/DeliveryRunnerService. */
+ * приём, что у RecordingPromptService/DeliveryRunnerService.
+ *
+ * `onExpiredClose` здесь, в отличие от closeIfExpiredAttempt, может вернуть
+ * Promise, и он ждётся до следующей попытки (аудит 2026-10-01 F11, ADR-0167):
+ * группа с одним стартом истекает в одну минуту, и fire-and-forget на
+ * каждую запускал веер — 50 карточек «работу сдали» в один чат учителя
+ * разом (Telegram отвечает 429, пинг теряется) и сотни операций Mongo за
+ * секунды. Тику ждать можно (@Cron с waitForCompletion), HTTP-пути
+ * по-прежнему зовут closeIfExpiredAttempt с void-колбэком. */
 export async function closeExpiredAttempts(
   model: Model<ExamAttemptRecord>,
   now: DateTime,
   limit: number,
-  onExpiredClose?: (closed: LeanExamAttempt) => void,
+  onExpiredClose?: (closed: LeanExamAttempt) => void | Promise<void>,
 ): Promise<number> {
   const candidates = await model
     .find({ status: 'in_progress', deadlineAt: { $lte: now.toJSDate() } })
@@ -118,12 +126,16 @@ export async function closeExpiredAttempts(
     .lean<RawLeanExamAttempt[]>();
 
   let closedByThisCall = 0;
-  const countingCallback = (closed: LeanExamAttempt): void => {
-    closedByThisCall += 1;
-    onExpiredClose?.(closed);
-  };
   for (const raw of candidates) {
-    await closeIfExpiredAttempt(model, decryptAttempt(raw), now, countingCallback);
+    // Колбэк closeIfExpiredAttempt синхронный — запоминаем, выиграл ли этот
+    // вызов гонку, и уведомляем уже с ожиданием, по одной попытке за раз.
+    let closedHere: LeanExamAttempt | null = null;
+    await closeIfExpiredAttempt(model, decryptAttempt(raw), now, (closed) => {
+      closedHere = closed;
+    });
+    if (!closedHere) continue;
+    closedByThisCall += 1;
+    await onExpiredClose?.(closedHere);
   }
   return closedByThisCall;
 }

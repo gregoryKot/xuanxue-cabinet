@@ -26,15 +26,15 @@ function foreignTimezones(
   return [...new Set(classTzs)].filter((tz) => tz !== browserTimeZone);
 }
 
-/** Подпись под заголовком «Расписания»: в сетке стоит время правила, а
- * правило хранится в поясе школы. */
+/** Подпись под заголовком «Расписания»: там стоит время правила, а правило
+ * хранится в поясе школы. */
 export function scheduleTzNote(
   classTzs: readonly string[],
   browserTimeZone: string = browserTz(),
 ): string | null {
   const foreign = foreignTimezones(classTzs, browserTimeZone);
   if (foreign.length === 0) return null;
-  return `Время в сетке — по часам школы (**${foreign.join(', ')}**).`;
+  return `Время в расписании — по часам школы (**${foreign.join(', ')}**).`;
 }
 
 /** Подпись под заголовком «Занятий»: там время конкретной даты, показанное в

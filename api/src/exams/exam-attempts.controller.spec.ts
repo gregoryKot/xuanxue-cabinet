@@ -144,7 +144,7 @@ describe('ExamAttemptsController', () => {
     const controller = await buildController({}, { getReview });
 
     await expect(controller.review('a1')).resolves.toEqual(reviewDto);
-    expect(getReview).toHaveBeenCalledWith('a1');
+    expect(getReview).toHaveBeenCalledWith('a1', expect.anything());
   });
 
   it('grade() пишет оценку, затем отдаёт карточку проверки целиком (не ExamGradingDto, не 204)', async () => {
@@ -177,6 +177,6 @@ describe('ExamAttemptsController', () => {
 
     await expect(controller.grade('a1', body, teacher)).resolves.toEqual(reviewDto);
     expect(grade).toHaveBeenCalledWith('a1', 'teacher1', body, expect.anything());
-    expect(getReview).toHaveBeenCalledWith('a1');
+    expect(getReview).toHaveBeenCalledWith('a1', expect.anything());
   });
 });

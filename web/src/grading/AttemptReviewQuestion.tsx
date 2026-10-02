@@ -14,13 +14,10 @@
 // (attemptReviewMediaByQuestion.ts, чистая функция с тестом, CLAUDE.md
 // «Логика вне компонентов»), а не сам вопрос фильтром по попытке целиком.
 //
-// Сам список вариантов — AttemptReviewQuestionOptions.tsx (там же картинка
-// варианта, ADR-0035): этот файл стоял на пределе размера, и подкомпонент —
-// то, что велит делать CLAUDE.md «Храповики», а не сдвиг бейслайна вверх.
-//
-// Формулировка рендерится своим кодом, не через QuestionRow.tsx (у карточки
-// проверки свой макет строки — номер и статус в одной шапке), поэтому ссылку
-// и акцент `**жирным**` в ней делает RichText.tsx напрямую (ADR-0093).
+// Сам список вариантов — AttemptReviewQuestionOptions.tsx (ADR-0035): файл
+// стоял на пределе размера (CLAUDE.md «Храповики»). Формулировка — своим
+// кодом, не QuestionRow.tsx (свой макет шапки), ссылку и акцент в ней делает
+// RichText.tsx напрямую (ADR-0093).
 import type { CSSProperties } from 'react';
 import {
   ATTEMPT_NO_ANSWER_TEXT,
@@ -94,7 +91,9 @@ export function AttemptReviewQuestion({
 }: AttemptReviewQuestionProps) {
   const hasOptions = question.options.length > 0;
   const isVideo = question.kind === 'video';
-  const status = attemptReviewQuestionStatus(question, media.length > 0);
+  // F34 (аудит 2026-10-01): «видео загружается» вместо «ответа нет».
+  const isUploading = video.pendingItemIds.includes(question.itemId);
+  const status = attemptReviewQuestionStatus(question, media.length > 0, isUploading);
   const showNoAnswerMeta = hasOptions && !question.answered;
   const versionLine = formatQuestionVersion(question.version);
 
@@ -125,6 +124,7 @@ export function AttemptReviewQuestion({
       ) : isVideo ? (
         <AttemptReviewMedia
           media={media}
+          uploading={isUploading}
           onMarkManual={() => video.markMediaManual(question.itemId)}
           marking={video.markMediaStateFor(question.itemId).pending}
           markError={video.markMediaStateFor(question.itemId).error}

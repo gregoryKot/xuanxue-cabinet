@@ -158,6 +158,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       uploadId: 'служебный номер загрузки частями',
       parts: 'служебные отметки принятых частей файла',
       fingerprint: 'служебный отпечаток файла для продолжения загрузки',
+      r2CompletedAt: 'служебная отметка, что хранилище файлов уже собрало загрузку',
     },
   },
   PaymentRecord: {

@@ -25,6 +25,17 @@ export function createTelegramClient(token: string): TelegramApiClient {
 // делят один лимит и один способ передать AbortSignal.
 export const TELEGRAM_CALL_TIMEOUT_MS = 10_000;
 
+// Бюджет одного хендлера апдейта (Telegraf `handlerTimeout`, аудит 2026-10-01,
+// F52): дефолтные 90 с Telegraf при молчащем Telegram держали каждый апдейт до
+// полутора минут. Больше бюджета одного вызова выше: хендлер — это несколько
+// вызовов Bot API подряд (альбом вопроса шлёт по фото на вариант, при первой
+// отправке — байтами: exam-question-album-send.ts, exam-question-photo-send.ts),
+// и 15 с резали бы легитимный альбом из 4–5 фото на медленном аплинке с ложным
+// «TimeoutError» при фактически успешной отправке (p-timeout промис не
+// отменяет — хендлер дорабатывает в фоне). Вызовы через `ctx.*` без `signal`
+// гейт check-outbound-timeout.mjs не видит — их держит именно этот порог.
+export const TELEGRAF_HANDLER_TIMEOUT_MS = 30_000;
+
 // telegraf типизирует `signal` через устаревший пакет `abort-controller`,
 // структурно несовместимый с нативным AbortSignal.timeout() при одинаковом
 // рантайм-поведении — приводим один раз здесь, не на каждый вызов callApi.

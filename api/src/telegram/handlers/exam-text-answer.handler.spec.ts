@@ -111,13 +111,15 @@ describe('ExamTextAnswerHandler', () => {
     expect(botSessions.clear).not.toHaveBeenCalled();
   });
 
-  it('попытка чужая/не найдена — ATTEMPT_NOT_FOUND_MESSAGE, сессия закрывается', async () => {
+  // F51: текст бота (в Telegram нет страниц), с кнопкой «В меню».
+  it('попытка чужая/не найдена — ATTEMPT_NOT_FOUND_BOT_MESSAGE, сессия закрывается', async () => {
     const { handler, botSessions } = buildHandler({ userId: 'u1', loadOwnAttempt: null });
-    const { ctx, replies } = fakeCtx('мой ответ');
+    const { ctx, replies, buttonTexts } = fakeCtx('мой ответ');
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies).toEqual(['Попытка не найдена. Обновите страницу.']);
+    expect(replies).toEqual(['Попытка не найдена. Откройте /exams и продолжите оттуда.']);
+    expect(buttonTexts[0]).toEqual(['В меню']);
     expect(botSessions.clear).toHaveBeenCalledWith(111);
   });
 
@@ -196,10 +198,11 @@ describe('ExamTextAnswerHandler', () => {
       }),
     );
     const handler = new ExamTextAnswerHandler(botSessions, botAccess, registry);
-    const { ctx, replies } = fakeCtx('мой ответ');
+    const { ctx, replies, buttonTexts } = fakeCtx('мой ответ');
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
     expect(replies).toEqual(['Не получилось. Откройте /menu и попробуйте ещё раз.']);
+    expect(buttonTexts[0]).toEqual(['В меню']); // F51
   });
 
   it('заблокированный — отказ тем же текстом, что в вебе, сессия закрывается, ответ не сохраняется', async () => {

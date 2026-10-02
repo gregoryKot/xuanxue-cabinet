@@ -7,7 +7,7 @@
 // снимку «Вопросов», где было то же самое, docs/adr/0043). Строка несёт
 // только паддинг и волосяную линию снизу, у последней (`isLast`) линии нет —
 // тот же приём, что у exams/ExamCard.tsx и exam-items/ExamItemCard.tsx.
-import { DELETED_USER_NAME, type ExamAttemptDto } from '@xuanxue/shared';
+import { DELETED_USER_NAME, type ExamAttemptQueueItemDto } from '@xuanxue/shared';
 import type { CSSProperties } from 'react';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
 import { formatDateTime } from '../lib/formatDate';
@@ -40,7 +40,7 @@ const outcomeRowStyle: CSSProperties = {
 const passedOutcomeRowStyle: CSSProperties = { ...outcomeRowStyle, color: 'var(--jade)' };
 
 interface GradingQueueCardProps {
-  attempt: ExamAttemptDto;
+  attempt: ExamAttemptQueueItemDto;
   onSelect: () => void;
   /** Последняя строка общей карточки списка — без нижней волосяной линии
    * (GradingQueueScreen.tsx, docs/adr/0043). */

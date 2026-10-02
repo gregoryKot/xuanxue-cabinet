@@ -17,7 +17,10 @@ const USER: UserLean = {
   status: 'active',
   studentMode: false,
 };
-const VIDEO = { bytes: Buffer.from([1]), contentType: 'video/mp4' as const };
+const VIDEO = {
+  loadBytes: () => Promise.resolve(Buffer.from([1])),
+  contentType: 'video/mp4' as const,
+};
 const IMAGE = { bytes: Buffer.from([2]), contentType: 'image/png' as const };
 
 function videosService(loadForBot: jest.Mock): ExamVideosService {

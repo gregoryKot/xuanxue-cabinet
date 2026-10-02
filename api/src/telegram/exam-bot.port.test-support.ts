@@ -16,6 +16,7 @@ import type {
   MyExamDto,
   PutGradingInput,
 } from '@xuanxue/shared';
+import type { ToggleOptionInput } from '../exams/exam-attempt-toggle-option';
 import type { UserLean } from '../users/users.service';
 import type { BotOptionImage, BotOptionVideo, ExamBotPort } from './exam-bot.port';
 
@@ -26,6 +27,10 @@ export interface FakeExamBotPort extends ExamBotPort {
   saveAnswer: jest.Mock<
     Promise<ExamAttemptDto>,
     [string, UserLean, AttemptAnswerDto, DateTime]
+  >;
+  toggleOption: jest.Mock<
+    Promise<ExamAttemptDto>,
+    [string, UserLean, ToggleOptionInput, DateTime]
   >;
   submitAttempt: jest.Mock<Promise<ExamAttemptDto>, [string, UserLean, DateTime]>;
   loadOptionImage: jest.Mock<Promise<BotOptionImage | null>, [string, UserLean]>;
@@ -65,6 +70,10 @@ export function fakeExamBotPort(
     saveAnswer: jest.fn<
       Promise<ExamAttemptDto>,
       [string, UserLean, AttemptAnswerDto, DateTime]
+    >(),
+    toggleOption: jest.fn<
+      Promise<ExamAttemptDto>,
+      [string, UserLean, ToggleOptionInput, DateTime]
     >(),
     submitAttempt: jest.fn<Promise<ExamAttemptDto>, [string, UserLean, DateTime]>(),
     // По умолчанию картинки нет — большинство спеков хендлеров бота не про

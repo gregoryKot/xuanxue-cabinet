@@ -17,9 +17,13 @@ import { apiFetch } from './http';
 vi.mock('./http', () => ({ apiFetch: vi.fn() }));
 
 describe('пути проверки работ', () => {
-  it('очередь и проверенные — status раньше limit', () => {
-    expect(GRADING_QUEUE_PATH).toBe(`/attempts?status=submitted&limit=${LIST_LIMIT_MAX}`);
-    expect(GRADED_ATTEMPTS_PATH).toBe(`/attempts?status=graded&limit=${LIST_LIMIT_MAX}`);
+  it('очередь и проверенные — строки без снимка (F33), status раньше limit', () => {
+    expect(GRADING_QUEUE_PATH).toBe(
+      `/attempts/queue?status=submitted&limit=${LIST_LIMIT_MAX}`,
+    );
+    expect(GRADED_ATTEMPTS_PATH).toBe(
+      `/attempts/queue?status=graded&limit=${LIST_LIMIT_MAX}`,
+    );
   });
 
   it('своя попытка и карточка проверки — по id', () => {
@@ -32,8 +36,8 @@ describe('пути проверки работ', () => {
   it('запрос хука уходит по той же строке, что и предзагрузка', async () => {
     vi.mocked(apiFetch).mockResolvedValue([]);
 
-    await apiRoute('GET /attempts', { query: GRADING_QUEUE_QUERY });
-    await apiRoute('GET /attempts', { query: GRADED_ATTEMPTS_QUERY });
+    await apiRoute('GET /attempts/queue', { query: GRADING_QUEUE_QUERY });
+    await apiRoute('GET /attempts/queue', { query: GRADED_ATTEMPTS_QUERY });
     await apiRoute('GET /attempts/:id', { params: { id: 'a1' } });
 
     const paths = vi.mocked(apiFetch).mock.calls.map(([path]) => path);
