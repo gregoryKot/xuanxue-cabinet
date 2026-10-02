@@ -14,9 +14,11 @@ import { reportClientError } from './reportClientError';
 // видами. 'Script error.' без файла, строки и стека — браузер прячет
 // подробности по CORS, показать в отчёте нечего, а таких сообщений даже у
 // здорового кабинета набегает много — без фильтра они съели бы весь потолок
-// в 3 отчёта (reportClientError.ts) впустую. Второй вид — с текстом, но с
-// чужим адресом скрипта (Safari отдаёт текст расширения целиком, прячет только
-// адрес): его отсекает errorSource.ts.
+// в 3 отчёта (reportClientError.ts) впустую. Второй вид — с текстом, но брошен
+// не нашим файлом: с чужим адресом скрипта (Safari отдаёт текст расширения
+// целиком, прячет только адрес) или с адресом самой страницы (код, который
+// приложение вроде Brave на iPhone выполнило прямо в ней): оба отсекает
+// errorSource.ts.
 const SCRIPT_ERROR_MESSAGE = 'Script error.';
 
 /** Настоящая ошибка выполнения JS, а не шум. Событие неудачной загрузки
@@ -32,7 +34,7 @@ function isReportableErrorEvent(event: ErrorEvent): boolean {
   if (
     isForeignScriptError(
       { filename: event.filename, error: event.error },
-      window.location.origin,
+      window.location,
     )
   ) {
     return false;
@@ -47,7 +49,7 @@ function handleError(event: ErrorEvent): void {
 }
 
 function handleUnhandledRejection(event: PromiseRejectionEvent): void {
-  if (isForeignScriptError({ error: event.reason }, window.location.origin)) return;
+  if (isForeignScriptError({ error: event.reason }, window.location)) return;
   void reportClientError('unhandled', event.reason);
 }
 
