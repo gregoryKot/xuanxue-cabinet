@@ -46,11 +46,10 @@ import {
 } from './exam-attempt-media';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
+import { STAFF_ONLY_ROLES } from './exam-staff-roles';
 import { ListAttemptsDto } from './dto/list-attempts.dto';
 import { PutGradingDto } from './dto/put-grading.dto';
 import { SaveAttemptAnswersDto } from './dto/save-attempt-answers.dto';
-
-const STAFF_ONLY_ROLES = ['teacher', 'assistant', 'admin'] as const;
 
 @Controller()
 export class ExamAttemptsController {

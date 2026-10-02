@@ -13,8 +13,7 @@ import { Roles } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
 import { ListAttemptsDto } from './dto/list-attempts.dto';
 import { ExamAttemptQueueService } from './exam-attempt-queue.service';
-
-const STAFF_ONLY_ROLES = ['teacher', 'assistant', 'admin'] as const;
+import { STAFF_ONLY_ROLES } from './exam-staff-roles';
 
 @Controller()
 export class ExamAttemptQueueController {

@@ -20,7 +20,7 @@ import type { LeanExamAttempt } from './exam-attempt.mapper';
 const logger = new Logger('notifyAttemptSubmitted');
 
 /** Ждёт отправку, но не бросает: сбой нотификатора — warn, тик идёт дальше. */
-export async function notifyAttemptSubmittedAndWait(
+async function notifyAttemptSubmittedAndWait(
   notifier: ExamNotifier,
   attempt: LeanExamAttempt,
   now: DateTime,
