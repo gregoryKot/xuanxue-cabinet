@@ -28,10 +28,10 @@ import {
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
-import { AnswerVideoAssembleService } from './answer-video-assemble';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
 import { AnswerVideoStartService } from './answer-video-start';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
 
 const NOW = DateTime.utc(2026, 9, 27, 10, 0, 0);
@@ -132,6 +132,11 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       abortMultipartUpload: jest.fn().mockResolvedValue(undefined),
     };
 
+    const uploads = new VideoUploadsService(
+      multipart as unknown as MultipartStoreService,
+      {} as ObjectHeadService,
+      orphans,
+    );
     startService = new AnswerVideoStartService(
       videoModel,
       attemptModel,
@@ -140,13 +145,9 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
           return fileStoreEnabled.value;
         },
       } as unknown as FileStoreService,
-      multipart as unknown as MultipartStoreService,
-      orphans,
+      uploads,
     );
-    partService = new AnswerVideoPartService(
-      videoModel,
-      multipart as unknown as MultipartStoreService,
-    );
+    partService = new AnswerVideoPartService(videoModel, uploads);
     const notifiers = new ExamMediaNotifierRegistry();
     notifiers.set({ notifyVideoLinkAdded });
     notifyVideoLinkAdded.mockResolvedValue(undefined);
@@ -154,12 +155,7 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       videoModel,
       attemptModel,
       mediaModel,
-      new AnswerVideoAssembleService(
-        videoModel,
-        multipart as unknown as MultipartStoreService,
-        {} as ObjectHeadService,
-        orphans,
-      ),
+      uploads,
       orphans,
       notifiers,
     );

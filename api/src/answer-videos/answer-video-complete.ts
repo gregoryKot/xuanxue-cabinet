@@ -3,7 +3,7 @@
 // из AnswerVideosService (файл-лимит CLAUDE.md «Храповики»).
 //
 // Повтор доводит загрузку до конца (ADR-0165, F47 аудита 2026-10-01): сборка в
-// R2 — answer-video-assemble.ts, запись и замена файла — answer-video-attach.ts,
+// R2 — общее ядро video-uploads/, запись и замена файла — answer-video-attach.ts,
 // переход в `ready` условный, поэтому уведомление уходит один раз. Готовое
 // видео на повторе отдаёт ту же запись: ответ на первый вызов мог потеряться
 // по дороге, и 409 на уже сохранённом файле выглядел бы для ученика сбоем.
@@ -14,7 +14,6 @@ import type { DateTime } from 'luxon';
 import {
   ANSWER_VIDEO_NOT_FOUND_MESSAGE,
   ANSWER_VIDEO_PART_INVALID_MESSAGE,
-  ANSWER_VIDEO_PARTS_MISSING_MESSAGE,
   ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
   type ExamMediaDto,
@@ -27,10 +26,10 @@ import { loadAttemptOwnerInfo } from '../media/media-attempt-owner';
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import { notifyVideoAdded } from '../media/notify-video-link-added';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
-import { AnswerVideoAssembleService } from './answer-video-assemble';
+import { assertAllPartsReceived } from '../video-uploads/video-upload-assemble';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { attachFileMedia, findFileMedia } from './answer-video-attach';
-import { partCountFor, type RawLeanAnswerVideo } from './answer-video.mapper';
-import { AnswerVideoRecord } from './answer-video.schema';
+import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
 
 @Injectable()
 export class AnswerVideoCompleteService {
@@ -40,7 +39,7 @@ export class AnswerVideoCompleteService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(MediaAssetRecord.name)
     private readonly mediaModel: Model<MediaAssetRecord>,
-    private readonly assembler: AnswerVideoAssembleService,
+    private readonly uploads: VideoUploadsService,
     private readonly orphans: StorageOrphansService,
     private readonly notifiers: ExamMediaNotifierRegistry,
   ) {}
@@ -53,11 +52,7 @@ export class AnswerVideoCompleteService {
     }
     if (doc.status === 'ready') return this.completedEarlier(doc);
     if (!doc.uploadId) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
-    const partCount = partCountFor(doc.sizeBytes);
-    const received = new Set(doc.parts.map((part) => part.n));
-    for (let n = 1; n <= partCount; n += 1) {
-      if (!received.has(n)) throw new ConflictError(ANSWER_VIDEO_PARTS_MISSING_MESSAGE);
-    }
+    assertAllPartsReceived(doc);
 
     const attemptId = doc.attemptId.toString();
     const itemId = doc.itemId.toString();
@@ -69,7 +64,7 @@ export class AnswerVideoCompleteService {
       throw new ConflictError(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE);
     }
 
-    await this.assembler.assemble(doc, doc.uploadId, now);
+    await this.uploads.assemble(this.model, doc, doc.uploadId, now);
     const media = await attachFileMedia(
       { model: this.model, mediaModel: this.mediaModel, orphans: this.orphans },
       doc,

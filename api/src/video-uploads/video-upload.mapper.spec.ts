@@ -3,16 +3,13 @@ import { Types } from 'mongoose';
 import { ANSWER_VIDEO_LIMITS } from '@xuanxue/shared';
 import {
   partCountFor,
-  toAnswerVideoUploadDto,
-  type RawLeanAnswerVideo,
-} from './answer-video.mapper';
+  toVideoUploadDto,
+  type RawLeanVideoUpload,
+} from './video-upload.mapper';
 
-function video(overrides: Partial<RawLeanAnswerVideo> = {}): RawLeanAnswerVideo {
+function video(overrides: Partial<RawLeanVideoUpload> = {}): RawLeanVideoUpload {
   return {
     _id: new Types.ObjectId(),
-    userId: new Types.ObjectId(),
-    attemptId: new Types.ObjectId(),
-    itemId: new Types.ObjectId(),
     key: 'answer-videos/x',
     sizeBytes: 100,
     fingerprint: '100:1',
@@ -38,9 +35,9 @@ describe('partCountFor', () => {
   });
 });
 
-describe('toAnswerVideoUploadDto', () => {
+describe('toVideoUploadDto', () => {
   it('receivedParts — отсортированные номера частей, без key/uploadId', () => {
-    const dto = toAnswerVideoUploadDto(
+    const dto = toVideoUploadDto(
       video({
         parts: [
           { n: 3, etag: '"c"' },
