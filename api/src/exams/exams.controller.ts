@@ -52,7 +52,7 @@ export class ExamsController {
   @Patch(':id')
   @ApiRoute('PATCH /exams/:id')
   update(@Param('id') id: string, @Body() body: UpdateExamDto): Promise<ExamDto> {
-    return this.examsService.update(id, body);
+    return this.examsService.update(id, body, DateTime.utc());
   }
 
   @Delete(':id')

@@ -79,7 +79,7 @@ describe('ExamItemStatsService', () => {
       examImagesService,
       fakeExamVideosService(),
     );
-    examsService = new ExamsService(examModel, itemModel);
+    examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,
       gradingModel,

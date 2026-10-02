@@ -35,8 +35,11 @@ export function assertExamNotPastDue(dueAt: string | undefined, now: DateTime): 
   }
 }
 
-/** ТЗ 4.4, п.1: на черновике и в архиве попытку не заводят. Стоит первой, до
- * поиска уже идущей попытки: у неопубликованной формы её просто не бывает. */
+/** ТЗ 4.4, п.1: на черновике и в архиве НОВУЮ попытку не заводят. Стоит
+ * после ветки «идущая попытка возвращается», не до неё (F10, аудит
+ * 2026-10-01): форму можно снять с публикации, пока ученик сдаёт, и его
+ * «Продолжить» не должно упираться в этот отказ. Удалённая форма всё равно
+ * 404 первой — getById с NOT_DELETED (ADR-0140). */
 export function assertExamPublished(status: ExamStatus): void {
   if (status !== 'published') throw new InvalidInputError(EXAM_NOT_PUBLISHED_MESSAGE);
 }

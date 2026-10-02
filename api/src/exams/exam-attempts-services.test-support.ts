@@ -69,7 +69,11 @@ export interface AttemptsTestServices {
 }
 
 export function buildAttemptsServices(models: AttemptsTestModels): AttemptsTestServices {
-  const examsService = new ExamsService(models.examModel, models.itemModel);
+  const examsService = new ExamsService(
+    models.examModel,
+    models.itemModel,
+    models.attemptModel,
+  );
   const examImagesService = new ExamImagesService(models.imageModel, models.attemptModel);
   const examVideosService = fakeExamVideosService();
   const examItemsService = new ExamItemsService(

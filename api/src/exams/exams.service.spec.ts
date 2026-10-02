@@ -30,7 +30,7 @@ describe('ExamsService', () => {
       ExamAttemptRecord.name,
       ExamAttemptSchema,
     );
-    service = new ExamsService(model, itemModel);
+    service = new ExamsService(model, itemModel, attemptModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -373,5 +373,71 @@ describe('ExamsService', () => {
 
     expect(updated.level).toBe('');
     expect(updated.description).toBe('');
+  });
+
+  // F10 (аудит 2026-10-01): снять форму с публикации, пока её сдают, нельзя —
+  // /me/exams отдаёт только published, и «Продолжить» пропало бы у сдающего.
+  describe('снятие с публикации при идущей попытке (F10)', () => {
+    async function publishedExamWithAttempt(attempt: Record<string, unknown>) {
+      const itemId = await createItem('published');
+      const created = await service.create(
+        { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
+        CREATED_BY,
+      );
+      await service.update(created.id, { status: 'published' });
+      await attemptModel.create({
+        examId: created.id,
+        examTitle: created.title,
+        userId: CREATED_BY,
+        attemptNo: 1,
+        status: 'in_progress',
+        startedAt: NOW.toJSDate(),
+        ...attempt,
+      });
+      return created.id;
+    }
+
+    it('published → archived при попытке без лимита времени — ConflictError, статус не меняется', async () => {
+      const id = await publishedExamWithAttempt({});
+
+      await expect(service.update(id, { status: 'archived' }, NOW)).rejects.toThrow(
+        'Экзамен сейчас сдаёт 1 ученик. Дождитесь сдачи или удалите форму.',
+      );
+      expect((await service.getById(id)).status).toBe('published');
+    });
+
+    it('published → draft при попытке с дедлайном впереди — ConflictError', async () => {
+      const id = await publishedExamWithAttempt({
+        deadlineAt: NOW.plus({ minutes: 10 }).toJSDate(),
+      });
+
+      await expect(service.update(id, { status: 'draft' }, NOW)).rejects.toThrow(
+        'Дождитесь сдачи',
+      );
+    });
+
+    it('попытка просрочена, но тик её ещё не закрыл — переход проходит', async () => {
+      const id = await publishedExamWithAttempt({
+        deadlineAt: NOW.minus({ minutes: 1 }).toJSDate(),
+      });
+
+      const updated = await service.update(id, { status: 'archived' }, NOW);
+
+      expect(updated.status).toBe('archived');
+    });
+
+    it('попытка сдана — переход проходит; правка полей без смены статуса гард не трогает', async () => {
+      const id = await publishedExamWithAttempt({
+        status: 'submitted',
+        submittedAt: NOW.toJSDate(),
+      });
+
+      await expect(
+        service.update(id, { level: 'начальный' }, NOW),
+      ).resolves.toMatchObject({ status: 'published' });
+      await expect(
+        service.update(id, { status: 'archived' }, NOW),
+      ).resolves.toMatchObject({ status: 'archived' });
+    });
   });
 });

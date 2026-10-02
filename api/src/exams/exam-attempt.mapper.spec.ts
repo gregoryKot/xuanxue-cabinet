@@ -4,7 +4,14 @@
 // юнит-тесту не нужна база — картинка варианта (ADR-0035) доезжает до DTO.
 import { Types } from 'mongoose';
 import type { AttemptGradingSummary } from './exam-grading-list';
-import { toAttemptDto, type LeanExamAttempt } from './exam-attempt.mapper';
+import { encryptRecord } from '../utils/encryption';
+import { EXAM_ATTEMPT_ENCRYPT_SCHEMA } from './exam-attempt.schema';
+import {
+  decryptAttempt,
+  toAttemptDto,
+  type LeanExamAttempt,
+  type RawLeanExamAttempt,
+} from './exam-attempt.mapper';
 
 function leanAttempt(overrides: Partial<LeanExamAttempt> = {}): LeanExamAttempt {
   return {
@@ -163,5 +170,38 @@ describe('toAttemptDto', () => {
 
     expect(dto.outcome).toBeUndefined();
     expect(dto.gradedAt).toBeUndefined();
+  });
+});
+
+// F55 (аудит 2026-10-01): decryptRecord отдаёт нерасшифрованный blob как
+// есть (строкой), а маппер кастовал его в массив без проверки — падение
+// уезжало глубже, без attemptId. Теперь — ошибка с id документа сразу.
+describe('decryptAttempt', () => {
+  function rawAttempt(blocks: unknown, answers: unknown): RawLeanExamAttempt {
+    return { ...leanAttempt(), blocks, answers } as unknown as RawLeanExamAttempt;
+  }
+
+  it('зашифрованные blocks/answers расшифровываются в массивы', () => {
+    const encrypted = encryptRecord(
+      { blocks: [{ id: 'b1', title: 'Форма', questions: [] }], answers: [] },
+      EXAM_ATTEMPT_ENCRYPT_SCHEMA,
+    );
+    const decrypted = decryptAttempt(rawAttempt(encrypted.blocks, encrypted.answers));
+
+    expect(decrypted.blocks).toEqual([{ id: 'b1', title: 'Форма', questions: [] }]);
+    expect(decrypted.answers).toEqual([]);
+  });
+
+  it('blocks — строка вместо массива (чужой ключ, испорченный blob) — Error с attemptId', () => {
+    const raw = rawAttempt('мусор', '[]');
+
+    expect(() => decryptAttempt(raw)).toThrow(raw._id.toString());
+  });
+
+  it('answers не массив — тоже Error с attemptId', () => {
+    const encrypted = encryptRecord({ blocks: [] }, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
+    const raw = rawAttempt(encrypted.blocks, 'мусор');
+
+    expect(() => decryptAttempt(raw)).toThrow(raw._id.toString());
   });
 });

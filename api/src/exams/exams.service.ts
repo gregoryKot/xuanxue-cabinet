@@ -6,7 +6,7 @@
 // тело и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   EXAM_NOT_FOUND_MESSAGE,
@@ -17,28 +17,31 @@ import {
   type ListExamsQuery,
   type UpdateExamInput,
 } from '@xuanxue/shared';
-import { InvalidInputError, NotFoundError } from '../common/errors';
+import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { NOT_DELETED, softDelete } from '../common/soft-delete';
 import { parseUtcIso } from '../lessons/lesson-dates';
 import { encryptRecord } from '../utils/encryption';
-import { assertBlocksConsistent, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import { mapBlocks } from './exam-blocks';
+import { ExamAttemptRecord } from './exam-attempt.schema';
 import { deletedExamIds } from './deleted-exam-ids';
-import { assertItemsEligible } from './exam-items-eligible';
 import { ExamItemRecord } from './exam-item.schema';
-import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
+import { assertBlocksSavable, assertPublishable } from './exam-save-rules';
+import { assertNoLiveAttempts, isUnpublishing } from './exam-unpublish-guard';
+import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
 import { decryptExam, toExamDto, type RawLeanExam } from './exam.mapper';
 
 const NOT_FOUND_MESSAGE = EXAM_NOT_FOUND_MESSAGE;
-const EMPTY_EXAM_MESSAGE =
-  'В форме нет ни одного вопроса. Добавьте хотя бы один блок с вопросом, потом публикуйте.';
 
 @Injectable()
 export class ExamsService {
   constructor(
     @InjectModel(ExamRecord.name) private readonly model: Model<ExamRecord>,
     @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
+    // Модель попытки, не ExamAttemptsService — тот сам зависит от ExamsService (цикл DI).
+    @InjectModel(ExamAttemptRecord.name)
+    private readonly attemptModel: Model<ExamAttemptRecord>,
   ) {}
 
   async list(query: ListExamsQuery): Promise<ExamDto[]> {
@@ -71,7 +74,8 @@ export class ExamsService {
   async create(input: CreateExamInput, createdBy?: string): Promise<ExamDto> {
     const { blocks, dueAt, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
-    if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
+    if (mappedBlocks !== undefined)
+      await assertBlocksSavable(this.itemModel, mappedBlocks);
 
     const payload: Record<string, unknown> = {
       ...rest,
@@ -85,11 +89,17 @@ export class ExamsService {
     return this.getById(created._id.toString());
   }
 
-  async update(id: string, input: UpdateExamInput): Promise<ExamDto> {
+  /** `now` — момент запроса для гарда снятия с публикации (F10, аудит
+   * 2026-10-01): контроллер передаёт его явно; сид, бот и createAndPublishExam
+   * идут только в сторону `published` и гард не задевают, поэтому не передают. */
+  async update(id: string, input: UpdateExamInput, now?: DateTime): Promise<ExamDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExam(doc);
+    if (isUnpublishing(current.status, input.status)) {
+      await assertNoLiveAttempts(this.attemptModel, id, now ?? DateTime.utc());
+    }
 
     const { blocks, status, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
@@ -100,11 +110,11 @@ export class ExamsService {
 
     const nextBlocks = mapBlocks(blocks);
     if (nextBlocks !== undefined) {
-      await this.assertBlocksSavable(nextBlocks);
+      await assertBlocksSavable(this.itemModel, nextBlocks);
       $set.blocks = nextBlocks;
     }
     if ((status ?? current.status) === 'published') {
-      await this.assertPublishable(nextBlocks ?? current.blocks);
+      await assertPublishable(this.itemModel, nextBlocks ?? current.blocks);
     }
     if (status !== undefined) $set.status = status;
 
@@ -135,21 +145,5 @@ export class ExamsService {
   async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     await softDelete(this.model, id, now, NOT_FOUND_MESSAGE);
-  }
-
-  /** ТЗ 4.3, п.2–4: вопрос не повторяется по всей форме и ссылается только на
-   * опубликованный вопрос банка. Зовётся при каждом сохранении блоков —
-   * черновик формы уже не должен ссылаться на чужой/удалённый/неопубликованный id. */
-  private async assertBlocksSavable(blocks: ExamBlockRecord[]): Promise<void> {
-    assertBlocksConsistent(blocks);
-    await assertItemsEligible(this.itemModel, blocks);
-  }
-
-  /** ТЗ 4.3, п.1–2: инвариант published-формы — не пустая, и вопрос блока
-   * всё ещё опубликован в банке. Зовётся на переходе в `published` и на
-   * каждом сохранении уже опубликованной (update(), блокер аудита №3). */
-  private async assertPublishable(blocks: ExamBlockRecord[]): Promise<void> {
-    if (!hasAnyQuestion(blocks)) throw new InvalidInputError(EMPTY_EXAM_MESSAGE);
-    await assertItemsEligible(this.itemModel, blocks);
   }
 }

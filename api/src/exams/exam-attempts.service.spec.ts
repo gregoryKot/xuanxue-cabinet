@@ -1131,6 +1131,70 @@ describe('ExamAttemptsService', () => {
       expect(result.status).toBe('submitted');
     });
   });
+
+  // F08 (аудит 2026-10-01): «идущая» и «последняя» попытка читались двумя
+  // запросами, и двойной тап «Начать» между ними рождал вторую `in_progress`
+  // (лимит сгорал, ответы «пропадали» после перезагрузки). Теперь — один
+  // снимок, конкурент упирается в E11000 и получает попытку соперника.
+  it('два параллельных start() при attemptsAllowed 2 — одна попытка, оба получают её', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+
+    const [first, second] = await Promise.all([
+      ctx.service.start(examId, USER_A, NOW),
+      ctx.service.start(examId, USER_A, NOW),
+    ]);
+
+    expect(second.id).toBe(first.id);
+    await expect(
+      ctx.attemptModel.countDocuments({ examId, userId: USER_A, status: 'in_progress' }),
+    ).resolves.toBe(1);
+  });
+
+  // F10 (аудит 2026-10-01): форму сняли с публикации, пока ученик сдаёт —
+  // «Продолжить» возвращает его же попытку, а не отказ «не открыт для сдачи».
+  it('форма ушла в архив во время сдачи — start() отдаёт идущую попытку', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    // Мимо гарда ExamsService (он не даст архивировать при живой попытке).
+    await ctx.examModel.updateOne({ _id: examId }, { $set: { status: 'archived' } });
+
+    const resumed = await ctx.service.start(examId, USER_A, NOW.plus({ minutes: 1 }));
+
+    expect(resumed.id).toBe(started.id);
+    expect(resumed.status).toBe('in_progress');
+  });
+
+  it('форма ушла в архив, идущая попытка сдана — новую не завести', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.submit(started.id, USER_A, NOW);
+    await ctx.examModel.updateOne({ _id: examId }, { $set: { status: 'archived' } });
+
+    await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
+      'не открыт для сдачи',
+    );
+  });
+
+  // F55 (аудит 2026-10-01): одна попытка, которую не расшифровать (чужой
+  // ключ, испорченный blob), роняла весь список учителя — теперь пропуск
+  // одной строки с error-логом.
+  it('битая попытка в списке пропускается, остальные отдаются', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const good = await ctx.service.start(examId, USER_A, NOW);
+    const broken = await ctx.service.start(examId, USER_B, NOW);
+    await ctx.attemptModel.updateOne(
+      { _id: broken.id },
+      { $set: { blocks: 'не blob и не массив' } },
+    );
+
+    const list = await ctx.service.list({ examId }, staffUser(true, AUTHOR_ID), NOW);
+
+    expect(list.map((attempt) => attempt.id)).toEqual([good.id]);
+  });
 });
 
 /** `UserLean` для `list()` — сервис читает только `id`/`roles` (ExamAttemptsService.list). */

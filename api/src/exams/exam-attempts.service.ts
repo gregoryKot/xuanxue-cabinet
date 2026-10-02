@@ -2,12 +2,9 @@
 // ученика (ADR-0010): каждая выборка/правка скоупится по владельцу из сессии
 // (SECURITY §3) — `userId` в фильтре, а не сравнение после чтения. Снимок
 // формы и перемешивание — один раз при старте (exam-attempt-snapshot.ts);
-// время считает сервер, Luxon (closeIfExpiredAttempt), не часы клиента
-// (ТЗ 4.4, п.7).
-//
-// Этот файл — диспетчер правил, не Mongo-запросов: дедлайн и поиск попытки
-// «в работе» живут в exam-attempt-lifecycle.ts, срок сдачи — в
-// exam-due-guard.ts, вопросы блоков — через `ExamsService` и `findExamItemsByIds`.
+// время считает сервер, Luxon (closeIfExpiredAttempt), не часы клиента.
+// Этот файл — диспетчер правил, не Mongo-запросов: дедлайн и попытка «в
+// работе» — exam-attempt-lifecycle.ts, срок сдачи — exam-start-guards.ts.
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -28,11 +25,12 @@ import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
 import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { loadOwnAttempt } from './exam-attempt-load-own';
+import { decryptAttemptsSkippingBroken } from './exam-attempt-decrypt-safe';
 import { ExamItemRecord } from './exam-item.schema';
 import {
   assertOpenForChange,
   closeIfExpiredAttempt,
-  findInProgressAttempt,
+  resumeAttemptById,
 } from './exam-attempt-lifecycle';
 import { assertExamNotPastDue, assertExamPublished } from './exam-start-guards';
 import { saveAttemptAnswers } from './exam-attempt-save';
@@ -72,25 +70,27 @@ export class ExamAttemptsService {
    * опубликована, срок сдачи прошёл) и порядок их проверок — в
    * exam-start-guards.ts. `attemptsUsed` — номер последней попытки, не число
    * документов (ADR-0131): затирание просроченной ниже не должно откатывать
-   * лимит назад. */
+   * лимит назад. Один снимок `findLastAttempt` на всё — F08, аудит
+   * 2026-10-01 (почему — resumeAttemptById, exam-attempt-lifecycle.ts). */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
-    const exam = await this.examsService.getById(examId);
-    assertExamPublished(exam.status);
+    const exam = await this.examsService.getById(examId); // удалённая — 404 (ADR-0140)
 
-    const existing = await findInProgressAttempt(this.model, examId, userId);
-    if (existing) {
-      const closed = await closeIfExpiredAttempt(
+    // Идущая попытка — ДО проверки публикации (F10): форму сняли во время
+    // сдачи — ученик продолжает, а не получает отказ на «Продолжить».
+    const lastAttempt = await this.retryCleanup.findLastAttempt(examId, userId);
+    if (lastAttempt?.status === 'in_progress') {
+      const resumed = await resumeAttemptById(
         this.model,
-        existing,
+        lastAttempt._id,
         now,
         attemptSubmittedCallback(this.examNotifier, now),
       );
-      return toAttemptDto(closed);
+      if (resumed) return toAttemptDto(resumed);
     }
 
+    assertExamPublished(exam.status);
     assertExamNotPastDue(exam.dueAt, now);
 
-    const lastAttempt = await this.retryCleanup.findLastAttempt(examId, userId);
     const attemptsUsed = lastAttempt?.attemptNo ?? 0;
     if (attemptsUsed >= exam.attemptsAllowed) {
       throw new InvalidInputError(attemptsExceededMessage(attemptsUsed));
@@ -178,8 +178,8 @@ export class ExamAttemptsService {
       .lean<RawLeanExamAttempt[]>();
     const onClose = attemptSubmittedCallback(this.examNotifier, now);
     const attempts = await Promise.all(
-      docs.map((doc) =>
-        closeIfExpiredAttempt(this.model, decryptAttempt(doc), now, onClose),
+      decryptAttemptsSkippingBroken(docs).map((attempt) =>
+        closeIfExpiredAttempt(this.model, attempt, now, onClose),
       ),
     );
     // Имя ученика и оценка — только сотруднику школы и одним запросом на

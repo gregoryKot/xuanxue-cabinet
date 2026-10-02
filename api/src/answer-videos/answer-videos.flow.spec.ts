@@ -569,9 +569,58 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       });
     });
 
-    it('уже завершено (status: ready) — повторный complete ConflictError', async () => {
+    // F47 (аудит 2026-10-01): complete идемпотентен — повтор после успеха
+    // отдаёт ту же media, без второго CompleteMultipartUpload и без второй записи.
+    it('уже завершено (status: ready) — повторный complete отдаёт ту же media', async () => {
+      const { id, attemptId } = await readyForComplete();
+      const first = await completeService.complete(id, USER_A, NOW);
+      multipart.completeMultipartUpload.mockClear();
+
+      const again = await completeService.complete(id, USER_A, NOW.plus({ minutes: 1 }));
+
+      expect(again.id).toBe(first.id);
+      expect(multipart.completeMultipartUpload).not.toHaveBeenCalled();
+      expect(
+        await mediaModel.countDocuments({
+          attemptId,
+          itemId: VIDEO_ITEM_ID,
+          kind: 'file',
+        }),
+      ).toBe(1);
+    });
+
+    // Сбой между ответом R2 и записью media раньше оставлял документ в
+    // `uploading`: повтор клиента получал от R2 NoSuchUpload и крутился в
+    // «Связь пропала» без конца. Теперь `ready` пишется сразу после R2, и
+    // повтор доделывает только шаг media.
+    it('запись media отказала после R2 — повтор завершает без второго CompleteMultipartUpload', async () => {
+      const { id, attemptId } = await readyForComplete();
+      jest
+        .spyOn(mediaModel, 'create')
+        .mockRejectedValueOnce(new Error('Mongo недоступна'));
+
+      await expect(completeService.complete(id, USER_A, NOW)).rejects.toThrow(
+        'Mongo недоступна',
+      );
+      const afterFailure = await videoModel.findById(id).lean();
+      expect(afterFailure?.status).toBe('ready');
+      expect(afterFailure?.uploadId).toBeUndefined();
+
+      const media = await completeService.complete(id, USER_A, NOW.plus({ seconds: 5 }));
+
+      expect(media.kind).toBe('file');
+      expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
+      expect(
+        await mediaModel.countDocuments({
+          attemptId,
+          answerVideoId: new Types.ObjectId(id),
+        }),
+      ).toBe(1);
+    });
+
+    it('status: uploading без uploadId — ConflictError, как и прежде', async () => {
       const { id } = await readyForComplete();
-      await completeService.complete(id, USER_A, NOW);
+      await videoModel.updateOne({ _id: id }, { $unset: { uploadId: 1 } });
 
       await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
         ConflictError,

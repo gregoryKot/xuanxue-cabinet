@@ -18,7 +18,8 @@ import type {
   ExamItemStatsSummaryDto,
 } from '@xuanxue/shared';
 import { NOT_DELETED } from '../common/soft-delete';
-import { decryptAttempt, type RawLeanExamAttempt } from './exam-attempt.mapper';
+import { decryptAttemptsSkippingBroken } from './exam-attempt-decrypt-safe';
+import type { RawLeanExamAttempt } from './exam-attempt.mapper';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
 import {
@@ -85,7 +86,7 @@ export class ExamItemStatsService {
     const docs = await this.attemptModel
       .find({ status: { $in: COUNTED_STATUSES } })
       .lean<RawLeanExamAttempt[]>();
-    const attempts = docs.map((doc) => decryptAttempt(doc));
-    return accumulateAttemptStats(attempts);
+    // Битая попытка — пропуск с error-логом, не 500 на всю статистику (F55).
+    return accumulateAttemptStats(decryptAttemptsSkippingBroken(docs));
   }
 }

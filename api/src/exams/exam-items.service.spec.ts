@@ -52,7 +52,7 @@ describe('ExamItemsService', () => {
     // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
     // вопрос (защита от архивации, exam-item-references.ts) — без отдельного
     // мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
-    examsService = new ExamsService(examModel, model);
+    examsService = new ExamsService(examModel, model, attemptModel);
   }, 60_000);
 
   afterAll(async () => {

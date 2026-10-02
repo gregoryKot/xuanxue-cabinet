@@ -19,7 +19,7 @@ import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { assertExamPublished } from './exam-start-guards';
 import { closeIfExpiredAttempt } from './exam-attempt-lifecycle';
 import { attemptSubmittedCallback } from './notify-attempt-submitted';
-import { decryptAttempt } from './exam-attempt.mapper';
+import { decryptAttemptOrNull } from './exam-attempt-decrypt-safe';
 import { aggregateAttemptSummaries } from './my-exam-attempt-summaries';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
@@ -110,9 +110,8 @@ export class MyExamsService {
   }
 
   /** Сколько попыток ученик начал по каждой форме и что со свежей из них
-   * (наибольший `attemptNo`) — через агрегацию в базе, не вычитывая все
-   * попытки (my-exam-attempt-summaries.ts, там же «почему»). Расшифровывает
-   * только саму последнюю попытку на форму, не весь список. */
+   * (наибольший `attemptNo`) — агрегацией в базе (my-exam-attempt-summaries.ts),
+   * расшифровывается только последняя попытка на форму, не весь список. */
   private async loadAttemptSummaries(
     examIds: string[],
     userId: string,
@@ -131,7 +130,8 @@ export class MyExamsService {
     const result = new Map<string, AttemptSummary>();
     const notify = attemptSubmittedCallback(this.examNotifier, now);
     for (const [key, summary] of aggregated) {
-      const attempt = decryptAttempt(summary.latest);
+      const attempt = decryptAttemptOrNull(summary.latest); // битая — пропуск (F55)
+      if (!attempt) continue;
       // Дедлайн мог истечь — та же лениво-закрывающая проверка и
       // уведомление учителю, что у /attempts (ExamAttemptsService.list).
       const closed = await closeIfExpiredAttempt(this.attemptModel, attempt, now, notify);

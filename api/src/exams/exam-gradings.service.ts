@@ -42,9 +42,8 @@ import {
 } from './exam-grading.mapper';
 import { EXAM_GRADING_ENCRYPT_SCHEMA, ExamGradingRecord } from './exam-grading.schema';
 
-// Тот же вид уведомления, что реально шлёт TelegramExamNotifier.notifyExamGraded
-// (именованная константа рядом с использованием — CLAUDE.md «Магические
-// строки», тот же приём, что EXAM_RESULT_KIND в exam-notifier.composite.ts).
+// Тот же вид уведомления, что шлёт TelegramExamNotifier.notifyExamGraded
+// (константа рядом с использованием, как EXAM_RESULT_KIND в exam-notifier.composite.ts).
 const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
 
 @Injectable()
@@ -89,11 +88,10 @@ export class ExamGradingsService {
 
   /** ТЗ 4.6, п.2: выставить или переписать оценку — идемпотентно по
    * уникальному индексу `attemptId` (upsert; гонка двух PUT — E11000 ловит
-   * второй апдейт, тот же приём, что старт попытки, ExamAttemptsService.start).
-   * После успеха попытка переходит в `graded`. Проверить можно только
-   * сданную (или уже проверенную) работу, не черновик в работе. Уведомление
-   * ученику (слой 4.7, PLAN §11) — на каждый вызов, включая переписанную
-   * оценку: без требования «раз за жизнь попытки», в отличие от attempt_submitted. */
+   * второй апдейт, тот же приём, что старт попытки). После успеха попытка
+   * переходит в `graded`. Проверить можно только сданную (или уже
+   * проверенную) работу. Уведомление ученику (слой 4.7) — на каждый вызов,
+   * включая переписанную оценку, в отличие от attempt_submitted. */
   async grade(
     attemptId: string,
     graderId: string,
@@ -104,8 +102,7 @@ export class ExamGradingsService {
     if (attempt.status === 'in_progress') {
       throw new InvalidInputError(ATTEMPT_NOT_SUBMITTED_MESSAGE);
     }
-    // Снимок «до записи» — только для сравнения в didGradingChange() ниже
-    // (аудит 2026-09, находка 3), сам ответ строится из dto «после записи».
+    // Снимок «до записи» — только для didGradingChange() ниже (аудит 2026-09, находка 3).
     const previousDto = await this.findGradingDto(attemptId);
 
     const payload = encryptRecord(
@@ -132,21 +129,24 @@ export class ExamGradingsService {
       await this.gradingModel.updateOne({ attemptId: attempt._id }, { $set: payload });
     }
 
-    if (attempt.status !== 'graded') {
-      await this.attemptModel.updateOne(
-        { _id: attempt._id },
-        { $set: { status: 'graded' } },
-      );
+    // Условный апдейт, не «по id» (F28, аудит 2026-10-01): между loadAttempt и
+    // этой строкой повторный старт ученика мог снести просроченную попытку
+    // (ADR-0131) — оценка осталась бы сиротой. Не совпало — сироту убираем, 404.
+    const { matchedCount } = await this.attemptModel.updateOne(
+      { _id: attempt._id, status: { $in: ['submitted', 'graded'] } },
+      { $set: { status: 'graded' } },
+    );
+    if (matchedCount === 0) {
+      await this.gradingModel.deleteOne({ attemptId: attempt._id });
+      throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
     }
 
     const dto = await this.findGradingDto(attemptId);
     if (!dto) throw new Error('grade: оценка не найдена сразу после сохранения');
 
-    // Не ждём и не роняем PUT из-за бота (CLAUDE.md «Встраивание в сервисы»).
-    // Уведомление — только если решение или комментарий реально изменились
-    // (аудит 2026-09, находка 3): повторный идемпотентный PUT с теми же
-    // значениями (учитель нажал «Сохранить» дважды после сетевого сбоя) не
-    // должен слать ученику второе «Нужно доработать».
+    // Не ждём и не роняем PUT из-за бота. Уведомление — только если решение
+    // или комментарий реально изменились (аудит 2026-09, находка 3): повтор
+    // того же PUT после сетевого сбоя не шлёт второе «Нужно доработать».
     if (didGradingChange(previousDto, input)) {
       notifyExamGraded(this.examNotifier, attempt, input.outcome, input.comment, now);
     }

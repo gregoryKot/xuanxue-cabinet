@@ -73,7 +73,7 @@ describe('ExamsController', () => {
     const body = { status: 'published' as const };
 
     await expect(controller.update('e1', body)).resolves.toEqual(EXAM_DTO);
-    expect(update).toHaveBeenCalledWith('e1', body);
+    expect(update).toHaveBeenCalledWith('e1', body, expect.any(DateTime));
   });
 
   it('remove() передаёт id и «сейчас» в сервис', async () => {

@@ -21,7 +21,7 @@
 // функция выходит на первой строке). Поле дублировало бы гарантию, которая
 // уже есть.
 import type { DateTime } from 'luxon';
-import type { Model } from 'mongoose';
+import type { Model, Types } from 'mongoose';
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
@@ -53,6 +53,22 @@ export async function findInProgressAttempt(
     .findOne({ examId, userId, status: 'in_progress' })
     .lean<RawLeanExamAttempt>();
   return doc ? decryptAttempt(doc) : null;
+}
+
+/** Идущая попытка по id из уже снятого снимка `findLastAttempt` — один
+ * документ, не второй поиск по статусу (F08, аудит 2026-10-01: два чтения
+ * подряд оставляли окно, в котором двойной старт рождал вторую `in_progress`).
+ * `null` — попытку только что снесли (повторный старт конкурента), и
+ * вызывающий идёт по ветке создания. */
+export async function resumeAttemptById(
+  model: Model<ExamAttemptRecord>,
+  attemptId: Types.ObjectId,
+  now: DateTime,
+  onExpiredClose?: (closed: LeanExamAttempt) => void,
+): Promise<LeanExamAttempt | null> {
+  const doc = await model.findById(attemptId).lean<RawLeanExamAttempt>();
+  if (!doc) return null;
+  return closeIfExpiredAttempt(model, decryptAttempt(doc), now, onExpiredClose);
 }
 
 /** Закрывает попытку по дедлайну прямо сейчас, если время уже вышло — любой
