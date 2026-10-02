@@ -98,6 +98,7 @@ export default function AttemptReviewScreen() {
   // AttemptReviewQuestion, тот же приём, что `video` в attempt/AttemptScreen.tsx).
   const video: AttemptReviewVideoControls = {
     media: review.media ?? [],
+    pendingItemIds: review.pendingVideoItemIds ?? [],
     markMediaManual,
     markMediaStateFor,
     sendMediaToMe,
@@ -136,6 +137,7 @@ export default function AttemptReviewScreen() {
             onSubmit={submitGrading}
             saving={saving}
             saveError={saveError}
+            hasPendingVideo={video.pendingItemIds.length > 0}
           />
         </aside>
       </div>

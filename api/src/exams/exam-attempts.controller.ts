@@ -138,7 +138,7 @@ export class ExamAttemptsController {
   @ApiRoute('GET /attempts/:id/review')
   @Roles(...STAFF_ONLY_ROLES)
   async review(@Param('id') id: string): Promise<AttemptReviewDto> {
-    const review = await this.examGradingsService.getReview(id);
+    const review = await this.examGradingsService.getReview(id, DateTime.utc());
     return withReviewMedia(this.mediaAssetsService, review);
   }
 
@@ -155,7 +155,7 @@ export class ExamAttemptsController {
     @CurrentUser() user: UserLean,
   ): Promise<AttemptReviewDto> {
     await this.examGradingsService.grade(id, user.id, body, DateTime.utc());
-    const review = await this.examGradingsService.getReview(id);
+    const review = await this.examGradingsService.getReview(id, DateTime.utc());
     return withReviewMedia(this.mediaAssetsService, review);
   }
 }

@@ -1,11 +1,8 @@
 // Проверка попытки (`GET /attempts/:id/review`, `PUT
 // /attempts/:id/grading`, слой 4.6, PLAN §11, ADR-0022). Маршруты закрыты
-// ролью teacher/assistant/admin на уровне контроллера (ExamAttemptsController)
-// — владения здесь нет, проверяющий по сути своей роли видит чужую работу;
-// сама оценка (`exam_gradings`) при этом данные ученика (чеклист CLAUDE.md,
-// USER_OWNED_COLLECTIONS) — по `userId` идёт удаление аккаунта. Инкапсулирует
-// шифрование (comment) и идемпотентность PUT — контроллер только валидирует
-// тело и зовёт.
+// ролью на контроллере — владения нет, проверяющий по роли видит чужую
+// работу; сама оценка (`exam_gradings`) — данные ученика (USER_OWNED_COLLECTIONS).
+// Инкапсулирует шифрование (comment) и идемпотентность PUT.
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -19,6 +16,7 @@ import {
   type NotificationKind,
   type PutGradingInput,
 } from '@xuanxue/shared';
+import { AnswerVideoStatsService } from '../answer-videos/answer-video-stats.service';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
@@ -42,9 +40,7 @@ import {
 } from './exam-grading.mapper';
 import { EXAM_GRADING_ENCRYPT_SCHEMA, ExamGradingRecord } from './exam-grading.schema';
 
-// Тот же вид уведомления, что реально шлёт TelegramExamNotifier.notifyExamGraded
-// (именованная константа рядом с использованием — CLAUDE.md «Магические
-// строки», тот же приём, что EXAM_RESULT_KIND в exam-notifier.composite.ts).
+// Тот же вид, что шлёт TelegramExamNotifier.notifyExamGraded (CLAUDE.md «Магические строки»).
 const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
 
 @Injectable()
@@ -57,23 +53,26 @@ export class ExamGradingsService {
     private readonly userNamesService: UserNamesService,
     private readonly personalChats: PersonalChats,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
+    private readonly answerVideoStats: AnswerVideoStatsService,
   ) {}
 
-  /** ТЗ 4.6, п.3: ответы рядом с критериями вопроса и правильностью
-   * вариантов (снимок попытки, не банк — вопрос могли переписать) и уже
-   * выставленная оценка, если есть. Признак `notifiesUserInTelegram`
-   * считаем здесь, а не в контроллере (ADR-0102, отзыв владельца
-   * 2026-09-21): карточку строит ещё и бот (ExamBotPort.loadAttemptReview →
-   * ExamBotService.loadAttemptReview зовёт этот же getReview), второй
-   * сборки того же контракта в контроллере быть не должно — иначе экран и
-   * бот однажды разъедутся условием. */
-  async getReview(attemptId: string): Promise<AttemptReviewDto> {
+  /** ТЗ 4.6, п.3: ответы рядом с правильностью вариантов (снимок попытки,
+   * не банк) и уже выставленная оценка. `notifiesUserInTelegram` и
+   * `pendingVideoItemIds` (F34, аудит 2026-10-01) считаем здесь, а не в
+   * контроллере (ADR-0102): карточку строит ещё и бот (ExamBotService.
+   * loadAttemptReview зовёт этот же getReview), второй сборки того же
+   * контракта быть не должно — иначе экран и бот разъедутся условием. */
+  async getReview(attemptId: string, now: DateTime): Promise<AttemptReviewDto> {
     const attempt = await this.loadAttempt(attemptId);
     const grading = await this.findGradingDto(attemptId);
     const userId = attempt.userId.toString();
     // Не пустая строка, если аккаунт уже удалён (аудит В11): DELETED_USER_NAME.
     const names = await this.userNamesService.namesByIds([userId]);
     const chat = await this.personalChats.chatFor(userId, EXAM_RESULT_KIND);
+    const pendingVideoItemIds = await this.answerVideoStats.pendingItemIds(
+      attemptId,
+      now,
+    );
     return {
       attemptId: attempt._id.toString(),
       examId: attempt.examId.toString(),
@@ -84,6 +83,7 @@ export class ExamGradingsService {
       blocks: buildReviewBlocks(attempt.blocks, attempt.answers),
       notifiesUserInTelegram: chat !== null,
       grading,
+      pendingVideoItemIds,
     };
   }
 

@@ -11,7 +11,7 @@
 // exam-question-screen.ts) нужно знать, привязано ли уже видео, а сервис
 // попыток сам этого не знает (media_assets — коллекция MediaModule).
 import { Injectable } from '@nestjs/common';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import {
   LIST_LIMIT_MAX,
   type AttemptAnswerDto,
@@ -169,7 +169,7 @@ export class ExamBotService implements ExamBotPort {
   // проверяющий уже штат, дальше решать вызывающему хендлеру, что сказать.
   loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null> {
     return degradeNotFound(async () => {
-      const review = await this.examGradingsService.getReview(attemptId);
+      const review = await this.examGradingsService.getReview(attemptId, DateTime.utc());
       return withReviewMedia(this.mediaAssetsService, review);
     });
   }
