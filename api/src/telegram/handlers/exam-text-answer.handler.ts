@@ -10,14 +10,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import { ATTEMPT_LIMITS, ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import { ATTEMPT_LIMITS, ATTEMPT_NOT_FOUND_BOT_MESSAGE } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../../common/error-info';
 import type { UserLean } from '../../users/users.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
-import { examUserFacingError } from './exam-attempt-error';
+import { presentExamError, sendExamErrorText } from './exam-attempt-error';
 import { flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
@@ -67,7 +67,7 @@ export class ExamTextAnswerHandler {
       );
     } catch (err) {
       this.logger.error(`telegram.examText: ${errorMessage(err)}`, errorStack(err));
-      await ctx.reply(examUserFacingError(err)).catch(() => null);
+      await presentExamError(ctx, err, 'reply');
     }
   }
 
@@ -84,7 +84,7 @@ export class ExamTextAnswerHandler {
     const attempt = await examBot.loadOwnAttempt(attemptId, user, now);
     if (!attempt) {
       await this.botSessions.clear(telegramId);
-      await ctx.reply(ATTEMPT_NOT_FOUND_MESSAGE).catch(() => null);
+      await sendExamErrorText(ctx, ATTEMPT_NOT_FOUND_BOT_MESSAGE, 'reply');
       return;
     }
 

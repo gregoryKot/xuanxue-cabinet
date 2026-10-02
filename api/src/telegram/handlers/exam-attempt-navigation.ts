@@ -9,7 +9,7 @@
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
-  ATTEMPT_NOT_FOUND_MESSAGE,
+  ATTEMPT_NOT_FOUND_BOT_MESSAGE,
   EXAM_NOT_FOUND_MESSAGE,
   firstUnansweredQuestionIndex,
   getMyExamAction,
@@ -18,7 +18,7 @@ import {
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
-import { reportExamActionError } from './exam-attempt-error';
+import { reportExamActionError, sendExamErrorText } from './exam-attempt-error';
 import { CONTINUE_QUESTION_INDEX, type QuestionId } from './exam-callback-ids';
 import { buildExamStartConfirmScreen } from './exam-start-confirm-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
@@ -74,7 +74,7 @@ export async function handleExamStartConfirm(
     const exams = await examBot.listMyExams(user, now);
     const exam = exams.find((item) => item.id === examId);
     if (!exam) {
-      await ctx.editMessageText(EXAM_NOT_FOUND_MESSAGE).catch(() => null);
+      await sendExamErrorText(ctx, EXAM_NOT_FOUND_MESSAGE, 'edit');
       return;
     }
 
@@ -114,7 +114,7 @@ export async function handleExamQuestion(
   try {
     const attempt = await examBot.loadOwnAttempt(ids.attemptId, user, now);
     if (!attempt) {
-      await ctx.editMessageText(ATTEMPT_NOT_FOUND_MESSAGE).catch(() => null);
+      await sendExamErrorText(ctx, ATTEMPT_NOT_FOUND_BOT_MESSAGE, 'edit');
       return;
     }
     // CONTINUE_QUESTION_INDEX — «Продолжить» из списка экзаменов: список не

@@ -355,6 +355,9 @@ jobs:
         run: node scripts/check-shared-exports.mjs
       - name: типографские акценты в тексте пользователя
         run: node scripts/check-text-accents.mjs
+      # Аудит 2026-10-01 (F51): «Обновите страницу» уехало в Telegram.
+      - name: бот не знает страниц — веб-формулировка не в текстах бота
+        run: node scripts/check-bot-page-word.mjs
       - name: knip — мёртвый код и неиспользуемые зависимости
         run: npx knip
       - name: gitleaks — секреты в диффе/истории

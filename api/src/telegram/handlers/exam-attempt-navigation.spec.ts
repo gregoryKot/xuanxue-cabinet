@@ -5,7 +5,7 @@ import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
   ATTEMPT_EXPIRED_MESSAGE,
-  ATTEMPT_NOT_FOUND_MESSAGE,
+  ATTEMPT_NOT_FOUND_BOT_MESSAGE,
   EXAM_NOT_FOUND_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   type ExamAttemptDto,
@@ -78,11 +78,13 @@ function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
 function fakeCtx(options: { failEdit?: boolean } = {}): {
   ctx: Context;
   edits: string[];
+  buttonTexts: string[][];
   replies: string[];
   deletes: number[];
   sendPhoto: jest.Mock;
 } {
   const edits: string[] = [];
+  const buttonTexts: string[][] = [];
   const replies: string[] = [];
   const deletes: number[] = [];
   // Фото — как их реально отдаёт Telegram (ADR-0035): самый большой размер
@@ -92,10 +94,17 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
     photo: [{ file_id: 'f-small' }, { file_id: 'f-big' }],
   });
   const ctx = {
-    editMessageText: (text: string) =>
-      options.failEdit
-        ? Promise.reject(new Error('сообщение недоступно'))
-        : Promise.resolve(Boolean(edits.push(text))),
+    editMessageText: (
+      text: string,
+      extra?: { reply_markup?: { inline_keyboard?: { text: string }[][] } },
+    ) => {
+      if (options.failEdit) return Promise.reject(new Error('сообщение недоступно'));
+      edits.push(text);
+      buttonTexts.push(
+        (extra?.reply_markup?.inline_keyboard ?? []).flat().map((b) => b.text),
+      );
+      return Promise.resolve(true);
+    },
     reply: (text: string) => {
       replies.push(text);
       return Promise.resolve();
@@ -106,7 +115,7 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
     },
     telegram: { sendPhoto },
   } as unknown as Context;
-  return { ctx, edits, replies, deletes, sendPhoto };
+  return { ctx, edits, buttonTexts, replies, deletes, sendPhoto };
 }
 
 describe('handleExamStart', () => {
@@ -166,12 +175,13 @@ describe('handleExamStart', () => {
     const port = fakeExamBotPort({
       startAttempt: jest.fn().mockRejectedValue(new Error('boom')),
     });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await expect(
       handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW),
     ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
+    expect(buttonTexts.at(-1)).toEqual(['В меню']); // F51
   });
 
   it('попытка сразу просрочена — экран «время вышло», не вопрос', async () => {
@@ -326,7 +336,7 @@ describe('handleExamStartConfirm', () => {
     const port = fakeExamBotPort({
       listMyExams: jest.fn().mockRejectedValue(new Error('boom')),
     });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await expect(
       handleExamStartConfirm(
@@ -340,6 +350,7 @@ describe('handleExamStartConfirm', () => {
       ),
     ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
+    expect(buttonTexts.at(-1)).toEqual(['В меню']); // F51
   });
 
   // ADR-0131, отзыв тестировщицы 2026-09-23 п.4: повтор после просроченной
@@ -504,9 +515,9 @@ describe('handleExamQuestion', () => {
     expect(edits[0]).toContain('Вопрос 2 из 2');
   });
 
-  it('чужая/несуществующая попытка — ATTEMPT_NOT_FOUND_MESSAGE, не подтверждаем её', async () => {
+  it('чужая/несуществующая попытка — ATTEMPT_NOT_FOUND_BOT_MESSAGE, не подтверждаем её', async () => {
     const port = fakeExamBotPort({ loadOwnAttempt: jest.fn().mockResolvedValue(null) });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await handleExamQuestion(
       ctx,
@@ -518,14 +529,15 @@ describe('handleExamQuestion', () => {
       NOW,
     );
 
-    expect(edits).toEqual([ATTEMPT_NOT_FOUND_MESSAGE]);
+    expect(edits).toEqual([ATTEMPT_NOT_FOUND_BOT_MESSAGE]);
+    expect(buttonTexts.at(-1)).toEqual(['В меню']); // F51
   });
 
   it('сервис отказал — общий текст, не исключение наружу', async () => {
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockRejectedValue(new Error('boom')),
     });
-    const { ctx, edits } = fakeCtx();
+    const { ctx, edits, buttonTexts } = fakeCtx();
 
     await expect(
       handleExamQuestion(
@@ -539,5 +551,6 @@ describe('handleExamQuestion', () => {
       ),
     ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
+    expect(buttonTexts.at(-1)).toEqual(['В меню']); // F51
   });
 });

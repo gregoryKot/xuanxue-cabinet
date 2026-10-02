@@ -16,7 +16,8 @@ import type { UserLean } from '../../users/users.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import type { ImageAlbumEntry, OptionAlbumEntry } from './exam-question-album';
 import { rememberFileId, resolveImages, sendOnePhoto } from './exam-question-photo-send';
-import { sendOptionVideo, sendVideoLink } from './exam-question-video-send';
+import { sendVideoLink } from './exam-question-video-link-send';
+import { sendOptionVideo } from './exam-question-video-send';
 
 const logger = new Logger('examOptionAlbum');
 
