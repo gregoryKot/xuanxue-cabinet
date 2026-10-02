@@ -28,8 +28,10 @@ export const IDLE_VIDEO_UPLOAD_STATE: VideoUploadState = {
 };
 
 /** Загрузка идёт прямо сейчас (в том числе стоит на паузе до повтора) — по
- * этому признаку экран прячет выбор файла и показывает полосу, а подвал формы
- * отказывает «Отправить» (useUploadActiveMark.ts, аудит 2026-10-01). */
+ * этому признаку экран прячет выбор файла и показывает полосу, подвал формы
+ * отказывает «Отправить» (useUploadActiveMark.ts, аудит 2026-10-01), а экран
+ * телефона не гаснет (useScreenWakeLock.ts). Новая фаза «в работе» (сжатие,
+ * ADR-0165) добавляется здесь — и получает все три сразу. */
 export function isVideoUploadActive(state: VideoUploadState): boolean {
   return state.phase === 'uploading' || state.phase === 'waiting';
 }

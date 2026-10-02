@@ -12,6 +12,10 @@ import {
 } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import {
+  installFakeWakeLock,
+  removeFakeWakeLockAfterEach,
+} from '../test-support/fakeWakeLock';
+import {
   FAKE_UPLOAD_RESULT,
   fakeSession,
   fakeSessionUpTo,
@@ -20,6 +24,8 @@ import {
 } from '../test-support/fakeVideoTransport';
 import { useVideoUpload, type UseVideoUploadOptions } from './useVideoUpload';
 import type { VideoUploadSession } from './videoUploadTypes';
+
+removeFakeWakeLockAfterEach();
 
 function makeFile(bytes = 20): File {
   return new File([new Uint8Array(bytes)], 'form.mp4', { type: 'video/mp4' });
@@ -254,5 +260,42 @@ describe('useVideoUpload — отмена', () => {
     act(() => result.current.selectFile(file));
 
     await waitFor(() => expect(result.current.state.phase).toBe('done'));
+  });
+});
+
+describe('useVideoUpload — экран не гаснет (ADR-0165)', () => {
+  it('держит блокировку сна, пока загрузка идёт, и снимает после готово', async () => {
+    const wakeLock = installFakeWakeLock();
+    const { result } = renderUpload();
+
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(wakeLock.request).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.state.phase).toBe('done'));
+
+    expect(wakeLock.sentinels[0]?.released).toBe(true);
+  });
+
+  it('«Отменить» снимает блокировку, хотя запрос на сервер ещё в пути', async () => {
+    const wakeLock = installFakeWakeLock();
+    const transport = makeFakeTransport({ start: () => new Promise(() => {}) });
+    const { result } = renderUpload(transport);
+
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(wakeLock.sentinels).toHaveLength(1));
+    act(() => result.current.cancel());
+
+    expect(wakeLock.sentinels[0]?.released).toBe(true);
+  });
+
+  it('на паузе перед повтором блокировка держится: связь вернётся, а экран спит', async () => {
+    const wakeLock = installFakeWakeLock();
+    const { transport } = transportWithFlakyPart1();
+    const { result } = renderUpload(transport);
+
+    act(() => result.current.selectFile(makeFile()));
+    await waitFor(() => expect(result.current.state.phase).toBe('waiting'));
+
+    expect(wakeLock.request).toHaveBeenCalledTimes(1);
+    expect(wakeLock.sentinels[0]?.released).toBe(false);
   });
 });
