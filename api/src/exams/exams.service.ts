@@ -6,7 +6,7 @@
 // тело и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { DateTime } from 'luxon';
+import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   EXAM_NOT_FOUND_MESSAGE,
@@ -89,16 +89,16 @@ export class ExamsService {
     return this.getById(created._id.toString());
   }
 
-  /** `now` — момент запроса для гарда снятия с публикации (F10, аудит
-   * 2026-10-01): контроллер передаёт его явно; сид, бот и createAndPublishExam
-   * идут только в сторону `published` и гард не задевают, поэтому не передают. */
-  async update(id: string, input: UpdateExamInput, now?: DateTime): Promise<ExamDto> {
+  /** `now` — момент запроса, явный у каждого вызывающего (CLAUDE.md «Время»):
+   * по нему гард снятия с публикации (F10, аудит 2026-10-01) судит о живых
+   * попытках; контроллер, сид и бот берут его на входе, не сервис. */
+  async update(id: string, input: UpdateExamInput, now: DateTime): Promise<ExamDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExam(doc);
     if (isUnpublishing(current.status, input.status)) {
-      await assertNoLiveAttempts(this.attemptModel, id, now ?? DateTime.utc());
+      await assertNoLiveAttempts(this.attemptModel, id, now);
     }
 
     const { blocks, status, ...rest } = input;
@@ -136,9 +136,10 @@ export class ExamsService {
   async createAndPublishExam(
     input: CreateExamInput,
     createdBy: string,
+    now: DateTime,
   ): Promise<ExamDto> {
     const created = await this.create(input, createdBy);
-    return this.update(created.id, { status: 'published' });
+    return this.update(created.id, { status: 'published' }, now);
   }
 
   // Удаляется в любом статусе, без отказа (ADR-0140) — попытки/оценки/медиа остаются.

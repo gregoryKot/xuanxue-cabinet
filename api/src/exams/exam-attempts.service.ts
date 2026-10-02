@@ -69,8 +69,8 @@ export class ExamAttemptsService {
    * опубликована, срок сдачи прошёл) и порядок их проверок — в
    * exam-start-guards.ts. `attemptsUsed` — номер последней попытки, не число
    * документов (ADR-0131): затирание просроченной ниже не должно откатывать
-   * лимит назад. Один снимок `findLastAttempt` на всё — F08, аудит
-   * 2026-10-01 (почему — resumeAttemptById, exam-attempt-lifecycle.ts). */
+   * лимит назад. Один снимок `findLastAttempt` на всё — F08, аудит 2026-10-01
+   * (resumeAttemptById); окно «снимок → create» держит индекс (createAttempt). */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
     const exam = await this.examsService.getById(examId); // удалённая — 404 (ADR-0140)
 

@@ -47,7 +47,7 @@ describe('ExamGradingsService', () => {
       { title: 'Экзамен по третьей форме', blocks: [{ itemIds: [itemId] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(created.id, { status: 'published' });
+    await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 
@@ -88,7 +88,7 @@ describe('ExamGradingsService', () => {
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const started = await ctx.service.start(exam.id, USER_A, NOW);
     const correctOptionId = optionItem.options[0]?.id;
     if (!correctOptionId) throw new Error('фикстура: у первого варианта должен быть id');

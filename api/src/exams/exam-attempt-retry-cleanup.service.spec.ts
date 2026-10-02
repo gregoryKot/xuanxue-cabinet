@@ -48,7 +48,7 @@ describe('ExamAttemptRetryCleanupService', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [item.id] }], attemptsAllowed: 3 },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 

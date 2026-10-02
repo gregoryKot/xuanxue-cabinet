@@ -143,7 +143,7 @@ describe('ExamItemStatsService', () => {
       { title: 'Экзамен для статистики', blocks: [{ itemIds: [itemId] }] },
       AUTHOR_ID,
     );
-    await examsService.update(created.id, { status: 'published' });
+    await examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 

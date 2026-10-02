@@ -3,10 +3,9 @@
 // может импортировать api/src/exams напрямую: ExamsModule уже импортирует
 // TelegramModule ради EXAM_NOTIFIER (exams.module.ts) — обратный импорт
 // закольцевал бы граф модулей (import-x/no-cycle, CLAUDE.md «Слои»).
-// Интерфейс живёт здесь (как EXAM_NOTIFIER — в exams/, в обратную
-// сторону); реализация (ExamBotService, exams/exam-bot.service.ts) кладёт
-// себя в ExamBotPortRegistry при подъёме ExamsModule — см. комментарий
-// там же, почему инверсия, а не обычный импорт.
+// Интерфейс живёт здесь (как EXAM_NOTIFIER — в exams/, в обратную сторону);
+// реализация (ExamBotService, exams/exam-bot.service.ts) кладёт себя в
+// ExamBotPortRegistry при подъёме ExamsModule — там же, почему инверсия, а не импорт.
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
@@ -101,12 +100,11 @@ export interface ExamBotPort {
    * `authorId` — userId учителя (не chatId), сопоставленный ботом заранее. */
   createExamItem(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto>;
   /** Правила, которые у POST /exam-items живут только в class-validator DTO
-   * (длина формулировки/варианта, число вариантов) — вызов
-   * ExamItemsService.create() их не проверяет вовсе: ValidationPipe стоит
-   * только перед HTTP-контроллером, бот его не проходит. Бот прогоняет тот
-   * же CreateExamItemDto, не пишет вторую проверку (ТЗ 4б.3, «не дублируй»).
-   * `null` — ошибок нет; непереданные поля не проверяются (черновик неполон
-   * до последнего шага). */
+   * (длина формулировки/варианта, число вариантов): ExamItemsService.create()
+   * их не проверяет — ValidationPipe стоит перед HTTP-контроллером, бот его
+   * не проходит. Бот прогоняет тот же CreateExamItemDto, не пишет вторую
+   * проверку (ТЗ 4б.3, «не дублируй»). `null` — ошибок нет; непереданные
+   * поля не проверяются (черновик неполон до последнего шага). */
   validateExamItemDraft(input: Partial<CreateExamItemInput>): Promise<string[] | null>;
   /** Список вопросов для сборки экзамена (ТЗ 4б.4, ADR-0024) — только
    * опубликованные, тот же фильтр, что у правила «блок ссылается на
@@ -116,27 +114,29 @@ export interface ExamBotPort {
   /** Учитель собирает экзамен в боте (ТЗ 4б.4, ADR-0024) — тот же переход в
    * `published`, что и в кабинете (create → update status), одним вызовом:
    * бот не даёт форме остаться черновиком после «Опубликовать».
-   * `authorId` — userId учителя, сопоставленный ботом заранее. */
-  createAndPublishExam(input: CreateExamInput, authorId: string): Promise<ExamDto>;
+   * `authorId` — userId учителя, сопоставленный ботом заранее; `now` — явный. */
+  createAndPublishExam(
+    input: CreateExamInput,
+    authorId: string,
+    now: DateTime,
+  ): Promise<ExamDto>;
   /** Правила лимитов (название, число вопросов в блоке, лимит времени, число
    * попыток) — те же декораторы CreateExamDto, что у POST /exams; бот их не
    * переизобретает. `null` — ошибок нет; непереданные поля не проверяются
    * (черновик неполон до шага, где поле появляется). */
   validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null>;
 
-  // Слой 4б.5 (PLAN §12) — проверка сданной работы в боте. Проверяющий уже
-  // проверен как штат (PersonalChats/BotUserAccessService на вызывающей
-  // стороне) — здесь только владение попыткой (она школы, SECURITY §3).
+  // Слой 4б.5 (PLAN §12) — проверка сданной работы в боте. Проверяющий уже проверен
+  // как штат на вызывающей стороне (PersonalChats/BotUserAccessService) — здесь
+  // только владение попыткой (она школы, SECURITY §3).
 
   /** Карточка проверки — тот же путь, что `GET /attempts/:id/review`
    * (ExamGradingsService.getReview), не вторая сборка. `null` — попытка не
-   * найдена (чужой/битый attemptId из callback data получает отказ без
-   * объяснения причин, SECURITY §3). */
+   * найдена: чужой/битый attemptId из callback data — отказ без причин (SECURITY §3). */
   loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null>;
   /** Итог и комментарий — тот же ExamGradingsService.grade(), что кабинет:
-   * идемпотентно по attemptId (переписывает, а не плодит вторую оценку) и
-   * сам шлёт ученику `exam_result`. `null` — попытка не найдена (как у
-   * loadAttemptReview). */
+   * идемпотентно по attemptId (переписывает, а не плодит вторую оценку) и сам
+   * шлёт ученику `exam_result`. `null` — попытка не найдена (как loadAttemptReview). */
   gradeAttempt(
     attemptId: string,
     graderId: string,

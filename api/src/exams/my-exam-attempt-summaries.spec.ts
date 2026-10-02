@@ -46,7 +46,7 @@ describe('aggregateAttemptSummaries', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }], attemptsAllowed },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(created.id, { status: 'published' });
+    await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 

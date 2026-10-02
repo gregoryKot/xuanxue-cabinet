@@ -142,9 +142,9 @@ describe('ExamsService', () => {
   it('публикация пустой формы (блоков нет) — InvalidInputError', async () => {
     const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
 
-    await expect(service.update(created.id, { status: 'published' })).rejects.toThrow(
-      'нет ни одного вопроса',
-    );
+    await expect(
+      service.update(created.id, { status: 'published' }, NOW),
+    ).rejects.toThrow('нет ни одного вопроса');
   });
 
   it('публикация формы с блоком без вопросов — InvalidInputError', async () => {
@@ -153,9 +153,9 @@ describe('ExamsService', () => {
       CREATED_BY,
     );
 
-    await expect(service.update(created.id, { status: 'published' })).rejects.toThrow(
-      'нет ни одного вопроса',
-    );
+    await expect(
+      service.update(created.id, { status: 'published' }, NOW),
+    ).rejects.toThrow('нет ни одного вопроса');
   });
 
   it('публикация формы с опубликованным вопросом — 200, статус published', async () => {
@@ -165,7 +165,7 @@ describe('ExamsService', () => {
       CREATED_BY,
     );
 
-    const published = await service.update(created.id, { status: 'published' });
+    const published = await service.update(created.id, { status: 'published' }, NOW);
 
     expect(published.status).toBe('published');
   });
@@ -178,6 +178,7 @@ describe('ExamsService', () => {
     const exam = await service.createAndPublishExam(
       { title: 'Экзамен из бота', blocks: [{ itemIds: [itemId] }] },
       CREATED_BY,
+      NOW,
     );
 
     expect(exam.status).toBe('published');
@@ -191,7 +192,7 @@ describe('ExamsService', () => {
   // хендлере (ADR-0024): пустой список всё равно получает отказ публикации.
   it('createAndPublishExam без вопросов — InvalidInputError, публикация не проходит', async () => {
     await expect(
-      service.createAndPublishExam({ title: 'Пустой экзамен' }, CREATED_BY),
+      service.createAndPublishExam({ title: 'Пустой экзамен' }, CREATED_BY, NOW),
     ).rejects.toThrow('нет ни одного вопроса');
     const exams = await service.list({});
     expect(exams).toHaveLength(1);
@@ -207,9 +208,9 @@ describe('ExamsService', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
       CREATED_BY,
     );
-    await service.update(created.id, { status: 'published' });
+    await service.update(created.id, { status: 'published' }, NOW);
 
-    await expect(service.update(created.id, { blocks: [] })).rejects.toThrow(
+    await expect(service.update(created.id, { blocks: [] }, NOW)).rejects.toThrow(
       'нет ни одного вопроса',
     );
     const stillThere = await service.getById(created.id);
@@ -220,7 +221,7 @@ describe('ExamsService', () => {
   it('черновик без вопросов сохраняется — законно, это не публикация', async () => {
     const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
 
-    const updated = await service.update(created.id, { title: 'Экзамен (правка)' });
+    const updated = await service.update(created.id, { title: 'Экзамен (правка)' }, NOW);
 
     expect(updated.status).toBe('draft');
     expect(updated.blocks).toEqual([]);
@@ -242,7 +243,7 @@ describe('ExamsService', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
       CREATED_BY,
     );
-    await service.update(created.id, { status: 'published' });
+    await service.update(created.id, { status: 'published' }, NOW);
 
     await service.remove(created.id, NOW);
 
@@ -258,7 +259,7 @@ describe('ExamsService', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
       CREATED_BY,
     );
-    await service.update(created.id, { status: 'published' });
+    await service.update(created.id, { status: 'published' }, NOW);
     const attempt = await attemptModel.create({
       examId: created.id,
       examTitle: created.title,
@@ -281,12 +282,16 @@ describe('ExamsService', () => {
     );
     const existingBlockId = created.blocks[0]?.id;
 
-    const updated = await service.update(created.id, {
-      blocks: [
-        { id: existingBlockId, title: 'Первый (правка)', itemIds: [itemId] },
-        { title: 'Второй', itemIds: [] },
-      ],
-    });
+    const updated = await service.update(
+      created.id,
+      {
+        blocks: [
+          { id: existingBlockId, title: 'Первый (правка)', itemIds: [itemId] },
+          { title: 'Второй', itemIds: [] },
+        ],
+      },
+      NOW,
+    );
 
     expect(updated.blocks[0]?.id).toBe(existingBlockId);
     expect(updated.blocks[0]?.title).toBe('Первый (правка)');
@@ -296,7 +301,7 @@ describe('ExamsService', () => {
   it('createdBy не меняется при правке', async () => {
     const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
 
-    const updated = await service.update(created.id, { title: 'Экзамен (правка)' });
+    const updated = await service.update(created.id, { title: 'Экзамен (правка)' }, NOW);
 
     expect(updated.createdBy).toBe(CREATED_BY);
   });
@@ -307,7 +312,7 @@ describe('ExamsService', () => {
       { title: 'В архиве', level: 'высший' },
       CREATED_BY,
     );
-    await service.update(published.id, { status: 'archived' });
+    await service.update(published.id, { status: 'archived' }, NOW);
 
     const byStatus = await service.list({ status: 'archived' });
     expect(byStatus.map((exam) => exam.title)).toEqual(['В архиве']);
@@ -328,7 +333,7 @@ describe('ExamsService', () => {
   it('update с несуществующим id — NotFoundError', async () => {
     const missingId = '507f1f77bcf86cd799439099';
 
-    await expect(service.update(missingId, { title: 'x' })).rejects.toThrow(
+    await expect(service.update(missingId, { title: 'x' }, NOW)).rejects.toThrow(
       'Экзамен не найден',
     );
   });
@@ -369,7 +374,11 @@ describe('ExamsService', () => {
       CREATED_BY,
     );
 
-    const updated = await service.update(created.id, { level: null, description: null });
+    const updated = await service.update(
+      created.id,
+      { level: null, description: null },
+      NOW,
+    );
 
     expect(updated.level).toBe('');
     expect(updated.description).toBe('');
@@ -384,7 +393,7 @@ describe('ExamsService', () => {
         { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
         CREATED_BY,
       );
-      await service.update(created.id, { status: 'published' });
+      await service.update(created.id, { status: 'published' }, NOW);
       await attemptModel.create({
         examId: created.id,
         examTitle: created.title,

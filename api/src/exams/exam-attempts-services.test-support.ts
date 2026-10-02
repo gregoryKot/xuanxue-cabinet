@@ -62,6 +62,8 @@ export interface AttemptsTestServices {
   userNamesService: UserNamesService;
   examNotifier: FakeExamNotifier;
   service: ExamAttemptsService;
+  // F08 (ревью #529): спек ставит окно гонки перед снимком findLastAttempt.
+  retryCleanup: ExamAttemptRetryCleanupService;
   gradingsService: ExamGradingsService;
   // Слой 4.5 (ADR-0023) — нужен спекам про видео вопроса внутри потока
   // вопросов бота (exam-attempt-flow.spec.ts, ТЗ 4б.2 часть 2).
@@ -136,6 +138,7 @@ export function buildAttemptsServices(models: AttemptsTestModels): AttemptsTestS
     userNamesService,
     examNotifier,
     service,
+    retryCleanup,
     gradingsService,
     mediaAssetsService,
   };

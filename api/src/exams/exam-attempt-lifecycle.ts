@@ -27,6 +27,7 @@ import {
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
+import { decryptAttemptOrNull } from './exam-attempt-decrypt-safe';
 import {
   decryptAttempt,
   type LeanExamAttempt,
@@ -139,7 +140,11 @@ export async function closeExpiredAttempts(
     onExpiredClose?.(closed);
   };
   for (const raw of candidates) {
-    await closeIfExpiredAttempt(model, decryptAttempt(raw), now, countingCallback);
+    // Битая попытка (F55) — одна строка error-лога и пропуск, не падение
+    // тика: остальные закрываются, она остаётся in_progress до починки данных.
+    const attempt = decryptAttemptOrNull(raw);
+    if (!attempt) continue;
+    await closeIfExpiredAttempt(model, attempt, now, countingCallback);
   }
   return closedByThisCall;
 }

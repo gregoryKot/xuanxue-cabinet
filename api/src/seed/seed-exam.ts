@@ -8,6 +8,7 @@
 import { resolve } from 'path';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DateTime } from 'luxon';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { EXAM_SEED_EXAMPLE_PATH } from './seed-exam-file';
 import { formatExamSeedReport } from './seed-exam-report';
@@ -34,7 +35,8 @@ async function main(): Promise<void> {
   app.useLogger(app.get(PinoLogger));
 
   try {
-    const report = await app.get(SeedExamService).importExam(filePath);
+    // Момент импорта — на входе CLI, как DateTime.utc() в контроллерах (CLAUDE.md «Время»).
+    const report = await app.get(SeedExamService).importExam(filePath, DateTime.utc());
     // warn, не log: единственный вывод CLI должен остаться видимым, даже
     // если оператор поднял LOG_LEVEL выше info в своём окружении (RUNBOOK §2.2).
     logger.warn(formatExamSeedReport(report));

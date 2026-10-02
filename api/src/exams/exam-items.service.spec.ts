@@ -691,12 +691,12 @@ describe('ExamItemsService', () => {
         { title: 'Живая форма', blocks: [{ itemIds: [published.id] }] },
         AUTHOR_ID,
       );
-      await examsService.update(exam.id, { status: 'published' });
+      await examsService.update(exam.id, { status: 'published' }, NOW);
 
       await service.remove(published.id, NOW);
 
       await expect(
-        examsService.update(exam.id, { level: 'начальный' }),
+        examsService.update(exam.id, { level: 'начальный' }, NOW),
       ).resolves.toMatchObject({ level: 'начальный' });
       // includeDeleted — тем же приёмом, что exam-attempt-start.ts.
       await expect(service.getById(published.id, true)).resolves.toMatchObject({

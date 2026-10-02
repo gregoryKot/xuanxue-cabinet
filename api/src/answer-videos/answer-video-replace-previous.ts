@@ -7,7 +7,7 @@
 // идемпотентный повтор, F47 аудита 2026-10-01). Байты старого убираются
 // журналом сирот, документы обеих коллекций удаляются.
 import type { DateTime } from 'luxon';
-import type { Model } from 'mongoose';
+import type { Model, QueryFilter, Types } from 'mongoose';
 import type { MediaAssetRecord } from '../media/media-asset.schema';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
 import type { RawLeanAnswerVideo } from './answer-video.mapper';
@@ -22,6 +22,11 @@ interface ReplacePreviousFileDeps {
 interface ReplacePreviousFileTarget {
   attemptId: string;
   itemId: string;
+  /** Сам завершаемый файл: его media — в том числе только что вставленная
+   * конкурентом по тому же id (F47, ревью #529) — не «прошлый файл». Без
+   * исключения гонка двух complete сносила бы свежие байты из R2 и сам
+   * документ `answer_videos`, а media конкурента — как устаревшую. */
+  currentAnswerVideoId: Types.ObjectId;
   now: DateTime;
 }
 
@@ -30,9 +35,16 @@ export async function replacePreviousFile(
   target: ReplacePreviousFileTarget,
 ): Promise<void> {
   const { videoModel, mediaModel, orphans } = deps;
-  const { attemptId, itemId, now } = target;
+  const { attemptId, itemId, currentAnswerVideoId, now } = target;
+  // `$ne` матчит и записи без answerVideoId вовсе — они тоже «прошлый файл».
+  const previousFilter: QueryFilter<MediaAssetRecord> = {
+    attemptId,
+    itemId,
+    kind: 'file',
+    answerVideoId: { $ne: currentAnswerVideoId },
+  };
   const previous = await mediaModel
-    .find({ attemptId, itemId, kind: 'file' })
+    .find(previousFilter)
     .lean<{ answerVideoId?: { toString(): string } }[]>();
   for (const prev of previous) {
     if (!prev.answerVideoId) continue;
@@ -43,5 +55,5 @@ export async function replacePreviousFile(
     await orphans.removeNow(prevVideo.key, now);
     await videoModel.deleteOne({ _id: prevVideo._id });
   }
-  await mediaModel.deleteMany({ attemptId, itemId, kind: 'file' });
+  await mediaModel.deleteMany(previousFilter);
 }

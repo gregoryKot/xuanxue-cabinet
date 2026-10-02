@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
+import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { InvalidInputError } from '../common/errors';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
@@ -28,6 +29,7 @@ import { fakeExamVideosService } from '../test-support/fake-exam-videos-service'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const freshRequire = <T>(id: string): T => require(id) as T;
 
+const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const SAMPLE_PATH = join(__dirname, '..', '..', 'seed', 'exam-form-1.json');
 const SAMPLE_DIR = dirname(SAMPLE_PATH);
 
@@ -116,7 +118,7 @@ describe('SeedExamService', () => {
   }
 
   it('первый запуск: черновик формы со всеми вопросами файла, картинки загружены (read-after-write)', async () => {
-    const report = await seedExamService.importExam(SAMPLE_PATH);
+    const report = await seedExamService.importExam(SAMPLE_PATH, NOW);
 
     expect(report.examCreated).toBe(true);
     expect(report.createdQuestions).toHaveLength(sample.questions.length);
@@ -153,12 +155,12 @@ describe('SeedExamService', () => {
   });
 
   it('второй запуск того же файла — ноль новых документов, всё пропущено', async () => {
-    await seedExamService.importExam(SAMPLE_PATH);
+    await seedExamService.importExam(SAMPLE_PATH, NOW);
     const examsAfterFirst = await examModel.countDocuments({});
     const itemsAfterFirst = await itemModel.countDocuments({});
     const imagesAfterFirst = await imageModel.countDocuments({});
 
-    const second = await seedExamService.importExam(SAMPLE_PATH);
+    const second = await seedExamService.importExam(SAMPLE_PATH, NOW);
 
     expect(second.examCreated).toBe(false);
     expect(second.createdQuestions).toHaveLength(0);
@@ -170,7 +172,7 @@ describe('SeedExamService', () => {
   });
 
   it('файл с добавленным вопросом дописывает его в конец состава, старые вопросы не трогает', async () => {
-    await seedExamService.importExam(SAMPLE_PATH);
+    await seedExamService.importExam(SAMPLE_PATH, NOW);
     const examBefore = await soleExam();
     const orderBefore = examBefore.blocks[0]?.itemIds ?? [];
 
@@ -190,7 +192,7 @@ describe('SeedExamService', () => {
     const extendedPath = join(dir, `${randomUUID()}.json`);
     await writeFile(extendedPath, JSON.stringify(extended), 'utf8');
 
-    const second = await seedExamService.importExam(extendedPath);
+    const second = await seedExamService.importExam(extendedPath, NOW);
 
     expect(second.examCreated).toBe(false);
     expect(second.createdQuestions).toEqual([extraPrompt]);
@@ -203,7 +205,7 @@ describe('SeedExamService', () => {
   });
 
   it('лишний вопрос формы, которого нет в файле, при повторном импорте остаётся в конце и не дублируется', async () => {
-    await seedExamService.importExam(SAMPLE_PATH);
+    await seedExamService.importExam(SAMPLE_PATH, NOW);
     const examBefore = await soleExam();
     const orderBefore = examBefore.blocks[0]?.itemIds ?? [];
 
@@ -214,11 +216,13 @@ describe('SeedExamService', () => {
       kind: 'text',
       prompt: 'Вопрос, добавленный в форму без файла сида',
     });
-    await examsService.update(examBefore.id, {
-      blocks: [{ itemIds: [...orderBefore, extra.id] }],
-    });
+    await examsService.update(
+      examBefore.id,
+      { blocks: [{ itemIds: [...orderBefore, extra.id] }] },
+      NOW,
+    );
 
-    const second = await seedExamService.importExam(SAMPLE_PATH);
+    const second = await seedExamService.importExam(SAMPLE_PATH, NOW);
 
     expect(second.examCreated).toBe(false);
     const examAfter = await examsService.getById(examBefore.id);
@@ -228,7 +232,7 @@ describe('SeedExamService', () => {
   });
 
   it('в сырой Mongo prompt вопроса — шифротекст, не открытый текст', async () => {
-    await seedExamService.importExam(SAMPLE_PATH);
+    await seedExamService.importExam(SAMPLE_PATH, NOW);
 
     const plainPrompts = new Set(sample.questions.map((q) => q.prompt));
     const rawDocs = await itemModel.find().lean();
@@ -260,7 +264,7 @@ describe('SeedExamService', () => {
 
     // Один и тот же промис для обеих проверок — importExam зовётся один раз,
     // а не дважды ради двух expect().
-    const failure = seedExamService.importExam(filePath);
+    const failure = seedExamService.importExam(filePath, NOW);
     await expect(failure).rejects.toThrow(InvalidInputError);
     await expect(failure).rejects.toThrow('net-takogo-fayla.png');
 
@@ -292,7 +296,7 @@ describe('SeedExamService', () => {
 
     // EISDIR — не ENOENT: loadImages не подменяет его понятным текстом про
     // отсутствующий файл, читатель отчёта увидел бы неверную причину отказа.
-    await expect(seedExamService.importExam(filePath)).rejects.toMatchObject({
+    await expect(seedExamService.importExam(filePath, NOW)).rejects.toMatchObject({
       code: 'EISDIR',
     });
   });
@@ -314,7 +318,7 @@ describe('SeedExamService', () => {
     );
 
     try {
-      await expect(freshService.importExam(SAMPLE_PATH)).rejects.toThrow(
+      await expect(freshService.importExam(SAMPLE_PATH, NOW)).rejects.toThrow(
         'ENCRYPTION_KEY',
       );
       expect(await itemModel.countDocuments({})).toBe(0);

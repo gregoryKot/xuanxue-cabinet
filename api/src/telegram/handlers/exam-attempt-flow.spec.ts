@@ -358,7 +358,7 @@ describe('бот — второй клиент ExamAttemptsService (интегр
         { title: 'Стойки', blocks: [{ title: '', itemIds: [item.id] }] },
         AUTHOR_ID,
       );
-      await ctx.examsService.update(exam.id, { status: 'published' });
+      await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
       return { examId: exam.id };
     }
 
@@ -446,7 +446,7 @@ describe('бот — второй клиент ExamAttemptsService (интегр
         { title: 'Стойки', blocks: [{ title: '', itemIds: [item.id] }] },
         AUTHOR_ID,
       );
-      await ctx.examsService.update(exam.id, { status: 'published' });
+      await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
 
       const start = fakeCtx();
       await handleExamStart(

@@ -64,7 +64,7 @@ describe('MyExamsService', () => {
       AUTHOR_ID,
     );
     if (options.published !== false) {
-      await ctx.examsService.update(created.id, { status: 'published' });
+      await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     }
     return created.id;
   }
@@ -335,7 +335,7 @@ describe('MyExamsService — markSeen (ADR-0129)', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 

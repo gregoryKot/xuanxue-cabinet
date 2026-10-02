@@ -5,6 +5,8 @@
 // telegram-teacher-notifier.time.spec.ts, «файл-лимит спеков», CLAUDE.md «Файлы»).
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
+import type { ExamAttemptDto } from '@xuanxue/shared';
+import { beforeModelCall } from '../test-support/before-model-call';
 import type { UserLean } from '../users/users.service';
 import {
   AUTHOR_ID,
@@ -67,7 +69,7 @@ describe('ExamAttemptsService', () => {
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(created.id, { status: 'published' });
+    await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 
@@ -230,7 +232,7 @@ describe('ExamAttemptsService', () => {
   it('форма в архиве — старт отказывает, попытка не создаётся', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });
-    await ctx.examsService.update(examId, { status: 'archived' });
+    await ctx.examsService.update(examId, { status: 'archived' }, NOW);
 
     await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
       'не открыт для сдачи',
@@ -1146,6 +1148,66 @@ describe('ExamAttemptsService', () => {
     ]);
 
     expect(second.id).toBe(first.id);
+    await expect(
+      ctx.attemptModel.countDocuments({ examId, userId: USER_A, status: 'in_progress' }),
+    ).resolves.toBe(1);
+  });
+
+  // Сценарий аудита F08 детерминированно, без везения в порядке await (приём
+  // F28, before-model-call.ts): последняя попытка сдана временем и не
+  // проверена, лимит 3; соперник проходит start() целиком внутри окна первого
+  // (заводит №2, сносит №1). Оба обязаны вернуть одну и ту же попытку.
+  async function examWithExpiredAttempt(): Promise<string> {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 3 });
+    const first = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.attemptModel.updateOne(
+      { _id: first.id },
+      { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+    );
+    return examId;
+  }
+
+  async function startAgainstRival(
+    examId: string,
+    placeWindow: (rival: () => Promise<void>) => void,
+  ): Promise<{ first: ExamAttemptDto; rival: ExamAttemptDto | undefined }> {
+    const later = NOW.plus({ hours: 2 });
+    const rivals: ExamAttemptDto[] = [];
+    placeWindow(async () => {
+      rivals.push(await ctx.service.start(examId, USER_A, later));
+    });
+    const first = await ctx.service.start(examId, USER_A, later);
+    return { first, rival: rivals[0] };
+  }
+
+  it('соперник целиком между снимком и create — первый упирается в E11000 и отдаёт его попытку', async () => {
+    const examId = await examWithExpiredAttempt();
+
+    const { first, rival } = await startAgainstRival(examId, (rival) =>
+      beforeModelCall(ctx.attemptModel, 'create', rival),
+    );
+
+    expect(first.id).toBe(rival?.id);
+    await expect(
+      ctx.attemptModel.countDocuments({ examId, userId: USER_A, status: 'in_progress' }),
+    ).resolves.toBe(1);
+  });
+
+  // Само окно F08: «идущая» и «последняя» читались двумя запросами, и соперник
+  // между ними оставлял первому снимок без свежей in_progress — тот заводил №3
+  // рядом с №2. На коде до фикса этот тест красный (две in_progress).
+  it('соперник целиком до снимка findLastAttempt — первый продолжает его попытку, не заводит третью', async () => {
+    const examId = await examWithExpiredAttempt();
+    const original = ctx.retryCleanup.findLastAttempt.bind(ctx.retryCleanup);
+
+    const { first, rival } = await startAgainstRival(examId, (rival) => {
+      jest
+        .spyOn(ctx.retryCleanup, 'findLastAttempt')
+        .mockImplementationOnce((...args) => rival().then(() => original(...args)));
+    });
+
+    expect(first.id).toBe(rival?.id);
     await expect(
       ctx.attemptModel.countDocuments({ examId, userId: USER_A, status: 'in_progress' }),
     ).resolves.toBe(1);

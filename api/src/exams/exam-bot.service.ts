@@ -19,7 +19,6 @@ import {
   type CreateExamInput,
   type CreateExamItemInput,
   type ExamAttemptDto,
-  type ExamDto,
   type ExamGradingDto,
   type ExamItemDto,
   type MyExamDto,
@@ -154,10 +153,9 @@ export class ExamBotService implements ExamBotPort {
   }
 
   /** ТЗ 4б.4 — тот же переход в `published`, что и у кабинета, одним
-   * вызовом (ExamsService.createAndPublishExam). */
-  createAndPublishExam(input: CreateExamInput, authorId: string): Promise<ExamDto> {
-    return this.examsService.createAndPublishExam(input, authorId);
-  }
+   * вызовом (ExamsService.createAndPublishExam); `now` — момент апдейта бота. */
+  createAndPublishExam: ExamBotPort['createAndPublishExam'] = (input, authorId, now) =>
+    this.examsService.createAndPublishExam(input, authorId, now);
 
   validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null> {
     return validateExamDraftInput(input);

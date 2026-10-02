@@ -8,6 +8,7 @@ import { readFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { InvalidInputError } from '../common/errors';
 import { NOT_DELETED } from '../common/soft-delete';
@@ -107,7 +108,7 @@ export class SeedExamService {
     private readonly examImagesService: ExamImagesService,
   ) {}
 
-  async importExam(filePath: string): Promise<ExamSeedReport> {
+  async importExam(filePath: string, now: DateTime): Promise<ExamSeedReport> {
     const text = await readFile(filePath, 'utf8');
     const { errors, exam, questions } = validateExamSeed(parseExamSeedFile(text));
     if (errors.length > 0) throw new SeedValidationFailedError(errors);
@@ -123,7 +124,7 @@ export class SeedExamService {
 
     const { itemIds, createdQuestions, skippedQuestions, uploadedImages } =
       await this.importQuestions(loadedQuestions);
-    const examCreated = await this.upsertExam(exam, itemIds);
+    const examCreated = await this.upsertExam(exam, itemIds, now);
 
     return {
       examTitle: exam.title,
@@ -241,6 +242,7 @@ export class SeedExamService {
   private async upsertExam(
     exam: CreateExamDto,
     itemIds: readonly string[],
+    now: DateTime,
   ): Promise<boolean> {
     const existingExams = await this.examModel.find(NOT_DELETED).lean<RawLeanExam[]>();
     const match = existingExams
@@ -261,16 +263,13 @@ export class SeedExamService {
     }
 
     const firstBlock = match.decrypted.blocks[0];
-    await this.examsService.update(match.id, {
-      blocks: [
-        {
-          id: firstBlock?.id,
-          title: firstBlock?.title ?? '',
-          itemIds: mergeItemIds(itemIds, match.decrypted.blocks),
-          shuffle: firstBlock?.shuffle ?? false,
-        },
-      ],
-    });
+    const block = {
+      id: firstBlock?.id,
+      title: firstBlock?.title ?? '',
+      itemIds: mergeItemIds(itemIds, match.decrypted.blocks),
+      shuffle: firstBlock?.shuffle ?? false,
+    };
+    await this.examsService.update(match.id, { blocks: [block] }, now);
     return false;
   }
 }

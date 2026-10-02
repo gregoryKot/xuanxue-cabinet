@@ -31,6 +31,7 @@ import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry
 import { notifyVideoAdded } from '../media/notify-video-link-added';
 import { MultipartStoreService } from '../storage/multipart-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { keepFirstFileMedia } from './answer-video-media-first';
 import { replacePreviousFile } from './answer-video-replace-previous';
 import { partCountFor, type RawLeanAnswerVideo } from './answer-video.mapper';
 import { AnswerVideoRecord } from './answer-video.schema';
@@ -84,18 +85,23 @@ export class AnswerVideoCompleteService {
 
     if (!inR2 && doc.uploadId) await this.finishInR2(doc, doc.uploadId, now);
 
-    // Повтор после сбоя между R2 и media: запись уже есть — отдаём её, без
-    // второй вставки, без replacePreviousFile и без второго уведомления.
+    // Повтор после сбоя между R2 и media: запись уже есть — отдаём её без
+    // второй вставки, replacePreviousFile и второго уведомления. Ключ из журнала
+    // сирот снимаем и здесь: сбой мог быть между вставкой и forget, и через
+    // сутки уборщик унёс бы байты готового видео (ADR-0079).
     const existing = await this.mediaModel
       .findOne({ answerVideoId: doc._id, kind: 'file' })
       .lean<RawLeanMediaAsset | null>();
-    if (existing) return toExamMediaDto(decryptMediaAsset(existing));
+    if (existing) {
+      await this.orphans.forget(doc.key);
+      return toExamMediaDto(decryptMediaAsset(existing));
+    }
 
     await replacePreviousFile(
       { videoModel: this.model, mediaModel: this.mediaModel, orphans: this.orphans },
-      { attemptId, itemId, now },
+      { attemptId, itemId, currentAnswerVideoId: doc._id, now },
     );
-    const media = await insertMediaAsset(this.mediaModel, {
+    const inserted = await insertMediaAsset(this.mediaModel, {
       attemptId,
       userId,
       itemId,
@@ -104,8 +110,12 @@ export class AnswerVideoCompleteService {
       answerVideoId: doc._id.toString(),
       receivedAt: now,
     });
+    // Два complete по одному id могли оба пройти проверку `existing` выше —
+    // победителя решает keepFirstFileMedia, проигравший отдаёт его media.
+    const { media, won } = await keepFirstFileMedia(this.mediaModel, id, inserted.id);
     await this.orphans.forget(doc.key);
-    notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
+    if (won)
+      notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
     return media;
   }
 
