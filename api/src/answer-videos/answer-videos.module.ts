@@ -10,6 +10,7 @@ import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
 import { ExamGradingModelModule } from '../exams/exam-grading-model.module';
 import { MediaModule } from '../media/media.module';
 import { StorageModule } from '../storage/storage.module';
+import { AnswerVideoAssembleService } from './answer-video-assemble';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
 import { AnswerVideoStartController } from './answer-video-start.controller';
@@ -36,6 +37,7 @@ import { AnswerVideosService } from './answer-videos.service';
   providers: [
     AnswerVideoStartService,
     AnswerVideoPartService,
+    AnswerVideoAssembleService,
     AnswerVideoCompleteService,
     AnswerVideosService,
     AnswerVideoStatsService,
