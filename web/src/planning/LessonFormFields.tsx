@@ -12,6 +12,7 @@ import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
+import { classOptionLabel } from '../lib/classSlotsLabel';
 import { useTagOptions } from '../hooks/useTagOptions';
 import { inheritedZoomHint } from './inheritedZoom';
 import { LessonNoClassesNotice } from './LessonNoClassesNotice';
@@ -64,7 +65,7 @@ export function LessonFormFields({
           >
             {classes.map((cls) => (
               <option key={cls.id} value={cls.id}>
-                {cls.title}
+                {classOptionLabel(cls)}
               </option>
             ))}
           </Select>

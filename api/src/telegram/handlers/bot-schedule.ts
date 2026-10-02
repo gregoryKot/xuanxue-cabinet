@@ -4,7 +4,7 @@
 // Время — в поясе школы: у бота нет профиля устройства человека, в отличие
 // от кабинета.
 import { DateTime } from 'luxon';
-import { SCHOOL_TZ, type MyLessonDto } from '@xuanxue/shared';
+import { classDisplayName, SCHOOL_TZ, type MyLessonDto } from '@xuanxue/shared';
 import { backToMenuButton, type BotMenu } from './bot-menu';
 
 export const SCHEDULE_LESSONS_LIMIT = 5;
@@ -22,7 +22,11 @@ function formatLesson(lesson: MyLessonDto): string {
   const time = DateTime.fromISO(lesson.startsAt, { zone: 'utc' })
     .setZone(SCHOOL_TZ)
     .toFormat('dd.MM HH:mm');
-  const header = `${lesson.classTitle}, ${time}`;
+  const name = classDisplayName({
+    title: lesson.classTitle,
+    groupLabel: lesson.groupLabel,
+  });
+  const header = `${name}, ${time}`;
   // Отменённое занятие показываем отменённым и без ссылки: звать на встречу,
   // которой не будет, — хуже, чем не показать её вовсе.
   if (lesson.status === 'cancelled') return `${header} — отменено.`;

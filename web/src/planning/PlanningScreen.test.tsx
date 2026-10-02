@@ -185,6 +185,20 @@ describe('PlanningScreen — список занятий', () => {
     expect(await screen.findByText(EDITOR_MARKER)).toBeInTheDocument();
   });
 
+  // Снимок владельца 2026-10-02: «Тайцзицюань» пять раз подряд без группы —
+  // экран печатал одно название слота, а группа живёт отдельным полем.
+  it('название занятия — с группой: тёзки в списке различимы', async () => {
+    mockApiByPath({
+      '/lessons': [makeLesson()],
+      '/classes': [makeClass({ title: 'Тайцзицюань', groupLabel: 'новички' })],
+    });
+
+    renderScreen();
+
+    const dayList = await findDayList();
+    expect(dayList.getByText('Тайцзицюань · новички')).toBeInTheDocument();
+  });
+
   it('«Разовое занятие» ведёт на страницу нового занятия', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });

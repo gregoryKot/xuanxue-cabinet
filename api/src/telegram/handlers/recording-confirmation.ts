@@ -5,7 +5,7 @@
 // не заставлял ужимать саму логику потока.
 import { DateTime } from 'luxon';
 import { Types, type Model } from 'mongoose';
-import { SCHOOL_TZ, type LessonDto } from '@xuanxue/shared';
+import { classDisplayName, SCHOOL_TZ, type LessonDto } from '@xuanxue/shared';
 import type { BroadcastRecord } from '../../broadcasts/broadcast.schema';
 import type { ClassRecord } from '../../classes/class.schema';
 
@@ -15,13 +15,14 @@ export async function buildRecordingConfirmation(
   lesson: LessonDto,
 ): Promise<string> {
   const [cls, sent] = await Promise.all([
-    classModel.findById(lesson.classId, { title: 1, tz: 1 }).lean<{
+    classModel.findById(lesson.classId, { title: 1, groupLabel: 1, tz: 1 }).lean<{
       title: string;
+      groupLabel?: string;
       tz: string;
     } | null>(),
     recordingBroadcastSent(broadcastModel, new Types.ObjectId(lesson.id)),
   ]);
-  const title = cls?.title ?? '';
+  const title = cls ? classDisplayName(cls) : '';
   const time = DateTime.fromISO(lesson.startsAt, { zone: 'utc' })
     .setZone(cls?.tz ?? SCHOOL_TZ)
     .toFormat('HH:mm');

@@ -18,7 +18,8 @@ export async function seedLesson(
     encryptRecord(
       {
         title: 'цигун для глаз',
-        groupLabel: '',
+        // Группа заполнена: сообщения бота называют занятие с ней (2026-10-02).
+        groupLabel: 'средняя группа',
         format: 'online',
         zoomLink: 'https://zoom.example/1',
         tz: 'Asia/Jerusalem',

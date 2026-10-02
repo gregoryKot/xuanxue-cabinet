@@ -29,7 +29,7 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
   it('«{класс} {время}» в канал «{название}»: ошибка', async () => {
     const cls = await ctx.classModel.create({
       title: 'цигун для глаз',
-      groupLabel: '',
+      groupLabel: 'средняя группа',
       format: 'online',
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
@@ -71,7 +71,8 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
     expect(bot.sendMessage).toHaveBeenCalledTimes(1);
     const [chatId, text] = bot.sendMessage.mock.calls[0] as [string, string];
     expect(chatId).toBe('111');
-    expect(text).toContain('цигун для глаз');
+    // Занятие названо с группой — тёзки различимы (2026-10-02).
+    expect(text).toContain('цигун для глаз · средняя группа');
     expect(text).toContain('Ученики');
     expect(text).toContain('чат не найден');
   });

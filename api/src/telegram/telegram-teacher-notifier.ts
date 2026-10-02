@@ -7,7 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { SCHOOL_TZ } from '@xuanxue/shared';
+import { classDisplayName, SCHOOL_TZ } from '@xuanxue/shared';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
@@ -116,14 +116,14 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
       .lean<{ classId: Types.ObjectId } | null>();
     const cls = lesson
       ? await this.classModel
-          .findById(lesson.classId, { title: 1, tz: 1 })
-          .lean<{ title: string; tz: string } | null>()
+          .findById(lesson.classId, { title: 1, groupLabel: 1, tz: 1 })
+          .lean<{ title: string; groupLabel?: string; tz: string } | null>()
       : null;
     if (!cls) return 'Разовая рассылка';
     const time = DateTime.fromJSDate(broadcast.scheduledAt, { zone: 'utc' })
       .setZone(cls.tz || SCHOOL_TZ)
       .toFormat('HH:mm');
-    return `${cls.title} ${time}`;
+    return `${classDisplayName(cls)} ${time}`;
   }
 
   private async channelTitle(channelId: string): Promise<string> {

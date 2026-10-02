@@ -7,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
+import { classDisplayName } from '@xuanxue/shared';
 import { claimAndRun } from '../common/claim-once';
 import { errorMessage, errorStack } from '../common/error-info';
 import { ClassRecord } from '../classes/class.schema';
@@ -80,8 +81,11 @@ export class RecordingPromptService {
     let prompted = 0;
     for (const lesson of due) {
       const cls = await this.classModel
-        .findOne({ _id: lesson.classId, active: true }, { title: 1, tz: 1 })
-        .lean<{ title: string; tz: string } | null>();
+        .findOne(
+          { _id: lesson.classId, active: true },
+          { title: 1, groupLabel: 1, tz: 1 },
+        )
+        .lean<{ title: string; groupLabel?: string; tz: string } | null>();
       if (!cls) continue; // класс выключен/удалён — спрашивать не о чем
       // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
       // try/catch — упади promptTeachers (например, botSessions.
@@ -110,7 +114,7 @@ export class RecordingPromptService {
 
   private async promptTeachers(
     lesson: DueLesson,
-    cls: { title: string; tz: string },
+    cls: { title: string; groupLabel?: string; tz: string },
     chats: readonly PersonalChat[],
     now: DateTime,
   ): Promise<void> {
@@ -118,7 +122,7 @@ export class RecordingPromptService {
       .setZone(cls.tz)
       .toFormat('HH:mm');
     const text =
-      `Занятие «${cls.title}» ${time} закончилось. Пришлите ссылку YouTube или ` +
+      `Занятие «${classDisplayName(cls)}» ${time} закончилось. Пришлите ссылку YouTube или ` +
       'видео — разошлю запись.';
     const buttons = [[inlineButton('Записи не будет', 'norec', lesson._id.toString())]];
 

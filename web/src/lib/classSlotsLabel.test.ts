@@ -1,7 +1,7 @@
 // Правила занятия одной строкой (lib/classSlotsLabel.ts): чистая склейка, без
 // пояса и без «сейчас» — время остаётся школьным (ADR-0162).
 import { describe, expect, it } from 'vitest';
-import { classSlotsLabel } from './classSlotsLabel';
+import { classNamesById, classOptionLabel, classSlotsLabel } from './classSlotsLabel';
 
 const slot = (weekday: number, time: string) => ({ weekday, time, durationMin: 60 });
 
@@ -40,5 +40,38 @@ describe('classSlotsLabel', () => {
 
   it('правил нет — пустая строка', () => {
     expect(classSlotsLabel([])).toBe('');
+  });
+});
+
+describe('classOptionLabel', () => {
+  it('название с группой и дни — тёзки в списке выбора различимы', () => {
+    expect(
+      classOptionLabel({
+        title: 'Тайцзицюань',
+        groupLabel: 'средняя группа',
+        rules: [slot(1, '10:00'), slot(2, '10:00')],
+      }),
+    ).toBe('Тайцзицюань · средняя группа (пн, вт · 10:00)');
+  });
+
+  it('правил нет — только название, без пустых скобок', () => {
+    expect(classOptionLabel({ title: 'Нейгун', groupLabel: '', rules: [] })).toBe(
+      'Нейгун',
+    );
+  });
+});
+
+describe('classNamesById', () => {
+  it('каждому id — название с группой', () => {
+    const names = classNamesById(
+      new Map([
+        ['a', { title: 'Тайцзицюань', groupLabel: 'новички' }],
+        ['b', { title: 'Нейгун', groupLabel: '' }],
+      ]),
+    );
+    expect([...names]).toEqual([
+      ['a', 'Тайцзицюань · новички'],
+      ['b', 'Нейгун'],
+    ]);
   });
 });

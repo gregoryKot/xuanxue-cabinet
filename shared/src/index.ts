@@ -138,6 +138,7 @@ export {
   NULLABLE_CLASS_FIELDS,
   CLASS_NOT_FOUND_MESSAGE,
 } from './classes';
+export { classDisplayName } from './class-name';
 export type {
   RecordingDto,
   LessonDto,
