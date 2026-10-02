@@ -24,13 +24,14 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 const selectFile = vi.fn();
 const cancel = vi.fn();
 const resumeNow = vi.fn();
+const skipCompression = vi.fn();
 let currentState: VideoUploadState;
 let lastOptions: UseVideoUploadOptions<ExamMediaDto> | undefined;
 
 vi.mock('../video-upload/useVideoUpload', () => ({
   useVideoUpload: (options: UseVideoUploadOptions<ExamMediaDto>) => {
     lastOptions = options;
-    return { state: currentState, selectFile, cancel, resumeNow };
+    return { state: currentState, selectFile, cancel, resumeNow, skipCompression };
   },
 }));
 
@@ -134,6 +135,15 @@ describe('AttemptVideoUpload — фазы', () => {
 
     expect(resumeNow).toHaveBeenCalled();
     expect(cancel).toHaveBeenCalled();
+  });
+
+  it('«Отправить без сжатия» на сжатии зовёт skipCompression() хука', async () => {
+    currentState = stateIn('compressing', { canSkipCompression: true });
+    render(<AttemptVideoUpload itemId="q1" video={VIDEO} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Отправить без сжатия' }));
+
+    expect(skipCompression).toHaveBeenCalledTimes(1);
   });
 
   it('cancelled — подсказка про тот же файл и кнопка выбора снова видна', () => {

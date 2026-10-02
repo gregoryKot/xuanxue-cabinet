@@ -51,6 +51,7 @@ export function ExamVideoAttachPreview({
       state={field.upload}
       onCancel={field.cancelUpload}
       onResume={field.resumeUpload}
+      onSkipCompression={field.skipCompression}
     />
   );
   const hasUploadNote =

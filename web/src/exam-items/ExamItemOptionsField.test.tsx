@@ -32,6 +32,7 @@ mockedUseVideoField.mockImplementation(() => ({
   uploadFile: vi.fn(),
   cancelUpload: vi.fn(),
   resumeUpload: vi.fn(),
+  skipCompression: vi.fn(),
   commitUrl: vi.fn(),
   clear: vi.fn(),
 }));

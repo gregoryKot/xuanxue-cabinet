@@ -16,6 +16,10 @@ export interface VideoUploadState {
   partBytes: number;
   /** Только `phase: 'compressing'` — доля готовности сжатия 0..1 (ADR-0165). */
   compressProgress: number;
+  /** Только `phase: 'compressing'` — показывать ли «Отправить без сжатия»: у
+   * исходника, который сервер всё равно отвергнет (больше потолка вида видео),
+   * отказ от сжатия бессмыслен — кнопки нет. */
+  canSkipCompression: boolean;
   /** Только `phase: 'failed'` — текст сервера или общий запасной. */
   error: FormError | null;
 }
@@ -27,6 +31,7 @@ export const IDLE_VIDEO_UPLOAD_STATE: VideoUploadState = {
   totalBytes: 0,
   partBytes: 0,
   compressProgress: 0,
+  canSkipCompression: false,
   error: null,
 };
 

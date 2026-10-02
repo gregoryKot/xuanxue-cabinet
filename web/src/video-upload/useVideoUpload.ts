@@ -5,8 +5,8 @@
 // videoUploadRunner.ts, а к какому маршруту сервера он ведёт — транспорт вида
 // видео. Здесь только React state machine поверх них: idle → compressing
 // (сжатие в браузере, ADR-0165; у маленького файла или браузера без WebCodecs
-// пропускается) → uploading → waiting (пауза перед повтором) → done | failed |
-// cancelled.
+// пропускается, а человек может отказаться от него кнопкой — compressThenUpload.ts)
+// → uploading → waiting (пауза перед повтором) → done | failed | cancelled.
 import { useCallback, useRef, useState } from 'react';
 import {
   IDLE_VIDEO_UPLOAD_STATE,
@@ -15,6 +15,7 @@ import {
 } from './videoUploadState';
 import type { VideoUploadTransport } from './videoUploadTypes';
 import { beginVideoUpload } from './beginVideoUpload';
+import { compressThenUpload } from './compressThenUpload';
 import { useWarnBeforeUnload } from '../hooks/useWarnBeforeUnload';
 import { canCompressVideo, compressVideo } from './compressVideo';
 import { useScreenWakeLock } from './useScreenWakeLock';
@@ -46,6 +47,9 @@ export interface UseVideoUploadResult {
   cancel: () => void;
   /** «Продолжить сейчас» — не ждать таймера паузы. */
   resumeNow: () => void;
+  /** «Отправить без сжатия»: обрывает сжатие и грузит исходный файл. Вне фазы
+   * сжатия ничего не делает. */
+  skipCompression: () => void;
   /** Обрывает загрузку и забывает всё, что она оставила на экране — ошибку или
    * «отменено»: «Убрать видео» не должно оставлять за собой старую ошибку. */
   reset: () => void;
@@ -68,6 +72,7 @@ export function useVideoUpload<TResult extends object>({
   useWarnBeforeUnload(isActive);
   const runIdRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
+  const skipRef = useRef<(() => void) | null>(null);
 
   const markWaiting = useCallback(
     () => setState((prev) => ({ ...prev, phase: 'waiting' })),
@@ -85,7 +90,7 @@ export function useVideoUpload<TResult extends object>({
     setState((prev) =>
       prev.phase === 'idle' || prev.phase === 'done'
         ? prev
-        : { ...prev, phase: 'cancelled', error: null },
+        : { ...prev, phase: 'cancelled', error: null, canSkipCompression: false },
     );
   }, [release]);
 
@@ -94,6 +99,7 @@ export function useVideoUpload<TResult extends object>({
       runIdRef.current += 1;
       const thisRun = runIdRef.current;
       controllerRef.current?.abort();
+      skipRef.current = null;
       const controller = new AbortController();
       controllerRef.current = controller;
       const isCancelled = () => runIdRef.current !== thisRun || controller.signal.aborted;
@@ -120,23 +126,15 @@ export function useVideoUpload<TResult extends object>({
         upload(file);
         return;
       }
-      setState({
-        ...IDLE_VIDEO_UPLOAD_STATE,
-        phase: 'compressing',
-        totalBytes: file.size,
-      });
-      // Отвергается сжатие только отменой — тогда выходим молча; любой другой
-      // сбой compress уже превратил в исходный файл.
-      void compress(file, {
+      skipRef.current = compressThenUpload({
+        file,
         signal: controller.signal,
-        onProgress: (fraction) =>
-          setState((prev) => ({ ...prev, compressProgress: fraction })),
-      }).then(
-        (prepared) => {
-          if (!isCancelled()) upload(prepared);
-        },
-        () => undefined,
-      );
+        isCancelled,
+        compress,
+        maxBytes,
+        setState,
+        upload,
+      });
     },
     [createTransport, onDone, maxBytes, tooLargeMessage, waitForResume, compress],
   );
@@ -146,5 +144,7 @@ export function useVideoUpload<TResult extends object>({
     setState(IDLE_VIDEO_UPLOAD_STATE);
   }, [cancel]);
 
-  return { state, selectFile, cancel, resumeNow: release, reset };
+  const skipCompression = useCallback(() => skipRef.current?.(), []);
+
+  return { state, selectFile, cancel, resumeNow: release, skipCompression, reset };
 }
