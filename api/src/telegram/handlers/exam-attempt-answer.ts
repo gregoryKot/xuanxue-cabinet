@@ -9,25 +9,12 @@ import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { GENERIC_ERROR } from './callback-actions';
+import { saveChoice } from './exam-attempt-choice';
 import { reportExamActionError } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
 import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 import { presentMissingReason } from './exam-submit-reason-screen';
-
-/** `single` — выбор варианта отвечает на вопрос целиком, поэтому сразу
- * заменяет прошлый выбор; `multiple` — кнопка-переключатель, добавляет или
- * убирает вариант из уже выбранных. */
-function nextOptionIds(
-  current: string[],
-  optionId: string,
-  isMultiple: boolean,
-): string[] {
-  if (!isMultiple) return [optionId];
-  return current.includes(optionId)
-    ? current.filter((id) => id !== optionId)
-    : [...current, optionId];
-}
 
 export async function handleExamOption(
   ctx: Context,
@@ -67,20 +54,13 @@ export async function handleExamOption(
       return;
     }
 
-    const existingAnswer = attempt.answers.find((a) => a.itemId === question.itemId);
-    const current = existingAnswer?.optionIds ?? [];
-    const optionIds = nextOptionIds(current, option.id, question.kind === 'multiple');
-    // Существующий text сохраняется как есть (ADR-0146) — это объяснение
-    // выбора у вопроса с askReason, замена ответа вариантом не должна его
-    // стирать (mergeAnswers заменяет ответ по itemId целиком).
-    const updated = await examBot.saveAnswer(
-      ids.attemptId,
+    const updated = await saveChoice(
+      examBot,
       user,
-      {
-        itemId: question.itemId,
-        optionIds,
-        ...(existingAnswer?.text !== undefined ? { text: existingAnswer.text } : {}),
-      },
+      ids.attemptId,
+      attempt,
+      question,
+      option.id,
       now,
     );
 

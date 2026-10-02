@@ -244,7 +244,7 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
     const { ctx, edits, buttonTexts } = fakeCtx();
 
@@ -258,12 +258,15 @@ describe('handleExamOption', () => {
       NOW,
     );
 
-    expect(port.saveAnswer).toHaveBeenCalledWith(
+    // Аудит 2026-10-01 (F27): «отмечен/снят» считает сервер внутри CAS, бот
+    // шлёт только какой вариант нажат — снимок экрана мог устареть.
+    expect(port.toggleOption).toHaveBeenCalledWith(
       ATTEMPT_ID,
       USER,
-      { itemId: 'i1', optionIds: ['o1', 'o2'] },
+      { itemId: 'i1', optionId: 'o2' },
       NOW,
     );
+    expect(port.saveAnswer).not.toHaveBeenCalled();
     expect(edits[0]).toContain('Вопрос 1 из 1');
     expect(buttonTexts[0]).toContain('☑ B');
   });
@@ -284,7 +287,7 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
     const { ctx, edits, deletes, sendPhoto } = fakeCtx();
 
@@ -304,7 +307,7 @@ describe('handleExamOption', () => {
     expect(port.loadOptionImage).not.toHaveBeenCalled();
   });
 
-  it('multiple — повторное нажатие снимает отметку', async () => {
+  it('multiple — повторное нажатие рисует экран по ответу сервера (отметка снята)', async () => {
     const current = attempt([MULTIPLE_Q], {
       answers: [{ itemId: 'i1', optionIds: ['o1', 'o2'] }],
     });
@@ -313,9 +316,9 @@ describe('handleExamOption', () => {
     });
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
-      saveAnswer: jest.fn().mockResolvedValue(saved),
+      toggleOption: jest.fn().mockResolvedValue(saved),
     });
-    const { ctx } = fakeCtx();
+    const { ctx, buttonTexts } = fakeCtx();
 
     await handleExamOption(
       ctx,
@@ -327,12 +330,14 @@ describe('handleExamOption', () => {
       NOW,
     );
 
-    expect(port.saveAnswer).toHaveBeenCalledWith(
+    expect(port.toggleOption).toHaveBeenCalledWith(
       ATTEMPT_ID,
       USER,
-      { itemId: 'i1', optionIds: ['o2'] },
+      { itemId: 'i1', optionId: 'o1' },
       NOW,
     );
+    expect(buttonTexts[0]).toContain('☐ A');
+    expect(buttonTexts[0]).toContain('☑ B');
   });
 
   it('чужая/несуществующая попытка — ATTEMPT_NOT_FOUND_MESSAGE', async () => {
