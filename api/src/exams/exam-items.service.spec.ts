@@ -52,7 +52,7 @@ describe('ExamItemsService', () => {
     // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
     // вопрос (защита от архивации, exam-item-references.ts) — без отдельного
     // мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
-    examsService = new ExamsService(examModel, model);
+    examsService = new ExamsService(examModel, model, attemptModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -680,7 +680,7 @@ describe('ExamItemsService', () => {
         { title: 'Экзамен в разгаре', blocks: [{ itemIds: [published.id] }] },
         AUTHOR_ID,
       );
-      await examsService.update(exam.id, { status: 'published' });
+      await examsService.update(exam.id, { status: 'published' }, NOW);
 
       await expect(
         service.update(published.id, { status: 'draft' }, NOW),
@@ -693,7 +693,7 @@ describe('ExamItemsService', () => {
       });
       // Read-after-write: форма по-прежнему сохраняется — ради этого и гейт.
       await expect(
-        examsService.update(exam.id, { attemptsAllowed: 3 }),
+        examsService.update(exam.id, { attemptsAllowed: 3 }, NOW),
       ).resolves.toMatchObject({ attemptsAllowed: 3 });
     });
 
@@ -718,7 +718,7 @@ describe('ExamItemsService', () => {
         { title: 'Форма со старыми данными', blocks: [{ itemIds: [published.id] }] },
         AUTHOR_ID,
       );
-      await examsService.update(exam.id, { status: 'published' });
+      await examsService.update(exam.id, { status: 'published' }, NOW);
       // Мимо сервиса: через update() вопрос в живой форме в архив не уйдёт,
       // а восстанавливать нужно именно такие, уже лежащие в базе.
       await model.updateOne({ _id: published.id }, { $set: { status: 'archived' } });
@@ -768,12 +768,12 @@ describe('ExamItemsService', () => {
         { title: 'Живая форма', blocks: [{ itemIds: [published.id] }] },
         AUTHOR_ID,
       );
-      await examsService.update(exam.id, { status: 'published' });
+      await examsService.update(exam.id, { status: 'published' }, NOW);
 
       await service.remove(published.id, NOW);
 
       await expect(
-        examsService.update(exam.id, { level: 'начальный' }),
+        examsService.update(exam.id, { level: 'начальный' }, NOW),
       ).resolves.toMatchObject({ level: 'начальный' });
       // includeDeleted — тем же приёмом, что exam-attempt-start.ts.
       await expect(service.getById(published.id, true)).resolves.toMatchObject({

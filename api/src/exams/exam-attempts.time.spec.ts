@@ -43,7 +43,7 @@ describe('ExamAttemptsService — дедлайн', () => {
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return ctx.service.start(exam.id, USER_A, startedAt);
   }
 
@@ -64,7 +64,7 @@ describe('ExamAttemptsService — дедлайн', () => {
       { title: 'Без лимита', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
 
     const started = await ctx.service.start(exam.id, USER_A, NOW);
 
@@ -231,7 +231,7 @@ describe('ExamAttemptsService — дедлайн', () => {
       { title: 'Экзамен с лимитом', blocks: [{ itemIds: [item.id] }], timeLimitMin: 30 },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const started = await ctx.service.start(exam.id, USER_A, NOW);
     const optionId = started.blocks[0]?.questions[0]?.options[0]?.id ?? '';
     await ctx.service.saveAnswers(

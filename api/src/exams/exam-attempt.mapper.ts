@@ -88,10 +88,20 @@ export function toStudentBlock(block: AttemptBlockRecord): AttemptBlockDto {
  * ExamAttemptsService, и exam-attempt-lifecycle.ts. */
 export function decryptAttempt(doc: RawLeanExamAttempt): LeanExamAttempt {
   const decrypted = decryptRecord(doc, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
+  const { blocks, answers } = decrypted as { blocks: unknown; answers: unknown };
+  // decryptRecord отдаёт нерасшифрованный blob как есть (строкой) — без этой
+  // проверки `.map` падал бы глубже, без attemptId в стеке (F55, аудит
+  // 2026-10-01). Обычная Error, не доменная: это порча данных на сервере,
+  // ученику исправлять нечего — 500 с requestId и стеком в логе.
+  if (!Array.isArray(blocks) || !Array.isArray(answers)) {
+    throw new Error(
+      `decryptAttempt: попытка ${doc._id.toString()} не расшифровалась (blocks/answers)`,
+    );
+  }
   return {
     ...decrypted,
-    blocks: decrypted.blocks as unknown as AttemptBlockRecord[],
-    answers: decrypted.answers as unknown as AttemptAnswerDto[],
+    blocks: blocks as AttemptBlockRecord[],
+    answers: answers as AttemptAnswerDto[],
   };
 }
 

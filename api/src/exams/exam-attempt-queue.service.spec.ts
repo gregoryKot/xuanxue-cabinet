@@ -49,7 +49,7 @@ describe('ExamAttemptQueueService', () => {
       { title: 'Экзамен по третьей форме', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return ctx.service.start(exam.id, userId, NOW);
   }
 

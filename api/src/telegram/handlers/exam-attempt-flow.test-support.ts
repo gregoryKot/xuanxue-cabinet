@@ -145,6 +145,6 @@ export async function publishedFlowExam(
     },
     AUTHOR_ID,
   );
-  await ctx.examsService.update(exam.id, { status: 'published' });
+  await ctx.examsService.update(exam.id, { status: 'published' }, now);
   return { examId: exam.id, itemIds };
 }

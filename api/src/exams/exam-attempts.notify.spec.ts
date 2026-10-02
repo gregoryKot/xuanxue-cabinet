@@ -54,7 +54,7 @@ describe('ExamAttemptsService — уведомление attempt_submitted', () 
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 

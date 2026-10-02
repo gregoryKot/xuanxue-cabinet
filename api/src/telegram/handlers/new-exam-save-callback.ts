@@ -62,7 +62,7 @@ export async function handleNewExamPublish(
       );
       return;
     }
-    const exam = await examBot.createAndPublishExam(input, user.id);
+    const exam = await examBot.createAndPublishExam(input, user.id, now);
     await botSessions.setNewExamDraft(
       chatId,
       { step: 'confirm', savedExamId: exam.id },

@@ -4,6 +4,7 @@
 // запросе. Попытки собираются через настоящий поток сервисов (start/
 // saveAnswers/submit) — так же, как их создаёт ученик, а не вставкой в базу
 // мимо шифрования.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import type { ExamAttemptDto } from '@xuanxue/shared';
@@ -83,7 +84,7 @@ describe('ExamItemStatsService', () => {
       examImagesService,
       fakeExamVideosService(),
     );
-    examsService = new ExamsService(examModel, itemModel);
+    examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,
       gradingModel,
@@ -147,7 +148,7 @@ describe('ExamItemStatsService', () => {
       { title: 'Экзамен для статистики', blocks: [{ itemIds: [itemId] }] },
       AUTHOR_ID,
     );
-    await examsService.update(created.id, { status: 'published' });
+    await examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 
@@ -388,6 +389,33 @@ describe('ExamItemStatsService', () => {
         usedInExamsCount: 1,
       });
       expect(expected.askedCount).toBe(2);
+    });
+  });
+
+  // Аудит 2026-10-01, F55 (ревью #529): попытка, которую не расшифровать
+  // (чужой ключ, испорченный blob), роняла статистику вопроса целиком — 500
+  // для учителя при каждом открытии, пока битая строка лежит в базе.
+  describe('F55 — битая попытка не роняет статистику', () => {
+    it('курсор пропускает битую попытку: считает по остальным, одна строка error-лога с её id', async () => {
+      const { itemId, correctOptionId } = await createPublishedSingleChoiceItem();
+      const examId = await createPublishedExam(itemId);
+      const broken = await submitAnswer(examId, USER_A, itemId, [correctOptionId]);
+      await submitAnswer(examId, USER_B, itemId, [correctOptionId]);
+      await attemptModel.updateOne(
+        { _id: broken.id },
+        { $set: { blocks: 'не blob и не массив' } },
+      );
+      const errorLog = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const stats = await statsService.getStats(itemId);
+
+      expect(stats.askedCount).toBe(1);
+      expect(stats.correctCount).toBe(1);
+      expect(errorLog).toHaveBeenCalledTimes(1);
+      expect(String(errorLog.mock.calls[0]?.[0])).toContain(broken.id);
+      errorLog.mockRestore();
     });
   });
 

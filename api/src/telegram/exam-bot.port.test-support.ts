@@ -46,7 +46,7 @@ export interface FakeExamBotPort extends ExamBotPort {
     [Partial<CreateExamItemInput>]
   >;
   listExamItemsToAssemble: jest.Mock<Promise<ExamItemDto[]>, []>;
-  createAndPublishExam: jest.Mock<Promise<ExamDto>, [CreateExamInput, string]>;
+  createAndPublishExam: jest.Mock<Promise<ExamDto>, [CreateExamInput, string, DateTime]>;
   validateExamDraft: jest.Mock<Promise<string[] | null>, [Partial<CreateExamInput>]>;
   loadAttemptReview: jest.Mock<Promise<AttemptReviewDto | null>, [string]>;
   gradeAttempt: jest.Mock<
@@ -102,7 +102,10 @@ export function fakeExamBotPort(
     // По умолчанию список пуст — спекам, которым нужны конкретные вопросы
     // для сборки (ТЗ 4б.4), выставляют своё значение явно.
     listExamItemsToAssemble: jest.fn<Promise<ExamItemDto[]>, []>().mockResolvedValue([]),
-    createAndPublishExam: jest.fn<Promise<ExamDto>, [CreateExamInput, string]>(),
+    createAndPublishExam: jest.fn<
+      Promise<ExamDto>,
+      [CreateExamInput, string, DateTime]
+    >(),
     // Черновик формы валиден по умолчанию — тем же приёмом, что validateExamItemDraft.
     validateExamDraft: jest
       .fn<Promise<string[] | null>, [Partial<CreateExamInput>]>()

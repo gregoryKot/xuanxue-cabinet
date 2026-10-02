@@ -44,7 +44,7 @@ describe('ExamAttemptCountService', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 

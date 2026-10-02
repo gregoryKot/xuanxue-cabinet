@@ -6,6 +6,8 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
+import type { ExamMediaDto } from '@xuanxue/shared';
+import { beforeModelCall } from '../test-support/before-model-call';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import {
   ConflictError,
@@ -80,6 +82,8 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
   let attemptModel: Model<ExamAttemptRecord>;
   let mediaModel: Model<MediaAssetRecord>;
   let orphans: StorageOrphansService;
+  // Уведомление учителю о файле — считаем вызовы (F47: ровно одно на видео).
+  const notifyVideoLinkAdded = jest.fn<Promise<void>, [unknown, DateTime]>();
   let multipart: {
     isEnabled: boolean;
     createMultipartUpload: jest.Mock;
@@ -143,6 +147,9 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       videoModel,
       multipart as unknown as MultipartStoreService,
     );
+    const notifiers = new ExamMediaNotifierRegistry();
+    notifiers.set({ notifyVideoLinkAdded });
+    notifyVideoLinkAdded.mockResolvedValue(undefined);
     completeService = new AnswerVideoCompleteService(
       videoModel,
       attemptModel,
@@ -154,7 +161,7 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
         orphans,
       ),
       orphans,
-      new ExamMediaNotifierRegistry(),
+      notifiers,
     );
   }, 60_000);
 
@@ -533,6 +540,36 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       expect(doc?.status).toBe('ready');
       expect(doc?.parts).toEqual([]);
       expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
+      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
+    });
+
+    // F47, второе окно (ревью #529) детерминированно, без везения в порядке
+    // await (приём F28, before-model-call.ts): два complete по одному id —
+    // клиентский таймаут при ещё идущем на сервере запросе и повтор. Перед
+    // `create` media первого вызова второй проходит целиком: R2 уже собрал
+    // (r2CompletedAt), запись получает `_id` видео, переход в ready — его.
+    // Первый упирается в E11000, берёт ту же запись и учителя не беспокоит.
+    it('второй complete целиком до записи media первого — одна media, одно уведомление, оба ответа с её id', async () => {
+      const { id, attemptId } = await readyForComplete();
+      const rival: ExamMediaDto[] = [];
+      beforeModelCall(mediaModel, 'create', async () => {
+        rival.push(await completeService.complete(id, USER_A, NOW.plus({ seconds: 1 })));
+      });
+
+      const first = await completeService.complete(id, USER_A, NOW);
+
+      expect(rival[0]?.id).toBe(first.id);
+      expect(
+        await mediaModel.countDocuments({
+          attemptId,
+          answerVideoId: new Types.ObjectId(id),
+          kind: 'file',
+        }),
+      ).toBe(1);
+      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
+      expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
+      // Документ видео и его байты живы: конкурент не принял свежую media за прошлый файл.
+      expect(await videoModel.countDocuments({ _id: id, status: 'ready' })).toBe(1);
     });
 
     it('второй файл к тому же вопросу заменяет прежний (ADR-0086/ADR-0137)', async () => {

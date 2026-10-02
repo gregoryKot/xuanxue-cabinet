@@ -4,6 +4,9 @@
 // становится graded.
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
+import { NotFoundError } from '../common/errors';
+import { beforeModelCall } from '../test-support/before-model-call';
+import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import {
   AUTHOR_ID,
   GRADER_ID,
@@ -45,7 +48,7 @@ describe('ExamGradingsService', () => {
       { title: 'Экзамен по третьей форме', blocks: [{ itemIds: [itemId] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(created.id, { status: 'published' });
+    await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     return created.id;
   }
 
@@ -111,7 +114,7 @@ describe('ExamGradingsService', () => {
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const started = await ctx.service.start(exam.id, USER_A, NOW);
     const correctOptionId = optionItem.options[0]?.id;
     if (!correctOptionId) throw new Error('фикстура: у первого варианта должен быть id');
@@ -273,5 +276,88 @@ describe('ExamGradingsService', () => {
     const reviewB = await ctx.gradingsService.getReview(attemptB.id, NOW);
     expect(reviewB.grading).toBeUndefined();
     expect(reviewB.status).toBe('submitted'); // не задета оценкой А
+  });
+
+  // F28 (аудит 2026-10-01): учитель ставит оценку просроченной попытке, а
+  // ученик в ту же секунду нажал «Пройти ещё раз» — повторный старт сносит
+  // попытку (ADR-0131). Оценка не должна остаться сиротой с ложным
+  // «проверили» и уведомлением ученику: смена статуса условная, при
+  // расхождении — NotFoundError и уборка сироты.
+  describe('гонка с повторным стартом ученика (F28)', () => {
+    async function expiredSubmittedAttempt() {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam(itemId);
+      const started = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.attemptModel.updateOne(
+        { _id: started.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+      const retryCleanup = new ExamAttemptRetryCleanupService(
+        ctx.attemptModel,
+        ctx.mediaModel,
+        ctx.notificationModel,
+        ctx.gradingModel,
+      );
+      const last = await retryCleanup.findLastAttempt(examId, USER_A);
+      if (!last) throw new Error('попытка не найдена');
+      return {
+        attemptId: started.id,
+        wipe: () => retryCleanup.deleteIfExpiredUngraded(last),
+      };
+    }
+
+    async function expectNoOrphan(attemptId: string): Promise<void> {
+      await expect(ctx.gradingModel.countDocuments({ attemptId })).resolves.toBe(0);
+      await expect(ctx.attemptModel.findById(attemptId)).resolves.toBeNull();
+      expect(ctx.examNotifier.notifyExamGraded).not.toHaveBeenCalled();
+    }
+
+    it('попытку снесли между записью оценки и сменой статуса — 404, сироты нет, уведомления нет', async () => {
+      const { attemptId, wipe } = await expiredSubmittedAttempt();
+      beforeModelCall(ctx.attemptModel, 'updateOne', wipe);
+
+      await expect(
+        ctx.gradingsService.grade(attemptId, GRADER_ID, { outcome: 'passed' }, NOW),
+      ).rejects.toBeInstanceOf(NotFoundError);
+
+      await expectNoOrphan(attemptId);
+    });
+
+    it('попытку снесли между чтением и записью оценки — то же: 404, сироты нет', async () => {
+      const { attemptId, wipe } = await expiredSubmittedAttempt();
+      beforeModelCall(ctx.gradingModel, 'updateOne', wipe);
+
+      await expect(
+        ctx.gradingsService.grade(attemptId, GRADER_ID, { outcome: 'passed' }, NOW),
+      ).rejects.toBeInstanceOf(NotFoundError);
+
+      await expectNoOrphan(attemptId);
+    });
+
+    it('оценка успела первой — повторный старт попытку и оценку не трогает', async () => {
+      const { attemptId, wipe } = await expiredSubmittedAttempt();
+      await ctx.gradingsService.grade(attemptId, GRADER_ID, { outcome: 'passed' }, NOW);
+
+      await wipe();
+
+      await expect(ctx.attemptModel.findById(attemptId)).resolves.not.toBeNull();
+      await expect(ctx.gradingModel.countDocuments({ attemptId })).resolves.toBe(1);
+    });
+
+    it('уже graded — повторный PUT проходит (условный апдейт идемпотентен)', async () => {
+      const { attemptId } = await expiredSubmittedAttempt();
+      await ctx.gradingsService.grade(attemptId, GRADER_ID, { outcome: 'passed' }, NOW);
+
+      const again = await ctx.gradingsService.grade(
+        attemptId,
+        GRADER_ID,
+        { outcome: 'needs_work', comment: 'Ещё раз' },
+        NOW,
+      );
+
+      expect(again.outcome).toBe('needs_work');
+      const attempt = await ctx.attemptModel.findById(attemptId).lean();
+      expect(attempt?.status).toBe('graded');
+    });
   });
 });

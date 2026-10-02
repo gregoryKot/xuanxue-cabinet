@@ -60,7 +60,7 @@ describe('Мягкое удаление экзамена и вопроса (ADR-
       { title: 'Экзамен по стойкам', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return { itemId: item.id, examId: exam.id };
   }
 
@@ -103,7 +103,7 @@ describe('Мягкое удаление экзамена и вопроса (ADR-
     expect(deletedDto?.deletedAt).toBe(NOW.toUTC().toISO());
 
     // Форма продолжает сохраняться — блок ссылается на удалённый вопрос.
-    const updated = await ctx.examsService.update(examId, { level: 'начальный' });
+    const updated = await ctx.examsService.update(examId, { level: 'начальный' }, NOW);
     expect(updated.blocks[0]?.itemIds).toEqual([itemId]);
 
     // Ученик всё ещё получает этот вопрос при старте попытки.

@@ -64,7 +64,7 @@ describe('MyExamsService', () => {
       AUTHOR_ID,
     );
     if (options.published !== false) {
-      await ctx.examsService.update(created.id, { status: 'published' });
+      await ctx.examsService.update(created.id, { status: 'published' }, NOW);
     }
     return created.id;
   }
@@ -264,6 +264,38 @@ describe('MyExamsService', () => {
       expired: false,
     });
   });
+
+  // F10 (аудит 2026-10-01): список — только published, и это остаётся верным,
+  // потому что переход published → archived при идущей попытке закрыт гардом
+  // ExamsService (exam-unpublish-guard.ts). Тест фиксирует: если форму всё же
+  // архивировали мимо гарда, карточка пропадает — за это отвечает гард, не список.
+  it('форма в архиве с идущей попыткой ученика — в списке её нет (переход держит гард)', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    await ctx.service.start(examId, USER_A, NOW);
+    await expect(
+      ctx.examsService.update(examId, { status: 'archived' }, NOW),
+    ).rejects.toThrow('Дождитесь сдачи');
+    await ctx.examModel.updateOne({ _id: examId }, { $set: { status: 'archived' } });
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list).toEqual([]);
+  });
+
+  // F55: битая последняя попытка не роняет весь /me/exams — форма видна, но
+  // без положения ученика по ней (в логе — attemptId).
+  it('последняя попытка не расшифровывается — форма в списке без lastAttempt', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.attemptModel.updateOne({ _id: started.id }, { $set: { answers: 'мусор' } });
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list.map((e) => e.id)).toEqual([examId]);
+    expect(list[0]?.lastAttempt).toBeUndefined();
+  });
 });
 
 // ADR-0129 (отзыв тестировщицы 2026-09-23): счётчик уведомлений гаснет по
@@ -303,7 +335,7 @@ describe('MyExamsService — markSeen (ADR-0129)', () => {
       { title: 'Экзамен', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 

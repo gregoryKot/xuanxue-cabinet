@@ -27,6 +27,7 @@ import {
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
+import { decryptAttemptOrNull } from './exam-attempt-decrypt-safe';
 import {
   decryptAttempt,
   type LeanExamAttempt,
@@ -127,10 +128,14 @@ export async function closeExpiredAttempts(
 
   let closedByThisCall = 0;
   for (const raw of candidates) {
+    // Битая попытка (F55) — одна строка error-лога и пропуск, не падение
+    // тика: остальные закрываются, она остаётся in_progress до починки данных.
+    const attempt = decryptAttemptOrNull(raw);
+    if (!attempt) continue;
     // Колбэк closeIfExpiredAttempt синхронный — запоминаем, выиграл ли этот
     // вызов гонку, и уведомляем уже с ожиданием, по одной попытке за раз.
     let closedHere: LeanExamAttempt | null = null;
-    await closeIfExpiredAttempt(model, decryptAttempt(raw), now, (closed) => {
+    await closeIfExpiredAttempt(model, attempt, now, (closed) => {
       closedHere = closed;
     });
     if (!closedHere) continue;

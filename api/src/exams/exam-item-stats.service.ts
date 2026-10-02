@@ -9,26 +9,19 @@
 // (CLAUDE.md «API»: без N+1).
 //
 // Аудит 2026-10-01, F32: раньше `find` тянул попытки целиком и все разом —
-// «дай всё» (CLAUDE.md «API»), и каждое открытие «Экзаменов» (prefetch
-// первого экрана) расшифровывало всю историю сдач, растущую с каждым
-// экзаменом. Теперь проекция только двух нужных полей (`blocks`/`answers`;
-// `examTitle`, `imageIds`, даты статистике не нужны) и курсор батчами:
-// в памяти одновременно живёт один батч, а не вся коллекция. Результат тот
-// же — накопитель принимает попытки по частям (спек сверяет с расчётом по
-// полному списку).
+// «дай всё» (CLAUDE.md «API»), и каждое открытие «Экзаменов» расшифровывало
+// всю историю сдач. Теперь проекция двух нужных полей (`blocks`/`answers`) и
+// курсор батчами: в памяти один батч, не вся коллекция. Результат тот же —
+// накопитель принимает попытки по частям (спек сверяет с полным списком).
 //
-// Ревью #535 к F32: у драйвера общий `timeoutMS` (MONGO_OPERATION_TIMEOUT_MS,
-// 20 с), а у обычного курсора `timeoutMode` по умолчанию `cursorLifetime` —
-// весь проход (все getMore плюс расшифровка попыток внутри цикла) обязан
-// был бы уложиться в 20 с, и статистика учителя падала бы по таймауту в день
-// экзамена, когда сданных попыток больше всего. `iteration` даёт бюджет на
-// каждую порцию (getMore), расшифровка между порциями в него не входит.
-// `timeoutMode` без явного `timeoutMS` драйвер отвергает
-// (MongoInvalidArgumentError), а клиентского `timeoutMS` у тестовой Mongo
-// нет — поэтому оба параметра стоят на самом запросе.
+// Ревью #535: у драйвера общий `timeoutMS` (MONGO_OPERATION_TIMEOUT_MS, 20 с),
+// а у курсора `timeoutMode` по умолчанию `cursorLifetime` — весь проход с
+// расшифровкой обязан был бы уложиться в 20 с, и статистика падала бы по
+// таймауту в день экзамена. `iteration` даёт бюджет на каждую порцию (getMore).
+// `timeoutMode` без явного `timeoutMS` драйвер отвергает — оба стоят на запросе.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import type {
   ExamAttemptStatus,
   ExamItemKind,
@@ -38,6 +31,7 @@ import type {
 import { NOT_DELETED } from '../common/soft-delete';
 import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
 import { decryptRecord } from '../utils/encryption';
+import { logBrokenAttempt } from './exam-attempt-decrypt-safe';
 import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
 import {
@@ -62,8 +56,7 @@ const OPTION_KINDS: ExamItemKind[] = ['single', 'multiple'];
 // молча врала бы учителю).
 const ATTEMPT_STATS_FIELDS = 'blocks answers';
 const ATTEMPT_STATS_BATCH_SIZE = 100;
-// Параметры курсора целиком; что именно они доходят до драйвера, сверяет
-// спек (ревью #535).
+// Параметры курсора целиком; что они доходят до драйвера, сверяет спек.
 const ATTEMPT_STATS_CURSOR_OPTIONS = {
   batchSize: ATTEMPT_STATS_BATCH_SIZE,
   timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
@@ -75,18 +68,30 @@ const ATTEMPT_STATS_CURSOR_OPTIONS = {
 // `decryptRecord`, тот же приём, что у ReferencingExamRow (exam-item-references.ts).
 interface AttemptStatsRow {
   [key: string]: unknown;
+  // Проекция `_id` не отключает: он нужен, чтобы назвать битую попытку в логе.
+  _id: Types.ObjectId;
   blocks: string;
   answers: string;
 }
 
-/** Тот же разбор, что у decryptAttempt (exam-attempt.mapper.ts), но для
- * строки из двух полей — полный `RawLeanExamAttempt` сюда не приходит. */
-function decryptAttemptStatsRow(row: AttemptStatsRow): AttemptStatsInput {
-  const decrypted = decryptRecord(row, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
-  return {
-    blocks: decrypted.blocks as unknown as AttemptStatsInput['blocks'],
-    answers: decrypted.answers as unknown as AttemptStatsInput['answers'],
-  };
+/** Тот же разбор и та же проверка формы, что у decryptAttempt
+ * (exam-attempt.mapper.ts), но для строки из двух полей — полный
+ * `RawLeanExamAttempt` сюда не приходит. Битая попытка — пропуск с error-логом
+ * (attemptId), не 500 на всю статистику (F55, аудит 2026-10-01; ревью #529). */
+function decryptAttemptStatsRowOrNull(row: AttemptStatsRow): AttemptStatsInput | null {
+  try {
+    const { blocks, answers } = decryptRecord(row, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
+    if (!Array.isArray(blocks) || !Array.isArray(answers)) {
+      throw new Error('blocks/answers — не массив');
+    }
+    return {
+      blocks: blocks as unknown as AttemptStatsInput['blocks'],
+      answers: answers as unknown as AttemptStatsInput['answers'],
+    };
+  } catch (err) {
+    logBrokenAttempt(row._id, err);
+    return null;
+  }
 }
 
 @Injectable()
@@ -136,7 +141,9 @@ export class ExamItemStatsService {
       .lean<AttemptStatsRow[]>()
       .cursor({ ...ATTEMPT_STATS_CURSOR_OPTIONS });
     for await (const row of cursor) {
-      accumulateAttemptStats([decryptAttemptStatsRow(row)], byItem);
+      const input = decryptAttemptStatsRowOrNull(row);
+      if (!input) continue;
+      accumulateAttemptStats([input], byItem);
     }
     return byItem;
   }

@@ -38,7 +38,7 @@ describe('ExamGradingsService — уведомление exam_result', () => {
       { title: 'Экзамен по третьей форме', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const started = await ctx.service.start(exam.id, USER_A, NOW);
     await ctx.service.submit(started.id, USER_A, NOW);
     return { attemptId: started.id, examId: exam.id };
@@ -110,7 +110,7 @@ describe('ExamGradingsService — уведомление exam_result', () => {
       { title: 'т', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const started = await ctx.service.start(exam.id, USER_A, NOW);
 
     await expect(

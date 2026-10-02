@@ -3,6 +3,7 @@
 // который не вернулся в кабинет и не тронул бота после дедлайна (блокер
 // аудита 2026-09-15, ТЗ 4.4 п.7). Ровно тот тест, которого не было ни здесь,
 // ни в exam-attempts.service.spec.ts, ни в exam-grading.e2e-spec.ts.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { UserLean } from '../users/users.service';
@@ -64,7 +65,7 @@ describe('ExamDeadlineCloseService', () => {
       },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     return exam.id;
   }
 
@@ -128,7 +129,7 @@ describe('ExamDeadlineCloseService', () => {
       { title: 'Без лимита', blocks: [{ itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     await ctx.service.start(exam.id, USER_A, NOW);
 
     const result = await closer.closeDue(NOW.plus({ years: 1 }));
@@ -213,6 +214,39 @@ describe('ExamDeadlineCloseService', () => {
     expect(result.closed).toBe(2);
     expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(2);
     expect(await ctx.attemptModel.countDocuments({ status: 'in_progress' })).toBe(0);
+  });
+
+  // F55 (ревью #529): попытка, которую не расшифровать (чужой ключ,
+  // испорченный blob), роняла весь тик — в день экзамена остальные
+  // просроченные не закрывались и в очередь учителя не попадали.
+  it('битая попытка в батче — пропуск с одной строкой error-лога на тик, остальные закрываются', async () => {
+    const good = await startTimedAttempt(USER_A, 30, NOW);
+    const broken = await startTimedAttempt(USER_B, 30, NOW);
+    await ctx.attemptModel.updateOne(
+      { _id: broken.id },
+      { $set: { blocks: 'не blob и не массив' } },
+    );
+    const errorLog = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await closer.closeDue(NOW.plus({ minutes: 45 }));
+
+    expect(result.closed).toBe(1);
+    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(1);
+    expect(ctx.examNotifier.notifyAttemptSubmitted.mock.calls[0]?.[0].attemptId).toBe(
+      good.id,
+    );
+    expect(errorLog).toHaveBeenCalledTimes(1);
+    expect(String(errorLog.mock.calls[0]?.[0])).toContain(broken.id);
+    const raw = await ctx.attemptModel.findById(broken.id).lean();
+    expect(raw?.status).toBe('in_progress');
+
+    // Следующий тик: битая снова в выборке — снова одна строка, не падение.
+    const again = await closer.closeDue(NOW.plus({ minutes: 46 }));
+    expect(again.closed).toBe(0);
+    expect(errorLog).toHaveBeenCalledTimes(2);
+    errorLog.mockRestore();
   });
 
   // CLAUDE.md «Время»: переход летнего времени Asia/Jerusalem обязателен для

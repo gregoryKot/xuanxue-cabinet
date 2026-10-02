@@ -87,7 +87,7 @@ describe('ExamAttemptsService.saveAnswers({ toggleOption }) — против Mon
       { title: 'Формы', blocks: [{ title: '', itemIds: [item.id] }] },
       AUTHOR_ID,
     );
-    await ctx.examsService.update(exam.id, { status: 'published' });
+    await ctx.examsService.update(exam.id, { status: 'published' }, NOW);
     const attempt = await ctx.service.start(exam.id, USER_A, NOW);
     const optionIds = attempt.blocks[0]?.questions[0]?.options.map((o) => o.id) ?? [];
     return { attemptId: attempt.id, itemId: item.id, optionIds };
