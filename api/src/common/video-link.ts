@@ -3,9 +3,11 @@
 // ссылку R2, но с `Content-Disposition: attachment`. Менеджер загрузок
 // браузера на слабой связи докачивает файл сам, а HEVC, который не открыл
 // браузер, откроет системный плеер. Общее для обоих контроллеров: расширение
-// по типу и сборка параметров — одно место, не по копии в каждом сервисе.
+// по типу, срок жизни ссылки и подпись — одно место, не по копии в каждом
+// сервисе (ExamVideosService, AnswerVideosService).
+import type { DateTime } from 'luxon';
 import { EXAM_VIDEO_CONTENT_TYPES, type ExamVideoContentType } from '@xuanxue/shared';
-import type { SignedDownload } from '../storage/file-store.service';
+import type { FileStoreService, SignedDownload } from '../storage/file-store.service';
 
 /** Что просят у сервиса подписи: ссылку для просмотра или для сохранения. */
 export interface VideoUrlOptions {
@@ -48,4 +50,29 @@ export function videoDownload(
     name: `${VIDEO_DOWNLOAD_BASE_NAME}.${VIDEO_EXTENSIONS[type]}`,
     contentType: type,
   };
+}
+
+// Ссылка живёт час — дольше, чем у файла материала (десять минут, ADR-0057):
+// файл скачивают один раз, а ролик плеер докачивает range-запросами по тому
+// же подписанному адресу всё время, пока его смотрят и перематывают.
+const VIDEO_URL_TTL_SECONDS = 3600;
+
+interface SignedVideoUrlInput {
+  fileStore: Pick<FileStoreService, 'signedGetUrl'>;
+  /** Запись о видео после проверки права: ключ объекта и тип файла. */
+  doc: { key: string; contentType?: string };
+  now: DateTime;
+  options: VideoUrlOptions;
+}
+
+/** Подписанная ссылка на видео для просмотра или скачивания. Право доступа
+ * вызывающий сервис проверил до неё: сюда попадает только разрешённая запись. */
+export function signedVideoUrl({
+  fileStore,
+  doc,
+  now,
+  options,
+}: SignedVideoUrlInput): string {
+  const download = videoDownload(options, doc.contentType);
+  return fileStore.signedGetUrl(doc.key, VIDEO_URL_TTL_SECONDS, now, download);
 }
