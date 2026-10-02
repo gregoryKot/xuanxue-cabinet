@@ -3,9 +3,10 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
+import type { ExamVideoContentType } from '@xuanxue/shared';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { NotFoundError } from '../common/errors';
-import type { FileStoreService } from '../storage/file-store.service';
+import type { FileStoreService, SignedDownload } from '../storage/file-store.service';
 import type { UserLean } from '../users/users.service';
 import { AnswerVideosService } from './answer-videos.service';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
@@ -23,6 +24,8 @@ describe('AnswerVideosService.signedUrl', () => {
   let connection: Connection;
   let videoModel: Model<AnswerVideoRecord>;
   let service: AnswerVideosService;
+  // Что сервис попросил у хранилища: параметры скачивания или ничего (просмотр).
+  let lastDownload: SignedDownload | undefined;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -32,7 +35,15 @@ describe('AnswerVideosService.signedUrl', () => {
       AnswerVideoSchema,
     );
     const fileStore = {
-      signedGetUrl: (key: string) => `https://fake-r2.example/${key}`,
+      signedGetUrl: (
+        key: string,
+        _ttl: number,
+        _now: DateTime,
+        download?: SignedDownload,
+      ) => {
+        lastDownload = download;
+        return `https://fake-r2.example/${key}`;
+      },
     } as unknown as FileStoreService;
     service = new AnswerVideosService(videoModel, fileStore);
   }, 60_000);
@@ -41,12 +52,20 @@ describe('AnswerVideosService.signedUrl', () => {
     await memory.stop();
   });
 
+  beforeEach(() => {
+    lastDownload = undefined;
+  });
+
   afterEach(async () => {
     await videoModel.deleteMany({});
   });
 
-  async function makeVideo(status: 'uploading' | 'ready'): Promise<string> {
+  async function makeVideo(
+    status: 'uploading' | 'ready',
+    contentType?: ExamVideoContentType,
+  ): Promise<string> {
     const doc = await videoModel.create({
+      ...(contentType ? { contentType } : {}),
       userId: new Types.ObjectId(OWNER),
       attemptId: new Types.ObjectId(),
       itemId: new Types.ObjectId(),
@@ -90,5 +109,39 @@ describe('AnswerVideosService.signedUrl', () => {
     await expect(service.signedUrl(id, user(STRANGER), NOW)).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+
+  describe('скачивание (ADR-0165)', () => {
+    it('просмотр — параметров скачивания у ссылки нет', async () => {
+      const id = await makeVideo('ready', 'video/mp4');
+      await service.signedUrl(id, user(OWNER), NOW);
+      expect(lastDownload).toBeUndefined();
+    });
+
+    it('владелец скачивает по типу из базы — MOV остаётся MOV', async () => {
+      const id = await makeVideo('ready', 'video/quicktime');
+
+      await expect(
+        service.signedUrl(id, user(OWNER), NOW, { download: true }),
+      ).resolves.toContain('fake-r2.example');
+      expect(lastDownload).toEqual({ name: 'video.mov', contentType: 'video/quicktime' });
+    });
+
+    it('типа у документа нет — файл video.mp4', async () => {
+      const id = await makeVideo('ready');
+
+      await service.signedUrl(id, user(OWNER), NOW, { download: true });
+
+      expect(lastDownload).toEqual({ name: 'video.mp4', contentType: 'video/mp4' });
+    });
+
+    it('чужой, не штат — NotFoundError и со скачиванием', async () => {
+      const id = await makeVideo('ready', 'video/mp4');
+
+      await expect(
+        service.signedUrl(id, user(STRANGER), NOW, { download: true }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(lastDownload).toBeUndefined();
+    });
   });
 });

@@ -1,5 +1,7 @@
 // Адреса видео вопроса/варианта (ADR-0133). Своим файлом, а не в apiPaths.ts —
 // тот упёрся в файловый храповик (CLAUDE.md «Храповики»).
+import { VIDEO_DOWNLOAD_QUERY_PARAM, VIDEO_DOWNLOAD_QUERY_VALUE } from '@xuanxue/shared';
+
 export const EXAM_VIDEOS_PATH = '/exam-videos';
 
 /** Адрес видео вопроса/варианта (ADR-0133) для `<video src>` — сервер
@@ -17,4 +19,12 @@ export function examVideoSrc(videoId: string): string {
  * соседнего случая. */
 export function answerVideoSrc(answerVideoId: string): string {
   return `/api/answer-videos/${answerVideoId}`;
+}
+
+/** Ссылка «Скачать» к адресу видео (`examVideoSrc`/`answerVideoSrc`): тот же
+ * 302, но подписанная ссылка R2 несёт `Content-Disposition: attachment`
+ * (ADR-0165), и браузер сохраняет файл, а не открывает его. Обычная `<a href>`,
+ * не `fetch`: редирект уходит на другой домен, а CSP не пускает такой `fetch`. */
+export function videoDownloadHref(src: string): string {
+  return `${src}?${VIDEO_DOWNLOAD_QUERY_PARAM}=${VIDEO_DOWNLOAD_QUERY_VALUE}`;
 }

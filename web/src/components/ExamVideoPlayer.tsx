@@ -6,7 +6,7 @@
 // `videoId` — файл в R2, отдаётся через `/api/exam-videos/:id` (302 на
 // подписанную ссылку, ADR-0133): нативный `<video controls>` перематывает и
 // переспрашивает адрес на каждый seek сам, отдельного плеера не нужно. Сам
-// элемент и плашка «Загрузить снова» — в VideoFilePlayer.tsx.
+// элемент и плашка отказа («Загрузить снова», «Скачать») — в VideoFilePlayer.tsx.
 // `videoUrl` — ссылка (YouTube и т.п.), плеер — общий VideoEmbed.tsx (фасад,
 // ADR-0100): свой встроенный плеер сюда не пишем, чтобы не завести вторую
 // реализацию одного и того же.
@@ -18,7 +18,8 @@
 // без кеша — сервер подпишет свежую ссылку при каждой перезагрузке.
 import { answerVideoSrc, examVideoSrc } from '../api/examVideoPaths';
 import { VideoEmbed } from './VideoEmbed';
-import { VideoFilePlayer, type VideoFileSize } from './VideoFilePlayer';
+import { VideoFilePlayer } from './VideoFilePlayer';
+import type { VideoFileSize } from './videoFileSize';
 
 interface ExamVideoPlayerProps {
   videoId?: string;
@@ -30,7 +31,7 @@ interface ExamVideoPlayerProps {
   videoUrl?: string;
   /** Доступное имя видео — формулировка вопроса или подпись варианта. */
   title?: string;
-  /** Размеры — в VideoFilePlayer.tsx; у ссылки (VideoEmbed) размера нет. */
+  /** Размеры — в videoFileSize.ts; у ссылки (VideoEmbed) размера нет. */
   size?: VideoFileSize;
 }
 

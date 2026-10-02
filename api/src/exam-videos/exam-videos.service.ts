@@ -21,6 +21,7 @@ import {
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { SingleFlight } from '../common/single-flight';
+import { VIEW_VIDEO, signedVideoUrl, type VideoUrlOptions } from '../common/video-link';
 import { encryptRecord } from '../utils/encryption';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -33,11 +34,6 @@ import {
   type RawLeanExamVideo,
 } from './exam-video.mapper';
 import { EXAM_VIDEO_ENCRYPT_SCHEMA, ExamVideoRecord } from './exam-video.schema';
-
-// Ссылка живёт час — дольше, чем у файла материала (десять минут, ADR-0057):
-// файл скачивают один раз, а ролик плеер докачивает range-запросами по тому
-// же подписанному адресу всё время, пока его смотрят и перематывают.
-const SIGNED_URL_TTL_SECONDS = 3600;
 
 /** Видео для бота (2026-09-27, «Уточнено» ADR-0133): кэш `telegramFileId`
  * и байты — лениво, `loadBytes()`, не в поле (аудит 2026-10-01, F02): с
@@ -98,9 +94,8 @@ export class ExamVideosService {
       throw new InvalidInputError(EXAM_VIDEO_NOT_FOUND_MESSAGE);
     }
     const found = await this.model.countDocuments({ _id: { $in: unique } });
-    if (found !== unique.length) {
+    if (found !== unique.length)
       throw new InvalidInputError(EXAM_VIDEO_NOT_FOUND_MESSAGE);
-    }
   }
 
   /** Штат — по роли (данные школы, ADR-0010). Ученик — только если видео
@@ -119,9 +114,14 @@ export class ExamVideosService {
     return doc;
   }
 
-  async signedUrl(id: string, user: UserLean, now: DateTime): Promise<string> {
+  async signedUrl(
+    id: string,
+    user: UserLean,
+    now: DateTime,
+    options: VideoUrlOptions = VIEW_VIDEO,
+  ): Promise<string> {
     const doc = await this.loadAccessibleDoc(id, user);
-    return this.fileStore.signedGetUrl(doc.key, SIGNED_URL_TTL_SECONDS, now);
+    return signedVideoUrl({ fileStore: this.fileStore, doc, now, options });
   }
 
   /** Бот скачивает байты сам и шлёт их в Telegram, не редиректом на подписанную

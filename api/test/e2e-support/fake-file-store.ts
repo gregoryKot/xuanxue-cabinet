@@ -61,7 +61,16 @@ export class FakeFileStore {
     const url = new URL(`https://fake-r2.example/${key}`);
     url.searchParams.set('X-Amz-Expires', String(expiresInSeconds));
     url.searchParams.set('X-Amz-Signature', 'f'.repeat(64));
-    if (download) url.searchParams.set('response-content-type', download.contentType);
+    if (download) {
+      // Те же два параметра ответа, что подписывает настоящий адаптер
+      // (file-store.service.ts, downloadParams): e2e видит, что скачивание
+      // дошло до хранилища, не вынимая подпись.
+      url.searchParams.set('response-content-type', download.contentType);
+      url.searchParams.set(
+        'response-content-disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(download.name)}`,
+      );
+    }
     return url.toString();
   }
 

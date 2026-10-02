@@ -11,6 +11,7 @@ import { DateTime } from 'luxon';
 import type { ExamVideoDto, ExamVideoStatsDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
+import type { VideoUrlOptions } from '../common/video-link';
 import { VideoRedirectController } from '../common/video-redirect';
 import type { UserLean } from '../users/users.service';
 import { ExamVideoStatsService } from './exam-video-stats.service';
@@ -29,8 +30,13 @@ export class ExamVideosController extends VideoRedirectController<UserLean> {
     super();
   }
 
-  protected signedUrl(id: string, user: UserLean, now: DateTime): Promise<string> {
-    return this.service.signedUrl(id, user, now);
+  protected signedUrl(
+    id: string,
+    user: UserLean,
+    now: DateTime,
+    options: VideoUrlOptions,
+  ): Promise<string> {
+    return this.service.signedUrl(id, user, now, options);
   }
 
   @Post()
