@@ -14,6 +14,7 @@ const USER: UserLean = {
   name: 'Учитель',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 const IMAGE_DTO: ExamImageDto = {

@@ -56,6 +56,7 @@ const BASE_USER: UserLean = {
   telegramId: 42,
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 interface UsersFakeOptions {

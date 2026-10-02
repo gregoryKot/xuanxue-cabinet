@@ -83,6 +83,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       'joinedViaInviteAt',
       'profileNamedAt',
       'noTelegramAt',
+      'studentModeAt',
     ],
     omit: {},
   },

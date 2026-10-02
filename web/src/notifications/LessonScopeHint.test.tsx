@@ -45,6 +45,8 @@ const STUDENT: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 const slot = (weekday: number) => ({ weekday, time: '19:00', durationMin: 60 });

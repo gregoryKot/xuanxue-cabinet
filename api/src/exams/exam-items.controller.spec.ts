@@ -18,6 +18,7 @@ const USER: UserLean = {
   name: 'Мария',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
 
 const ITEM_DTO: ExamItemDto = {

@@ -40,6 +40,8 @@ function meNeedingProfile(name: string): MeDto {
     noTelegram: false,
     needsProfile: true,
     googleLinked: false,
+    studentMode: false,
+    canUseStudentMode: false,
   };
 }
 

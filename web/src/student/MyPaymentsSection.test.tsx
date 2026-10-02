@@ -38,6 +38,8 @@ const ME_NO_TELEGRAM: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ME_TELEGRAM: MeDto = { ...ME_NO_TELEGRAM, telegramLinked: true };
 

@@ -54,6 +54,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
 import { SkipLink, mainLandmarkProps } from '../components/SkipLink';
 import { MyExamsProvider } from '../student/MyExamsProvider';
+import { StudentModeBanner } from '../studentMode/StudentModeBanner';
 import { AppNav } from './AppNav';
 import {
   APP_SHELL_CLASS,
@@ -103,6 +104,9 @@ export function AppShell() {
           {/* Первая остановка Tab: без неё клавиатура проходит меню и шапку
               на каждом экране заново (WCAG 2.4.1, components/SkipLink.tsx). */}
           <SkipLink />
+          {/* Режим ученика у штата (ADR-0163): плашка над всем, видна на любом
+              экране, пока режим включён; сама решает, показываться ли. */}
+          <StudentModeBanner />
           <div style={shellRowStyle}>
             {hasSideNav && (
               <AppNav

@@ -16,6 +16,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const VIDEO_Q: AttemptQuestionDto = {

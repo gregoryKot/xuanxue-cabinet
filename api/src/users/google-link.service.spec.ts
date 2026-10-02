@@ -16,7 +16,7 @@ function identity(sub: string): GoogleIdentity {
 }
 
 function asUser(id: string, name: string): UserLean {
-  return { id, name, roles: [], status: 'active' };
+  return { id, name, roles: [], status: 'active', studentMode: false };
 }
 
 describe('GoogleLinkService', () => {
@@ -45,7 +45,13 @@ describe('GoogleLinkService', () => {
     const doc = await model.create({ name: 'Анна', roles: [], status: 'active' });
 
     const linked = await service.link(
-      { id: doc._id.toString(), name: 'Анна', roles: [], status: 'active' },
+      {
+        id: doc._id.toString(),
+        name: 'Анна',
+        roles: [],
+        status: 'active',
+        studentMode: false,
+      },
       identity('sub-1'),
     );
 
@@ -69,6 +75,7 @@ describe('GoogleLinkService', () => {
         googleId: 'sub-2',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
       identity('sub-2'),
     );
@@ -92,6 +99,7 @@ describe('GoogleLinkService', () => {
           googleId: 'sub-old',
           roles: [],
           status: 'active',
+          studentMode: false,
         },
         identity('sub-new'),
       ),
@@ -112,7 +120,13 @@ describe('GoogleLinkService', () => {
 
     await expect(
       service.link(
-        { id: mine._id.toString(), name: 'Анна', roles: [], status: 'active' },
+        {
+          id: mine._id.toString(),
+          name: 'Анна',
+          roles: [],
+          status: 'active',
+          studentMode: false,
+        },
         identity('sub-taken'),
       ),
     ).rejects.toThrow(GOOGLE_LINK_TAKEN_MESSAGE);

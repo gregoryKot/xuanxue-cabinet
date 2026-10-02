@@ -34,6 +34,8 @@ const STUDENT: MeDto = {
   noTelegram: false,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 const VIDEO_BLOCKS: AttemptBlockDto[] = [

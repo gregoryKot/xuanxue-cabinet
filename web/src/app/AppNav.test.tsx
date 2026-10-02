@@ -22,6 +22,8 @@ const TEACHER: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -34,6 +36,8 @@ const ADMIN: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 function renderNav(

@@ -13,7 +13,13 @@ import type { UserLean } from '../users/users.service';
 import { ExamBotService } from './exam-bot.service';
 
 const NOW = DateTime.utc(2026, 9, 27, 10, 0, 0);
-const USER: UserLean = { id: 'u1', name: 'Ученик', roles: [], status: 'active' };
+const USER: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 const VIDEO = { bytes: Buffer.from([1]), contentType: 'video/mp4' as const };
 
 function service(

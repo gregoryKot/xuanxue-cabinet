@@ -10,6 +10,7 @@ const USER: UserLean = {
   email: 'maria@example.com',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 describe('TelegramLinkController.issueLinkCode', () => {

@@ -65,6 +65,7 @@ function activeUser(overrides: Partial<UserLean> = {}): UserLean {
     name: 'Мария',
     roles: ['teacher'],
     status: 'active',
+    studentMode: false,
     ...overrides,
   };
 }
@@ -188,6 +189,70 @@ describe('AuthGuard — @Roles', () => {
       fakeUsersService(activeUser({ roles: ['teacher'] })),
     );
     await expect(guard.canActivate(context)).resolves.toBe(true);
+  });
+});
+
+// Режим ученика (ADR-0163): роли в БД настоящие, решение о доступе и req.user
+// получают пустые. Сужение, не расширение (SECURITY §2).
+describe('AuthGuard — режим ученика', () => {
+  function sessionContext(metadata: Record<string, unknown> = {}): {
+    context: ExecutionContext;
+    reflector: Reflector;
+  } {
+    const token = signSession({ userId: 'u1', issuedAt: NOW }, SECRET);
+    return fakeContext(
+      { headers: { cookie: `session=${token}` } },
+      fakeResponse(),
+      metadata,
+    );
+  }
+
+  it('штатный маршрут для человека в режиме — 403, хотя роль в БД настоящая', async () => {
+    const { context, reflector } = sessionContext({ [ROLES_KEY]: ['teacher', 'admin'] });
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser({ roles: ['admin'], studentMode: true })),
+    );
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('маршрут без @Roles пускает, а req.user — ученик: roles [], studentMode true', async () => {
+    const { context, reflector } = sessionContext();
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser({ roles: ['teacher'], studentMode: true })),
+    );
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+
+    const req = (context.switchToHttp().getRequest as () => RequestLike)();
+    expect(req.user).toMatchObject({ id: 'u1', roles: [], studentMode: true });
+  });
+
+  it('режим выключен — штатный маршрут открыт, роли в req.user целые', async () => {
+    const { context, reflector } = sessionContext({ [ROLES_KEY]: ['teacher'] });
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser({ roles: ['teacher'], studentMode: false })),
+    );
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+
+    const req = (context.switchToHttp().getRequest as () => RequestLike)();
+    expect(req.user).toMatchObject({ roles: ['teacher'], studentMode: false });
+  });
+
+  it('заблокированный в режиме — всё равно 403 до любых ролей', async () => {
+    const { context, reflector } = sessionContext();
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(
+        activeUser({ roles: ['admin'], studentMode: true, status: 'blocked' }),
+      ),
+    );
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
 

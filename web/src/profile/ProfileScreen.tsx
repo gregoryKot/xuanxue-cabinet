@@ -31,6 +31,7 @@ import {
   isMyPaymentsVisible,
   isPaymentContactVisible,
 } from '../student/myPaymentsVisibility';
+import { StudentModeSection } from '../studentMode/StudentModeSection';
 import { isStandalone } from '../pwa/installEnvironment';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NotificationSettingsCard } from './NotificationSettingsCard';
@@ -111,6 +112,15 @@ export default function ProfileScreen() {
             title={DEV_ERRORS_TITLE}
             hint={DEV_ERRORS_HINT}
           />
+        </div>
+      )}
+
+      {/* Режим ученика (ADR-0163) — только штату: проверить кабинет глазами
+          ученика, не заводя второй аккаунт. Над «Выйти», тем же отбитым
+          блоком: инструмент проверки, не личная настройка. */}
+      {me?.canUseStudentMode && (
+        <div style={dividerRowStyle}>
+          <StudentModeSection me={me} />
         </div>
       )}
 

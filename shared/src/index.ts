@@ -60,7 +60,8 @@ export type {
   VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
-export type { MeDto, SetNoTelegramInput } from './me';
+export type { MeDto, SetNoTelegramInput, SetStudentModeInput } from './me';
+export { STUDENT_MODE_PAYMENT_MESSAGE, STUDENT_MODE_STAFF_ONLY_MESSAGE } from './me';
 export type { VerifyEmailCodeInput } from './email-login-code';
 export {
   EMAIL_LOGIN_CODE_LENGTH,

@@ -30,16 +30,21 @@ export class LessonRecipientsService {
     private readonly lessonScopeService: LessonScopeService,
   ) {}
 
-  /** Активные ученики (люди без единой роли, ADR-0026) с включённым `kind` и
+  /** Активные ученики (люди без единой роли, ADR-0026) и штат в режиме ученика
+   * (ADR-0163 — владелец проверяет, что придёт ученику) с включённым `kind` и
    * их выбор занятий — по одной выборке на пачку людей, не на человека в цикле.
    * Нет подходящих — `recipients` пуст и `prefs` пуст: вторую выборку не
    * делаем. Модель пользователя — напрямую (UserModelModule), не через
    * UsersService (CLAUDE.md «Храповики»). */
   async findFor(kind: NotificationKind): Promise<LessonRecipients> {
-    const students = await listActiveStudents(this.userModel);
+    const students = await listActiveStudents(this.userModel, {
+      includeStudentMode: true,
+    });
     // Ученики без единой роли не дают ключа для defaultNotifications по
     // ролям — getManyEnabled принимает `roles: []` для каждого, тем же
     // приёмом, что defaultNotifications([]) отдаёт STUDENT_NOTIFICATIONS.
+    // Штату в режиме ученика `[]` нужен тем более: его настоящие роли дали бы
+    // штатные виды (post_draft…), а не ученические.
     const enabledByUser = await this.notificationPrefsService.getManyEnabled(
       students.map((s) => ({ id: s.id, roles: [] })),
     );

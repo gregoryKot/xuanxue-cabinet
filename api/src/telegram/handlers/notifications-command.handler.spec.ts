@@ -24,8 +24,15 @@ const TEACHER: UserLean = {
   name: 'Мария',
   roles: ['teacher'],
   status: 'active',
+  studentMode: false,
 };
-const STUDENT: UserLean = { id: 'u2', name: 'Ваня', roles: [], status: 'active' };
+const STUDENT: UserLean = {
+  id: 'u2',
+  name: 'Ваня',
+  roles: [],
+  status: 'active',
+  studentMode: false,
+};
 
 function fakePrefs(enabled: NotificationKind[]): {
   service: NotificationPrefsService;

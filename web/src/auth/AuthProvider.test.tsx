@@ -39,6 +39,8 @@ describe('AuthProvider — статусы', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -102,6 +104,8 @@ describe('AuthProvider — статусы', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();
@@ -134,6 +138,8 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
 
     act(() => {
@@ -162,6 +168,8 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     let resolveRefresh: ((value: MeDto) => void) | undefined;
     mockedApiFetch.mockResolvedValueOnce(mounted).mockImplementationOnce(

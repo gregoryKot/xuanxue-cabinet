@@ -31,6 +31,8 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     hasEmail: true,
     needsProfile: false,
     googleLinked: false,
+    studentMode: false,
+    canUseStudentMode: false,
     ...overrides,
   };
 }

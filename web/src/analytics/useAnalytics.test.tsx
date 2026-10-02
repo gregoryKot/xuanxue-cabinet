@@ -55,6 +55,8 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     hasEmail: true,
     googleLinked: false,
     needsProfile: false,
+    studentMode: false,
+    canUseStudentMode: false,
     ...overrides,
   };
 }
@@ -106,6 +108,7 @@ describe('useAnalytics', () => {
     expect(startAnalytics).toHaveBeenCalledWith('phc_example', 'u42', {
       roles: ['admin'],
       status: 'active',
+      studentMode: false,
     });
   });
 

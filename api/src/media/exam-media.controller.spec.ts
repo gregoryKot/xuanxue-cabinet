@@ -13,6 +13,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 const MEDIA_DTO: ExamMediaDto = {

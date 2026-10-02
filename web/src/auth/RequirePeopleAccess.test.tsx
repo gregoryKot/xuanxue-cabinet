@@ -53,6 +53,8 @@ describe('RequirePeopleAccess', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -73,6 +75,8 @@ describe('RequirePeopleAccess', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -113,6 +117,8 @@ describe('RequirePeopleAccess', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -133,6 +139,8 @@ describe('RequirePeopleAccess', () => {
       hasEmail: true,
       needsProfile: false,
       googleLinked: false,
+      studentMode: false,
+      canUseStudentMode: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 

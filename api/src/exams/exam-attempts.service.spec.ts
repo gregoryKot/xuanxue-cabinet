@@ -925,6 +925,7 @@ describe('ExamAttemptsService', () => {
         name: 'Помощник',
         roles: ['assistant'],
         status: 'active',
+        studentMode: false,
       },
       NOW,
     );
@@ -1019,6 +1020,7 @@ describe('ExamAttemptsService', () => {
         name: 'Ученик',
         roles: [],
         status: 'active',
+        studentMode: false,
       },
       NOW,
     );
@@ -1138,5 +1140,6 @@ function staffUser(isStaff: boolean, id: string): UserLean {
     name: 'Тест',
     roles: isStaff ? ['teacher'] : [],
     status: 'active',
+    studentMode: false,
   };
 }

@@ -15,6 +15,7 @@ const ACCOUNTANT: UserLean = {
   name: 'Бухгалтер',
   roles: ['accountant'],
   status: 'active',
+  studentMode: false,
 };
 
 const PAYMENT_DTO: PaymentDto = {

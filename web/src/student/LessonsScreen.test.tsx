@@ -33,6 +33,8 @@ const STUDENT: MeDto = {
   hasEmail: true,
   needsProfile: false,
   googleLinked: false,
+  studentMode: false,
+  canUseStudentMode: false,
 };
 
 function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {

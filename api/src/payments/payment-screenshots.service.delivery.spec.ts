@@ -81,7 +81,11 @@ describe('PaymentScreenshotsService: доставка бухгалтеру (ADR-
     return { port, calls };
   }
 
-  const student = () => ({ id: new Types.ObjectId().toString(), name: 'Ученик Иванов' });
+  const student = () => ({
+    id: new Types.ObjectId().toString(),
+    name: 'Ученик Иванов',
+    studentMode: false,
+  });
 
   it('после загрузки порт получает имя, месяц, тип и байты; первая загрузка — replaced: false', async () => {
     const { calls } = fakePort();

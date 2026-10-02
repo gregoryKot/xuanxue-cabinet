@@ -81,6 +81,65 @@ describe('LessonRecipientsService.findFor', () => {
     expect(recipients.map((r) => r.id)).toEqual([student]);
   });
 
+  // ADR-0163: владелец включил режим ученика и хочет увидеть, что придёт
+  // ученику, — напоминание об уроке находит его как ученика, по дефолту ученика.
+  describe('штат в режиме ученика (ADR-0163)', () => {
+    const MOMENT = new Date('2026-10-01T10:00:00Z');
+
+    it('учитель в режиме — получатель lesson_soon: дефолт ученика, не штатный', async () => {
+      const teacher = await person('Учитель', {
+        roles: ['teacher'],
+        studentModeAt: MOMENT,
+      });
+
+      const { recipients, prefs: lessonPrefs } = await service.findFor('lesson_soon');
+
+      expect(recipients.map((r) => r.id)).toEqual([teacher]);
+      expect(lessonPrefs.get(teacher)).toEqual({ scope: { mode: 'all', classIds: [] } });
+    });
+
+    it('выключил режим — из получателей пропал: чтение read-after-write по базе', async () => {
+      const admin = await person('Админ', { roles: ['admin'], studentModeAt: MOMENT });
+      expect((await service.findFor('lesson_soon')).recipients).toHaveLength(1);
+
+      await userModel.updateOne({ _id: admin }, { $unset: { studentModeAt: 1 } });
+
+      expect((await service.findFor('lesson_soon')).recipients).toEqual([]);
+    });
+
+    it('вид выключен личным переключателем — режим его не обходит', async () => {
+      const teacher = await person('Учитель', {
+        roles: ['teacher'],
+        studentModeAt: MOMENT,
+      });
+      await prefs.set(teacher, 'lesson_soon', false);
+
+      expect((await service.findFor('lesson_soon')).recipients).toEqual([]);
+    });
+
+    it('видов штата в режиме нет: post_draft получает только штат по ролям, не ученик', async () => {
+      await person('Учитель', { roles: ['teacher'], studentModeAt: MOMENT });
+
+      expect((await service.findFor('post_draft')).recipients).toEqual([]);
+    });
+
+    it('застрявший флаг без роли штата (бухгалтер) — не режим, получателем не становится', async () => {
+      await person('Бухгалтер', { roles: ['accountant'], studentModeAt: MOMENT });
+
+      expect((await service.findFor('lesson_soon')).recipients).toEqual([]);
+    });
+
+    it('заблокированный штат в режиме не получает', async () => {
+      await person('Учитель', {
+        roles: ['teacher'],
+        studentModeAt: MOMENT,
+        status: 'blocked',
+      });
+
+      expect((await service.findFor('lesson_soon')).recipients).toEqual([]);
+    });
+  });
+
   it('выбор «о каких занятиях» приходит вместе с получателем, у каждого свой', async () => {
     const picky = await person('Ваня');
     const plain = await person('Маша');

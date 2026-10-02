@@ -92,6 +92,7 @@ const BASE_USER: UserLean = {
   email: 'ученик@example.com',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 function fakeLoginIdentity(

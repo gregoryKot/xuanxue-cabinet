@@ -16,6 +16,7 @@ const USER: UserLean = {
   name: 'Ученик',
   roles: [],
   status: 'active',
+  studentMode: false,
 };
 
 async function buildController(
@@ -77,6 +78,8 @@ describe('MyNoTelegramController.update', () => {
       pendingEmail: undefined,
       noTelegram: true,
       needsProfile: true,
+      studentMode: false,
+      canUseStudentMode: false,
     });
   });
 });

@@ -10,9 +10,12 @@ const MY_PAYMENTS_VISIBLE = false;
 
 /** Только у человека без ролей (ученик, ADR-0026): у штата оплат ученика
  * нет, как и у сервера (`assertActiveStudent`). Тот же признак решает, кому
- * показать контакт бухгалтера в «Профиле» (PaymentContactNote.tsx, ADR-0159). */
+ * показать контакт бухгалтера в «Профиле» (PaymentContactNote.tsx, ADR-0159).
+ * Штат в режиме ученика (ADR-0163) тоже без действующих ролей, но он не
+ * ученик: деньги в режим не входят, оплат у него нет и снимок перевода
+ * сервер отклонит — поэтому `studentMode` исключаем явно. */
 export function isPaymentContactVisible(me: MeDto | null): me is MeDto {
-  return me !== null && me.roles.length === 0;
+  return me !== null && me.roles.length === 0 && !me.studentMode;
 }
 
 /** Секция «Абонемент» — за флагом и только ученику. */
