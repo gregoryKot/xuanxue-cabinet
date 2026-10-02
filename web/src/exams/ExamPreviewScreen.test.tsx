@@ -1,10 +1,10 @@
 // Страница предпросмотра экзамена «глазами ученика» —
 // `/exams/:examId/preview` (ADR-0033, ТЗ 4.3). Мок сети — по префиксу пути
 // (test-support/apiFetchMock.ts), как у ExamEditorScreen.test.tsx.
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
@@ -463,5 +463,43 @@ describe('ExamPreviewScreen — облик (ADR-0043)', () => {
       (el) => el.style.background === 'var(--card)',
     );
     expect(cards).toHaveLength(0);
+  });
+});
+
+// Просьба владельца 2026-10-02: у экзамена с лимитом времени на странице
+// «Глазами ученика» тикает тот же таймер, что на экране сдачи
+// (ExamPreviewTimer.tsx). Фейковые таймеры — детерминизм (CLAUDE.md): первый
+// тик настоящего таймера не должен успеть между монтированием и проверкой.
+describe('ExamPreviewScreen — таймер', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function renderLoaded() {
+    renderAt('/exams/x1/preview');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+  }
+
+  it('у экзамена с лимитом времени показан полный лимит', async () => {
+    mockExamAndBank(makeExam({ timeLimitMin: 45 }));
+
+    await renderLoaded();
+
+    expect(screen.getByText('Осталось 45:00')).toBeInTheDocument();
+  });
+
+  it('у экзамена без лимита времени таймера нет', async () => {
+    mockExamAndBank(makeExam());
+
+    await renderLoaded();
+
+    expect(screen.getByRole('heading', { name: 'Итоговый экзамен' })).toBeInTheDocument();
+    expect(screen.queryByText(/Осталось/)).not.toBeInTheDocument();
   });
 });

@@ -9,7 +9,9 @@
 //
 // Облик — как у сдачи (attempt/, направление «Тёплая школа», docs/adr/0043,
 // заменил ADR-0031): учитель видит ровно то, что увидит ученик, той же
-// вёрсткой, а не отдельным макетом.
+// вёрсткой, а не отдельным макетом. Экзамен с лимитом времени показывает и тот
+// же таймер (ExamPreviewTimer.tsx, просьба владельца 2026-10-02): он идёт от
+// открытия страницы, а не от попытки, которой в предпросмотре нет.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
@@ -25,6 +27,7 @@ import {
   pruneRequiredIds,
 } from './examQuestions';
 import { ExamPreviewQuestions } from './ExamPreviewQuestions';
+import { ExamPreviewTimer } from './ExamPreviewTimer';
 import { previewVideoControls } from './previewVideoControls';
 
 const EXAMS_PATH = '/exams';
@@ -70,6 +73,15 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
         <h1 style={screenTitleStyle}>{exam.title}</h1>
         {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
       </div>
+
+      {/* Прямой потомок секции, как у ученика (AttemptInProgress.tsx):
+          `position: sticky` внутри таймера ограничен высотой родителя, и
+          вложенный в шапку он не остался бы на виду при прокрутке. Без лимита
+          времени не монтируем — незачем будить React раз в секунду.
+          Сравнение, а не `exam.timeLimitMin &&`: ноль нарисовался бы цифрой. */}
+      {exam.timeLimitMin !== undefined && exam.timeLimitMin > 0 && (
+        <ExamPreviewTimer timeLimitMin={exam.timeLimitMin} />
+      )}
 
       <ExamPreviewQuestions
         itemIds={itemIds}

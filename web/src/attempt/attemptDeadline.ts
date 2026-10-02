@@ -57,21 +57,16 @@ function getAnnouncement(remainingMs: number): string | null {
   return null;
 }
 
-export function getAttemptTimeStatus(
-  deadlineAt: string | undefined,
-  nowMs: number,
-): AttemptTimeStatus {
-  if (!deadlineAt) {
-    return {
-      hasDeadline: false,
-      expired: false,
-      label: null,
-      warning: false,
-      announcement: null,
-    };
-  }
-
-  const remainingMs = Date.parse(deadlineAt) - nowMs;
+/**
+ * Что показать, когда остаток времени уже известен в миллисекундах. Вынесено
+ * из `getAttemptTimeStatus` ради предпросмотра экзамена (exams/
+ * ExamPreviewTimer.tsx): у него нет строки дедлайна, есть лимит в минутах, а
+ * собрать из миллисекунд ISO-строку для `getAttemptTimeStatus` значило бы
+ * `new Date(ms)` — конструктор с аргументом запрещён NO_DATE_CTOR (CLAUDE.md
+ * «Время»). Один расчёт на двоих — подписи и пороги у ученика и в
+ * предпросмотре разойтись не могут.
+ */
+export function getRemainingTimeStatus(remainingMs: number): AttemptTimeStatus {
   if (remainingMs <= 0) {
     return {
       hasDeadline: true,
@@ -89,4 +84,21 @@ export function getAttemptTimeStatus(
     warning: remainingMs < WARNING_THRESHOLD_MS,
     announcement: getAnnouncement(remainingMs),
   };
+}
+
+export function getAttemptTimeStatus(
+  deadlineAt: string | undefined,
+  nowMs: number,
+): AttemptTimeStatus {
+  if (!deadlineAt) {
+    return {
+      hasDeadline: false,
+      expired: false,
+      label: null,
+      warning: false,
+      announcement: null,
+    };
+  }
+
+  return getRemainingTimeStatus(Date.parse(deadlineAt) - nowMs);
 }
