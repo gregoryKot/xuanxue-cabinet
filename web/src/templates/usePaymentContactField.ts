@@ -1,10 +1,10 @@
-// Логика поля «Кому присылать скриншот перевода» (ADR-0159,
+// Логика поля «Кому и куда присылать скриншот об оплате» (ADR-0159,
 // shared/src/settings.ts) — тонкая обёртка над useSettingsTextField.ts, общей с
 // useNewcomerContactField.ts (CLAUDE.md «Одна механика — один компонент»).
 // Пустое значение недопустимо, как у контакта для новичков: контакт нельзя
 // сбросить, только заменить другим (UpdateSettingsInput.paymentContact не
 // входит в NULLABLE_SETTINGS_FIELDS) — иначе напоминание об оплате оборвалось
-// бы на «пришлите … в Telegram» без имени.
+// бы на «Отправьте скриншот об оплате …» без имени.
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import {
   useSettingsTextField,
