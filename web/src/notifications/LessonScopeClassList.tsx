@@ -7,7 +7,11 @@
 // 2026-09-12, schedule/timezoneLabel.ts). Состояние и запись — у
 // LessonScopeSection.tsx, здесь только рендер и тело будущего PUT.
 import type { CSSProperties } from 'react';
-import type { LessonScope, LessonScopeClassDto } from '@xuanxue/shared';
+import {
+  classDisplayName,
+  type LessonScope,
+  type LessonScopeClassDto,
+} from '@xuanxue/shared';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { RichText } from '../components/RichText';
 import { noteStyle } from '../components/screenLayout';
@@ -18,7 +22,6 @@ import { hasNoTicks, scopeWithTick, tickedClassIds } from './lessonScopeEdit';
 
 const EMPTY_CLASSES_MESSAGE = 'В расписании пока нет занятий.';
 const NOTHING_TICKED_MESSAGE = 'Ничего не отмечено — уведомлений о занятиях не будет.';
-const GROUP_SEPARATOR = ' · ';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 
@@ -29,12 +32,6 @@ function rowStyle(isLast: boolean): CSSProperties {
     padding: '6px 18px',
     borderBottom: isLast ? 'none' : '1px solid var(--panel)',
   };
-}
-
-function classTitle(item: LessonScopeClassDto): string {
-  return item.groupLabel
-    ? `${item.title}${GROUP_SEPARATOR}${item.groupLabel}`
-    : item.title;
 }
 
 interface LessonScopeClassListProps {
@@ -67,7 +64,7 @@ export function LessonScopeClassList({
         {classes.map((item, index) => (
           <li key={item.id} style={rowStyle(index === classes.length - 1)}>
             <Toggle
-              label={classTitle(item)}
+              label={classDisplayName(item)}
               hint={classSlotsLabel(item.slots)}
               checked={ticked.has(item.id)}
               disabled={disabled}

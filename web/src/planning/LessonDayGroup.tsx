@@ -12,7 +12,7 @@
 // рассылок и списка экзаменов/учеников (components/listCardStyles.ts:
 // oneCardListStyle).
 import type { CSSProperties } from 'react';
-import type { ClassDto } from '@xuanxue/shared';
+import { classDisplayName, type ClassDto } from '@xuanxue/shared';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { LessonCard } from './LessonCard';
 import type { LessonDayGroupData } from './groupLessonsByDay';
@@ -40,7 +40,7 @@ export function LessonDayGroup({
             <LessonCard
               key={lesson.id}
               lesson={lesson}
-              className={cls?.title ?? '—'}
+              className={cls ? classDisplayName(cls) : '—'}
               onSelect={() => onSelectLesson(lesson.id)}
               isLast={index === group.lessons.length - 1}
             />

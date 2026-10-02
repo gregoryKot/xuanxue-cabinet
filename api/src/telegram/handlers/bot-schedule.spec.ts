@@ -29,7 +29,9 @@ describe('formatScheduleScreen', () => {
     const screen = formatScheduleScreen([
       lesson({ zoomLink: 'https://zoom.us/j/1', zoomPassword: '4321' }),
     ]);
-    expect(screen.text).toContain('Цигун для глаз, 10.09 20:00');
+    // Группа рядом с названием: без неё тёзки («Тайцзицюань» семь раз в
+    // неделе) в боте неотличимы (снимок владельца 2026-10-02).
+    expect(screen.text).toContain('Цигун для глаз · группа А, 10.09 20:00');
     expect(screen.text).toContain('Zoom: https://zoom.us/j/1 (пароль 4321)');
   });
 

@@ -86,7 +86,7 @@ describe('RecordingPromptService.prompt', () => {
   }
 
   it('занятие закончилось — спрашивает, ставит recordingPromptedAt, заводит ожидание', async () => {
-    const cls = await createClass();
+    const cls = await createClass({ groupLabel: 'средняя группа' });
     const lesson = await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.minus({ hours: 1, minutes: 5 }).toJSDate(),
@@ -102,7 +102,8 @@ describe('RecordingPromptService.prompt', () => {
     expect(bot.sendMessage).toHaveBeenCalledTimes(1);
     const [chatId, text] = bot.sendMessage.mock.calls[0] as [string, string];
     expect(chatId).toBe('111');
-    expect(text).toContain('цигун для глаз');
+    // Занятие названо с группой — тёзки различимы (2026-10-02).
+    expect(text).toContain('«цигун для глаз · средняя группа»');
     const updated = await lessonModel.findById(lesson._id).lean();
     expect(updated?.recordingPromptedAt).toBeInstanceOf(Date);
     const session = await botSessionModel.findOne({ chatId: 111 }).lean();
