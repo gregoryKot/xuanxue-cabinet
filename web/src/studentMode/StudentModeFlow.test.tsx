@@ -31,7 +31,11 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const MY_PAYMENTS_PAGE = { month: '2026-09', rows: [], contact: 'Маше @marievyazova' };
+const MY_PAYMENTS_PAGE = {
+  month: '2026-09',
+  rows: [],
+  contact: 'Маше Вязовой — например, в Telegram @marievyazova',
+};
 
 function renderCabinet(me: MeDto, afterPut: MeDto, initialPath = '/profile') {
   mockApiByPath({

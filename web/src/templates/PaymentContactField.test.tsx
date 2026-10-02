@@ -1,4 +1,4 @@
-// Поле «Кому присылать скриншот перевода» (ADR-0159) — компонент отдельно от
+// Поле «Кому и куда присылать скриншот об оплате» (ADR-0159) — компонент отдельно от
 // экрана «Шаблоны»: `update` подменён, сети нет. Логика поля — в
 // usePaymentContactField.test.ts, PATCH-механика — useSettingsTextField.test.ts.
 import { render, screen, waitFor } from '@testing-library/react';
@@ -12,7 +12,7 @@ import {
 } from '@xuanxue/shared';
 import { PaymentContactField } from './PaymentContactField';
 
-const LABEL = 'Кому присылать скриншот перевода';
+const LABEL = 'Кому и куда присылать скриншот об оплате';
 const SAVE = 'Сохранить контакт для оплаты';
 
 const SETTINGS: SettingsDto = {
@@ -45,11 +45,13 @@ describe('PaymentContactField', () => {
 
     const field = screen.getByLabelText(LABEL);
     await user.clear(field);
-    await user.type(field, '  Маше @marievyazova ');
+    await user.type(field, '  Маше Вязовой — например, в Telegram @marievyazova ');
     await user.click(screen.getByRole('button', { name: SAVE }));
 
     await waitFor(() =>
-      expect(update).toHaveBeenCalledWith({ paymentContact: 'Маше @marievyazova' }),
+      expect(update).toHaveBeenCalledWith({
+        paymentContact: 'Маше Вязовой — например, в Telegram @marievyazova',
+      }),
     );
   });
 

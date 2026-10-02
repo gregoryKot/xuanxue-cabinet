@@ -17,6 +17,7 @@ import { paymentReminderTemplateWithoutSubscription } from './0016-payment-remin
 import { paymentReminderTemplateContact } from './0017-payment-reminder-template-contact.migration';
 import { paymentReminderWithoutSchoolDay } from './0018-payment-reminder-without-school-day.migration';
 import { fullSchoolSchedule } from './0019-full-school-schedule.migration';
+import { paymentContactWithChannel } from './0020-payment-contact-with-channel.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -58,4 +59,5 @@ export const MIGRATIONS: Migration[] = [
   paymentReminderTemplateContact,
   paymentReminderWithoutSchoolDay,
   fullSchoolSchedule,
+  paymentContactWithChannel,
 ];
