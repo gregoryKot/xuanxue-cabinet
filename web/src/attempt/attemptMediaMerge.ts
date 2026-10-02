@@ -1,6 +1,6 @@
 // Правка `media` попытки ответом записи, без второго GET (ADR-0087,
 // ADR-0137) — чистая функция, юнит-тест без DOM. `POST .../complete`
-// возвращает готовый `ExamMediaDto`, useAnswerVideoUpload.ts кладёт его сюда
+// возвращает готовый `ExamMediaDto`, useVideoUpload.ts кладёт его сюда
 // через `applyMedia` (useAttempt.ts), а не через `await reload()`
 // (check-write-then-reload.mjs).
 import type { ExamMediaDto } from '@xuanxue/shared';

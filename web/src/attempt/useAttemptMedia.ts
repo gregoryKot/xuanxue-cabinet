@@ -50,7 +50,7 @@ export interface AttemptVideoControls {
    * прежним (ADR-0137). */
   fileUploadEnabled: boolean;
   /** Кладёт видео-ответ из ответа `POST .../complete` в попытку без второго
-   * GET (useAttempt.ts, ADR-0087/ADR-0137) — useAnswerVideoUpload.ts зовёт
+   * GET (useAttempt.ts, ADR-0087/ADR-0137) — useVideoUpload.ts зовёт
    * его на завершение загрузки. */
   applyMedia: (media: ExamMediaDto) => void;
 }

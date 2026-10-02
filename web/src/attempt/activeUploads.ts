@@ -2,7 +2,7 @@
 // «Отправить» не оборвал загрузку молча (аудит 2026-10-01, H: нажатие
 // «Отправить» размонтировало AttemptVideoUpload, тот обрывал свои запросы,
 // а ученик думал, что видео ушло). Модульное состояние, не React-контекст:
-// useAnswerVideoUpload.ts живёт у каждого видео-вопроса, а проверка нужна
+// useVideoUpload.ts живёт у каждого видео-вопроса, а проверка нужна
 // подвалу формы (AttemptInProgress.tsx) — тот же приём, что у
 // setUnauthorizedListener в api/apiError.ts.
 const active = new Set<string>();
