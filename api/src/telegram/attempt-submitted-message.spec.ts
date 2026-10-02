@@ -73,3 +73,33 @@ describe('attemptSubmittedMessage', () => {
     expect(text).toContain('Верно 1 из 1.');
   });
 });
+
+// Аудит 2026-10-01 (F31): реальная «Форма 1» на 56 вопросов давала текст
+// длиннее лимита Telegram, и учитель не получал «работу сдали» вовсе.
+describe('attemptSubmittedMessage — лимит Telegram', () => {
+  it('56 вопросов с длинными формулировками — сообщение не длиннее 4096, шапка и ссылка на месте', () => {
+    const questions = Array.from({ length: 56 }, (_, i) => ({
+      itemId: `i${i}`,
+      kind: 'single' as const,
+      prompt: `Вопрос ${i + 1}. Какое положение корпуса верно при переходе из стойки в стойку?`,
+      options: [{ id: 'o1', text: 'A', correct: true, selected: true }],
+      answered: true,
+      optionsCheck: {
+        correctSelectedCount: 1,
+        correctTotalCount: 1,
+        incorrectSelectedCount: 1,
+      },
+    }));
+    const review = fakeReview({
+      userName: 'Александра Петрова',
+      blocks: [{ id: 'b1', title: 'Форма', questions }],
+    });
+
+    const text = attemptSubmittedMessage(review, 'https://xuanxue.su');
+
+    expect(text.length).toBeLessThanOrEqual(4096);
+    expect(text).toContain('Работа от Александра Петрова');
+    expect(text).toContain(`https://xuanxue.su/grading/${ATTEMPT_ID}`);
+    expect(text).toContain('Остальные ответы (ещё');
+  });
+});

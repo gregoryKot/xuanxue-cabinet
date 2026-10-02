@@ -1,5 +1,5 @@
 {
-  "total": 242,
+  "total": 239,
   "byFile": {
     "web/src/attempt/useAttempt.test.ts": 6,
     "web/src/attempt/useAttemptAutosave.test.ts": 16,
@@ -49,7 +49,6 @@
     "web/src/people/useTeachers.test.ts": 2,
     "web/src/planning/useLessonRecordingSummary.test.ts": 2,
     "web/src/planning/useLessons.test.ts": 1,
-    "web/src/profile/ProfileScreen.test.tsx": 3,
     "web/src/schedule/ScheduleScreen.test.tsx": 2,
     "web/src/schedule/useClasses.test.ts": 2,
     "web/src/student/StudentLessonsScreen.test.tsx": 5,

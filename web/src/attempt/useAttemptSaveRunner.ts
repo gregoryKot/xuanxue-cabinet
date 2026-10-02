@@ -11,10 +11,10 @@
 // копилось), и реджектится при сбое без ожидания фонового 4-секундного
 // повтора — AttemptInProgress.tsx ждёт этот промис перед submit().
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { ATTEMPT_EXPIRED_MESSAGE, type AttemptAnswerDto } from '@xuanxue/shared';
+import type { AttemptAnswerDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
-import { ApiError } from '../api/http';
 import { clearAttemptDraft, forgetSavedAnswers } from './attemptLocalDraft';
+import { classifyAttemptSaveError } from './attemptSaveError';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -78,13 +78,21 @@ export function useAttemptSaveRunner(
         })
         .catch((err: unknown) => {
           setStatus('error');
-          if (err instanceof ApiError && err.message === ATTEMPT_EXPIRED_MESSAGE) {
+          // Не всякий сбой — повод повторять (attemptSaveError.ts, аудит
+          // 2026-10-01): «уже сдана» из другой вкладки и 429 троттлера
+          // раньше крутили PATCH каждые 4 с без конца.
+          const verdict = classifyAttemptSaveError(err, RETRY_DELAY_MS);
+          if (verdict.kind === 'expired') {
             // Попытка закрыта дедлайном — черновик убирается целиком.
             clearAttemptDraft(attemptId);
             onExpired?.();
-          } else {
+          } else if (verdict.kind === 'stale') {
+            // Сервер отверг навсегда — не повторяем, перечитываем попытку:
+            // экран покажет правду с сервера («Отправлено», нет доступа).
+            onExpired?.();
+          } else if (verdict.kind === 'retry') {
             if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-            retryTimer.current = window.setTimeout(() => void runSave(), RETRY_DELAY_MS);
+            retryTimer.current = window.setTimeout(() => void runSave(), verdict.delayMs);
           }
           throw err;
         })

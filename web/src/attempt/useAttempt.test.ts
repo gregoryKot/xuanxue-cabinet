@@ -6,6 +6,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_FOUND_MESSAGE,
   type ExamAttemptDto,
   type ExamMediaDto,
@@ -75,6 +76,34 @@ describe('useAttempt — отправка', () => {
 
     expect(result.current.submitError?.message).toBe('Нет связи с сервером.');
     expect(result.current.attempt?.status).toBe('in_progress');
+  });
+
+  // Аудит 2026-10-01: часы телефона отстают — сервер уже закрыл попытку по
+  // дедлайну, submit() получал «время вышло» и оставлял форму открытой с
+  // ошибкой навсегда. Теперь это повод перечитать попытку.
+  it('«время вышло» на submit() — не ошибка, а перечитывание: экран получает закрытую попытку', async () => {
+    const closed: ExamAttemptDto = { ...ATTEMPT, status: 'submitted', expired: true };
+    writeAttemptAnswerDraft('a1', { itemId: 'q1', text: 'поздно' });
+    let loads = 0;
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/attempts/a1/submit') {
+        return Promise.reject(
+          new ApiError(ATTEMPT_EXPIRED_MESSAGE, 400, 'invalid_input'),
+        );
+      }
+      loads += 1;
+      return Promise.resolve(loads === 1 ? ATTEMPT : closed);
+    });
+    const { result } = renderHook(() => useAttempt('a1'));
+    await waitFor(() => expect(result.current.attempt).not.toBeNull());
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.submitError).toBeNull();
+    expect(result.current.attempt?.status).toBe('submitted');
+    expect(localStorage.getItem('xuanxue.draft.attempt:a1')).toBeNull();
   });
 
   it('успех: локальный черновик ответов (attemptLocalDraft.ts) убирается целиком', async () => {

@@ -6,6 +6,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { errorMessage, errorStack } from './common/error-info';
+import { applyHttpServerTimeouts } from './common/http-server-timeouts';
 import { installProcessGuards } from './common/process-guards';
 import { RENAMED_RESERVED_LOG_KEY } from './logging/logging.module';
 
@@ -35,6 +36,10 @@ async function bootstrap(): Promise<void> {
 
   const config = app.get(ConfigService);
   const port = config.get<number>('PORT') ?? 3000;
+  // Keep-alive длиннее, чем у прокси Railway (http-server-timeouts.ts,
+  // аудит 2026-10-01) — до listen(), чтобы первое же соединение жило по
+  // новым правилам.
+  applyHttpServerTimeouts(app.getHttpServer());
   await app.listen(port);
 }
 

@@ -38,6 +38,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const FORBIDDEN_STATUS = 403;
+const RATE_LIMITED_STATUS = 429;
+const SERVER_ERROR_STATUS_MIN = 500;
 
 /** Сессия есть (cookie валиден) — `ok` или `blocked`; пускать ли дальше,
  * решает уже RequireAuth. Экраны входа (LoginScreen, JoinScreen,
@@ -72,6 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus('offline');
       } else if (err instanceof ApiError && err.status === FORBIDDEN_STATUS) {
         setStatus('blocked');
+      } else if (
+        err instanceof ApiError &&
+        (err.status === RATE_LIMITED_STATUS || err.status >= SERVER_ERROR_STATUS_MIN)
+      ) {
+        // Сервер есть, но не ответил по делу (429 троттлера, 5xx при блипе
+        // Atlas) — это не «сессии нет»: guest уводил ученика на /login
+        // посреди экзамена (аудит 2026-10-01). Та же ветка, что у сети:
+        // RequireAuth показывает «Повторить», cookie остаётся.
+        setStatus('offline');
       } else {
         setStatus('guest');
       }

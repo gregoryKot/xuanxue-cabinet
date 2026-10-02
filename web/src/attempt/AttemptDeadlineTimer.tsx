@@ -7,22 +7,33 @@
 //
 // Дедлайн по-прежнему решает сервер (ТЗ 4.4 п.7, блокер аудита 2026-09-15
 // «Дедлайн решает сервер»): локальный отсчёт добежал до нуля — не приговор,
-// а повод спросить сервер (`onExpired`, тот же приём с guard через `useRef`,
-// что раньше жил прямо в AttemptInProgress.tsx как `reloadedForExpiry`).
-// Терминальный статус по-прежнему приходит только с сервера — переключает
-// AttemptScreen.tsx по `attempt.status`, этот компонент его не рисует.
+// а повод спросить сервер (`onExpired`). Отсчёт идёт по часам сервера
+// (useNow → serverClock.ts), и спрашивать нужно ТИХО и не один раз: до
+// аудита 2026-10-01 `onExpired` звал `reload()` со скелетоном — компонент
+// размонтировался, после ответа сервера монтировался заново с теми же
+// спешащими часами и звал `reload()` снова, запирая ученика в мигающем
+// скелетоне до настоящего дедлайна. Теперь родитель даёт `refresh()`, а
+// компонент переспрашивает раз в EXPIRED_RECHECK_MS, пока сервер не
+// закроет попытку. Терминальный статус по-прежнему приходит только с
+// сервера — переключает AttemptScreen.tsx по `attempt.status`.
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { getAttemptTimeStatus } from './attemptDeadline';
 import { useNow } from './useNow';
 
 const NOW_REFRESH_MS = 1000;
+// Пока местный отсчёт говорит «вышло», а сервер ещё не закрыл попытку —
+// переспрашиваем с этой паузой; по часам сервера расхождение — секунды.
+const EXPIRED_RECHECK_MS = 5000;
+const EXPIRED_LABEL = 'Время вышло';
 
 interface AttemptDeadlineTimerProps {
   /** Обязателен: форма без лимита времени этот компонент не монтирует вовсе
    * (AttemptInProgress.tsx), иначе `useNow` ниже будил бы React раз в секунду
    * там, где считать нечего — экзамен идёт с телефона. */
   deadlineAt: string;
-  /** Местный отсчёт добежал до нуля — повод спросить сервер, не приговор. */
+  /** Местный отсчёт добежал до нуля — повод тихо спросить сервер
+   * (`refresh`, без скелетона), не приговор; зовётся повторно раз в
+   * EXPIRED_RECHECK_MS, пока сервер не закроет попытку. */
   onExpired: () => void;
 }
 
@@ -69,18 +80,26 @@ export function AttemptDeadlineTimer({
 }: AttemptDeadlineTimerProps) {
   const now = useNow(NOW_REFRESH_MS);
   const status = getAttemptTimeStatus(deadlineAt, now);
-  const reloadedForExpiry = useRef(false);
+  // Родитель передаёт стрелку, новую на каждый рендер, — эффект ниже
+  // зависит только от факта «истекло», иначе каждый ответ сервера
+  // перезапускал бы его и звал onExpired заново.
+  const onExpiredRef = useRef(onExpired);
+  useEffect(() => {
+    onExpiredRef.current = onExpired;
+  }, [onExpired]);
 
   useEffect(() => {
-    if (!status.expired || reloadedForExpiry.current) return;
-    reloadedForExpiry.current = true;
-    onExpired();
-  }, [status.expired, onExpired]);
+    if (!status.expired) return;
+    onExpiredRef.current();
+    const id = window.setInterval(() => onExpiredRef.current(), EXPIRED_RECHECK_MS);
+    return () => window.clearInterval(id);
+  }, [status.expired]);
 
+  const label = status.expired ? EXPIRED_LABEL : status.label;
   return (
     <div style={wrapperStyle}>
-      {status.label && (
-        <p style={status.warning ? warningStyle : calmStyle}>{status.label}</p>
+      {label && (
+        <p style={status.warning || status.expired ? warningStyle : calmStyle}>{label}</p>
       )}
       {/* Скринридеру — редкая фраза на порогах, не тикающий отсчёт: без
           aria-live на самой строке выше, иначе он читал бы каждую секунду. */}

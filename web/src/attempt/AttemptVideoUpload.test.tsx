@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnswerVideoUploadState } from './useAnswerVideoUpload';
+import { hasActiveUploads, resetActiveUploads } from './activeUploads';
 import { AttemptVideoUpload } from './AttemptVideoUpload';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
@@ -46,6 +47,18 @@ const VIDEO: AttemptVideoControls = {
 };
 
 describe('AttemptVideoUpload — idle', () => {
+  // Аудит 2026-10-01 (H): пока часть файла летит, «Отправить» в подвале формы
+  // обязано знать об этом (activeUploads.ts) — иначе рвало загрузку молча.
+  it('пока идёт загрузка — отметка «идёт загрузка» стоит, после размонтирования снята', () => {
+    resetActiveUploads();
+    currentState = { ...idleState(), phase: 'uploading', partCount: 3, totalBytes: 24 };
+    const { unmount } = render(<AttemptVideoUpload itemId="q1" video={VIDEO} />);
+    expect(hasActiveUploads()).toBe(true);
+
+    unmount();
+    expect(hasActiveUploads()).toBe(false);
+  });
+
   it('кнопка выбора файла — единственное главное действие, объяснение до неё', () => {
     currentState = idleState();
     render(<AttemptVideoUpload itemId="q1" video={VIDEO} />);

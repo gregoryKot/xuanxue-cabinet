@@ -16,6 +16,7 @@ import { formatFileSize } from '../lib/formatFileSize';
 import { answerVideoUploadProgress } from './answerVideoUpload';
 import { attemptVideoHintStyle } from './attemptVideoStyles';
 import { useAnswerVideoUpload } from './useAnswerVideoUpload';
+import { useUploadActiveMark } from './useUploadActiveMark';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
 const BYTES_IN_GB = 1024 * 1024 * 1024;
@@ -76,6 +77,9 @@ export function AttemptVideoUpload({ itemId, video }: AttemptVideoUploadProps) {
   });
 
   const active = state.phase === 'uploading' || state.phase === 'waiting';
+  // Подвал формы спрашивает, идёт ли загрузка, прежде чем отправить
+  // (useAttemptSubmitFlow.ts, аудит 2026-10-01).
+  useUploadActiveMark(video.attemptId, itemId, active);
   const uploadedBytes = Math.min(state.sentParts * state.partBytes, state.totalBytes);
   const fraction = answerVideoUploadProgress(state.sentParts, state.partCount);
   const percent = Math.round(fraction * 100);

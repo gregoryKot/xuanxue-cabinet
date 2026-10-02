@@ -99,9 +99,19 @@ export type AnswerVideoErrorClass =
 // часть не совпала, файл изменился, попытку проверили) — стоп с текстом
 // сервера (VOICE.md): бесконечно повторять запрос, который сервер
 // осмысленно отверг, значит никогда не сказать человеку правду.
+const RATE_LIMITED_STATUS = 429;
+
 export function classifyAnswerVideoError(err: unknown): AnswerVideoErrorClass {
   if (err instanceof ApiError) {
-    if (err.status === 0 || err.status === 503 || err.status >= 500) {
+    // 429 — слишком часто, не «отказали навсегда» (аудит 2026-10-01): пауза
+    // по Retry-After и дальше та же загрузка, а не «Слишком много запросов»
+    // вместо видео.
+    if (
+      err.status === 0 ||
+      err.status === RATE_LIMITED_STATUS ||
+      err.status === 503 ||
+      err.status >= 500
+    ) {
       return { kind: 'retry', retryAfterSec: err.retryAfterSec };
     }
     return { kind: 'stop', message: err.message };

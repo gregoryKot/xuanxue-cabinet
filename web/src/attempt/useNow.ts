@@ -8,13 +8,16 @@
 // неподвижного текста незачем — заданий на экране бывает десяток, а открыт
 // он с телефона. Хук зовётся всегда (правила хуков), таймер заводится нет.
 import { useEffect, useState } from 'react';
+import { serverNow } from '../api/serverClock';
 
 export function useNow(intervalMs: number | null): number {
-  const [now, setNow] = useState(() => Date.now());
+  // По часам сервера, не устройства (serverClock.ts, аудит 2026-10-01):
+  // дедлайн решает сервер, и отсчёт на экране должен идти по тем же часам.
+  const [now, setNow] = useState(() => serverNow());
 
   useEffect(() => {
     if (intervalMs === null) return;
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    const id = window.setInterval(() => setNow(serverNow()), intervalMs);
     return () => window.clearInterval(id);
   }, [intervalMs]);
 

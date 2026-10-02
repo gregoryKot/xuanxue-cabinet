@@ -5,7 +5,6 @@
 // колбэки, тестируется без DOM.
 import type { ExamMediaDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
-import { UPLOAD_TIMEOUT_MS } from '../api/http';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   answerVideoRetryDelaySeconds,
@@ -38,6 +37,12 @@ export interface RunAnswerVideoUploadParams {
   onFailed: (error: FormError) => void;
   onDone: (media: ExamMediaDto) => void;
 }
+
+// Часть в 8 МиБ на слабом аплинке (сотни КБ/с с телефона за городом) не
+// укладывается в общие 120 с UPLOAD_TIMEOUT_MS — повтор шёл бесконечно и
+// никогда не долетал (аудит 2026-10-01, F15). 10 минут хватает от ~14 КБ/с;
+// обрыв живого соединения всё равно ловится сетевой ошибкой раньше.
+const ANSWER_VIDEO_PART_TIMEOUT_MS = 10 * 60_000;
 
 export async function runAnswerVideoUpload(
   params: RunAnswerVideoUploadParams,
@@ -82,7 +87,7 @@ export async function runAnswerVideoUpload(
         params: { id: current.id, n: String(partNumber) },
         body: blob,
         signal,
-        timeoutMs: UPLOAD_TIMEOUT_MS,
+        timeoutMs: ANSWER_VIDEO_PART_TIMEOUT_MS,
       }),
     );
     if (!updated || isCancelled()) return;

@@ -14,6 +14,7 @@ import {
   type TestApp,
 } from './e2e-support/create-app';
 import { freshIp, telegramLoginBody } from './e2e-support/telegram-widget-fixtures';
+import { TELEGRAM_LOGIN_THROTTLE } from '../src/auth/login-throttle';
 
 describe('POST /auth/telegram (e2e)', () => {
   let testApp: TestApp;
@@ -78,9 +79,9 @@ describe('POST /auth/telegram (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('11-й запрос с одного IP за минуту — 429 в конверте', async () => {
+  it('запрос сверх лимита с одного IP за минуту — 429 в конверте', async () => {
     const ip = freshIp();
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let attempt = 0; attempt < TELEGRAM_LOGIN_THROTTLE.default.limit; attempt += 1) {
       const res = await post(
         telegramLoginBody({ id: TEST_BOOTSTRAP_ADMIN_TELEGRAM_ID }),
         ip,

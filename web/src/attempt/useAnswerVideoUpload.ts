@@ -84,10 +84,10 @@ export function useAnswerVideoUpload({
   useEffect(() => {
     // Сеть вернулась — продолжаем сами, не дожидаясь таймера паузы (ADR-0137).
     window.addEventListener('online', releaseWait);
-    return () => {
-      window.removeEventListener('online', releaseWait);
-      controllerRef.current?.abort();
-    };
+    // Размонтирование загрузку не обрывает (аудит 2026-10-01, F04): «Отправить»
+    // переключает экран, а части идут дальше и видео попадёт в попытку через
+    // applyMedia (живёт на уровне экрана). Обрыв — только cancel и новый файл.
+    return () => window.removeEventListener('online', releaseWait);
   }, [releaseWait]);
 
   const waitForResume = useCallback(

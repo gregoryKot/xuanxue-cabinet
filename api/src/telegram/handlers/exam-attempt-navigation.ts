@@ -18,7 +18,7 @@ import {
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
-import { examUserFacingError } from './exam-attempt-error';
+import { reportExamActionError } from './exam-attempt-error';
 import { CONTINUE_QUESTION_INDEX, type QuestionId } from './exam-callback-ids';
 import { buildExamStartConfirmScreen } from './exam-start-confirm-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
@@ -51,7 +51,7 @@ export async function handleExamStart(
       now,
     );
   } catch (err) {
-    await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
+    await reportExamActionError(ctx, err, 'navigate');
   }
 }
 
@@ -98,7 +98,7 @@ export async function handleExamStartConfirm(
       .editMessageText(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
       .catch(() => null);
   } catch (err) {
-    await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
+    await reportExamActionError(ctx, err, 'navigate');
   }
 }
 
@@ -134,6 +134,6 @@ export async function handleExamQuestion(
       now,
     );
   } catch (err) {
-    await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
+    await reportExamActionError(ctx, err, 'navigate');
   }
 }

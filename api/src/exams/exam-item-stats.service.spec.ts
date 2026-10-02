@@ -84,7 +84,7 @@ describe('ExamItemStatsService', () => {
       attemptModel,
       gradingModel,
       examsService,
-      examItemsService,
+      itemModel,
       new UserNamesService(userModel),
       fakeExamNotifier(),
       new ExamAttemptRetryCleanupService(

@@ -7,7 +7,7 @@
 //
 // Этот файл — диспетчер правил, не Mongo-запросов: дедлайн и поиск попытки
 // «в работе» живут в exam-attempt-lifecycle.ts, срок сдачи — в
-// exam-due-guard.ts, вопросы блоков — через `ExamsService`/`ExamItemsService`.
+// exam-due-guard.ts, вопросы блоков — через `ExamsService` и `findExamItemsByIds`.
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -28,7 +28,7 @@ import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
 import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { loadOwnAttempt } from './exam-attempt-load-own';
-import { ExamItemsService } from './exam-items.service';
+import { ExamItemRecord } from './exam-item.schema';
 import {
   assertOpenForChange,
   closeIfExpiredAttempt,
@@ -60,7 +60,7 @@ export class ExamAttemptsService {
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly examsService: ExamsService,
-    private readonly examItemsService: ExamItemsService,
+    @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
     private readonly userNamesService: UserNamesService,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
     private readonly retryCleanup: ExamAttemptRetryCleanupService,
@@ -98,7 +98,7 @@ export class ExamAttemptsService {
 
     const created = await createAttempt(
       this.model,
-      this.examItemsService,
+      this.itemModel,
       exam,
       userId,
       attemptsUsed,

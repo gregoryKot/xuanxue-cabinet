@@ -11,12 +11,24 @@
 // (CLAUDE.md «Тесты»).
 import {
   ATTEMPT_NO_ANSWER_TEXT,
+  BROADCAST_LIMITS,
   type AttemptReviewBlockDto,
   type AttemptReviewQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
 
 const ANSWER_PREVIEW_LENGTH = 200;
+const SEPARATOR = '\n\n';
+
+/** Потолок одного сообщения Telegram — тот же, что у текста рассылки
+ * (BROADCAST_LIMITS.text). Сводка длиннее него Telegram отвергает целиком:
+ * «Форма 1» на 56 вопросов давала 4087–4279 знаков, и учитель не получал
+ * «работу сдали» вовсе (аудит 2026-10-01, F31). */
+export const TELEGRAM_MESSAGE_MAX_LENGTH = BROADCAST_LIMITS.text;
+
+function restNote(rest: number): string {
+  return `Остальные ответы (ещё ${rest}) — в кабинете.`;
+}
 
 function summarizeChoice(question: AttemptReviewQuestionDto): string {
   if (!question.optionsCheck) return ATTEMPT_NO_ANSWER_TEXT;
@@ -77,9 +89,14 @@ function summarizeQuestion(
   return summarizeText(question);
 }
 
+/** `maxLength` — сколько знаков отведено сводке внутри сообщения (вызывающий
+ * вычитает шапку и подвал, attempt-submitted-message.ts). Не влезает —
+ * первые вопросы целиком и честная строка про остальные, не обрыв на
+ * полуслове и не молчание. */
 export function attemptAnswersSummary(
   blocks: readonly AttemptReviewBlockDto[],
   media: readonly ExamMediaDto[],
+  maxLength = Number.POSITIVE_INFINITY,
 ): string {
   const byItem = mediaByItem(media);
   const questions = blocks.flatMap((block) => block.questions);
@@ -87,5 +104,13 @@ export function attemptAnswersSummary(
     (question, index) =>
       `${index + 1}. ${question.prompt}\n${summarizeQuestion(question, byItem)}`,
   );
-  return lines.join('\n\n');
+  const parts: string[] = [];
+  for (const [index, line] of lines.entries()) {
+    const rest = lines.length - index - 1;
+    const tail = rest > 0 ? [restNote(rest)] : [];
+    const length = [...parts, line, ...tail].join(SEPARATOR).length;
+    if (length > maxLength) return [...parts, restNote(rest + 1)].join(SEPARATOR);
+    parts.push(line);
+  }
+  return parts.join(SEPARATOR);
 }

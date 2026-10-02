@@ -13,6 +13,7 @@ import {
 import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
+import { markUploadActive, resetActiveUploads } from './activeUploads';
 import { AttemptInProgress } from './AttemptInProgress';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
@@ -122,11 +123,13 @@ function renderAttempt(
 ) {
   const onSubmit = vi.fn().mockResolvedValue(undefined);
   const reload = vi.fn().mockResolvedValue(undefined);
+  const refresh = vi.fn().mockResolvedValue(undefined);
   const view = render(
     <MemoryRouter>
       <AttemptInProgress
         attempt={attempt}
         reload={reload}
+        refresh={refresh}
         onSubmit={onSubmit}
         submitting={false}
         submitError={null}
@@ -135,8 +138,33 @@ function renderAttempt(
       />
     </MemoryRouter>,
   );
-  return { ...view, onSubmit, reload };
+  return { ...view, onSubmit, reload, refresh };
 }
+
+// Аудит 2026-10-01 (H): «Отправить» размонтировало блок загрузки видео, тот
+// обрывал свои запросы, а ученик думал, что видео ушло.
+describe('AttemptInProgress — видео ещё грузится', () => {
+  it('«Отправить» отказывает словами и не шлёт отправку, пока часть файла в полёте', async () => {
+    markUploadActive('a1:q3', true);
+    try {
+      const user = userEvent.setup();
+      const { onSubmit } = renderAnswered();
+
+      await user.click(screen.getByRole('button', { name: 'Отправить' }));
+      const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
+      await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(
+          'Видео ещё загружается. Дождитесь конца загрузки и отправьте снова.',
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      resetActiveUploads();
+    }
+  });
+});
 
 describe('AttemptInProgress — шапка', () => {
   it('рубрика «Экзамен» и название экзамена заголовком экрана', () => {
@@ -165,6 +193,7 @@ describe('AttemptInProgress — оставшееся время', () => {
             deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
           })}
           reload={() => Promise.resolve()}
+          refresh={() => Promise.resolve()}
           onSubmit={() => Promise.resolve()}
           submitting={false}
           submitError={null}
@@ -185,6 +214,7 @@ describe('AttemptInProgress — оставшееся время', () => {
         <AttemptInProgress
           attempt={makeAttempt({ deadlineAt: undefined })}
           reload={() => Promise.resolve()}
+          refresh={() => Promise.resolve()}
           onSubmit={() => Promise.resolve()}
           submitting={false}
           submitError={null}
@@ -380,14 +410,17 @@ describe('AttemptInProgress', () => {
   // этот компонент сам решал «экзамен окончен» по местным часам и показывал
   // терминальный экран навсегда, даже когда сервер потом отвечал, что
   // попытка ещё жива. Теперь «конец экзамена» решает только AttemptScreen.tsx
-  // по attempt.status с сервера — этот компонент лишь спрашивает сервер
-  // (reload) и продолжает показывать форму, пока он не ответит.
-  it('локальный дедлайн истёк — попытка перечитывается один раз, но терминальный экран здесь не рисуется', async () => {
-    const { reload } = renderAttempt(
+  // по attempt.status с сервера — этот компонент лишь тихо спрашивает сервер
+  // (refresh, без скелетона — аудит 2026-10-01: reload размонтировал форму и
+  // таймер, и спешащие часы телефона зацикливали перечитывание) и
+  // продолжает показывать форму, пока он не ответит.
+  it('локальный дедлайн истёк — попытка тихо перечитывается, терминальный экран здесь не рисуется', async () => {
+    const { reload, refresh } = renderAttempt(
       makeAttempt({ deadlineAt: new Date(Date.now() - 1000).toISOString() }),
     );
 
-    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(reload).not.toHaveBeenCalled();
     expect(
       screen.queryByText('Время экзамена вышло. Попытка закрыта, ответ не сохранён.'),
     ).not.toBeInTheDocument();
