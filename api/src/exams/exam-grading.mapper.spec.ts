@@ -44,4 +44,13 @@ describe('toGradingDto', () => {
 
     expect(toGradingDto(doc).comment).toBeUndefined();
   });
+
+  // Регрессия инцидента 2026-10-02 (500 после удаления аккаунта автора):
+  // удаление аккаунта проверявшего делает $unset graderId, оценка остаётся.
+  it('документ без graderId (аккаунт проверявшего удалён) — не падает, undefined', () => {
+    const doc = fullGrading();
+    doc.graderId = undefined;
+
+    expect(toGradingDto(doc).graderId).toBeUndefined();
+  });
 });

@@ -36,7 +36,7 @@ export function toGradingDto(doc: RawLeanExamGrading): ExamGradingDto {
     attemptId: doc.attemptId.toString(),
     examId: doc.examId.toString(),
     userId: doc.userId.toString(),
-    graderId: doc.graderId.toString(),
+    graderId: doc.graderId?.toString(),
     comment: doc.comment,
     outcome: doc.outcome,
     gradedAt: toIsoUtc(doc.gradedAt),

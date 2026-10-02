@@ -37,9 +37,11 @@ export class ExamGradingRecord {
   userId!: Types.ObjectId;
 
   // Кто проверил — ссылка, не признак владения (USER_REFERENCE_PATHS):
-  // удаление аккаунта учителя обнуляет поле, оценка ученика остаётся.
-  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
-  graderId!: Types.ObjectId;
+  // удаление аккаунта учителя обнуляет поле, оценка ученика остаётся. Потому
+  // не required: $unset иначе оставил бы невалидный документ, а маппер упал
+  // бы на `.toString()` (инцидент 2026-10-02, GET /api/materials → 500).
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
+  graderId?: Types.ObjectId;
 
   @Prop({ type: String, required: false })
   comment?: string;
