@@ -1,7 +1,7 @@
 // Загрузка и раздача видео вопроса/варианта (ADR-0133, ADR-0165). Загрузка
 // частями — только штат школы: старт (JSON), часть (сырое тело,
-// video-uploads/video-upload-part-body.ts/app.setup.ts) и complete; прежний
-// POST сырым телом (exam-video-body.ts) остаётся до перехода web. GET — без
+// video-uploads/video-upload-part-body.ts/app.setup.ts) и complete; прежней
+// загрузки одним сырым телом больше нет. GET — без
 // @Roles: ученику видео нужно на экране сдачи, доступ решает сервис по снимку
 // его попытки (ExamVideosService.signedUrl, SECURITY §3), хендлер —
 // VideoRedirectController.get (common/video-redirect.ts, доля с
@@ -39,27 +39,15 @@ interface RawBodyRequest {
 @Controller('exam-videos')
 export class ExamVideosController extends VideoRedirectController<UserLean> {
   constructor(
-    private readonly service: ExamVideosService,
+    service: ExamVideosService,
     private readonly statsService: ExamVideoStatsService,
     private readonly uploadsService: ExamVideoUploadsService,
   ) {
     super(service);
   }
 
-  // Прежняя загрузка одним сырым телом — уйдёт вместе со своим парсером и
-  // предикатом, когда web перейдёт на части (ADR-0165).
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @Roles('teacher', 'assistant', 'admin')
-  upload(
-    @Req() req: RawBodyRequest,
-    @CurrentUser() user: UserLean,
-  ): Promise<ExamVideoDto> {
-    return this.service.upload(req.body, user.id, DateTime.utc());
-  }
-
-  // `POST /exam-videos` занят сырой загрузкой выше, поэтому старт — на
-  // литеральном `uploads` (check-route-collisions.mjs).
+  // Старт — на литеральном `uploads`, а не на корне: `POST /exam-videos` у
+  // видео вопроса не существует (check-route-collisions.mjs).
   @Post('uploads')
   @ApiRoute('POST /exam-videos/uploads')
   @HttpCode(HttpStatus.CREATED)

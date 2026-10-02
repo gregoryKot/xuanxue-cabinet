@@ -2,9 +2,8 @@
 // слой 4.2 вслед за картинками, exam-images.service.ts). Байты идут в R2, а не в
 // MongoDB — сам файл существенно больше картинки (до 50 МБ), Atlas M0 их бы
 // не потянул (ADR-0057, тот же довод, что у файлов материалов). Загрузка
-// частями — exam-video-uploads.service.ts (ADR-0165); прежняя сырая — ниже, до
-// перехода web (exam-video-raw-upload.ts). Кому и какое видео можно брать по id, и
-// готово ли оно, — exam-video-access.ts.
+// частями — exam-video-uploads.service.ts (ADR-0165). Кому и какое видео можно
+// брать по id, и готово ли оно, — exam-video-access.ts.
 //
 // Модель попытки берётся через ExamAttemptModelModule, не через ExamsModule
 // целиком — цикл (тот же приём, что ExamImagesService).
@@ -12,17 +11,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import type { ExamVideoContentType, ExamVideoDto } from '@xuanxue/shared';
+import type { ExamVideoContentType } from '@xuanxue/shared';
 import { SingleFlight } from '../common/single-flight';
 import { VIEW_VIDEO, signedVideoUrl, type VideoUrlOptions } from '../common/video-link';
 import { encryptRecord } from '../utils/encryption';
 import { FileStoreService } from '../storage/file-store.service';
-import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import type { UserLean } from '../users/users.service';
 import { readPoster } from '../video-uploads/video-poster';
 import { assertExamVideosReady, loadAccessibleExamVideo } from './exam-video-access';
-import { storeRawExamVideo } from './exam-video-raw-upload';
 import {
   decryptExamVideo,
   readyContentType,
@@ -50,18 +47,7 @@ export class ExamVideosService {
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
     private readonly fileStore: FileStoreService,
-    private readonly orphans: StorageOrphansService,
   ) {}
-
-  // Прежняя загрузка одним сырым телом — до перехода web на части (ADR-0165).
-  upload(
-    body: unknown,
-    createdBy: string | undefined,
-    now: DateTime,
-  ): Promise<ExamVideoDto> {
-    const { model, fileStore, orphans } = this;
-    return storeRawExamVideo({ model, fileStore, orphans }, body, createdBy, now);
-  }
 
   // Проверка наличия и готовности — exam-video-access.ts.
   assertExist(ids: readonly string[]): Promise<void> {

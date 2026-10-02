@@ -1,7 +1,8 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок — CLAUDE.md
-// «Тесты», образец exam-images.service.spec.ts): upload кладёт объект в
-// хранилище (фейк с Map вместо R2) и пишет запись, signedUrl отдаёт штату по
-// роли или ученику по снимку его попытки (SECURITY §3, ADR-0133).
+// «Тесты», образец exam-images.service.spec.ts): готовое видео и объект в
+// хранилище (фейк с Map вместо R2) заводятся напрямую — сама загрузка частями
+// проверена в exam-video-uploads.service.spec.ts, а здесь signedUrl отдаёт штату
+// по роли или ученику по снимку его попытки (SECURITY §3, ADR-0133).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
@@ -15,11 +16,6 @@ import {
 import { InvalidInputError, NotAvailableError, NotFoundError } from '../common/errors';
 import { ExamAttemptRecord, ExamAttemptSchema } from '../exams/exam-attempt.schema';
 import type { FileStoreService } from '../storage/file-store.service';
-import {
-  StorageOrphanRecord,
-  StorageOrphanSchema,
-} from '../storage/storage-orphan.schema';
-import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { ExamVideoRecord, ExamVideoSchema } from './exam-video.schema';
 import { ExamVideosService } from './exam-videos.service';
 
@@ -82,7 +78,6 @@ describe('ExamVideosService', () => {
   let connection: Connection;
   let videoModel: Model<ExamVideoRecord>;
   let attemptModel: Model<ExamAttemptRecord>;
-  let orphanModel: Model<StorageOrphanRecord>;
   let service: ExamVideosService;
   let store: ReturnType<typeof fakeFileStore>;
 
@@ -94,13 +89,8 @@ describe('ExamVideosService', () => {
       ExamAttemptRecord.name,
       ExamAttemptSchema,
     );
-    orphanModel = connection.model<StorageOrphanRecord>(
-      StorageOrphanRecord.name,
-      StorageOrphanSchema,
-    );
     store = fakeFileStore();
-    const orphans = new StorageOrphansService(orphanModel, store.fileStore);
-    service = new ExamVideosService(videoModel, attemptModel, store.fileStore, orphans);
+    service = new ExamVideosService(videoModel, attemptModel, store.fileStore);
   }, 60_000);
 
   afterAll(async () => {
@@ -110,11 +100,7 @@ describe('ExamVideosService', () => {
   afterEach(async () => {
     store.objects.clear();
     store.enabled.value = true;
-    await Promise.all([
-      videoModel.deleteMany({}),
-      attemptModel.deleteMany({}),
-      orphanModel.deleteMany({}),
-    ]);
+    await Promise.all([videoModel.deleteMany({}), attemptModel.deleteMany({})]);
   });
 
   async function seedAttempt(userId: string, videoIds: string[] = []): Promise<void> {
@@ -128,46 +114,20 @@ describe('ExamVideosService', () => {
     });
   }
 
-  describe('upload', () => {
-    it('MP4 — DTO без key, sizeBytes и id верные, объект лёг в хранилище', async () => {
-      const dto = await service.upload(MP4, new Types.ObjectId().toString(), NOW);
-
-      expect(dto.contentType).toBe('video/mp4');
-      expect(dto.sizeBytes).toBe(MP4.length);
-      expect(typeof dto.id).toBe('string');
-      expect(dto).not.toHaveProperty('key');
-      expect(store.objects.size).toBe(1);
+  /** Готовое видео вместе с объектом в хранилище — то, что остаётся после
+   * успешного complete загрузки частями. */
+  async function seedVideo(): Promise<{ id: string }> {
+    const key = `exam-videos/${new Types.ObjectId().toString()}`;
+    store.objects.set(key, MP4);
+    const doc = await videoModel.create({
+      key,
+      contentType: 'video/mp4',
+      sizeBytes: MP4.length,
+      status: 'ready',
+      fingerprint: `seed:${key}`,
     });
-
-    it('после удачной загрузки журнал сирот пуст (ADR-0079)', async () => {
-      await service.upload(MP4, new Types.ObjectId().toString(), NOW);
-
-      expect(await orphanModel.countDocuments({})).toBe(0);
-    });
-
-    it('R2 выключен — NotAvailableError, запись не создаётся', async () => {
-      store.enabled.value = false;
-
-      await expect(
-        service.upload(MP4, new Types.ObjectId().toString(), NOW),
-      ).rejects.toBeInstanceOf(NotAvailableError);
-      expect(await videoModel.countDocuments({})).toBe(0);
-    });
-
-    // Программно невозможный случай (защита в глубину) — тот же приём, что у
-    // ExamImagesService.upload/ExamItemsService.create.
-    it('findById сразу после create не находит документ — Error', async () => {
-      const findById = jest
-        .spyOn(videoModel, 'findById')
-        .mockReturnValueOnce({ lean: () => Promise.resolve(null) } as never);
-
-      await expect(
-        service.upload(MP4, new Types.ObjectId().toString(), NOW),
-      ).rejects.toThrow('запись не найдена сразу после создания');
-
-      findById.mockRestore();
-    });
-  });
+    return { id: doc._id.toString() };
+  }
 
   describe('assertExist', () => {
     it('пустой список — не ходит в базу, не бросает', async () => {
@@ -187,27 +147,27 @@ describe('ExamVideosService', () => {
     });
 
     it('существующий id — проходит', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       await expect(service.assertExist([dto.id])).resolves.toBeUndefined();
     });
   });
 
   describe('signedUrl', () => {
     it('штат — по роли, без снимка попытки', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       const url = await service.signedUrl(dto.id, userLean({ roles: ['teacher'] }), NOW);
       expect(url).toContain('fake-r2.example');
     });
 
     it('ученик без своей попытки — 404 (не подтверждаем существование)', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       await expect(
         service.signedUrl(dto.id, userLean({ roles: [] }), NOW),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
 
     it('ученик со своей попыткой — 302 на подписанную ссылку', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       const user = userLean({ roles: [] });
       await seedAttempt(user.id, [dto.id]);
 
@@ -237,7 +197,7 @@ describe('ExamVideosService', () => {
   // лениво, `loadBytes()` (аудит 2026-10-01, F02).
   describe('loadForBot', () => {
     it('штат — байты по loadBytes и тип, telegramFileId не задан у нового видео', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       const loaded = await service.loadForBot(
         dto.id,
         userLean({ roles: ['teacher'] }),
@@ -249,14 +209,14 @@ describe('ExamVideosService', () => {
     });
 
     it('ученик без своей попытки — 404, тот же отказ, что у signedUrl', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       await expect(
         service.loadForBot(dto.id, userLean({ roles: [] }), NOW),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
 
     it('ученик со своей попыткой — байты отдаются', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       const user = userLean({ roles: [] });
       await seedAttempt(user.id, [dto.id]);
 
@@ -265,7 +225,7 @@ describe('ExamVideosService', () => {
     });
 
     it('R2 выключен — запись отдаётся, NotAvailableError бросает только loadBytes()', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       store.enabled.value = false;
 
       const loaded = await service.loadForBot(
@@ -278,7 +238,7 @@ describe('ExamVideosService', () => {
 
     // F02: с известным file_id объект R2 (до 50 МБ) в память не ложится.
     it('запомненный telegramFileId возвращается расшифрованным, хранилище не читается', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       await service.rememberTelegramFileId(dto.id, 'tg-file-1');
       const get = jest.spyOn(store.fileStore, 'get');
 
@@ -295,7 +255,7 @@ describe('ExamVideosService', () => {
 
     // F02: N учеников открыли один видео-вопрос — один объект из R2 на всех.
     it('N параллельных loadBytes одного видео — одно чтение из хранилища', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       const get = jest.spyOn(store.fileStore, 'get');
       const staff = userLean({ roles: ['teacher'] });
 
@@ -317,7 +277,7 @@ describe('ExamVideosService', () => {
 
   describe('rememberTelegramFileId', () => {
     it('пишет file_id зашифрованным полем (не читается напрямую из базы)', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
+      const dto = await seedVideo();
       await service.rememberTelegramFileId(dto.id, 'tg-file-2');
 
       const raw = await videoModel.findById(dto.id).lean();
@@ -413,14 +373,6 @@ describe('ExamVideosService', () => {
       await expect(
         service.loadForBot(id, userLean({ roles: ['teacher'] }), NOW),
       ).rejects.toThrow('нет contentType');
-    });
-
-    it('прежняя сырая загрузка пишет готовое видео с отпечатком-заглушкой', async () => {
-      const dto = await service.upload(MP4, undefined, NOW);
-
-      const doc = await videoModel.findById(dto.id).lean();
-      expect(doc?.status).toBe('ready');
-      expect(doc?.fingerprint).toMatch(/^raw:exam-videos\//);
     });
   });
 

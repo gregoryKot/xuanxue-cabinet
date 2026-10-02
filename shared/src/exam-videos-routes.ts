@@ -1,9 +1,8 @@
 // Записи карты маршрутов (api-routes.ts, ADR-0148) — видео вопросов и
 // вариантов (ADR-0133): число для раздела «Экзамены» и загрузка частями
-// (ADR-0165: старт → части → complete, как у видео-ответа). Прежняя загрузка
-// одним сырым телом идёт через XHR с прогрессом (uploadWithProgress.ts), а не
-// `apiFetch`, поэтому `POST /exam-videos` в карту не входит и уходит вместе с
-// переходом web на части; `GET /exam-videos/:id` — 302 для `<video src>`.
+// (ADR-0165: старт → части → complete, как у видео-ответа). Загрузки одним
+// сырым телом (`POST /exam-videos`) больше нет; `GET /exam-videos/:id` — 302
+// для `<video src>` — в карту не входит.
 import type { ExamVideoDto, ExamVideoStatsDto, StartExamVideoInput } from './exam-videos';
 import type { RawBody } from './raw-body';
 import type { VideoUploadDto } from './video-uploads';

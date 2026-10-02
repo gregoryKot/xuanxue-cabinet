@@ -1,5 +1,5 @@
 // Чистая логика без Mongo/DI/HTTP (CLAUDE.md «Тесты») — тот же образец, что
-// exam-video-body.spec.ts.
+// material-file-body.spec.ts.
 import { DateTime } from 'luxon';
 import { SESSION_COOKIE } from '../auth/session-cookie';
 import { signSession } from '../auth/session-token';

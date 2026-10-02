@@ -6,12 +6,14 @@
 // не дублирует их.
 import { Types } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ExamItemDto, ExamVideoDto } from '@xuanxue/shared';
+import type { ApiErrorBody, ExamItemDto } from '@xuanxue/shared';
 import { FileStoreService } from '../src/storage/file-store.service';
+import { MultipartStoreService } from '../src/storage/multipart-store.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { FakeFileStore } from './e2e-support/fake-file-store';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
-import { mp4Bytes } from './e2e-support/exam-videos-fixtures';
+import { uploadExamVideo } from './e2e-support/exam-videos-fixtures';
+import { FakeMultipartStore } from './e2e-support/fake-multipart-store';
 
 describe('Видео вопроса/варианта — весь путь (e2e, ADR-0133)', () => {
   let testApp: TestApp;
@@ -21,6 +23,7 @@ describe('Видео вопроса/варианта — весь путь (e2e,
     store = new FakeFileStore();
     testApp = await createTestApp((builder) => {
       builder.overrideProvider(FileStoreService).useValue(store);
+      builder.overrideProvider(MultipartStoreService).useValue(new FakeMultipartStore());
     });
   }, 60_000);
 
@@ -33,11 +36,7 @@ describe('Видео вопроса/варианта — весь путь (e2e,
   }
 
   async function uploadVideo(cookie: string): Promise<string> {
-    const res = await withCsrf(request(server()).post('/api/exam-videos'))
-      .set('Cookie', cookie)
-      .set('Content-Type', 'video/mp4')
-      .send(mp4Bytes());
-    return (res.body as ExamVideoDto).id;
+    return (await uploadExamVideo(server(), cookie)).id;
   }
 
   it('вопрос с видео формулировки (файл R2) — читается обратно', async () => {

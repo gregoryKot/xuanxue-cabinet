@@ -10,7 +10,6 @@ import helmet from 'helmet';
 import {
   ANSWER_VIDEO_LIMITS,
   EXAM_IMAGE_LIMITS,
-  EXAM_VIDEO_LIMITS,
   MATERIAL_FILE_LIMITS,
 } from '@xuanxue/shared';
 import { SESSION_SECRET } from './auth/session-token';
@@ -21,7 +20,6 @@ import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
 import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
-import { makeIsExamVideoUpload } from './exam-videos/exam-video-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
 import {
   makeIsVideoPart,
@@ -29,10 +27,11 @@ import {
 } from './video-uploads/video-upload-part-body';
 
 // Часть видео-файла (ADR-0137, ADR-0165) — свой бюджет одновременных сырых
-// загрузок, отдельно от остальных трёх маршрутов: 8 × 8 МиБ = 64 МБ худший случай,
-// поверх их общих 4 × 50 МБ (raw-upload-concurrency.ts). Больше частей одного
-// файла может идти параллельно (браузер шлёт несколько сразу для скорости),
-// но каждая часть меньше — общий бюджет соизмерим.
+// загрузок, отдельно от картинок и файла материала: 8 × 8 МиБ = 64 МБ худший
+// случай, поверх их общих 4 × 30 МБ (raw-upload-concurrency.ts). Видео вопроса
+// тоже идёт частями этого же маршрута, одним телом на 50 МБ больше не уходит.
+// Частей одного файла параллельно может идти несколько, но каждая меньше —
+// общий бюджет соизмерим.
 const VIDEO_PART_CONCURRENCY_LIMIT = 8;
 
 export function configureApp(app: NestExpressApplication): void {
@@ -72,28 +71,27 @@ export function configureApp(app: NestExpressApplication): void {
   const sessionSecret = app.get<string>(SESSION_SECRET);
   const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
   const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
-  const isExamVideoUpload = makeIsExamVideoUpload(sessionSecret);
   const isVideoPart = makeIsVideoPart(sessionSecret, VIDEO_PART_PATH_PATTERNS);
 
   // Мера 2 (SECURITY §4, ADR-0083) — потолок на число сырых загрузок
-  // «в полёте» одновременно, ДО всех трёх парсеров ниже: иначе тело уже
-  // легло бы в память к моменту отказа. Один счётчик на все три маршрута —
-  // общий бюджет памяти инстанса, не по маршруту. 4 × 50 МБ (видео,
-  // ADR-0133, крупнее файла материала) = 200 МБ худший случай
-  // (raw-upload-concurrency.ts, RAW_UPLOAD_CONCURRENCY_LIMIT).
+  // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло бы в
+  // память к моменту отказа. Один счётчик на оба маршрута — общий бюджет памяти
+  // инстанса, не по маршруту. 4 × 30 МБ (файл материала, ADR-0057, крупнее
+  // картинки) = 120 МБ худший случай (raw-upload-concurrency.ts,
+  // RAW_UPLOAD_CONCURRENCY_LIMIT).
   app.use(
     makeRawUploadConcurrencyLimit(
-      (req) =>
-        isRawImageUpload(req) || isMaterialFileUpload(req) || isExamVideoUpload(req),
+      (req) => isRawImageUpload(req) || isMaterialFileUpload(req),
     ),
   );
   // Сырое тело — исключение из «файлы мимо API» (SECURITY §4) ровно на три
-  // маршрута: картинки вариантов ответа (ADR-0035), снимок перевода
-  // (ADR-0050) и видео вопроса/варианта (ADR-0133). Включается по предикату
-  // маршрута, заявленного типа и подписанной сессии (exam-image-body.ts, там
-  // же список маршрутов картинок), а не по image/* глобально — иначе такое
-  // тело в любом другом запросе стало бы Buffer, и ValidationPipe
-  // (whitelist/forbidNonWhitelisted) перебирал бы его как «лишние поля».
+  // группы маршрутов: картинки вариантов ответа (ADR-0035) и снимок перевода
+  // (ADR-0050), файл материала (ADR-0057) и части видео (ADR-0137, ADR-0165).
+  // Включается по предикату маршрута, заявленного типа и подписанной сессии
+  // (exam-image-body.ts, там же список маршрутов картинок), а не по image/*
+  // глобально — иначе такое тело в любом другом запросе стало бы Buffer, и
+  // ValidationPipe (whitelist/forbidNonWhitelisted) перебирал бы его как
+  // «лишние поля».
   app.useBodyParser('raw', {
     type: isRawImageUpload,
     limit: EXAM_IMAGE_LIMITS.maxBytes,
@@ -105,19 +103,11 @@ export function configureApp(app: NestExpressApplication): void {
     type: isMaterialFileUpload,
     limit: MATERIAL_FILE_LIMITS.maxBytes,
   });
-  // Третий раз (ADR-0133): видео вопроса/варианта — свой маршрут, свой
-  // список типов и самый большой потолок из трёх — байты идут в R2, не в
-  // Mongo, но всё равно проходят через память инстанса на загрузке.
-  app.useBodyParser('raw', {
-    type: isExamVideoUpload,
-    limit: EXAM_VIDEO_LIMITS.maxBytes,
-  });
-  // Четвёртый и последний (ADR-0137): часть видео-файла — свой предикат,
-  // свой лимит (8 МиБ, кусок, не файл целиком) и СВОЙ счётчик
-  // одновременности (VIDEO_PART_CONCURRENCY_LIMIT) — общий с первыми
-  // тремя маршрутами он оказался бы либо слишком тесным для частых мелких
-  // частей, либо занижал бы их бюджет памяти относительно редких крупных
-  // файлов.
+  // Часть видео-файла (ADR-0137, ADR-0165) — свой предикат, свой лимит (8 МиБ,
+  // кусок, не файл целиком) и СВОЙ счётчик одновременности
+  // (VIDEO_PART_CONCURRENCY_LIMIT) — общий с картинками и файлом материала он
+  // оказался бы либо слишком тесным для частых мелких частей, либо занижал бы
+  // их бюджет памяти относительно редких крупных файлов.
   app.use(makeRawUploadConcurrencyLimit(isVideoPart, VIDEO_PART_CONCURRENCY_LIMIT));
   app.useBodyParser('raw', {
     type: isVideoPart,

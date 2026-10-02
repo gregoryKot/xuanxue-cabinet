@@ -37,7 +37,8 @@ import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { toExamVideoDto, type RawLeanExamVideo } from './exam-video.mapper';
 import { ExamVideoRecord } from './exam-video.schema';
 
-// Каталог ключей в R2 — случайный `exam-videos/<uuid>`, как у сырой загрузки.
+// Каталог ключей в R2 — случайный `exam-videos/<uuid>`, как у видео, загруженных
+// прежней сырой загрузкой (её уже нет, но объекты остались).
 const EXAM_VIDEO_KEY_PREFIX = 'exam-videos';
 
 @Injectable()

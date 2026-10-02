@@ -49,15 +49,6 @@ async function buildController(
 }
 
 describe('ExamVideosController', () => {
-  it('upload() передаёт req.body и id пользователя из сессии в сервис', async () => {
-    const upload = jest.fn().mockResolvedValue(VIDEO_DTO);
-    const controller = await buildController({ upload });
-    const bytes = Buffer.from([0, 0, 0, 0x20]);
-
-    await expect(controller.upload({ body: bytes }, USER)).resolves.toEqual(VIDEO_DTO);
-    expect(upload).toHaveBeenCalledWith(bytes, 'u1', expect.any(DateTime));
-  });
-
   it('get() редиректит на подписанную ссылку сервиса, без attachment и с no-store', async () => {
     const signedUrl = jest
       .fn()

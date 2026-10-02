@@ -3,10 +3,10 @@
 // формат ошибок и credentials не разъезжались по компонентам.
 import { APP_VERSION_HEADER, CSRF_HEADER, isMutatingMethod } from '@xuanxue/shared';
 import { combineAbortSignals } from './abortSignals';
-// ApiError и setUnauthorizedListener живут в apiError.ts (общие с
-// uploadWithProgress.ts) — реэкспортированы отсюда, чтобы весь остальной
-// код кабинета по-прежнему брал их одной строкой из http.ts, единственной
-// точки сети (CLAUDE.md «Одна механика — один компонент»).
+// ApiError и setUnauthorizedListener живут в apiError.ts — реэкспортированы
+// отсюда, чтобы весь остальной код кабинета по-прежнему брал их одной строкой
+// из http.ts, единственной точки сети (CLAUDE.md «Одна механика — один
+// компонент»).
 import {
   ApiError,
   errorFromEnvelope,
@@ -135,8 +135,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     } catch {
       throw new ApiError(UNKNOWN_ERROR_MESSAGE, response.status, 'unknown');
     }
-    // 401-слушатель и сборка ApiError — общий хвост с uploadWithProgress.ts
-    // (apiError.ts, аудит 2026-09-27).
+    // 401-слушатель и сборка ApiError — в apiError.ts (аудит 2026-09-27).
     throw errorFromEnvelope(
       envelope,
       response.status,

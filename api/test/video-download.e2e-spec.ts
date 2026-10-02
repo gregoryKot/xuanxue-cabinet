@@ -7,15 +7,17 @@
 import { getModelToken } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ExamVideoContentType, ExamVideoDto } from '@xuanxue/shared';
+import type { ApiErrorBody, ExamVideoContentType } from '@xuanxue/shared';
 import { AnswerVideoRecord } from '../src/answer-videos/answer-video.schema';
 import { ExamAttemptRecord } from '../src/exams/exam-attempt.schema';
 import { FileStoreService } from '../src/storage/file-store.service';
+import { MultipartStoreService } from '../src/storage/multipart-store.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { FakeFileStore } from './e2e-support/fake-file-store';
-import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { sessionCookieFor } from './e2e-support/http';
 import { createUserWithSession } from './e2e-support/session';
-import { mp4Bytes } from './e2e-support/exam-videos-fixtures';
+import { uploadExamVideo } from './e2e-support/exam-videos-fixtures';
+import { FakeMultipartStore } from './e2e-support/fake-multipart-store';
 
 const DISPOSITION_PARAM = 'response-content-disposition';
 
@@ -25,6 +27,7 @@ describe('Скачивание видео, ?download=1 (e2e, ADR-0165)', () => {
   beforeAll(async () => {
     testApp = await createTestApp((builder) => {
       builder.overrideProvider(FileStoreService).useValue(new FakeFileStore());
+      builder.overrideProvider(MultipartStoreService).useValue(new FakeMultipartStore());
     });
   }, 60_000);
 
@@ -45,12 +48,8 @@ describe('Скачивание видео, ?download=1 (e2e, ADR-0165)', () => {
     return new URL(String(res.headers['location'])).searchParams.get(DISPOSITION_PARAM);
   }
 
-  async function uploadExamVideo(teacherCookie: string): Promise<string> {
-    const res = await withCsrf(request(server()).post('/api/exam-videos'))
-      .set('Cookie', teacherCookie)
-      .set('Content-Type', 'video/mp4')
-      .send(mp4Bytes());
-    return (res.body as ExamVideoDto).id;
+  async function uploadVideo(teacherCookie: string): Promise<string> {
+    return (await uploadExamVideo(server(), teacherCookie)).id;
   }
 
   async function giveAttemptWithVideo(userId: string, videoId: string): Promise<void> {
@@ -92,7 +91,7 @@ describe('Скачивание видео, ?download=1 (e2e, ADR-0165)', () => {
   describe('видео вопроса — /api/exam-videos/:id', () => {
     it('штат: 302 на ссылку с attachment и video.mp4; без параметра — без attachment', async () => {
       const teacher = await sessionCookieFor(testApp.app, ['teacher']);
-      const id = await uploadExamVideo(teacher);
+      const id = await uploadVideo(teacher);
 
       const download = await get(`/api/exam-videos/${id}?download=1`, teacher);
       expect(download.status).toBe(302);
@@ -106,7 +105,7 @@ describe('Скачивание видео, ?download=1 (e2e, ADR-0165)', () => {
 
     it('ученик с видео в своей попытке скачивает; другой ученик — 404; без входа — 401', async () => {
       const teacher = await sessionCookieFor(testApp.app, ['teacher']);
-      const id = await uploadExamVideo(teacher);
+      const id = await uploadVideo(teacher);
       const owner = await createUserWithSession(testApp.app, { name: 'А', roles: [] });
       const stranger = await createUserWithSession(testApp.app, { name: 'Б', roles: [] });
       await giveAttemptWithVideo(owner.userId, id);
@@ -126,7 +125,7 @@ describe('Скачивание видео, ?download=1 (e2e, ADR-0165)', () => {
 
     it('download=2, пустое значение и чужой параметр — 400, редиректа нет', async () => {
       const teacher = await sessionCookieFor(testApp.app, ['teacher']);
-      const id = await uploadExamVideo(teacher);
+      const id = await uploadVideo(teacher);
 
       for (const query of ['download=2', 'download=', 'download=1&download=1', 'x=1']) {
         const res = await get(`/api/exam-videos/${id}?${query}`, teacher);

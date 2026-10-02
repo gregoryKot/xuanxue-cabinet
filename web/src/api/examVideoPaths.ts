@@ -2,13 +2,11 @@
 // тот упёрся в файловый храповик (CLAUDE.md «Храповики»).
 import { VIDEO_DOWNLOAD_QUERY_PARAM, VIDEO_DOWNLOAD_QUERY_VALUE } from '@xuanxue/shared';
 
-export const EXAM_VIDEOS_PATH = '/exam-videos';
-
 /** Адрес видео вопроса/варианта (ADR-0133) для `<video src>` — сервер
  * отвечает 302 на подписанную ссылку R2, открывает её сам браузер (тот же
  * приём, что materialFilePath ниже), не apiFetch. */
 export function examVideoSrc(videoId: string): string {
-  return `/api${EXAM_VIDEOS_PATH}/${videoId}`;
+  return `/api/exam-videos/${videoId}`;
 }
 
 /** Адрес видео-ответа ученика (ADR-0137), тем же приёмом — `<video src>`,
