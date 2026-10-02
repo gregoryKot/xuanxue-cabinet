@@ -2,6 +2,10 @@
 // же приём, что у vk.adapter.spec.ts/telegram.adapter.spec.ts.
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
+import {
+  EMAIL_LOGIN_QUOTA_MESSAGE,
+  EMAIL_LOGIN_SEND_FAILED_MESSAGE,
+} from '@xuanxue/shared';
 import { NotAvailableError } from '../common/errors';
 import { MailService } from './mail.service';
 
@@ -9,8 +13,13 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
   return { get: (key: string) => values[key] } as unknown as ConfigService;
 }
 
-function jsonResponse(ok: boolean, status = 200): Response {
-  return { ok, status } as Response;
+function jsonResponse(ok: boolean, status = 200, body?: unknown): Response {
+  return {
+    ok,
+    status,
+    json: () =>
+      body === undefined ? Promise.reject(new Error('no body')) : Promise.resolve(body),
+  } as unknown as Response;
 }
 
 const CONFIGURED = {
@@ -104,6 +113,48 @@ describe('MailService.sendLoginLink', () => {
     ).rejects.toMatchObject({
       message: 'Не удалось отправить письмо. Попробуйте ещё раз через минуту.',
     });
+  });
+
+  // Аудит 2026-10-01, F48: квота Resend (100 писем в сутки) исчерпана —
+  // «через минуту» не поможет, а про вход через Telegram не говорили.
+  it('квота Resend исчерпана (429 daily_quota_exceeded) — совет войти через Telegram, warn mail.quota', async () => {
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(false, 429, { name: 'daily_quota_exceeded' }));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new MailService(fakeConfig(CONFIGURED));
+
+    await expect(
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
+    ).rejects.toMatchObject({
+      name: NotAvailableError.name,
+      message: EMAIL_LOGIN_QUOTA_MESSAGE,
+    });
+    expect(EMAIL_LOGIN_QUOTA_MESSAGE).toContain('Telegram');
+    expect(EMAIL_LOGIN_QUOTA_MESSAGE).not.toContain('через минуту');
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ tag: 'mail.quota', status: 429 }),
+      expect.any(String),
+    );
+  });
+
+  it('429 rate_limit_exceeded — не квота, прежний текст «через минуту»', async () => {
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(false, 429, { name: 'rate_limit_exceeded' }));
+    const service = new MailService(fakeConfig(CONFIGURED));
+
+    await expect(
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
+    ).rejects.toMatchObject({ message: EMAIL_LOGIN_SEND_FAILED_MESSAGE });
   });
 
   it('сетевая ошибка (fetch бросил) — NotAvailableError, тот же текст', async () => {

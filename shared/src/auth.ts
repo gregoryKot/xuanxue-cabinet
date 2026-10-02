@@ -107,6 +107,11 @@ export const EMAIL_LOGIN_EXPIRED_MESSAGE =
 export const EMAIL_LOGIN_SEND_FAILED_MESSAGE =
   'Не удалось отправить письмо. Попробуйте ещё раз через минуту.';
 
+/** Квота Resend исчерпана (100 писем в сутки на бесплатном плане) — «через
+ * минуту» не поможет, а вход через Telegram работает (аудит 2026-10-01, F48). */
+export const EMAIL_LOGIN_QUOTA_MESSAGE =
+  'Почта сегодня недоступна — войдите через Telegram или попробуйте завтра.';
+
 /**
  * Ответ `GET /auth/config` (`@Public()`, без сессии) — конфигурация экрана
  * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN`), нужен

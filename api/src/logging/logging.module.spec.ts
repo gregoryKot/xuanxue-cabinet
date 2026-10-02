@@ -1,5 +1,9 @@
 import pino from 'pino';
-import { buildPinoHttpOptions, renameReservedLogKeys } from './logging.module';
+import {
+  buildPinoHttpOptions,
+  renameReservedLogKeys,
+  requestLogLevel,
+} from './logging.module';
 import { redactRequestSerializer } from './request-serializer';
 
 describe('buildPinoHttpOptions', () => {
@@ -73,5 +77,37 @@ describe('строка лога в разборе Railway', () => {
   it('объект без message не трогается', () => {
     const fields = { requestId: 'r' };
     expect(renameReservedLogKeys(fields)).toBe(fields);
+  });
+});
+
+// Аудит 2026-10-01, F38: шторм 429/409 и 5xx писался на info, и фильтр по
+// уровню в Railway его не показывал.
+describe('requestLogLevel', () => {
+  it.each([
+    [500, 'error'],
+    [503, 'error'],
+    [429, 'warn'],
+    [409, 'warn'],
+    [200, 'info'],
+    [404, 'info'],
+    [400, 'info'],
+  ])('статус %d → %s', (status, level) => {
+    expect(requestLogLevel(status)).toBe(level);
+  });
+
+  it('ошибка запроса — error независимо от статуса', () => {
+    expect(requestLogLevel(200, new Error('x'))).toBe('error');
+  });
+
+  it('подключён к pino-http как customLogLevel', () => {
+    const options = buildPinoHttpOptions('production', 'info');
+    const level = options.customLogLevel as (
+      req: unknown,
+      res: { statusCode: number },
+      err?: Error,
+    ) => string;
+    expect(level({}, { statusCode: 429 })).toBe('warn');
+    expect(level({}, { statusCode: 500 })).toBe('error');
+    expect(level({}, { statusCode: 201 })).toBe('info');
   });
 });

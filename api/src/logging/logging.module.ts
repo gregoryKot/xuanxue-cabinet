@@ -43,6 +43,31 @@ function formatLogLevel(label: string): { level: string } {
   return { level: label };
 }
 
+// Уровень автолога запроса по статусу ответа (аудит 2026-10-01, F38): pino-http
+// по умолчанию пишет все статусы на info, и шторм 429/409 или 5xx невидим
+// фильтром по уровню в Railway. Доменные ошибки фильтр не логирует — эта
+// строка единственная, где виден статус. Литералы статусов, не HttpStatus:
+// enum в проекте не используем (CLAUDE.md «Код»).
+const SERVER_ERROR_FROM = 500;
+const WARN_STATUSES: ReadonlySet<number> = new Set([409, 429, 503]);
+
+export function requestLogLevel(
+  statusCode: number,
+  err?: Error,
+): 'error' | 'warn' | 'info' {
+  if (err || statusCode >= SERVER_ERROR_FROM) return 'error';
+  if (WARN_STATUSES.has(statusCode)) return 'warn';
+  return 'info';
+}
+
+function customLogLevel(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  err?: Error,
+): 'error' | 'warn' | 'info' {
+  return requestLogLevel(res.statusCode, err);
+}
+
 export function renameReservedLogKeys(
   obj: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -70,6 +95,7 @@ export function buildPinoHttpOptions(nodeEnv: string, logLevel: string): PinoHtt
     // а уже сериализованный объект и потерял бы remoteAddress/remotePort.
     wrapSerializers: false,
     autoLogging: { ignore: isHealthCheck },
+    customLogLevel,
     formatters: { level: formatLogLevel, log: renameReservedLogKeys },
     transport:
       nodeEnv === 'development'

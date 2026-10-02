@@ -11,6 +11,7 @@ import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamItemRecord } from '../exams/exam-item.schema';
+import { referencedMediaIds } from '../exams/exam-media-references';
 import { ExamImageRecord } from './exam-image.schema';
 
 // Учитель загрузил картинку и не сохранил вопрос — сутки на «передумал»,
@@ -19,7 +20,7 @@ const ORPHAN_AGE_HOURS = 24;
 // Не «дай всё» (CLAUDE.md «API») — следующий тик (раз в минуту) доберёт
 // остаток, тот же приём, что у DEADLINE_BATCH_LIMIT соседнего шага
 // (exam-deadline-close.service.ts).
-const SWEEP_BATCH_LIMIT = 50;
+export const SWEEP_BATCH_LIMIT = 50;
 
 export interface ExamImageSweepResult {
   removed: number;
@@ -29,28 +30,29 @@ export interface ExamImageSweepResult {
 export class ExamImageSweepService {
   constructor(
     @InjectModel(ExamImageRecord.name) private readonly model: Model<ExamImageRecord>,
-    @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
-    @InjectModel(ExamAttemptRecord.name)
-    private readonly attemptModel: Model<ExamAttemptRecord>,
+    // Публичные ради `referencedMediaIds(this, …)` — сервис сам и есть ExamMediaOwners.
+    @InjectModel(ExamItemRecord.name) readonly itemModel: Model<ExamItemRecord>,
+    @InjectModel(ExamAttemptRecord.name) readonly attemptModel: Model<ExamAttemptRecord>,
   ) {}
 
   // `now` параметром (Luxon), не DateTime.utc() внутри — детерминизм теста
   // (CLAUDE.md «Тесты»).
   async removeOrphans(now: DateTime): Promise<ExamImageSweepResult> {
     const boundary = now.minus({ hours: ORPHAN_AGE_HOURS }).toJSDate();
+    // Используемые id исключаются в самом запросе ($nin), не после выборки —
+    // почему, см. referencedMediaIds (аудит 2026-10-01, F54). Явный sort —
+    // чтобы порядок не зависел от плана запроса.
+    const used = await referencedMediaIds(this, 'imageIds');
     const candidates = await this.model
-      .find({ createdAt: { $lt: boundary } }, { _id: 1 })
+      .find({ createdAt: { $lt: boundary }, _id: { $nin: used } }, { _id: 1 })
+      .sort({ createdAt: 1 })
       .limit(SWEEP_BATCH_LIMIT)
       .lean();
     if (candidates.length === 0) return { removed: 0 };
     const ids = candidates.map((doc) => doc._id);
 
-    const [usedInItems, usedInAttempts] = await Promise.all([
-      this.itemModel.distinct('imageIds', { imageIds: { $in: ids } }),
-      this.attemptModel.distinct('imageIds', { imageIds: { $in: ids } }),
-    ]);
     const referenced = new Set(
-      [...usedInItems, ...usedInAttempts].map((id) => id.toString()),
+      (await referencedMediaIds(this, 'imageIds', ids)).map((id) => id.toString()),
     );
     const orphans = ids.filter((id) => !referenced.has(id.toString()));
     if (orphans.length === 0) return { removed: 0 };
