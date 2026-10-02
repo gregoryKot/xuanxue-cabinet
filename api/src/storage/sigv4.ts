@@ -76,7 +76,7 @@ export function presignGetUrl({
 export type SignedRequestHeaders = Record<string, string> & { authorization: string };
 
 export interface SignedRequestInput {
-  method: 'PUT' | 'DELETE' | 'POST' | 'GET';
+  method: 'PUT' | 'DELETE' | 'POST' | 'GET' | 'HEAD';
   url: string;
   /** Заголовки запроса без `host`, `x-amz-date` и `x-amz-content-sha256` —
    * их подставляет и подписывает сама функция. */

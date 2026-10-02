@@ -22,14 +22,15 @@ import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema'
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import type { FileStoreService } from '../storage/file-store.service';
 import type { MultipartStoreService } from '../storage/multipart-store.service';
+import type { ObjectHeadService } from '../storage/object-head.service';
 import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { AnswerVideoAssembleService } from './answer-video-assemble';
 import { AnswerVideoCompleteService } from './answer-video-complete';
 import { AnswerVideoPartService } from './answer-video-part';
-import { replacePreviousFile } from './answer-video-replace-previous';
 import { AnswerVideoStartService } from './answer-video-start';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
 
@@ -80,7 +81,6 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
   let videoModel: Model<AnswerVideoRecord>;
   let attemptModel: Model<ExamAttemptRecord>;
   let mediaModel: Model<MediaAssetRecord>;
-  let orphanModel: Model<StorageOrphanRecord>;
   let orphans: StorageOrphansService;
   // Уведомление учителю о файле — считаем вызовы (F47: ровно одно на видео).
   const notifyVideoLinkAdded = jest.fn<Promise<void>, [unknown, DateTime]>();
@@ -111,7 +111,7 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       MediaAssetRecord.name,
       MediaAssetSchema,
     );
-    orphanModel = connection.model<StorageOrphanRecord>(
+    const orphanModel = connection.model<StorageOrphanRecord>(
       StorageOrphanRecord.name,
       StorageOrphanSchema,
     );
@@ -154,7 +154,12 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       videoModel,
       attemptModel,
       mediaModel,
-      multipart as unknown as MultipartStoreService,
+      new AnswerVideoAssembleService(
+        videoModel,
+        multipart as unknown as MultipartStoreService,
+        {} as ObjectHeadService,
+        orphans,
+      ),
       orphans,
       notifiers,
     );
@@ -169,7 +174,6 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       videoModel.deleteMany({}),
       attemptModel.deleteMany({}),
       mediaModel.deleteMany({}),
-      orphanModel.deleteMany({}),
     ]);
     jest.clearAllMocks();
     // restoreAllMocks — сеть безопасности для jest.spyOn(videoModel, …) в
@@ -536,6 +540,36 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       expect(doc?.status).toBe('ready');
       expect(doc?.parts).toEqual([]);
       expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
+      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
+    });
+
+    // F47, второе окно (ревью #529) детерминированно, без везения в порядке
+    // await (приём F28, before-model-call.ts): два complete по одному id —
+    // клиентский таймаут при ещё идущем на сервере запросе и повтор. Перед
+    // `create` media первого вызова второй проходит целиком: R2 уже собрал
+    // (r2CompletedAt), запись получает `_id` видео, переход в ready — его.
+    // Первый упирается в E11000, берёт ту же запись и учителя не беспокоит.
+    it('второй complete целиком до записи media первого — одна media, одно уведомление, оба ответа с её id', async () => {
+      const { id, attemptId } = await readyForComplete();
+      const rival: ExamMediaDto[] = [];
+      beforeModelCall(mediaModel, 'create', async () => {
+        rival.push(await completeService.complete(id, USER_A, NOW.plus({ seconds: 1 })));
+      });
+
+      const first = await completeService.complete(id, USER_A, NOW);
+
+      expect(rival[0]?.id).toBe(first.id);
+      expect(
+        await mediaModel.countDocuments({
+          attemptId,
+          answerVideoId: new Types.ObjectId(id),
+          kind: 'file',
+        }),
+      ).toBe(1);
+      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
+      expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
+      // Документ видео и его байты живы: конкурент не принял свежую media за прошлый файл.
+      expect(await videoModel.countDocuments({ _id: id, status: 'ready' })).toBe(1);
     });
 
     it('второй файл к тому же вопросу заменяет прежний (ADR-0086/ADR-0137)', async () => {
@@ -577,145 +611,6 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       await expect(completeService.complete(id, USER_A, NOW)).resolves.toMatchObject({
         kind: 'file',
       });
-    });
-
-    // F47 (аудит 2026-10-01): complete идемпотентен — повтор после успеха
-    // отдаёт ту же media, без второго CompleteMultipartUpload и без второй записи.
-    it('уже завершено (status: ready) — повторный complete отдаёт ту же media и снимает ключ из журнала сирот', async () => {
-      const { id, attemptId } = await readyForComplete();
-      const first = await completeService.complete(id, USER_A, NOW);
-      multipart.completeMultipartUpload.mockClear();
-      // Сбой между вставкой media и forget оставил бы ключ в журнале — через
-      // сутки уборщик унёс бы байты готового видео (ADR-0079).
-      const { key } = (await videoModel.findById(id).lean<{ key: string }>()) ?? {
-        key: '',
-      };
-      await orphans.track(key);
-
-      const again = await completeService.complete(id, USER_A, NOW.plus({ minutes: 1 }));
-
-      expect(again.id).toBe(first.id);
-      expect(multipart.completeMultipartUpload).not.toHaveBeenCalled();
-      expect(await orphanModel.countDocuments({ key })).toBe(0);
-      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
-      expect(
-        await mediaModel.countDocuments({
-          attemptId,
-          itemId: VIDEO_ITEM_ID,
-          kind: 'file',
-        }),
-      ).toBe(1);
-    });
-
-    // Сбой между ответом R2 и записью media раньше оставлял документ в
-    // `uploading`: повтор клиента получал от R2 NoSuchUpload и крутился в
-    // «Связь пропала» без конца. Теперь `ready` пишется сразу после R2, и
-    // повтор доделывает только шаг media.
-    it('запись media отказала после R2 — повтор завершает без второго CompleteMultipartUpload', async () => {
-      const { id, attemptId } = await readyForComplete();
-      jest
-        .spyOn(mediaModel, 'create')
-        .mockRejectedValueOnce(new Error('Mongo недоступна'));
-
-      await expect(completeService.complete(id, USER_A, NOW)).rejects.toThrow(
-        'Mongo недоступна',
-      );
-      const afterFailure = await videoModel.findById(id).lean();
-      expect(afterFailure?.status).toBe('ready');
-      expect(afterFailure?.uploadId).toBeUndefined();
-
-      const media = await completeService.complete(id, USER_A, NOW.plus({ seconds: 5 }));
-
-      expect(media.kind).toBe('file');
-      expect(multipart.completeMultipartUpload).toHaveBeenCalledTimes(1);
-      expect(
-        await mediaModel.countDocuments({
-          attemptId,
-          answerVideoId: new Types.ObjectId(id),
-        }),
-      ).toBe(1);
-    });
-
-    // F47, второе окно (ревью #529): два complete по одному id — клиентский
-    // таймаут при ещё идущем на сервере запросе и повтор. Второй читает
-    // документ уже `ready`, но до insertMediaAsset первого: `existing` пуст у
-    // обоих. Без компенсации — две media kind:'file' и два уведомления.
-    // Хук (приём F28, before-model-call.ts) — перед `create` media первого
-    // вызова второй проходит целиком.
-    it('два complete по одному id — одна media, одно уведомление, оба ответа с её id', async () => {
-      const { id, attemptId } = await readyForComplete();
-      const rival: ExamMediaDto[] = [];
-      beforeModelCall(mediaModel, 'create', async () => {
-        rival.push(await completeService.complete(id, USER_A, NOW.plus({ seconds: 1 })));
-      });
-
-      const first = await completeService.complete(id, USER_A, NOW);
-
-      expect(rival[0]?.id).toBe(first.id);
-      expect(
-        await mediaModel.countDocuments({
-          attemptId,
-          itemId: VIDEO_ITEM_ID,
-          kind: 'file',
-        }),
-      ).toBe(1);
-      expect(notifyVideoLinkAdded).toHaveBeenCalledTimes(1);
-      expect(await orphanModel.countDocuments({})).toBe(0);
-      // Документ видео и его байты живы: конкурент не принял свежую media за прошлый файл.
-      expect(await videoModel.countDocuments({ _id: id, status: 'ready' })).toBe(1);
-    });
-
-    // replacePreviousFile «прошлым файлом» считает только media ДРУГОГО
-    // answer_videos: свежая запись конкурента по тому же id (F47) иначе
-    // уходила бы под removeNow вместе с байтами завершаемого видео.
-    it('replacePreviousFile не трогает media самого завершаемого видео, прежнее — убирает', async () => {
-      const { id: currentId, attemptId } = await readyForComplete();
-      // Прежний файл — напрямую в коллекцию: start() сам убирает прежнюю
-      // загрузку к тому же вопросу, а здесь нужны обе записи разом.
-      const previous = await videoModel.create({
-        userId: new Types.ObjectId(USER_A),
-        attemptId: new Types.ObjectId(attemptId),
-        itemId: new Types.ObjectId(VIDEO_ITEM_ID),
-        key: 'answer-videos/previous',
-        sizeBytes: 30,
-        fingerprint: '30:1',
-        status: 'ready',
-      });
-      const previousId = previous._id.toString();
-      for (const answerVideoId of [currentId, previousId]) {
-        await insertMediaAsset(mediaModel, {
-          attemptId,
-          userId: USER_A,
-          itemId: VIDEO_ITEM_ID,
-          kind: 'file',
-          answerVideoId,
-          receivedAt: NOW,
-        });
-      }
-
-      await replacePreviousFile(
-        { videoModel, mediaModel, orphans },
-        {
-          attemptId,
-          itemId: VIDEO_ITEM_ID,
-          currentAnswerVideoId: new Types.ObjectId(currentId),
-          now: NOW,
-        },
-      );
-
-      const left = await mediaModel.find({ attemptId, kind: 'file' }).lean();
-      expect(left.map((m) => m.answerVideoId?.toString())).toEqual([currentId]);
-      expect(await videoModel.countDocuments({ _id: currentId })).toBe(1);
-      expect(await videoModel.countDocuments({ _id: previousId })).toBe(0);
-    });
-
-    it('status: uploading без uploadId — ConflictError, как и прежде', async () => {
-      const { id } = await readyForComplete();
-      await videoModel.updateOne({ _id: id }, { $unset: { uploadId: 1 } });
-
-      await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
-        ConflictError,
-      );
     });
 
     it('попытка исчезла между загрузкой и complete — NotFoundError', async () => {

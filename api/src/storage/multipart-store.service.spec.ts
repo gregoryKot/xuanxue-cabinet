@@ -4,6 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import { NotAvailableError } from '../common/errors';
 import { MultipartStoreService } from './multipart-store.service';
+import { MultipartUploadGoneError } from './r2-errors';
 
 function fakeConfig(values: Record<string, string | undefined>): ConfigService {
   return { get: (key: string) => values[key] } as unknown as ConfigService;
@@ -148,6 +149,45 @@ describe('MultipartStoreService', () => {
         now: NOW,
       }),
     ).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
+  // Аудит 2026-10-01, F47: повтор complete после сбоя Mongo получает от R2
+  // NoSuchUpload — этот отказ отличают от прочих, чтобы проверить объект.
+  it('completeMultipartUpload — 404 NoSuchUpload отдельная ошибка, но всё ещё 503', async () => {
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        textResponse(false, '<Error><Code>NoSuchUpload</Code></Error>', 404),
+      );
+
+    const failure = service().completeMultipartUpload({
+      key: KEY,
+      uploadId: 'abc-123',
+      parts: [],
+      now: NOW,
+    });
+
+    await expect(failure).rejects.toBeInstanceOf(MultipartUploadGoneError);
+    await expect(failure).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
+  it('completeMultipartUpload — 404 другого кода и 500 NoSuchUpload не считаются потерянной загрузкой', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    const input = { key: KEY, uploadId: 'abc-123', parts: [], now: NOW };
+
+    fetchSpy.mockResolvedValueOnce(
+      textResponse(false, '<Error><Code>NoSuchBucket</Code></Error>', 404),
+    );
+    await expect(service().completeMultipartUpload(input)).rejects.not.toBeInstanceOf(
+      MultipartUploadGoneError,
+    );
+
+    fetchSpy.mockResolvedValueOnce(
+      textResponse(false, '<Error><Code>NoSuchUpload</Code></Error>', 500),
+    );
+    await expect(service().completeMultipartUpload(input)).rejects.not.toBeInstanceOf(
+      MultipartUploadGoneError,
+    );
   });
 
   it('abortMultipartUpload шлёт DELETE с uploadId в query', async () => {
