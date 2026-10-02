@@ -27,13 +27,18 @@ export function formatAskedSummary(stats: ExamItemStatsDto): string {
   return `${base}, верно ответили ${stats.correctCount}.`;
 }
 
+// Аудит 2026-10-01, F62: вариант заменили или удалили после сдач — его
+// выборы не пропадают, а строка говорит, что в вопросе его больше нет.
+const REMOVED_OPTION_SUFFIX = ' В вопросе этого варианта больше нет.';
+
 /** Строка про один вариант — сколько раз выбрали, с пометкой верного.
  * `index` — для подписи варианта без текста (formatOptionLabel, ADR-0035):
  * «Вариант N», как на экране сдачи и в карточке проверки, не пустые кавычки. */
 export function formatOptionLine(option: ExamItemOptionStatsDto, index: number): string {
   const times = `${option.chosenCount} ${pluralRu(option.chosenCount, TIMES_FORMS)}`;
-  const suffix = option.correct ? ' Верный вариант.' : '';
-  return `«${formatOptionLabel(option.text, index)}» — выбрали ${times}.${suffix}`;
+  const correct = option.correct ? ' Верный вариант.' : '';
+  const removed = option.removed ? REMOVED_OPTION_SUFFIX : '';
+  return `«${formatOptionLabel(option.text, index)}» — выбрали ${times}.${correct}${removed}`;
 }
 
 // Прописной падеж не меняется по числу («в двух экзаменах», «в пяти

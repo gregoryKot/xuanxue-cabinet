@@ -24,7 +24,7 @@ import { NOT_DELETED, softDelete } from '../common/soft-delete';
 import { encryptRecord } from '../utils/encryption';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamVideosService } from '../exam-videos/exam-videos.service';
-import { assertItemNotUsedForArchive } from './exam-item-references';
+import { assertItemStatusKeepsExams } from './exam-item-references';
 import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
 import {
   assertOptionsForKind,
@@ -112,10 +112,8 @@ export class ExamItemsService {
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExamItem(doc);
 
-    // Архивация рвёт ссылку (exam-item-references.ts, ADR-0140).
-    if (input.status === 'archived') {
-      await assertItemNotUsedForArchive(this.examModel, id);
-    }
+    // Архив и возврат в черновик рвут ссылку из формы (exam-item-references.ts).
+    await assertItemStatusKeepsExams(this.examModel, id, current.status, input.status);
 
     const { options, ...rest } = input;
     // videoId/videoUrl — единственные nullable-поля вопроса (ADR-0133).

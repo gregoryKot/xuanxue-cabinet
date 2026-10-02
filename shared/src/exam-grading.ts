@@ -1,8 +1,7 @@
 // Карточка проверки попытки и оценка (слой 4.6, PLAN §11, ADR-0022) — учитель
 // смотрит ответы ученика и ставит итог с комментарием. Отдельный файл от
-// exams.ts (CLAUDE.md «Храповики»: файл-лимит размера) — своя, достаточно
-// большая подсистема поверх типов формы/попытки, а не продолжение самого
-// экзамена.
+// exams.ts (CLAUDE.md «Храповики»: файл-лимит размера) — своя достаточно
+// большая подсистема поверх типов формы/попытки, а не продолжение экзамена.
 import type { ExamAttemptStatus } from './exam-attempts';
 import type { ExamItemKind } from './exam-items';
 import type { ExamMediaDto } from './exam-media';
@@ -47,6 +46,8 @@ export interface AttemptOptionCheckDto {
 
 export interface AttemptReviewQuestionDto {
   itemId: string;
+  /** Редакция вопроса в снимке попытки (ADR-0022, F62); не задана у старых фикстур. */
+  version?: number;
   kind: ExamItemKind;
   prompt: string;
   /** Видео формулировки вопроса (ADR-0133) тем же смыслом, что у варианта. */

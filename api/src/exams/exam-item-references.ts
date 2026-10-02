@@ -17,7 +17,7 @@
 // никто больше не редактирует и не выдаёт ученикам, поэтому он не в счёте и
 // не в скане (ADR-0140: то же самое, что уже было у архивного).
 import type { Model } from 'mongoose';
-import { pluralRu } from '@xuanxue/shared';
+import { pluralRu, type ExamItemStatus } from '@xuanxue/shared';
 import { ConflictError } from '../common/errors';
 import { NOT_DELETED } from '../common/soft-delete';
 import { decryptRecord } from '../utils/encryption';
@@ -103,16 +103,37 @@ async function assertItemNotReferenced(
 // поправить (exam-items-eligible.ts требует опубликованный вопрос), а
 // ученики продолжают получать её как есть. Удаление той же защиты больше не
 // требует (ADR-0140) — вопрос удаляется в любом статусе без отказа.
+//
+// Аудит 2026-10-01, F63: та же дыра была у «Вернуть в черновик» — статус
+// `draft` точно так же не проходит assertItemsEligible, и любое сохранение
+// опубликованной формы (даже смена срока) падало с «вопрос не из
+// опубликованных». Теперь оба перехода из `published` держит один гейт.
+// Переход archived → draft не трогаем: это путь восстановления старых
+// данных, а архивный вопрос в живой форме и так стоять не должен.
 const ARCHIVE_MESSAGE = (list: string): string =>
   `Вопрос используется в экзамене: ${list}. Отправить в архив нельзя — правку или ` +
   'публикацию формы это заблокирует, а ученики продолжат получать её как есть. ' +
   'Сначала уберите вопрос из формы.';
 
-/** Архивация вопроса, на который ссылается неархивированный экзамен, —
- * ConflictError с названиями форм (exam-items.service.ts, update()). */
-export function assertItemNotUsedForArchive(
+const UNPUBLISH_MESSAGE = (list: string): string =>
+  `Вопрос используется в экзамене: ${list}. Вернуть в черновик нельзя — правку ` +
+  'формы это заблокирует, а ученики продолжат получать вопрос как есть. ' +
+  'Сначала уберите вопрос из формы.';
+
+/** Смена статуса вопроса, которая порвала бы ссылку из неархивированного
+ * экзамена (archived; published → draft), — ConflictError с названиями форм
+ * (exam-items.service.ts, update()). Остальные переходы и «статус не
+ * прислали» проходят без запроса к базе. */
+export async function assertItemStatusKeepsExams(
   examModel: Model<ExamRecord>,
   itemId: string,
+  current: ExamItemStatus,
+  next: ExamItemStatus | undefined,
 ): Promise<void> {
-  return assertItemNotReferenced(examModel, itemId, ARCHIVE_MESSAGE);
+  if (next === 'archived') {
+    return assertItemNotReferenced(examModel, itemId, ARCHIVE_MESSAGE);
+  }
+  if (next === 'draft' && current === 'published') {
+    return assertItemNotReferenced(examModel, itemId, UNPUBLISH_MESSAGE);
+  }
 }

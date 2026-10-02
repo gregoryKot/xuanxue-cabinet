@@ -7,6 +7,7 @@
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import type { ExamAttemptDto } from '@xuanxue/shared';
+import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
@@ -22,6 +23,9 @@ import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.ser
 import { ExamAttemptsService } from './exam-attempts.service';
 import { fakeExamNotifier } from './exam-notifier.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
+import { decryptAttempt, type RawLeanExamAttempt } from './exam-attempt.mapper';
+import { accumulateAttemptStats } from './exam-item-stats-accumulate';
+import { computeExamItemStats } from './exam-item-stats';
 import { ExamItemStatsService } from './exam-item-stats.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
@@ -318,5 +322,113 @@ describe('ExamItemStatsService', () => {
 
     const summary = await statsService.getSummary();
     expect(summary.strugglingCount).toBe(0);
+  });
+
+  // Аудит 2026-10-01, F32: статистика не тянет попытки целиком — только
+  // `blocks`/`answers`, батчами курсора. Проекция проверяется на самом
+  // запросе (шпион на find), а равенство результата — расчётом «как раньше»:
+  // все попытки одним списком, без проекции.
+  describe('F32 — проекция и батчи не меняют результат', () => {
+    it('find по попыткам запрашивает только blocks и answers', async () => {
+      const { itemId, correctOptionId } = await createPublishedSingleChoiceItem();
+      const examId = await createPublishedExam(itemId);
+      await submitAnswer(examId, USER_A, itemId, [correctOptionId]);
+      const findSpy = jest.spyOn(attemptModel, 'find');
+
+      await statsService.getSummary();
+
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      const query = findSpy.mock.results[0]?.value as { projection: () => unknown };
+      expect(query.projection()).toEqual({ blocks: 1, answers: 1 });
+      findSpy.mockRestore();
+    });
+
+    // Ревью #535 к F32: у обычного курсора `timeoutMode` по умолчанию
+    // `cursorLifetime` — весь проход с расшифровкой обязан был бы уложиться в
+    // MONGO_OPERATION_TIMEOUT_MS. Проверяется то, что дошло до драйвера
+    // (`collection.find`), а не вызов `.cursor()` в Mongoose: без явного
+    // `timeoutMS` драйвер `timeoutMode` отвергает, а у тестовой Mongo
+    // клиентского `timeoutMS` нет — оба параметра должны стоять на запросе.
+    it('курсор идёт с потаймаутом на итерацию, и параметры доходят до драйвера', async () => {
+      const { itemId, correctOptionId } = await createPublishedSingleChoiceItem();
+      const examId = await createPublishedExam(itemId);
+      await submitAnswer(examId, USER_A, itemId, [correctOptionId]);
+      const driverFindSpy = jest.spyOn(attemptModel.collection, 'find');
+
+      const summary = await statsService.getSummary();
+
+      expect(summary).toEqual({ strugglingCount: 0 });
+      expect(driverFindSpy).toHaveBeenCalledTimes(1);
+      expect(driverFindSpy.mock.calls[0]?.[1]).toMatchObject({
+        batchSize: 100,
+        timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
+        timeoutMode: 'iteration',
+      });
+      driverFindSpy.mockRestore();
+    });
+
+    it('результат совпадает с расчётом по полному списку попыток', async () => {
+      const { itemId, correctOptionId, wrongOptionId } =
+        await createPublishedSingleChoiceItem(true);
+      const examId = await createPublishedExam(itemId);
+      await submitAnswer(examId, USER_A, itemId, [correctOptionId], 'потому что');
+      await submitAnswer(examId, USER_B, itemId, [wrongOptionId], 'показалось');
+
+      const docs = await attemptModel
+        .find({ status: { $in: ['submitted', 'graded'] } })
+        .lean<RawLeanExamAttempt[]>();
+      const item = await examItemsService.getById(itemId);
+      const expected = computeExamItemStats(
+        item,
+        accumulateAttemptStats(docs.map((doc) => decryptAttempt(doc))),
+      );
+
+      await expect(statsService.getStats(itemId)).resolves.toEqual({
+        ...expected,
+        usedInExamsCount: 1,
+      });
+      expect(expected.askedCount).toBe(2);
+    });
+  });
+
+  // Аудит 2026-10-01, F62: учитель заменил вариант у опубликованного вопроса
+  // после сдач — выборы старого варианта остаются в статистике отдельной
+  // строкой с текстом из истории редакций (сервис передаёт DTO с history).
+  describe('F62 — вариант заменили после сдач', () => {
+    it('старый вариант — строка с текстом из прошлой редакции и removed', async () => {
+      const { itemId, correctOptionId, wrongOptionId } =
+        await createPublishedSingleChoiceItem();
+      const examId = await createPublishedExam(itemId);
+      await submitAnswer(examId, USER_A, itemId, [wrongOptionId]);
+      await submitAnswer(examId, USER_B, itemId, [correctOptionId]);
+      await examItemsService.update(
+        itemId,
+        {
+          options: [
+            { id: correctOptionId, text: 'пять', correct: true },
+            { text: 'четыре', correct: false },
+          ],
+        },
+        NOW,
+      );
+
+      const stats = await statsService.getStats(itemId);
+
+      expect(stats.options).toContainEqual({
+        id: wrongOptionId,
+        text: 'три',
+        correct: false,
+        chosenCount: 1,
+        removed: true,
+      });
+      expect(stats.options?.find((o) => o.text === 'четыре')).toMatchObject({
+        chosenCount: 0,
+      });
+      const chosenTotal = (stats.options ?? []).reduce(
+        (sum, o) => sum + o.chosenCount,
+        0,
+      );
+      expect(chosenTotal).toBe(stats.askedCount);
+    });
   });
 });

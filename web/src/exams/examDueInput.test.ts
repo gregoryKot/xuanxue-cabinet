@@ -1,8 +1,10 @@
 // Три чистые функции одного поля формы (ADR-0125, дополнено ADR-0139: только
-// дата, без времени). Пояс зрителя фиксирован через stubViewerTimeZone —
-// иначе значение `<input type="date">` и итоговый ISO зависели бы от пояса
-// машины CI. Отдельный DST-тест — переход летнего времени Asia/Jerusalem не
-// должен сдвигать «конец дня» на соседние сутки (CLAUDE.md «Время»).
+// дата, без времени). Конец дня считается по часам школы (аудит 2026-10-01,
+// F61), поэтому пояс зрителя на результат влиять не должен: один describe
+// гоняет те же даты из Europe/Berlin — до фикса тест жил только под
+// Asia/Jerusalem и именно поэтому расхождения с ботом не ловил. Отдельный
+// DST-тест — переход летнего времени Asia/Jerusalem не должен сдвигать «конец
+// дня» на соседние сутки (CLAUDE.md «Время»).
 import { describe, expect, it } from 'vitest';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { dueDateToIso, initialDueDate, validateDueDateText } from './examDueInput';
@@ -14,7 +16,7 @@ describe('initialDueDate', () => {
     expect(initialDueDate(undefined)).toBe('');
   });
 
-  it('есть срок — дата без времени, в поясе зрителя', () => {
+  it('есть срок — дата без времени, в поясе школы', () => {
     // 20:59:59.999Z — конец 2026-03-27 по Asia/Jerusalem (+3, летнее время).
     expect(initialDueDate('2026-03-27T20:59:59.999Z')).toBe('2026-03-27');
   });
@@ -51,7 +53,7 @@ describe('dueDateToIso', () => {
     expect(dueDateToIso('2026-04-31')).toBeUndefined();
   });
 
-  it('заполнено — ISO UTC конца дня (23:59:59.999) в поясе зрителя', () => {
+  it('заполнено — ISO UTC конца дня (23:59:59.999) в поясе школы', () => {
     // Обычный день вне перехода: Asia/Jerusalem зимой — UTC+2.
     expect(dueDateToIso('2026-01-15')).toBe('2026-01-15T21:59:59.999Z');
   });
@@ -73,5 +75,31 @@ describe('dueDateToIso', () => {
   it('переход на зимнее время — тот же день, другое смещение', () => {
     expect(dueDateToIso('2026-10-25')).toBe('2026-10-25T21:59:59.999Z');
     expect(initialDueDate('2026-10-25T21:59:59.999Z')).toBe('2026-10-25');
+  });
+});
+
+// F61: учитель ставит срок с устройства не в поясе школы — момент тот же,
+// что из Израиля и что из бота (api/src/telegram/handlers/new-exam-due.ts).
+describe('пояс зрителя не школьный — срок всё равно по часам школы', () => {
+  stubViewerTimeZone('Europe/Berlin');
+
+  it('dueDateToIso — конец дня по Asia/Jerusalem, не по Europe/Berlin', () => {
+    expect(dueDateToIso('2026-03-27')).toBe('2026-03-27T20:59:59.999Z');
+    expect(dueDateToIso('2026-01-15')).toBe('2026-01-15T21:59:59.999Z');
+  });
+
+  it('initialDueDate — тот же календарный день школы, даже если по Берлину он уже другой', () => {
+    // 21:59:59.999Z — конец 2026-01-15 по Израилю; по Берлину это ещё 22:59
+    // того же дня, по Pacific/Kiritimati — уже 16 января.
+    expect(initialDueDate('2026-01-15T21:59:59.999Z')).toBe('2026-01-15');
+  });
+});
+
+describe('пояс зрителя восточнее школы', () => {
+  stubViewerTimeZone('Pacific/Kiritimati');
+
+  it('день срока не уезжает на следующий', () => {
+    expect(initialDueDate('2026-01-15T21:59:59.999Z')).toBe('2026-01-15');
+    expect(dueDateToIso('2026-01-15')).toBe('2026-01-15T21:59:59.999Z');
   });
 });

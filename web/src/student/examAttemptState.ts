@@ -100,13 +100,16 @@ export function examTimeZoneNote(browserTimeZone?: string): string | null {
   return schoolTz ? `по вашим часам (школа живёт по ${schoolTz})` : null;
 }
 
-/** «Сдать до 30 сентября, 23:59» — рядом с кнопкой «Начать»/«Пройти ещё раз»
- * (StudentExamCard.tsx): ученик видит срок ДО того, как решит отложить
+/** «Сдать до Ср, 30 сентября, 23:59» — рядом с кнопкой «Начать»/«Пройти ещё
+ * раз» (StudentExamCard.tsx): ученик видит срок ДО того, как решит отложить
  * экзамен (ADR-0125). `null` — у формы нет срока, строки не будет вовсе.
- * Часы браузерные, без бейджа пояса школы (в отличие от examTimeZoneNote
- * выше): это дата на календаре, не отсчёт идущей попытки — тот же приём,
- * что у дат занятий (LessonSummaryHeader.tsx). `timeZone` — только тестам
- * нужен фиксированный (lib/formatDate.ts). */
+ * Часы браузерные, и когда они не школьные — та же приписка, что у отсчёта
+ * попытки (examTimeZoneNote выше): срок задан концом дня по часам школы
+ * (ADR-0127, examDueInput.ts), и «22:59» без пояснения читалось бы как
+ * сдвинутая дата (аудит 2026-10-01, F61). `timeZone` — только тестам нужен
+ * фиксированный (lib/formatDate.ts). */
 export function dueAtLine(dueAt: string | undefined, timeZone?: string): string | null {
-  return dueAt ? `Сдать до ${formatDateTime(dueAt, timeZone)}` : null;
+  if (!dueAt) return null;
+  const note = examTimeZoneNote(timeZone);
+  return `Сдать до ${formatDateTime(dueAt, timeZone)}${note ? ` ${note}` : ''}`;
 }

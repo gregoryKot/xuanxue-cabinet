@@ -5,9 +5,27 @@
 // таким запросом нельзя. Поэтому один `find` по статусу (индекс
 // `status+submittedAt`, exam-attempt.schema.ts) и один проход по
 // расшифрованным попыткам в памяти (accumulateAttemptStats,
-// exam-item-stats.ts) — без похода в базу за каждой попыткой (CLAUDE.md
-// «API»: без N+1). Школа на полсотни-сотню учеников — весь список сданных
-// попыток свободно умещается в памяти одного запроса.
+// exam-item-stats-accumulate.ts) — без похода в базу за каждой попыткой
+// (CLAUDE.md «API»: без N+1).
+//
+// Аудит 2026-10-01, F32: раньше `find` тянул попытки целиком и все разом —
+// «дай всё» (CLAUDE.md «API»), и каждое открытие «Экзаменов» (prefetch
+// первого экрана) расшифровывало всю историю сдач, растущую с каждым
+// экзаменом. Теперь проекция только двух нужных полей (`blocks`/`answers`;
+// `examTitle`, `imageIds`, даты статистике не нужны) и курсор батчами:
+// в памяти одновременно живёт один батч, а не вся коллекция. Результат тот
+// же — накопитель принимает попытки по частям (спек сверяет с расчётом по
+// полному списку).
+//
+// Ревью #535 к F32: у драйвера общий `timeoutMS` (MONGO_OPERATION_TIMEOUT_MS,
+// 20 с), а у обычного курсора `timeoutMode` по умолчанию `cursorLifetime` —
+// весь проход (все getMore плюс расшифровка попыток внутри цикла) обязан
+// был бы уложиться в 20 с, и статистика учителя падала бы по таймауту в день
+// экзамена, когда сданных попыток больше всего. `iteration` даёт бюджет на
+// каждую порцию (getMore), расшифровка между порциями в него не входит.
+// `timeoutMode` без явного `timeoutMS` драйвер отвергает
+// (MongoInvalidArgumentError), а клиентского `timeoutMS` у тестовой Mongo
+// нет — поэтому оба параметра стоят на самом запросе.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -18,15 +36,16 @@ import type {
   ExamItemStatsSummaryDto,
 } from '@xuanxue/shared';
 import { NOT_DELETED } from '../common/soft-delete';
-import { decryptAttempt, type RawLeanExamAttempt } from './exam-attempt.mapper';
-import { ExamAttemptRecord } from './exam-attempt.schema';
+import { MONGO_OPERATION_TIMEOUT_MS } from '../database/mongoose-options';
+import { decryptRecord } from '../utils/encryption';
+import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
 import {
   accumulateAttemptStats,
-  computeExamItemStats,
-  computeStrugglingCount,
+  type AttemptStatsInput,
   type ItemStatsAccumulator,
-} from './exam-item-stats';
+} from './exam-item-stats-accumulate';
+import { computeExamItemStats, computeStrugglingCount } from './exam-item-stats';
 import { decryptExamItem, type RawLeanExamItem } from './exam-item.mapper';
 import { ExamItemRecord } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
@@ -37,6 +56,38 @@ import { ExamRecord } from './exam.schema';
 const COUNTED_STATUSES: ExamAttemptStatus[] = ['submitted', 'graded'];
 // Только у этих типов вопроса вообще бывает «верно/неверно» (ТЗ 4.2, п.2).
 const OPTION_KINDS: ExamItemKind[] = ['single', 'multiple'];
+// F32: что читаем из попытки и по сколько документов за раз. Батч — размер
+// одной порции драйвера, не окно выборки: проход всё равно идёт по всем
+// сданным попыткам (ТЗ 4.8: статистика за всё время, усечённая выборка
+// молча врала бы учителю).
+const ATTEMPT_STATS_FIELDS = 'blocks answers';
+const ATTEMPT_STATS_BATCH_SIZE = 100;
+// Параметры курсора целиком; что именно они доходят до драйвера, сверяет
+// спек (ревью #535).
+const ATTEMPT_STATS_CURSOR_OPTIONS = {
+  batchSize: ATTEMPT_STATS_BATCH_SIZE,
+  timeoutMS: MONGO_OPERATION_TIMEOUT_MS,
+  timeoutMode: 'iteration',
+} as const;
+
+// Строка попытки в проекции ATTEMPT_STATS_FIELDS: `blocks`/`answers` ещё
+// зашифрованная строка (encJson). Index-signature — требование
+// `decryptRecord`, тот же приём, что у ReferencingExamRow (exam-item-references.ts).
+interface AttemptStatsRow {
+  [key: string]: unknown;
+  blocks: string;
+  answers: string;
+}
+
+/** Тот же разбор, что у decryptAttempt (exam-attempt.mapper.ts), но для
+ * строки из двух полей — полный `RawLeanExamAttempt` сюда не приходит. */
+function decryptAttemptStatsRow(row: AttemptStatsRow): AttemptStatsInput {
+  const decrypted = decryptRecord(row, EXAM_ATTEMPT_ENCRYPT_SCHEMA);
+  return {
+    blocks: decrypted.blocks as unknown as AttemptStatsInput['blocks'],
+    answers: decrypted.answers as unknown as AttemptStatsInput['answers'],
+  };
+}
 
 @Injectable()
 export class ExamItemStatsService {
@@ -55,13 +106,9 @@ export class ExamItemStatsService {
   async getStats(itemId: string): Promise<ExamItemStatsDto> {
     const item = await this.examItemsService.getById(itemId);
     const accByItem = await this.loadAccumulators();
-    const stats = computeExamItemStats(
-      item.id,
-      item.kind,
-      item.options,
-      accByItem,
-      item.askReason,
-    );
+    // DTO целиком: статистике нужны и прошлые редакции — текст варианта,
+    // которого в вопросе больше нет (F62, exam-item-stats.ts).
+    const stats = computeExamItemStats(item, accByItem);
     const { titles } = await findExamsReferencingItem(this.examModel, itemId);
     return { ...stats, usedInExamsCount: titles.length };
   }
@@ -82,10 +129,15 @@ export class ExamItemStatsService {
   }
 
   private async loadAccumulators(): Promise<Map<string, ItemStatsAccumulator>> {
-    const docs = await this.attemptModel
+    const byItem = new Map<string, ItemStatsAccumulator>();
+    const cursor = this.attemptModel
       .find({ status: { $in: COUNTED_STATUSES } })
-      .lean<RawLeanExamAttempt[]>();
-    const attempts = docs.map((doc) => decryptAttempt(doc));
-    return accumulateAttemptStats(attempts);
+      .select(ATTEMPT_STATS_FIELDS)
+      .lean<AttemptStatsRow[]>()
+      .cursor({ ...ATTEMPT_STATS_CURSOR_OPTIONS });
+    for await (const row of cursor) {
+      accumulateAttemptStats([decryptAttemptStatsRow(row)], byItem);
+    }
+    return byItem;
   }
 }

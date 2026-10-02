@@ -74,6 +74,36 @@ describe('formatOptionLine', () => {
   });
 });
 
+// Аудит 2026-10-01, F62: вариант из прошлой редакции — выборы на месте,
+// учителю сказано, что в вопросе его больше нет.
+describe('formatOptionLine — вариант, которого больше нет', () => {
+  it('пометка в конце строки', () => {
+    const option: ExamItemOptionStatsDto = {
+      id: 'o9',
+      text: 'три',
+      correct: false,
+      chosenCount: 2,
+      removed: true,
+    };
+    expect(formatOptionLine(option, 2)).toBe(
+      '«три» — выбрали 2 раза. В вопросе этого варианта больше нет.',
+    );
+  });
+
+  it('без текста в истории — «Вариант N», не пустые кавычки', () => {
+    const option: ExamItemOptionStatsDto = {
+      id: 'o9',
+      text: '',
+      correct: false,
+      chosenCount: 1,
+      removed: true,
+    };
+    expect(formatOptionLine(option, 2)).toBe(
+      '«Вариант 3» — выбрали 1 раз. В вопросе этого варианта больше нет.',
+    );
+  });
+});
+
 describe('formatUsageSummary', () => {
   it('нигде не используется — null, нечего показывать', () => {
     expect(formatUsageSummary(makeStats({ usedInExamsCount: 0 }))).toBeNull();

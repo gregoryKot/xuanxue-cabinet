@@ -156,12 +156,35 @@ describe('describeExamTime — попытка идёт', () => {
     ).toBe('Время попытки вышло');
   });
 
-  it('дедлайна у попытки нет — говорим про продолжительность', () => {
+  // Аудит 2026-10-01, F59: лимит добавили у формы уже после старта попытки —
+  // дедлайна у неё нет и не будет (exam-attempt-start.ts ставит его только
+  // при старте), и обещание «даётся 40 минут» было бы ложью.
+  it('дедлайна у идущей попытки нет — строки нет, продолжительность формы не обещаем', () => {
     const exam = makeExam({ timeLimitMin: 40, lastAttempt: inProgress(undefined) });
 
-    expect(describeExamTime(exam, { nowMs: ms('2026-09-22T16:15:00Z') })).toBe(
-      'На попытку даётся 40 минут',
-    );
+    expect(describeExamTime(exam, { nowMs: ms('2026-09-22T16:15:00Z') })).toBeNull();
+  });
+
+  // F59, обратный случай: учитель снял лимит у опубликованной формы, а
+  // дедлайн начатой попытки действует и закроет её — остаток обязан остаться.
+  it('лимит формы снят, у идущей попытки дедлайн есть — остаток показан', () => {
+    const exam = makeExam({
+      timeLimitMin: undefined,
+      lastAttempt: inProgress('2026-09-22T16:40:00Z'),
+    });
+
+    expect(
+      describeExamTime(exam, { nowMs: ms('2026-09-22T16:15:00Z'), timeZone: SCHOOL_TZ }),
+    ).toBe('Осталось 25 мин, попытка закроется в 19:40');
+  });
+
+  it('лимита нет и дедлайна у идущей попытки нет — строки нет', () => {
+    const exam = makeExam({
+      timeLimitMin: undefined,
+      lastAttempt: inProgress(undefined),
+    });
+
+    expect(describeExamTime(exam, { nowMs: ms('2026-09-22T16:15:00Z') })).toBeNull();
   });
 
   it('дедлайн в ответе нечитаемый — продолжительность вместо «NaN мин»', () => {

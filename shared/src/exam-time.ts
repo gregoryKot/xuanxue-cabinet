@@ -120,26 +120,26 @@ export function describeAttemptDeadline(
 }
 
 /** Строка про время одной формы для карточки кабинета и строки бота.
- * `null` — у формы нет лимита времени, и говорить нечего: строки не будет
- * вовсе, а не «без ограничения» пустым местом.
+ * `null` — сказать нечего: у формы нет лимита, или попытка идёт без
+ * дедлайна (лимит добавили после её старта — exam-attempt-start.ts ставит
+ * его только при старте; аудит 2026-10-01, F59: «даётся 60 мин» — ложь).
  *
- * Три состояния: попытки ещё нет (или прошлая уже закрыта) — сколько времени
- * даётся; попытка идёт — сколько осталось и когда закроется; дедлайн прошёл,
- * а закрытие ещё не доехало — «время вышло». */
+ * Сначала идущая попытка, потом лимит формы (F59): учитель снял лимит, а
+ * дедлайн начатой попытки действует и закроет её — ученик обязан видеть
+ * остаток. Дедлайн прошёл, а закрытие не доехало — «время вышло».
+ * Нечитаемый дедлайн — фолбэк на продолжительность, не «NaN мин». */
 export function describeExamTime(
   exam: MyExamDto,
   options: ExamTimeOptions,
 ): string | null {
-  if (!exam.timeLimitMin) return null;
-  const limitLine = `${LIMIT_PREFIX} ${formatDurationRu(exam.timeLimitMin)}`;
-
   const attempt = exam.lastAttempt;
-  const deadlineAt = attempt?.status === 'in_progress' ? attempt.deadlineAt : undefined;
-  if (!deadlineAt) return limitLine;
-
-  // NaN (дедлайн в ответе нечитаемый) тоже возвращает null здесь — фолбэк тот
-  // же, что раньше: продолжительность вместо «NaN мин».
-  return describeAttemptDeadline(deadlineAt, options) ?? limitLine;
+  if (attempt?.status === 'in_progress') {
+    if (!attempt.deadlineAt) return null;
+    const left = describeAttemptDeadline(attempt.deadlineAt, options);
+    if (left) return left;
+  }
+  if (!exam.timeLimitMin) return null;
+  return `${LIMIT_PREFIX} ${formatDurationRu(exam.timeLimitMin)}`;
 }
 
 /** Срок сдачи прошёл — сравнение абсолютных моментов, пояс тут ни при чём
