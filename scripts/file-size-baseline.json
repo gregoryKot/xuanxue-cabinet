@@ -37,7 +37,7 @@
   "api/src/auth/email-login-code.ts": 26,
   "api/src/auth/email-login-config.ts": 17,
   "api/src/auth/email-login-token.schema.ts": 71,
-  "api/src/auth/email-login-token.service.ts": 149,
+  "api/src/auth/email-login-token.service.ts": 148,
   "api/src/auth/google-auth-url.ts": 35,
   "api/src/auth/google-auth.controller.ts": 108,
   "api/src/auth/google-auth.service.ts": 231,

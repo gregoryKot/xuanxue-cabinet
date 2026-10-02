@@ -6,7 +6,10 @@
 // — вторая линия обороны, не первая (SECURITY §8: fetch без ключа не уходит).
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EMAIL_LOGIN_SEND_FAILED_MESSAGE } from '@xuanxue/shared';
+import {
+  EMAIL_LOGIN_SEND_FAILED_MESSAGE,
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
+} from '@xuanxue/shared';
 import { errorMessage } from '../common/error-info';
 import { NotAvailableError } from '../common/errors';
 
@@ -100,7 +103,7 @@ function loginLinkText(link: string, code: string): string {
     '',
     `Код для входа: ${code}`,
     '',
-    'Введите его на странице входа. Код работает 15 минут и подходит ' +
+    `Введите его на странице входа. Код работает ${EMAIL_LOGIN_TOKEN_TTL_MIN} минут и подходит ` +
       'везде: и в браузере, и в приложении с иконки на телефоне.',
     '',
     `Заходите с компьютера — можно вместо кода открыть ссылку: ${link}`,

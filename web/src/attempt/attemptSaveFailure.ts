@@ -23,7 +23,7 @@ export type AttemptSaveFailure =
 
 /** Вердикты stale/stop даёт только ApiError (attemptSaveError.ts), так что
  * текст сервера здесь всегда есть; запас на случай, если это изменится. */
-const REFUSED_FALLBACK_MESSAGE = 'Не сохранилось';
+export const REFUSED_FALLBACK_MESSAGE = 'Не сохранилось';
 
 interface SaveFailureEffects {
   attemptId: string;

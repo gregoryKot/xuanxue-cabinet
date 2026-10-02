@@ -3,9 +3,8 @@
 // сохранять нечего, строка не показывается вовсе (AttemptScreen.tsx решает
 // это по `null`). «refused» (аудит 2026-10-01, F44) — сервер отказал
 // навсегда, повтора не будет: показываем его текст, а не обещание повтора.
+import { REFUSED_FALLBACK_MESSAGE } from './attemptSaveFailure';
 import type { AutosaveStatus } from './useAttemptAutosave';
-
-const REFUSED_FALLBACK = 'Не сохранилось';
 
 export function formatSaveStatus(
   status: AutosaveStatus,
@@ -21,6 +20,6 @@ export function formatSaveStatus(
     case 'error':
       return 'Не сохранилось — попробуем ещё раз';
     case 'refused':
-      return refusal ?? REFUSED_FALLBACK;
+      return refusal ?? REFUSED_FALLBACK_MESSAGE;
   }
 }
