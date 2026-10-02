@@ -58,6 +58,19 @@
   импортирует (неиспользуемый экспорт роняет `knip`, CLAUDE.md «Храповики»).
 - `GET /attempts` (`ExamAttemptsService.list`) остаётся очередью учителя —
   списком с фильтрами `examId`/`status`, поведение не менялось.
+- Дополнение 2026-10-02 (аудит 2026-10-01, F33). Список для карточек никогда
+  не носит снимок формы: очередь проверки и «Проверенные» ходят в
+  `GET /attempts/queue` (`ExamAttemptQueueController`/`ExamAttemptQueueService`,
+  тип `ExamAttemptQueueItemDto` = `ExamAttemptDto` без `blocks`/`answers`/
+  `media`), который читает попытку проекцией без снимка и расшифровывает
+  только название — до этого `GET /attempts?status=…&limit=200` отдавал до
+  5 МБ JSON и расшифровывал до 200 снимков ради строки из шести полей, при
+  каждом входе штата в «Экзамены». `GET /attempts` остаётся для своих попыток
+  ученика и бота. Любой новый потребитель `GET /attempts` в web обязан
+  объяснить на ревью, зачем ему `blocks`. Гейты: `exam-attempt-queue.e2e-spec.ts`
+  (у штата в ответе нет ключей `blocks`/`answers`/`media`, ученику 403, без
+  сессии 401), `gradingPaths.test.ts` (обе константы указывают на
+  `/attempts/queue`).
 - `UseAttemptResult.notFound` убран — 404 приходит уже с текстом через
   `error`, второе поле с тем же смыслом было бы дублем.
 - Тесты: `exam-attempt-load-own.spec.ts` (владение, ленивое закрытие — против

@@ -11,6 +11,7 @@ import type {
   AttemptOptionDto,
   AttemptQuestionDto,
   ExamAttemptDto,
+  ExamAttemptQueueItemDto,
 } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
@@ -40,6 +41,11 @@ export type LeanExamAttempt = Omit<RawLeanExamAttempt, 'blocks' | 'answers'> & {
   blocks: AttemptBlockRecord[];
   answers: AttemptAnswerDto[];
 };
+
+/** Попытка, прочитанная проекцией без `blocks`/`answers` (очередь проверки,
+ * exam-attempt-queue.service.ts, аудит 2026-10-01 F33): снимок не читается
+ * и не расшифровывается вовсе, `decryptRecord` пропускает отсутствующие поля. */
+export type LeanExamAttemptSummary = Omit<RawLeanExamAttempt, 'blocks' | 'answers'>;
 
 function toStudentOption(option: AttemptOptionRecord): AttemptOptionDto {
   return {
@@ -96,11 +102,11 @@ export function decryptAttempt(doc: RawLeanExamAttempt): LeanExamAttempt {
  * (или другим вызывающим) не передаются вовсе — оба поля тогда физически
  * отсутствуют в ответе (JSON.stringify отбрасывает ключ со значением
  * undefined), не приходят пустыми. */
-export function toAttemptDto(
-  doc: LeanExamAttempt,
+export function toAttemptQueueItemDto(
+  doc: LeanExamAttemptSummary,
   userName?: string,
   grading?: AttemptGradingSummary,
-): ExamAttemptDto {
+): ExamAttemptQueueItemDto {
   return {
     id: doc._id.toString(),
     examId: doc.examId.toString(),
@@ -108,13 +114,25 @@ export function toAttemptDto(
     userId: doc.userId.toString(),
     userName,
     status: doc.status,
-    blocks: doc.blocks.map(toStudentBlock),
-    answers: doc.answers,
     startedAt: toIsoUtc(doc.startedAt),
     deadlineAt: doc.deadlineAt ? toIsoUtc(doc.deadlineAt) : undefined,
     submittedAt: doc.submittedAt ? toIsoUtc(doc.submittedAt) : undefined,
     expired: doc.expired,
     outcome: grading?.outcome,
     gradedAt: grading?.gradedAt,
+  };
+}
+
+/** Полная попытка = строка очереди + снимок: одна сборка скалярных полей на
+ * оба DTO (F33), чтобы новое поле попытки не пришлось добавлять дважды. */
+export function toAttemptDto(
+  doc: LeanExamAttempt,
+  userName?: string,
+  grading?: AttemptGradingSummary,
+): ExamAttemptDto {
+  return {
+    ...toAttemptQueueItemDto(doc, userName, grading),
+    blocks: doc.blocks.map(toStudentBlock),
+    answers: doc.answers,
   };
 }

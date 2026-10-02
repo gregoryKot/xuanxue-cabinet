@@ -201,6 +201,7 @@ export type {
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
 } from './exam-attempts';
+export type { ExamAttemptQueueItemDto } from './exam-attempt-queue';
 export {
   EXAM_ATTEMPT_STATUSES,
   ATTEMPT_LIMITS,
