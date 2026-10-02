@@ -53,13 +53,22 @@ export interface UseTelegramAuthResultLoginOptions {
   /** Код ссылки-приглашения (ADR-0030/0036) — JoinScreen.tsx передаёт код
    * из /join/:code, LoginScreen.tsx не передаёт вовсе. */
   inviteCode?: string;
+  /** `false` — не слать POST /auth/telegram, пока AuthProvider не ответил
+   * (TelegramLoginSection передаёт `authStatus !== 'loading'`): тот же
+   * приём, что `canVerify`/`canPost` у входа по почте и Google. Иначе 401
+   * от стартового GET /auth/me мог долететь уже ПОСЛЕ удачного входа и
+   * пост-логинного refresh() — слушатель 401 сбрасывал сессию в guest, и
+   * ученика с выданной cookie возвращало на экран входа (аудит 2026-10-01,
+   * F56). Фрагмент остаётся в адресе до реального старта — эффект
+   * перезапустится, когда статус станет guest. По умолчанию `true`. */
+  enabled?: boolean;
 }
 
 export function useTelegramAuthResultLogin(
   refresh: () => Promise<void>,
   options: UseTelegramAuthResultLoginOptions = {},
 ): UseTelegramAuthResultLoginResult {
-  const { navigateAfterLogin = true, inviteCode } = options;
+  const { navigateAfterLogin = true, inviteCode, enabled = true } = options;
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +79,7 @@ export function useTelegramAuthResultLogin(
   const startedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
+    if (startedRef.current || !enabled) return;
     const user = readTelegramAuthResult(window.location.hash);
     if (!user) return;
     startedRef.current = true;
@@ -93,7 +102,7 @@ export function useTelegramAuthResultLogin(
         setErrorStatus(err instanceof ApiError ? err.status : null);
       })
       .finally(() => setPending(false));
-  }, [navigate, refresh, navigateAfterLogin, inviteCode]);
+  }, [navigate, refresh, navigateAfterLogin, inviteCode, enabled]);
 
   return { pending, error, errorStatus };
 }

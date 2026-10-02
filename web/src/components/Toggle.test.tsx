@@ -80,3 +80,31 @@ describe('Toggle', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+// Показ без права ответить (предпросмотр «глазами ученика») не приглушается:
+// серая вуаль исказила бы вид строки (отзыв владельца 2026-10-02), а `disabled`
+// — «запрос в пути» — по-прежнему приглушает (ChannelCard).
+describe('Toggle — readOnly и disabled', () => {
+  function labelOf(name: string): HTMLElement {
+    const label = screen.getByLabelText(name).closest('label');
+    if (!label) throw new Error('у переключателя нет <label>');
+    return label;
+  }
+
+  it('readOnly — переключатель выключен, строка не приглушена', async () => {
+    const onChange = vi.fn();
+    render(<Toggle label="24" checked={false} readOnly onChange={onChange} />);
+
+    expect(screen.getByLabelText('24')).toBeDisabled();
+    expect(['', '1']).toContain(labelOf('24').style.opacity);
+    expect(labelOf('24').style.cursor).toBe('default');
+    await userEvent.click(screen.getByLabelText('24'));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('disabled — строка по-прежнему приглушена', () => {
+    render(<Toggle label="Включён" checked={false} disabled onChange={vi.fn()} />);
+
+    expect(labelOf('Включён').style.opacity).toBe('0.6');
+  });
+});

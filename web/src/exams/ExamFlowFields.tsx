@@ -7,6 +7,7 @@
 // подряд идущие строки текста растягивали блок по вертикали больше, чем
 // сами поля.
 import type { CSSProperties } from 'react';
+import { ATTEMPTS_ALLOWED_TIP } from '@xuanxue/shared';
 import { Field, inputStyle, numericInputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
 import { questionsPerAttemptHint } from './questionsPerAttempt';
@@ -70,7 +71,10 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
           />
         </Field>
 
-        <Field label="Попыток">
+        {/* Подсказка — из shared (F60): повтор удаляет просроченную
+            непроверенную работу (ADR-0131), учитель должен знать это до того,
+            как поднимет лимит, чтобы «вернуть» экзамен. */}
+        <Field label="Попыток" tip={ATTEMPTS_ALLOWED_TIP}>
           <input
             style={numericInputStyle}
             inputMode="numeric"

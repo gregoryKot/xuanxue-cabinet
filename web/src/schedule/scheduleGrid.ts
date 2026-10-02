@@ -1,6 +1,6 @@
 // Чистая логика экрана «Расписание» (CLAUDE.md «Тесты»: чистая логика —
 // юнит-тест без Mongo/DI): ClassDto[] → сетка по дням недели, сортировка
-// слотов по минутам начала, форматирование диапазона «08:00–09:30». Время
+// слотов по минутам начала, конец занятия «09:30» из начала и длительности. Время
 // правила — строка HH:mm и длительность в минутах (shared/src/domain.ts),
 // поэтому конец интервала — арифметика на минутах, Luxon в web не нужен
 // (правило CLAUDE.md «Время» запрещает web без Luxon: то же самое здесь —
@@ -19,19 +19,26 @@ export interface ScheduleSlot {
   title: string;
   groupLabel: string;
   format: ClassDto['format'];
-  timeLabel: string;
+  /** Где проходит: адрес зала или парка (ClassDto.location). У онлайна его
+   * нет — SlotRow тогда пишет «Онлайн». */
+  location?: string;
+  /** Начало и конец — отдельными строками, а не «08:00–09:00» одной: в
+   * колонке дня шириной 160px диапазон крупным кеглем ломался пополам на
+   * тире (отзыв владельца 2026-10-02), а начало важнее конца и набирается крупнее. */
+  startTime: string;
+  endTime: string;
   startMinutes: number;
   active: boolean;
   /** Онлайн-занятие без ссылки Zoom: рассылка уйдёт без неё, ученик
-   * останется за дверью. SlotCard показывает «без ссылки» прямо в сетке
+   * останется за дверью. SlotRow показывает «без ссылки» прямо в сетке
    * (отзыв владельца 2026-09-12). У офлайна ссылки и не должно быть. */
   linkMissing: boolean;
   /** Число АКТИВНЫХ каналов рассылки у занятия (channelIds ∩ активные
-   * каналы кабинета) — SlotCard показывает его или «без каналов» (ревью
-   * п.1). Выключенный канал в channelIds не считается: рассылку он не
-   * получит. */
+   * каналы кабинета). Ноль у онлайна — SlotRow пишет «без каналов» (ревью
+   * п.1): ссылку некому разослать. Выключенный канал в channelIds не
+   * считается: рассылку он не получит. */
   channelCount: number;
-  /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotCard печатает их
+  /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotRow печатает их
    * подписью, без пилюль: в сетке дня они ничего не фильтруют. Теги даты
    * (lessons.tags, ADR-0075) сюда не подмешиваются — другое поле, другой
    * экран. */
@@ -58,11 +65,10 @@ function minutesToTime(totalMinutes: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
-/** «08:00–09:30»; занятие за полночь (23:30 + 60 мин) корректно переходит на
- * «00:30» — редкий, но возможный случай для вечерних слотов. */
-export function formatTimeRange(rule: ScheduleRuleDto): string {
-  const end = timeToMinutes(rule.time) + rule.durationMin;
-  return `${rule.time}–${minutesToTime(end)}`;
+/** Конец занятия «09:30»; занятие за полночь (23:30 + 60 мин) корректно
+ * переходит на «00:30» — редкий, но возможный случай для вечерних слотов. */
+export function ruleEndTime(rule: ScheduleRuleDto): string {
+  return minutesToTime(timeToMinutes(rule.time) + rule.durationMin);
 }
 
 function emptyGrid(): ScheduleGrid {
@@ -96,7 +102,9 @@ export function buildScheduleGrid(
         title: cls.title,
         groupLabel: cls.groupLabel,
         format: cls.format,
-        timeLabel: formatTimeRange(rule),
+        location: cls.location,
+        startTime: rule.time,
+        endTime: ruleEndTime(rule),
         startMinutes,
         active: cls.active,
         linkMissing: cls.format !== 'offline' && !cls.zoomLink,

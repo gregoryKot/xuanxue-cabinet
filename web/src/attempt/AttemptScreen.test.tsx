@@ -123,6 +123,19 @@ describe('AttemptScreen', () => {
     ).toHaveAttribute('href', 'https://t.me/xx_bot?start=exam_a1_q3');
   });
 
+  // Аудит 2026-10-01, F41: useAuthConfig + useFileStorageEnabled (внутри —
+  // свой useAuthConfig) слали два GET /auth/config на каждое открытие
+  // попытки; 60 открытий в минуту за одним NAT исчерпывали бакет троттлера.
+  it('открытие попытки — один GET /auth/config, не два', async () => {
+    mockPaths(IN_PROGRESS);
+    renderAt('a1');
+
+    await screen.findByText('Форма первого уровня');
+    expect(
+      mockedApiFetch.mock.calls.filter(([path]) => path === '/auth/config'),
+    ).toHaveLength(1);
+  });
+
   it('уже отправлена — экран «Отправлено», без формы', async () => {
     mockPaths({ ...IN_PROGRESS, status: 'submitted' });
     renderAt('a1');

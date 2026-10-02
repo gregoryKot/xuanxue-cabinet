@@ -23,7 +23,7 @@
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
-import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
+import { isFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { NoticeDialog } from '../components/NoticeDialog';
 import { SkeletonLines } from '../components/Skeleton';
@@ -62,8 +62,10 @@ export default function AttemptScreen() {
   } = useAttempt(id ?? '', { onSubmitted: applyExamAttempt });
   const { config } = useAuthConfig();
   // Загрузка файлом — первый путь ответа только там, где подключён R2
-  // (ADR-0137); без него экран видео-вопроса остаётся прежним.
-  const fileUploadEnabled = useFileStorageEnabled();
+  // (ADR-0137); без него экран видео-вопроса остаётся прежним. По уже
+  // загруженному config, не вторым хуком: тот слал бы второй GET /auth/config
+  // на каждое открытие попытки (аудит 2026-10-01, F41).
+  const fileUploadEnabled = isFileStorageEnabled(config);
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
   // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
   const { me } = useAuth();

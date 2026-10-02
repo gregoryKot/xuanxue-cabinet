@@ -2,6 +2,7 @@
 // → sent/error и текст ошибки. Сеть замокана через apiFetch (api/http.ts).
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EMAIL_LOGIN_RESEND_COOLDOWN_MIN } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { useEmailLoginRequest } from './useEmailLoginRequest';
@@ -15,6 +16,7 @@ const mockedApiFetch = vi.mocked(apiFetch);
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  vi.useRealTimers();
 });
 
 describe('useEmailLoginRequest', () => {
@@ -24,6 +26,39 @@ describe('useEmailLoginRequest', () => {
     expect(result.current.status).toBe('idle');
     expect(result.current.error).toBeNull();
     expect(result.current.sentOnce).toBe(false);
+    expect(result.current.resendAvailableInSec).toBe(0);
+  });
+
+  // Аудит 2026-10-01, F30: в окне cooldown сервер молчит тем же 204 —
+  // отсчёт ведёт форма, от момента успешной отправки, посекундно.
+  it('после отправки — отсчёт cooldown, по истечении снова 0', async () => {
+    vi.useFakeTimers();
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginRequest());
+    const cooldownSec = EMAIL_LOGIN_RESEND_COOLDOWN_MIN * 60;
+
+    await act(() => result.current.request('a@example.com'));
+    expect(result.current.resendAvailableInSec).toBe(cooldownSec);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(result.current.resendAvailableInSec).toBe(cooldownSec - 30);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync((cooldownSec - 30) * 1000);
+    });
+    expect(result.current.resendAvailableInSec).toBe(0);
+  });
+
+  it('сбой отправки отсчёт не запускает', async () => {
+    vi.useFakeTimers();
+    mockedApiFetch.mockRejectedValue(new Error('boom'));
+    const { result } = renderHook(() => useEmailLoginRequest());
+
+    await act(() => result.current.request('a@example.com'));
+
+    expect(result.current.resendAvailableInSec).toBe(0);
   });
 
   it('успех — status sent, sentOnce true, POST с email в теле', async () => {

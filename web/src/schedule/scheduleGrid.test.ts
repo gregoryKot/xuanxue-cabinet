@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClassDto } from '@xuanxue/shared';
-import { buildScheduleGrid, formatTimeRange } from './scheduleGrid';
+import { buildScheduleGrid, ruleEndTime } from './scheduleGrid';
 
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
@@ -20,17 +20,29 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   };
 }
 
-describe('formatTimeRange', () => {
-  it('08:00 + 90 минут — «08:00–09:30»', () => {
-    expect(
-      formatTimeRange({ id: 'r1', weekday: 2, time: '08:00', durationMin: 90 }),
-    ).toBe('08:00–09:30');
+describe('ruleEndTime', () => {
+  it('08:00 + 90 минут — «09:30»', () => {
+    expect(ruleEndTime({ id: 'r1', weekday: 2, time: '08:00', durationMin: 90 })).toBe(
+      '09:30',
+    );
   });
 
-  it('переход через полночь: 23:30 + 60 минут — «23:30–00:30»', () => {
-    expect(
-      formatTimeRange({ id: 'r1', weekday: 5, time: '23:30', durationMin: 60 }),
-    ).toBe('23:30–00:30');
+  it('переход через полночь: 23:30 + 60 минут — «00:30»', () => {
+    expect(ruleEndTime({ id: 'r1', weekday: 5, time: '23:30', durationMin: 60 })).toBe(
+      '00:30',
+    );
+  });
+
+  it('ровно в полночь: 23:00 + 60 минут — «00:00», не «24:00»', () => {
+    expect(ruleEndTime({ id: 'r1', weekday: 5, time: '23:00', durationMin: 60 })).toBe(
+      '00:00',
+    );
+  });
+
+  it('длительность больше суток — конец всё равно в пределах суток', () => {
+    expect(ruleEndTime({ id: 'r1', weekday: 5, time: '10:15', durationMin: 1500 })).toBe(
+      '11:15',
+    );
   });
 });
 
@@ -181,5 +193,49 @@ describe('buildScheduleGrid', () => {
     const grid = buildScheduleGrid([cls]);
 
     expect(grid[1][0]?.tags).toEqual([]);
+  });
+
+  it('слот несёт начало и конец отдельными полями', () => {
+    const cls = makeClass({
+      rules: [{ id: 'r1', weekday: 2, time: '08:00', durationMin: 90 }],
+    });
+
+    const slot = buildScheduleGrid([cls])[2][0];
+
+    expect(slot?.startTime).toBe('08:00');
+    expect(slot?.endTime).toBe('09:30');
+  });
+
+  it('конец занятия за полночь — «00:30» у слота', () => {
+    const cls = makeClass({
+      rules: [{ id: 'r1', weekday: 5, time: '23:30', durationMin: 60 }],
+    });
+
+    const slot = buildScheduleGrid([cls])[5][0];
+
+    expect(slot?.startTime).toBe('23:30');
+    expect(slot?.endTime).toBe('00:30');
+  });
+
+  it('адрес занятия переносится в слот как есть', () => {
+    const cls = makeClass({
+      format: 'offline',
+      location: 'Парк Яркон, у входа',
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.location).toBe('Парк Яркон, у входа');
+  });
+
+  it('занятие без адреса — у слота location не задан', () => {
+    const cls = makeClass({
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.location).toBeUndefined();
   });
 });

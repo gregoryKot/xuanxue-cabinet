@@ -7,24 +7,13 @@ import {
   answerVideoUploadProgress,
   checkAnswerVideoFileSize,
   classifyAnswerVideoError,
-  computeAnswerVideoFingerprint,
   nextMissingAnswerVideoPart,
   sliceAnswerVideoPart,
 } from './answerVideoUpload';
 
-function makeFile(bytes: number, lastModified = 1_700_000_000_000): File {
-  return new File([new Uint8Array(bytes)], 'form.mp4', {
-    type: 'video/mp4',
-    lastModified,
-  });
+function makeFile(bytes: number): File {
+  return new File([new Uint8Array(bytes)], 'form.mp4', { type: 'video/mp4' });
 }
-
-describe('computeAnswerVideoFingerprint', () => {
-  it('размер и дата изменения через двоеточие, без имени файла', () => {
-    const file = makeFile(1024, 42);
-    expect(computeAnswerVideoFingerprint(file)).toBe('1024:42');
-  });
-});
 
 describe('checkAnswerVideoFileSize', () => {
   it('пропускает файл в пределах потолка', () => {

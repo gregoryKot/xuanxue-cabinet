@@ -93,6 +93,25 @@ describe('AttemptOptionTile', () => {
     expect(screen.getByRole('checkbox', { name: 'Вправо' })).toBeDisabled();
   });
 
+  // `disabled` у плитки — показ без права ответить (предпросмотр, «Ваши
+  // ответы»): приглушение накрывало фото белой вуалью (отзыв владельца
+  // 2026-10-02) — плитка выглядит так же, как у ученика.
+  it('disabled — плитка не приглушена', () => {
+    const { container } = render(
+      <AttemptOptionTile
+        label="Вправо"
+        labelHidden={false}
+        imageId="img1"
+        checked={false}
+        disabled
+        onChange={vi.fn()}
+      />,
+    );
+
+    const tile = container.querySelector<HTMLElement>('.xuanxue-option-tile');
+    expect(['', '1']).toContain(tile?.style.opacity);
+  });
+
   // Ветка «выбрано» — не только состояние контрола: у плитки от неё зависит
   // всё, чем выбор виден глазами (кольцо вокруг карточки, заливка отметки,
   // галочка внутри). Без этого случая она не проверялась ничем, и храповик
@@ -183,6 +202,22 @@ describe('AttemptOptionTile — видео варианта (ADR-0133)', () => {
     );
 
     expect(screen.getByRole('checkbox', { name: 'Вариант 1' })).toBeDisabled();
+  });
+
+  it('disabled — плитка с видео не приглушена, плеер без белой вуали', () => {
+    const { container } = render(
+      <AttemptOptionTile
+        label="Вариант 1"
+        labelHidden={false}
+        videoId="vid1"
+        checked={false}
+        disabled
+        onChange={vi.fn()}
+      />,
+    );
+
+    const tile = container.querySelector<HTMLElement>('.xuanxue-option-tile');
+    expect(['', '1']).toContain(tile?.style.opacity);
   });
 
   it('videoUrl — плеер ссылки виден (VideoEmbed)', () => {

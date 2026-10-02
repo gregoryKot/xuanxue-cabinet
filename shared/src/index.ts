@@ -67,6 +67,8 @@ export {
   EMAIL_LOGIN_CODE_LENGTH,
   EMAIL_LOGIN_CODE_RE,
   EMAIL_LOGIN_CODE_INVALID_MESSAGE,
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
+  EMAIL_LOGIN_RESEND_COOLDOWN_MIN,
 } from './email-login-code';
 export type { GoogleLoginInput } from './google-login';
 export {
@@ -310,6 +312,7 @@ export {
   EXAM_RETRY_DELETE_CONFIRM_TITLE,
   EXAM_RETRY_DELETE_CONFIRM_LABEL,
   EXAM_RETRY_DELETE_FACT,
+  ATTEMPTS_ALLOWED_TIP,
   buildExamStartWarning,
   buildExamRetryDeleteWarning,
 } from './exam-time-notice';

@@ -66,8 +66,17 @@ function renderAt(path: string) {
   );
 }
 
+// Конфигурация входа нужна блоку видео-вопроса: из неё он знает, есть ли
+// загрузка файлом и бот (ExamPreview.tsx читает её один раз на страницу).
+const AUTH_CONFIG = {
+  emailLoginEnabled: true,
+  fileStorageEnabled: true,
+  googleLoginEnabled: false,
+  telegramBotUsername: 'xuanxue_bot',
+};
+
 function mockExamAndBank(exam: ExamDto, bank: ExamItemDto[] = BANK) {
-  mockApiByPath({ '/exams/x1': exam, '/exam-items': bank });
+  mockApiByPath({ '/exams/x1': exam, '/exam-items': bank, '/auth/config': AUTH_CONFIG });
 }
 
 describe('ExamPreviewScreen — загрузка', () => {
@@ -386,7 +395,8 @@ describe('ExamPreviewScreen — вопросы', () => {
     ).toBeDisabled();
   });
 
-  it('video — текст «Ответ на этот вопрос — видео»', async () => {
+  // Отзыв владельца 2026-10-02: вместо блока ученика была одна строка.
+  it('video — тот же блок, что у ученика: загрузка, ссылка и бот, всё неактивное', async () => {
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }] }),
       [makeItem({ id: 'i1', kind: 'video' })],
@@ -395,6 +405,24 @@ describe('ExamPreviewScreen — вопросы', () => {
     renderAt('/exams/x1/preview');
 
     expect(await screen.findByText(/Ответ на этот вопрос — видео/)).toBeInTheDocument();
+    expect(await screen.findByLabelText('Загрузить видео')).toBeDisabled();
+    expect(screen.getByLabelText('Ссылка на видео')).toBeDisabled();
+    expect(screen.getByText('Открыть чат с ботом')).not.toHaveAttribute('href');
+  });
+
+  it('video — конфигурация входа не загрузилась: блок на месте, без загрузки и бота', async () => {
+    mockApiByPath({
+      '/exams/x1': makeExam({
+        blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }],
+      }),
+      '/exam-items': [makeItem({ id: 'i1', kind: 'video' })],
+      '/auth/config': new Error('нет связи'),
+    });
+
+    renderAt('/exams/x1/preview');
+
+    expect(await screen.findByLabelText('Ссылка на видео')).toBeDisabled();
+    expect(screen.queryByLabelText('Загрузить видео')).not.toBeInTheDocument();
   });
 
   it('вопрос не из списка — «Вопрос недоступен»', async () => {

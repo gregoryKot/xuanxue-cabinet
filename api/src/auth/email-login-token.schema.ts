@@ -1,5 +1,5 @@
 // Заявка на одноразовый вход по email (SECURITY §2, ADR-0005, ADR-0029,
-// ADR-0104): живёт EMAIL_LOGIN_TOKEN_TTL_MIN (email-login-token.service.ts),
+// ADR-0104): живёт EMAIL_LOGIN_TOKEN_TTL_MIN (shared/src/email-login-code.ts),
 // в базе — только sha256, сырые значения базу не видят. TTL-индекс на
 // expiresAt подчищает протухшие сам; consume()/consumeCode() удаляют
 // использованную явно (findOneAndDelete) — обычно TTL просто подметает то,

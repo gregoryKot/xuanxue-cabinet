@@ -21,7 +21,7 @@ describe('scheduleTzNote', () => {
   // ScreenHeader.hint, здесь сверяем сырой текст формиттера с маркером.
   it('пояс школы другой — одна строка про часы школы', () => {
     expect(scheduleTzNote(['Asia/Jerusalem'], 'Europe/Moscow')).toBe(
-      'Время в сетке — по часам школы (**Asia/Jerusalem**).',
+      'Время в расписании — по часам школы (**Asia/Jerusalem**).',
     );
   });
 
@@ -29,7 +29,7 @@ describe('scheduleTzNote', () => {
     const tzs = Array.from({ length: 11 }, () => 'Asia/Jerusalem');
 
     expect(scheduleTzNote(tzs, 'Europe/Moscow')).toBe(
-      'Время в сетке — по часам школы (**Asia/Jerusalem**).',
+      'Время в расписании — по часам школы (**Asia/Jerusalem**).',
     );
   });
 
@@ -39,7 +39,7 @@ describe('scheduleTzNote', () => {
 
   it('два разных чужих пояса — оба в строке', () => {
     expect(scheduleTzNote(['Asia/Jerusalem', 'Europe/Moscow'], 'Europe/Lisbon')).toBe(
-      'Время в сетке — по часам школы (**Asia/Jerusalem, Europe/Moscow**).',
+      'Время в расписании — по часам школы (**Asia/Jerusalem, Europe/Moscow**).',
     );
   });
 });
