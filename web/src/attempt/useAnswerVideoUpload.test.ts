@@ -315,6 +315,9 @@ describe('useAnswerVideoUpload — отмена', () => {
 
     act(() => result.current.selectFile(makeFile()));
     expect(result.current.state.phase).toBe('uploading');
+    // Старт уходит не сразу: сначала считается отпечаток файла (асинхронно,
+    // ADR-0165), а отменяем мы именно летящий запрос.
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledTimes(1));
 
     act(() => result.current.cancel());
     expect(result.current.state.phase).toBe('cancelled');

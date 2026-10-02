@@ -12,13 +12,15 @@
 // памяти вкладки не пережило перезапуск — без этой двери код в такой
 // ситуации ввести было бы негде.
 import { useState, type FormEvent } from 'react';
+import { EMAIL_LOGIN_TOKEN_TTL_MIN, formatDurationRu } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
-import { screenExplanationStyle } from '../components/screenLayout';
+import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { EmailCodeForm } from './EmailCodeForm';
+import { buildResendCountdownText } from './emailResendCountdown';
 import { useEmailLoginRequest } from './useEmailLoginRequest';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
@@ -39,6 +41,12 @@ const sentTextStyle = { margin: 0 };
  * абзацем выше. */
 const MANUAL_CODE_MESSAGE = 'Введите адрес почты и код из письма.';
 
+/** Под ссылкой повтора, когда окно cooldown прошло (аудит 2026-10-01, F30):
+ * сервер заменяет заявку новой, и код из первого письма перестаёт
+ * подходить — ученик, дождавшийся первого письма после повтора, иначе
+ * получал «Код не подошёл» без объяснения. */
+const RESEND_REPLACES_CODE_MESSAGE = 'Код из прежнего письма перестанет работать.';
+
 interface EmailLoginFormProps {
   /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
    * `/join/:code` — уходит вместе с запросом ссылки на почту и с кодом. */
@@ -47,7 +55,8 @@ interface EmailLoginFormProps {
 
 export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
   const [email, setEmail] = useState('');
-  const { status, error, sentOnce, request } = useEmailLoginRequest(inviteCode);
+  const { status, error, sentOnce, resendAvailableInSec, request } =
+    useEmailLoginRequest(inviteCode);
   // Дверь в код из состояния покоя (ADR-0104, см. комментарий выше файла).
   const [manualCode, setManualCode] = useState(false);
 
@@ -65,20 +74,30 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
       <div style={formStyle}>
         <p style={sentTextStyle}>
           <RichText
-            text={`Письмо ушло на ${email}. Введите код из него — он работает **15 минут**. Не пришло — проверьте «Спам».`}
+            text={`Письмо ушло на ${email}. Введите код из него — он работает **${formatDurationRu(EMAIL_LOGIN_TOKEN_TTL_MIN)}**. Не пришло — проверьте «Спам».`}
           />
         </p>
         <FormServerError error={error ? { message: error } : null} />
         <EmailCodeForm email={email} inviteCode={inviteCode} />
-        {/* Текстовая ссылка, а не кнопка: повтор отправки — действие
-            второго плана, контурная кнопка во всю ширину звала бы нажать
-            её первой (docs/adr/0031). */}
-        <TextLinkButton
-          disabled={status === 'pending'}
-          onClick={() => void request(email)}
-        >
-          Отправить ещё раз
-        </TextLinkButton>
+        {/* Пока окно cooldown не прошло, ссылки нет: сервер в нём всё равно
+            не шлёт письма, а отвечает тем же 204 (F30). Текстовая ссылка, а
+            не кнопка: повтор отправки — действие второго плана, контурная
+            кнопка во всю ширину звала бы нажать её первой (docs/adr/0031). */}
+        {resendAvailableInSec > 0 ? (
+          <p style={screenHintStyle}>
+            <RichText text={buildResendCountdownText(resendAvailableInSec)} />
+          </p>
+        ) : (
+          <>
+            <TextLinkButton
+              disabled={status === 'pending'}
+              onClick={() => void request(email)}
+            >
+              Отправить ещё раз
+            </TextLinkButton>
+            <p style={screenHintStyle}>{RESEND_REPLACES_CODE_MESSAGE}</p>
+          </>
+        )}
       </div>
     );
   }

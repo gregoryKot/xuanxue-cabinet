@@ -43,6 +43,9 @@ export const API_TIMEOUT_MS = 30_000;
 // Загрузка файла (сырое тело Blob) на плохой связи ученика в API_TIMEOUT_MS
 // не укладывается — ставится явным `timeoutMs` в местах загрузки.
 export const UPLOAD_TIMEOUT_MS = 120_000;
+// Потолок спецификации fetch — 64 КиБ на все живые keepalive-запросы разом;
+// сверх него Chrome бросает TypeError, не отправив ничего. Запас — 4 КиБ.
+export const KEEPALIVE_BODY_MAX_BYTES = 60 * 1024;
 
 // Текст по docs/VOICE.md. Отдельно от NETWORK_ERROR_MESSAGE: вызывающий код
 // (useAbortableFetch и т.п.) различает «сети нет» и «сервер не отвечает»,

@@ -67,9 +67,12 @@ function progressFillStyle(fraction: number): CSSProperties {
 interface AttemptVideoUploadProps {
   itemId: string;
   video: AttemptVideoControls;
+  /** Показ без права загрузить (предпросмотр «глазами ученика») — кнопка та же,
+   * но файл выбрать нельзя. */
+  disabled?: boolean;
 }
 
-export function AttemptVideoUpload({ itemId, video }: AttemptVideoUploadProps) {
+export function AttemptVideoUpload({ itemId, video, disabled }: AttemptVideoUploadProps) {
   const { state, selectFile, cancel, resumeNow } = useAnswerVideoUpload({
     attemptId: video.attemptId,
     itemId,
@@ -97,6 +100,7 @@ export function AttemptVideoUpload({ itemId, video }: AttemptVideoUploadProps) {
           pending={false}
           onFile={selectFile}
           variant="primary"
+          disabled={disabled}
         />
       )}
 
