@@ -1,7 +1,7 @@
 // Диф в миллисекундах, без обращения к часовому поясу — тест проходит
 // одинаково и в UTC, и под TZ=Australia/Sydney (CLAUDE.md «Время»).
 import { describe, expect, it } from 'vitest';
-import { getAttemptTimeStatus } from './attemptDeadline';
+import { getAttemptTimeStatus, getRemainingTimeStatus } from './attemptDeadline';
 
 const NOW = new Date('2026-09-12T10:00:00Z').getTime();
 
@@ -72,5 +72,38 @@ describe('getAttemptTimeStatus', () => {
 
   it('дедлайн ровно сейчас — тоже expired (сервер закрывает по «>=»)', () => {
     expect(getAttemptTimeStatus(new Date(NOW).toISOString(), NOW).expired).toBe(true);
+  });
+});
+
+// Остаток в миллисекундах без строки дедлайна — так считает предпросмотр
+// экзамена (exams/ExamPreviewTimer.tsx), у которого есть только лимит в минутах.
+describe('getRemainingTimeStatus', () => {
+  it('45 минут — «Осталось 45:00», тревожного тона нет', () => {
+    const status = getRemainingTimeStatus(45 * 60_000);
+    expect(status.label).toBe('Осталось 45:00');
+    expect(status.warning).toBe(false);
+    expect(status.expired).toBe(false);
+  });
+
+  it('90 минут — «Осталось 1 ч 30 мин»', () => {
+    expect(getRemainingTimeStatus(90 * 60_000).label).toBe('Осталось 1 ч 30 мин');
+  });
+
+  it('4 минуты — тревожный тон и фраза для скринридера «меньше 5 минут»', () => {
+    const status = getRemainingTimeStatus(4 * 60_000);
+    expect(status.warning).toBe(true);
+    expect(status.announcement).toBe('Осталось меньше 5 минут');
+  });
+
+  it('ноль — expired, без label', () => {
+    const status = getRemainingTimeStatus(0);
+    expect(status.expired).toBe(true);
+    expect(status.label).toBeNull();
+  });
+
+  it('тот же результат, что у getAttemptTimeStatus на тот же остаток', () => {
+    expect(getRemainingTimeStatus(7 * 60_000 + 3000)).toEqual(
+      statusIn(7 * 60_000 + 3000),
+    );
   });
 });

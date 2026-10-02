@@ -17,7 +17,7 @@
 // закроет попытку. Терминальный статус по-прежнему приходит только с
 // сервера — переключает AttemptScreen.tsx по `attempt.status`.
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { getAttemptTimeStatus } from './attemptDeadline';
+import { getAttemptTimeStatus, type AttemptTimeStatus } from './attemptDeadline';
 import { useNow } from './useNow';
 
 const NOW_REFRESH_MS = 1000;
@@ -74,6 +74,28 @@ const wrapperStyle: CSSProperties = {
   padding: '4px 0',
 };
 
+/**
+ * Только вид строки отсчёта — без часов и без обращений к серверу. Вынесена
+ * из AttemptDeadlineTimer, чтобы предпросмотр экзамена (exams/
+ * ExamPreviewTimer.tsx) рисовал ту же разметку, стили и тексты, а не
+ * копию, которая разойдётся с экраном ученика при первой же правке.
+ */
+export function AttemptTimerLine({ status }: { status: AttemptTimeStatus }) {
+  const label = status.expired ? EXPIRED_LABEL : status.label;
+  return (
+    <div style={wrapperStyle}>
+      {label && (
+        <p style={status.warning || status.expired ? warningStyle : calmStyle}>{label}</p>
+      )}
+      {/* Скринридеру — редкая фраза на порогах, не тикающий отсчёт: без
+          aria-live на самой строке выше, иначе он читал бы каждую секунду. */}
+      <p className="xuanxue-sr-only" role="status">
+        {status.announcement}
+      </p>
+    </div>
+  );
+}
+
 export function AttemptDeadlineTimer({
   deadlineAt,
   onExpired,
@@ -95,17 +117,5 @@ export function AttemptDeadlineTimer({
     return () => window.clearInterval(id);
   }, [status.expired]);
 
-  const label = status.expired ? EXPIRED_LABEL : status.label;
-  return (
-    <div style={wrapperStyle}>
-      {label && (
-        <p style={status.warning || status.expired ? warningStyle : calmStyle}>{label}</p>
-      )}
-      {/* Скринридеру — редкая фраза на порогах, не тикающий отсчёт: без
-          aria-live на самой строке выше, иначе он читал бы каждую секунду. */}
-      <p className="xuanxue-sr-only" role="status">
-        {status.announcement}
-      </p>
-    </div>
-  );
+  return <AttemptTimerLine status={status} />;
 }
