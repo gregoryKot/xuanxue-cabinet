@@ -47,6 +47,11 @@ export interface AttemptOptionCheckDto {
 
 export interface AttemptReviewQuestionDto {
   itemId: string;
+  /** Редакция вопроса из снимка попытки (ADR-0022) — какую именно
+   * формулировку и варианты видел сдающий; вопрос в банке с тех пор могли
+   * поправить (аудит 2026-10-01, F62). Необязательно только ради старых
+   * фикстур web/ — сервер отдаёт всегда. */
+  version?: number;
   kind: ExamItemKind;
   prompt: string;
   /** Видео формулировки вопроса (ADR-0133) тем же смыслом, что у варианта. */

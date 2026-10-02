@@ -303,6 +303,7 @@ export {
 } from './my-exams';
 export { describeExamTime, describeAttemptDeadline, isExamDuePassed } from './exam-time';
 export { formatExamDueAt } from './exam-due-line';
+export { endOfDayInZoneIso } from './end-of-day';
 export {
   EXAM_IN_PROGRESS_LABEL,
   EXAM_START_CONFIRM_TITLE,

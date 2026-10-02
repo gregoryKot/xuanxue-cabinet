@@ -1,11 +1,9 @@
 // Один вопрос карточки проверки (ТЗ 4.6, п.3) — формулировка, ответ ученика,
 // варианты с пометкой верных и выбранных, счётчик автопроверки. Подсказка
 // ученику и критерии проверки убраны из вопроса вместе с полями (ADR-0128).
-// Строка списка, не карточка (направление «тихо и
-// благородно», docs/adr/0031, макет Review.dc.html): волосяная линия снизу,
-// статус — короткой меткой справа от формулировки
-// (attemptReviewQuestionStatus.ts), как статус формы на строке списка
-// (exams/ExamCard.tsx).
+// Строка списка, не карточка («тихо и благородно», docs/adr/0031, макет
+// Review.dc.html): волосяная линия снизу, статус — короткой меткой справа
+// (attemptReviewQuestionStatus.ts), как статус формы (exams/ExamCard.tsx).
 //
 // Видео-вопрос (ADR-0037: видео — ответ на конкретный вопрос, не вложение к
 // попытке целиком) — своя запись видео тут же, а не общим блоком на всю
@@ -20,10 +18,9 @@
 // варианта, ADR-0035): этот файл стоял на пределе размера, и подкомпонент —
 // то, что велит делать CLAUDE.md «Храповики», а не сдвиг бейслайна вверх.
 //
-// Формулировка здесь рендерится своим кодом, не через QuestionRow.tsx
-// (у карточки проверки свой макет строки — номер и статус в одной шапке),
-// поэтому ссылку и акцент `**жирным**` в ней делает RichText.tsx напрямую
-// (ADR-0093), тем же приёмом.
+// Формулировка рендерится своим кодом, не через QuestionRow.tsx (у карточки
+// проверки свой макет строки — номер и статус в одной шапке), поэтому ссылку
+// и акцент `**жирным**` в ней делает RichText.tsx напрямую (ADR-0093).
 import type { CSSProperties } from 'react';
 import {
   ATTEMPT_NO_ANSWER_TEXT,
@@ -36,6 +33,7 @@ import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
 import { AttemptReviewQuestionReason } from './AttemptReviewQuestionReason';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
+import { formatQuestionVersion } from './attemptReviewQuestionVersion';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
 import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
@@ -98,6 +96,7 @@ export function AttemptReviewQuestion({
   const isVideo = question.kind === 'video';
   const status = attemptReviewQuestionStatus(question, media.length > 0);
   const showNoAnswerMeta = hasOptions && !question.answered;
+  const versionLine = formatQuestionVersion(question.version);
 
   return (
     <div style={rowStyle}>
@@ -145,6 +144,7 @@ export function AttemptReviewQuestion({
         <p style={metaStyle}>{formatOptionsCheckSummary(question.optionsCheck)}</p>
       )}
       {showNoAnswerMeta && <p style={metaStyle}>{ATTEMPT_NO_ANSWER_TEXT}</p>}
+      {versionLine && <p style={metaStyle}>{versionLine}</p>}
     </div>
   );
 }

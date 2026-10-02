@@ -71,6 +71,9 @@ function buildReviewQuestion(
   const answered = hasOptions ? selectedIds.length > 0 : Boolean(answer?.text?.trim());
   return {
     itemId: question.itemId,
+    // Редакция из снимка (F62): учителю видно, какую именно версию вопроса
+    // он оценивает, если банк с тех пор правили.
+    version: question.version,
     kind: question.kind,
     prompt: question.prompt,
     ...(question.videoId !== undefined ? { videoId: question.videoId } : {}),
