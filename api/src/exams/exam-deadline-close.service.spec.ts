@@ -4,8 +4,12 @@
 // аудита 2026-09-15, ТЗ 4.4 п.7). Ровно тот тест, которого не было ни здесь,
 // ни в exam-attempts.service.spec.ts, ни в exam-grading.e2e-spec.ts.
 import { DateTime } from 'luxon';
+import { Types } from 'mongoose';
 import type { UserLean } from '../users/users.service';
-import { ExamDeadlineCloseService } from './exam-deadline-close.service';
+import {
+  DEADLINE_BATCH_LIMIT,
+  ExamDeadlineCloseService,
+} from './exam-deadline-close.service';
 import {
   AUTHOR_ID,
   USER_A,
@@ -40,13 +44,13 @@ describe('ExamDeadlineCloseService', () => {
 
   afterEach(async () => {
     await clearAttemptsTest(ctx);
+    // mockClear в clearAttemptsTest не снимает mockImplementation — фейк с
+    // ожиданием из теста про наплыв не должен утечь в соседние.
+    ctx.examNotifier.notifyAttemptSubmitted.mockReset();
+    ctx.examNotifier.notifyAttemptSubmitted.mockResolvedValue({ recipients: 0 });
   });
 
-  async function startTimedAttempt(
-    userId: string,
-    timeLimitMin: number,
-    startedAt: DateTime,
-  ) {
+  async function publishTimedExam(timeLimitMin: number, startedAt: DateTime) {
     const item = await ctx.examItemsService.create(
       { kind: 'text', prompt: 'x' },
       AUTHOR_ID,
@@ -61,7 +65,16 @@ describe('ExamDeadlineCloseService', () => {
       AUTHOR_ID,
     );
     await ctx.examsService.update(exam.id, { status: 'published' });
-    return ctx.service.start(exam.id, userId, startedAt);
+    return exam.id;
+  }
+
+  async function startTimedAttempt(
+    userId: string,
+    timeLimitMin: number,
+    startedAt: DateTime,
+  ) {
+    const examId = await publishTimedExam(timeLimitMin, startedAt);
+    return ctx.service.start(examId, userId, startedAt);
   }
 
   it('закрывает просроченную попытку и заводит её в очередь проверки — ровно тот случай, где list() с фильтром по статусу её раньше терял', async () => {
@@ -146,6 +159,60 @@ describe('ExamDeadlineCloseService', () => {
       ([context]) => context.attemptId,
     );
     expect(ids.sort()).toEqual([first.id, second.id].sort());
+  });
+
+  // Аудит 2026-10-01 F11 (ADR-0167): группа с одним стартом истекает в одну
+  // минуту, и fire-and-forget по каждой попытке запускал веер — 50 карточек в
+  // чат учителя разом (429 Telegram, пинг терялся) и сотни операций Mongo.
+  // Фейк ждёт настоящий запрос к Mongo между «вошёл» и «вышел», поэтому при
+  // fire-and-forget последняя отправка была бы ещё в полёте, когда closeDue
+  // вернулся; при ожидании — в полёте всегда не больше одной и ноль на выходе.
+  it('наплыв просрочек — не больше DEADLINE_BATCH_LIMIT за тик, уведомления по одному и с ожиданием, остаток добирает следующий тик', async () => {
+    const examId = await publishTimedExam(30, NOW);
+    const total = DEADLINE_BATCH_LIMIT + 2;
+    for (let i = 0; i < total; i += 1) {
+      await ctx.service.start(examId, new Types.ObjectId().toString(), NOW);
+    }
+    let inFlight = 0;
+    let maxInFlight = 0;
+    ctx.examNotifier.notifyAttemptSubmitted.mockImplementation(async (context) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await ctx.attemptModel.findById(context.attemptId).lean();
+      inFlight -= 1;
+      return { recipients: 0 };
+    });
+    const afterDeadline = NOW.plus({ minutes: 45 });
+
+    const first = await closer.closeDue(afterDeadline);
+
+    expect(first.closed).toBe(DEADLINE_BATCH_LIMIT);
+    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(
+      DEADLINE_BATCH_LIMIT,
+    );
+    expect(maxInFlight).toBe(1);
+    expect(inFlight).toBe(0);
+
+    const second = await closer.closeDue(afterDeadline.plus({ minutes: 1 }));
+
+    expect(second.closed).toBe(total - DEADLINE_BATCH_LIMIT);
+    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(total);
+    expect(await ctx.attemptModel.countDocuments({ status: 'in_progress' })).toBe(0);
+  });
+
+  it('нотификатор бросил — тик идёт дальше, остальные попытки закрыты и уведомлены', async () => {
+    const examId = await publishTimedExam(30, NOW);
+    await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.start(examId, USER_B, NOW);
+    ctx.examNotifier.notifyAttemptSubmitted
+      .mockRejectedValueOnce(new Error('telegram упал'))
+      .mockResolvedValue({ recipients: 1 });
+
+    const result = await closer.closeDue(NOW.plus({ minutes: 45 }));
+
+    expect(result.closed).toBe(2);
+    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(2);
+    expect(await ctx.attemptModel.countDocuments({ status: 'in_progress' })).toBe(0);
   });
 
   // CLAUDE.md «Время»: переход летнего времени Asia/Jerusalem обязателен для

@@ -324,6 +324,40 @@ describe('TelegramExamNotifier', () => {
       );
       error.mockRestore();
     });
+
+    // Аудит 2026-10-01 F11: 429 от Telegram на один из чатов (веер карточек
+    // в чат учителя) проходил молча — `false` от одного адресата терялся
+    // между «всем дошло» и «никому не дошло».
+    it('сбой доставки в один из двух чатов — warn с attemptId и kind, не тишина', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      await connectPerson(222, 'Пётр', ['assistant']);
+      const studentId = await connectPerson(444, 'Ученик', []);
+      const bot = fakeBot();
+      bot.sendMessage.mockImplementation((chatId) => Promise.resolve(chatId !== '111'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      const error = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const result = await buildNotifier(bot).notifyAttemptSubmitted(
+        { ...ATTEMPT_CONTEXT, userId: studentId },
+        NOW,
+      );
+
+      expect(result).toEqual({ recipients: 2 });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('доставка не удалась в 1 из 2'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          kind: 'attempt_submitted',
+        }),
+      );
+      expect(error).not.toHaveBeenCalled();
+      warn.mockRestore();
+      error.mockRestore();
+    });
   });
 
   describe('notifyExamGraded', () => {
