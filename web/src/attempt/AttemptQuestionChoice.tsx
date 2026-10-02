@@ -112,7 +112,9 @@ export function AttemptQuestionChoice({
             key={option.id}
             label={label}
             checked={checked}
-            disabled={disabled}
+            // Показ без права ответить — `readOnly`, не `disabled`: тот
+            // приглушает строку, как «запрос в пути» (Toggle.tsx).
+            readOnly={disabled}
             name={name}
             onChange={(next) => toggle(option.id, next)}
           />

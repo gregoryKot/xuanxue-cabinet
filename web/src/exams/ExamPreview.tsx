@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { attemptHeaderStyle, attemptPageStyle } from '../attempt/attemptLayout';
+import { useAuthConfig } from '../auth/useAuthConfig';
 import { screenTitleStyle } from '../components/screenLayout';
 import { backLinkStyle } from '../components/editorLayout';
 import {
@@ -24,6 +25,7 @@ import {
   pruneRequiredIds,
 } from './examQuestions';
 import { ExamPreviewQuestions } from './ExamPreviewQuestions';
+import { previewVideoControls } from './previewVideoControls';
 
 const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К экзамену';
@@ -51,6 +53,11 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
   // сохранилась) — предпросмотр не должен посчитать обязательным вопрос,
   // которого в списке уже нет (ADR-0082, дополнение).
   const requiredIds = pruneRequiredIds(initialRequiredIds(exam), itemIds);
+  // Конфигурация входа читается ОДИН раз на страницу, не на вопрос: каждый
+  // вызов useAuthConfig шлёт свой GET /auth/config. Из неё блок видео-вопроса
+  // узнаёт, есть ли загрузка файлом и бот (previewVideoControls.ts).
+  const { config } = useAuthConfig();
+  const video = previewVideoControls(config);
 
   return (
     <section style={attemptPageStyle}>
@@ -71,6 +78,7 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
         questionsPerAttempt={questionsPerAttempt}
         requiredIds={requiredIds}
         bankItems={bankItems}
+        video={video}
       />
     </section>
   );

@@ -85,6 +85,23 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  // Предпросмотр учителя (exams/ExamPreviewQuestion.tsx): тот же блок, но
+  // ничего не отправить, а бот не откроется с выдуманным номером попытки.
+  it('disabled — поле ссылки выключено, у кнопки бота нет href', () => {
+    mockApiByPath({ '/auth/me': new Promise(() => {}) });
+    render(
+      <AuthProvider>
+        <AttemptQuestionVideo itemId="q3" video={makeVideo()} disabled />
+      </AuthProvider>,
+    );
+
+    expect(screen.getByLabelText('Ссылка на видео')).toBeDisabled();
+    expect(screen.getByText('Открыть чат с ботом')).not.toHaveAttribute('href');
+    expect(
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
+    ).not.toBeInTheDocument();
+  });
+
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте прошёл по кнопке,
   // снял «кружок» и получил «не нашли эту попытку» — бот узнаёт человека
   // только по telegramId, поэтому кнопки на этом пути быть не должно.
