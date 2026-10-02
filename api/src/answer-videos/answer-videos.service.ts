@@ -11,8 +11,7 @@ import { assertObjectId } from '../common/object-id';
 import { NotFoundError } from '../common/errors';
 import { FileStoreService } from '../storage/file-store.service';
 import type { UserLean } from '../users/users.service';
-import type { RawLeanAnswerVideo } from './answer-video.mapper';
-import { AnswerVideoRecord } from './answer-video.schema';
+import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
 
 // Тот же срок, что у видео вопроса (ExamVideosService) — плеер докачивает
 // range-запросами по одной ссылке всё время просмотра/перемотки.

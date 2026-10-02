@@ -1,5 +1,5 @@
 // PUT .../parts/:n, POST .../complete, GET .../stats-summary, GET /:id
-// (ADR-0137). Часть — сырое тело (answer-video-part-body.ts/app.setup.ts),
+// (ADR-0137). Часть — сырое тело (video-uploads/video-upload-part-body.ts, app.setup.ts),
 // сессия ученика; complete — тоже ученик (владение проверяет сервис);
 // stats-summary — только штат школы, литеральный путь ДО `:id` (тот же
 // приём, что ExamVideosController.getStatsSummary); get — без @Roles,

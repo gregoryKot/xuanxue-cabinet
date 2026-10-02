@@ -8,12 +8,14 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 import { ExamGradingRecord, ExamGradingSchema } from '../exams/exam-grading.schema';
 import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import type { MultipartStoreService } from '../storage/multipart-store.service';
+import type { ObjectHeadService } from '../storage/object-head.service';
 import type { FileStoreService } from '../storage/file-store.service';
 import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { AnswerVideoSweepService } from './answer-video-sweep.service';
 import { AnswerVideoRecord, AnswerVideoSchema } from './answer-video.schema';
 
@@ -62,6 +64,11 @@ describe('AnswerVideoSweepService', () => {
       gradingModel,
       multipart as unknown as MultipartStoreService,
       orphans,
+      new VideoUploadsService(
+        multipart as unknown as MultipartStoreService,
+        {} as ObjectHeadService,
+        orphans,
+      ),
     );
   }, 60_000);
 

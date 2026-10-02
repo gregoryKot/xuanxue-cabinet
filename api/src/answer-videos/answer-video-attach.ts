@@ -20,8 +20,7 @@ import {
 } from '../media/media-asset.mapper';
 import type { MediaAssetRecord } from '../media/media-asset.schema';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
-import type { RawLeanAnswerVideo } from './answer-video.mapper';
-import type { AnswerVideoRecord } from './answer-video.schema';
+import type { AnswerVideoRecord, RawLeanAnswerVideo } from './answer-video.schema';
 
 export interface AttachDeps {
   model: Model<AnswerVideoRecord>;

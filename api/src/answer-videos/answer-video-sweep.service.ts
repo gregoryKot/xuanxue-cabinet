@@ -6,18 +6,17 @@
 // (ANSWER_VIDEO_RETENTION — 90 дней после проверки, год без неё). Без ключей
 // R2 шаг ничего не делает — MultipartStoreService.isEnabled тот же признак,
 // что у FileStoreService (r2.config.ts).
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { ANSWER_VIDEO_RETENTION } from '@xuanxue/shared';
-import { errorMessage } from '../common/error-info';
 import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { MediaAssetRecord } from '../media/media-asset.schema';
 import { MultipartStoreService } from '../storage/multipart-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
-import type { RawLeanAnswerVideo } from './answer-video.mapper';
-import { AnswerVideoRecord } from './answer-video.schema';
+import { VideoUploadsService } from '../video-uploads/video-uploads.service';
+import { AnswerVideoRecord, type RawLeanAnswerVideo } from './answer-video.schema';
 
 // Брошенная загрузка живёт неделю (ADR-0137) — столько же R2 сам держит
 // брошенные части, продлевать смысла нет.
@@ -32,8 +31,6 @@ export interface AnswerVideoSweepResult {
 
 @Injectable()
 export class AnswerVideoSweepService {
-  private readonly logger = new Logger(AnswerVideoSweepService.name);
-
   constructor(
     @InjectModel(AnswerVideoRecord.name) private readonly model: Model<AnswerVideoRecord>,
     @InjectModel(MediaAssetRecord.name)
@@ -42,6 +39,7 @@ export class AnswerVideoSweepService {
     private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly multipart: MultipartStoreService,
     private readonly orphans: StorageOrphansService,
+    private readonly uploads: VideoUploadsService,
   ) {}
 
   async removeExpired(now: DateTime): Promise<AnswerVideoSweepResult> {
@@ -52,29 +50,14 @@ export class AnswerVideoSweepService {
     return { removed: stale + unlinked + expired };
   }
 
-  private async sweepStaleUploads(now: DateTime): Promise<number> {
-    const boundary = now.minus({ days: STALE_UPLOAD_DAYS }).toJSDate();
-    const candidates = await this.model
-      .find(
-        { status: 'uploading', updatedAt: { $lt: boundary } },
-        { _id: 1, key: 1, uploadId: 1 },
-      )
-      .limit(SWEEP_BATCH_LIMIT)
-      .lean<Pick<RawLeanAnswerVideo, '_id' | 'key' | 'uploadId'>[]>();
-    for (const doc of candidates) {
-      if (doc.uploadId) {
-        try {
-          await this.multipart.abortMultipartUpload(doc.key, doc.uploadId, now);
-        } catch (err) {
-          this.logger.warn(
-            `не удалось прервать брошенную multipart-загрузку: ${errorMessage(err)}`,
-          );
-        }
-      }
-      await this.orphans.removeNow(doc.key, now);
-      await this.model.deleteOne({ _id: doc._id });
-    }
-    return candidates.length;
+  // Брошенные загрузки — общее ядро (ADR-0165); сроки хранения готовых
+  // файлов ниже — только про видео-ответ.
+  private sweepStaleUploads(now: DateTime): Promise<number> {
+    return this.uploads.sweepStale(this.model, {
+      olderThanDays: STALE_UPLOAD_DAYS,
+      limit: SWEEP_BATCH_LIMIT,
+      now,
+    });
   }
 
   private async sweepUnlinkedReady(now: DateTime): Promise<number> {
