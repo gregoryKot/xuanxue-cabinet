@@ -13,6 +13,17 @@ describe('ExamVideoPlayer — файл (videoId)', () => {
     expect(video).toHaveAttribute('preload', 'metadata');
     expect(video).toHaveAttribute('playsinline');
   });
+
+  // ADR-0165: кадр-превью до нажатия — тот же адрес с `/poster`; у старого
+  // видео кадра нет, браузер получит 404 и нарисует плеер как раньше.
+  it('кадр-превью — на /api/exam-videos/:id/poster', () => {
+    const { container } = render(<ExamVideoPlayer videoId="vid1" title="Вопрос" />);
+
+    expect(container.querySelector('video')).toHaveAttribute(
+      'poster',
+      '/api/exam-videos/vid1/poster',
+    );
+  });
 });
 
 describe('ExamVideoPlayer — видео-ответ (answerVideoId, ADR-0137)', () => {
@@ -24,6 +35,15 @@ describe('ExamVideoPlayer — видео-ответ (answerVideoId, ADR-0137)', 
     const video = container.querySelector('video');
     expect(video).toHaveAttribute('src', '/api/answer-videos/av1');
     expect(video).toHaveAttribute('controls');
+  });
+
+  it('кадр-превью — на /api/answer-videos/:id/poster', () => {
+    const { container } = render(<ExamVideoPlayer answerVideoId="av1" />);
+
+    expect(container.querySelector('video')).toHaveAttribute(
+      'poster',
+      '/api/answer-videos/av1/poster',
+    );
   });
 
   it('videoId побеждает answerVideoId, если заданы оба', () => {

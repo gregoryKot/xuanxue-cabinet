@@ -19,9 +19,10 @@ export function examVideoTransport(): VideoUploadTransport<ExamVideoDto> {
         body,
         ...request,
       }),
-    complete: (uploadId, request) =>
+    complete: (uploadId, poster, request) =>
       apiRoute('POST /exam-videos/:id/complete', {
         params: { id: uploadId },
+        body: { poster },
         ...request,
       }),
   };

@@ -36,8 +36,14 @@ export interface VideoUploadTransport<TResult extends object> {
     request: VideoUploadRequest,
   ) => Promise<VideoUploadSession>;
   /** Завершает загрузку; `TResult` — то, что вид видео кладёт на экран.
-   * Объект, не пустое значение: `undefined` у прогона значит «шаг не удался». */
-  complete: (uploadId: string, request: VideoUploadRequest) => Promise<TResult>;
+   * Объект, не пустое значение: `undefined` у прогона значит «шаг не удался».
+   * `poster` — JPEG кадра в base64, если браузер успел его снять (ADR-0165);
+   * без него видео сохраняется так же. */
+  complete: (
+    uploadId: string,
+    poster: string | undefined,
+    request: VideoUploadRequest,
+  ) => Promise<TResult>;
 }
 
 /** Сколько частей принято из скольких — по числу частей, не байт: сырой
