@@ -5,6 +5,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
+import pino from 'pino';
 import type { Options as PinoHttpOptions } from 'pino-http';
 import { incomingRequestId, REQUEST_ID_HEADER } from '../common/request-info';
 import { REDACT_PATHS } from './redact-paths';
@@ -88,13 +89,25 @@ export function buildPinoHttpOptions(nodeEnv: string, logLevel: string): PinoHtt
     level: logLevel,
     genReqId,
     redact: { paths: REDACT_PATHS, censor: REDACTED_VALUE },
-    // Вырезает join/token из req.url (см. request-serializer.ts) — REDACT_PATHS
-    // редактирует req.query.*, тело и заголовки, но не строку url целиком.
-    serializers: { req: redactRequestSerializer },
+    // req — вырезает join/token из req.url (см. request-serializer.ts):
+    // REDACT_PATHS редактирует req.query.*, тело и заголовки, но не строку url.
+    // res и err задаём явно: при wrapSerializers: false pino-http не подставляет
+    // для них стандартные сериализаторы, и pino писал в «request completed»
+    // сырой ServerResponse целиком — res.req.rawHeaders с cookie сессии,
+    // res.req.body, res.req.client, _header. До такой глубины REDACT_PATHS не
+    // достаёт. Инцидент 2026-10-03, с 2026-09-17 (aa825a65), RUNBOOK §9.
+    // pino.stdSerializers.res оставляет statusCode и headers (set-cookie
+    // вырезает REDACT_PATHS), ссылку на req прячет в неперечисляемое `raw`.
+    serializers: {
+      req: redactRequestSerializer,
+      res: pino.stdSerializers.res,
+      err: pino.stdSerializers.err,
+    },
     // pino-http по умолчанию оборачивает serializers.req ещё одним проходом
     // стандартного сериализатора (wrapSerializers: true) — redactRequestSerializer
     // уже вызывает его сам, второй проход получил бы на входе не IncomingMessage,
     // а уже сериализованный объект и потерял бы remoteAddress/remotePort.
+    // Цена выключателя — res и err выше задаются руками.
     wrapSerializers: false,
     autoLogging: { ignore: isHealthCheck },
     customLogLevel,
