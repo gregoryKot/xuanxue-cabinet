@@ -67,7 +67,7 @@ function handleError(event: ErrorEvent): void {
  * apiFetch, play() в videoRecoveryController.ts) сами превращают сбой в
  * ApiError или текст на экране, а до `unhandledrejection` доходит только
  * отмена, которую никто не ждал и на которую никто не опирается. */
-export function isCancellation(reason: unknown): boolean {
+function isCancellation(reason: unknown): boolean {
   if (typeof reason !== 'object' || reason === null) return false;
   return (reason as { name?: unknown }).name === ABORT_ERROR_NAME;
 }
