@@ -1739,6 +1739,24 @@ Telegram (на экране входа он первый); владельцу �
 полночь UTC или поднимается платным планом. Обычный 429 `rate_limit_exceeded`
 (слишком частые запросы) этой строки не даёт — там прежний текст «через минуту».
 
+### 8.25 В логах Railway лежит cookie сессии или тело запроса
+
+Симптом: в строке `request completed` (или `request errored`) есть поле `res` с
+ключами `_header`, `rawHeaders`, `req`, `client` — то есть сырой `ServerResponse`, а не
+`res.statusCode` и `res.headers`. Так было с 2026-09-17 (`aa825a65`) по 2026-10-03:
+cookie сессии и тело каждого запроса попадали в логи Railway открытым текстом.
+
+Причина: `wrapSerializers: false` в `buildPinoHttpOptions`
+(`api/src/logging/logging.module.ts`) отключает стандартные сериализаторы pino-http, а
+для `res` своего не было — pino писал объект целиком, а `REDACT_PATHS` до
+`res.req.rawHeaders` не дотягивается. Исправлено явными сериализаторами `res` и `err`;
+регресс сторожит `logging.module.spec.ts` на настоящем pino-http и настоящем запросе.
+
+Что сделать при подозрении на повтор: поиск в логах по `rawHeaders` или `_header`;
+находка — это баг сериализатора, чинится в том же PR с регрессионным тестом. Что
+считать утёкшим: сессии, чья cookie попала в строки за период. Решение о ротации
+секрета сессии — за владельцем (§6.3).
+
 ## 9. Журнал инцидентов
 
 | Дата          | Что случилось                                                                                                                                       | Причина                                                                                                                                                                                                                                                                         | Что изменили                                                                                                                                                                                                                                                                    |
@@ -1749,6 +1767,7 @@ Telegram (на экране входа он первый); владельцу �
 | 2026-09-21    | Встроенный плеер записи не играл ни одного видео: во фрейме «Video player configuration error, Error 153», хотя ссылка рядом открывала ту же запись | Страницы отдаются с `Referrer-Policy: no-referrer` (умолчание helmet), запрос фрейма шёл без `Referer` — YouTube не опознавал, кто его встроил                                                                                                                                  | §8.18; на фрейме плеера `referrerPolicy="strict-origin-when-cross-origin"` (`VideoEmbed.tsx`) — хостингу уходит домен без пути, прочие ссылки остались под `no-referrer`; регресс сторожит `VideoEmbed.test.tsx`                                                                |
 | 2026-09-29    | Стейджинг собрал `ebd1ca5` с отменённым CI без проверки; голову `main` нельзя было выкатить на прод: у неё не было вердикта CI                      | Мерж отменял CI прошлого коммита `main`; Railway пропускает отменённый CI, если на коммите прошёл другой workflow (`release.yml`)                                                                                                                                               | ADR-0154: у каждого коммита `main` свой прогон CI до конца, отмена только вне `main`; гейт — `scripts/ci-main-concurrency.test.mjs`; §2.4: CI на `main` руками не отменять                                                                                                      |
 | 2026-10-02    | Библиотека материалов на проде отвечала 500 (`GET /api/materials`, алёрт «Сбой в кабинете»)                                                         | Удаление аккаунта (`deleteAllUserData`, ADR-0149) обнуляет `$unset` ссылки из `USER_REFERENCE_PATHS`, а `materials.createdBy`, `grading_comment_presets.createdBy` и `exam_gradings.graderId` оставались обязательными в схеме и типе — маппер звал `.toString()` у `undefined` | Три поля необязательны в схеме, типе и DTO, мапперы их пропускают; гейт — `user-data.registry.spec.ts`: путь из `USER_REFERENCE_PATHS` не может быть `required`; регресс — `users-delete-references.e2e-spec.ts`                                                                |
+| 2026-10-03    | Строка `request completed` писала сырой `ServerResponse`: cookie сессии и тело запроса лежали в логах Railway открытым текстом                      | `wrapSerializers: false` без сериализатора `res` (с 2026-09-17, `aa825a65`); `REDACT_PATHS` до `res.req.rawHeaders` не достаёт                                                                                                                                                  | §8.25; явные сериализаторы `res` и `err` в `buildPinoHttpOptions`; регресс — `logging.module.spec.ts` на настоящем pino-http                                                                                                                                                    |
 
 ## 10. Мониторинг
 
