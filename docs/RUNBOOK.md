@@ -382,6 +382,10 @@ Safari прячет адрес расширения под `webkit-masked-url://
 iPhone запускает код кошелька, `window.ethereum…`; наших инлайн-скриптов нет, CSP их
 запрещает). Если источник не определить, отчёт уходит. Логика —
 `web/src/errors/errorSource.ts`.
+Отмена операции браузером (`AbortError: The operation was aborted.` в отказе промиса,
+чаще всего прерванный `video.play()` в Safari) тоже не отправляется: это не сбой, ученик
+ничего не теряет (инцидент 2026-10-03, ADR-0071). Логика — `isCancellation` в
+`web/src/errors/globalErrorReporting.ts`.
 
 С ADR-0132 текст ошибки не нужно искать в Railway: оба вида алёрта кончаются
 ссылкой на экран «Сбои» (`/dev/errors?requestId=…`, вход — карточкой на экране
