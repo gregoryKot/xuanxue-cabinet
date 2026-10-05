@@ -31,6 +31,8 @@ import { LessonsService } from './lessons.service';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { MyLessonsController } from './my-lessons.controller';
 import { MyLessonsService } from './my-lessons.service';
+import { PublicLessonsController } from './public-lessons.controller';
+import { PublicLessonsService } from './public-lessons.service';
 
 @Module({
   // UserModelModule — update() проверяет leaderId через assertTeacherExists
@@ -45,11 +47,12 @@ import { MyLessonsService } from './my-lessons.service';
     MaterialModelModule,
     MaterialsModule,
   ],
-  controllers: [LessonsController, MyLessonsController],
+  controllers: [LessonsController, MyLessonsController, PublicLessonsController],
   providers: [
     LessonsService,
     MyLessonsService,
     MyLessonsArchiveService,
+    PublicLessonsService,
     LessonRecordingSummaryService,
   ],
   // MyLessonsService — ещё и боту: экран «Ближайшие занятия» показывает тот

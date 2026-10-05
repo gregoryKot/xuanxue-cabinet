@@ -32,22 +32,40 @@ export async function findLessonClassesByIds(
   );
 }
 
+/** `skip` — экран ученика не должен падать из-за одной битой даты;
+ * `fail` — публичный контракт (ADR-0170): нет класса — 500, а не молчаливо
+ * пропущенное занятие в расписании, которое daychi покажет как «занятия нет». */
+export interface JoinLessonsOptions {
+  missingClass: 'skip' | 'fail';
+}
+
 /**
  * Расшифровывает каждую дату занятия и собирает из неё DTO вместе с классом
  * из `classById` (см. `findLessonClassesByIds`). Дата, у которой класс не
  * нашёлся — рассинхрон данных (класс у даты занятия удалить нельзя, пока на
- * него ссылается хоть одна дата, ClassesService.remove), молча пропускается,
- * не роняя весь список ученику.
+ * него ссылается хоть одна дата, ClassesService.remove). По умолчанию
+ * (`missingClass: 'skip'`) её молча пропускают, не роняя весь список ученику;
+ * с `'fail'` бросают ошибку: публичное расписание не имеет права тихо
+ * потерять занятие (контракт Workshop, ADR-0170), глобальный фильтр отдаст
+ * 500 `internal_error` без частичного массива.
  */
 export function joinLessonsWithClasses<T>(
   docs: LeanLesson[],
   classById: Map<string, LessonClassLookupInput>,
   toDto: (lesson: LeanLesson, cls: LessonClassLookupInput) => T,
+  options: JoinLessonsOptions = { missingClass: 'skip' },
 ): T[] {
   return docs
     .map((doc) => {
       const cls = classById.get(doc.classId.toString());
-      if (!cls) return null;
+      if (!cls) {
+        if (options.missingClass === 'fail') {
+          throw new Error(
+            `Занятие ${doc._id.toString()} ссылается на несуществующий класс ${doc.classId.toString()}`,
+          );
+        }
+        return null;
+      }
       return toDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA), cls);
     })
     .filter((dto): dto is T => dto !== null);

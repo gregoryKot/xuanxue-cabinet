@@ -369,6 +369,12 @@ export {
   MY_LESSONS_LIMIT_MAX,
 } from './lessons';
 export { MY_ARCHIVE_LIMIT_DEFAULT, MY_ARCHIVE_LIMIT_MAX } from './my-lessons-archive';
+export {
+  PUBLIC_LESSONS_LIMIT_MAX,
+  PUBLIC_LESSONS_LIMIT_DEFAULT,
+  PUBLIC_LESSONS_WINDOW_MAX_WEEKS,
+} from './public-lessons';
+export type { PublicLessonDto, ListPublicLessonsQuery } from './public-lessons';
 export type {
   ChannelConfig,
   ChannelDto,

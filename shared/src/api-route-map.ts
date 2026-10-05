@@ -32,6 +32,10 @@ import {
   type NotificationsRoutes,
 } from './notifications-routes';
 import { PAYMENTS_ROUTE_KEYS, type PaymentsRoutes } from './payments-routes';
+import {
+  PUBLIC_LESSONS_ROUTE_KEYS,
+  type PublicLessonsRoutes,
+} from './public-lessons-routes';
 import { SETTINGS_ROUTE_KEYS, type SettingsRoutes } from './settings-routes';
 import { TAGS_ROUTE_KEYS, type TagsRoutes } from './tags-routes';
 import { USERS_ROUTE_KEYS, type UsersRoutes } from './users-routes';
@@ -57,6 +61,7 @@ export type ApiRouteMap = AnalyticsRoutes &
   MyLessonsRoutes &
   NotificationsRoutes &
   PaymentsRoutes &
+  PublicLessonsRoutes &
   SettingsRoutes &
   TagsRoutes &
   UsersRoutes;
@@ -83,6 +88,7 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...MY_LESSONS_ROUTE_KEYS,
   ...NOTIFICATIONS_ROUTE_KEYS,
   ...PAYMENTS_ROUTE_KEYS,
+  ...PUBLIC_LESSONS_ROUTE_KEYS,
   ...SETTINGS_ROUTE_KEYS,
   ...TAGS_ROUTE_KEYS,
   ...USERS_ROUTE_KEYS,
