@@ -124,7 +124,7 @@ jobs:
       - name: jest --coverage (сырое покрытие шарда — порог считает api-coverage-ratchet)
         working-directory: api
         run: npx jest --coverage --silent --coverageReporters=json --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: api-coverage-${{ matrix.shard }}
           path: api/coverage/coverage-final.json
@@ -216,7 +216,7 @@ jobs:
         # исполнил) — склейка равна покрытию полного прогона, а не отличается
         # на файлы без единого теста.
         run: npx vitest run --coverage --coverage.reporter=json --shard=${{ matrix.shard }}/${{ env.WEB_SHARDS }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-coverage-${{ matrix.shard }}
           path: web/coverage/coverage-final.json
