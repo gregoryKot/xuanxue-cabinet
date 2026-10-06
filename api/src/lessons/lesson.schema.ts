@@ -89,7 +89,7 @@ export class LessonRecord {
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
 
-  // Записи к занятию не ждём (ADR-0172): учитель нажал «Записи не будет» или
+  // Записи к занятию не ждём (ADR-0175): учитель нажал «Записи не будет» или
   // занятие шло без ссылки (recording-prompt.queries.ts). Занятие уходит из
   // списка «ещё жду запись» бота (recording-pending.ts). Наружу не уходит.
   @Prop({ type: Date, required: false })

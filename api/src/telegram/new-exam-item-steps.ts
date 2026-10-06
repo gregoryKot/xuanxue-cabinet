@@ -7,7 +7,7 @@
 //
 // Отдельным файлом по той же причине, что new-exam-steps.ts: схема
 // bot-session.schema.ts выше потолка в 150 строк и растёт только через
-// --update (CLAUDE.md «Храповики»); поля ожидания записи (ADR-0172) заняли
+// --update (CLAUDE.md «Храповики»); поля ожидания записи (ADR-0175) заняли
 // её место.
 export const NEW_EXAM_ITEM_STEPS = ['prompt', 'options', 'correct', 'confirm'] as const;
 export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];

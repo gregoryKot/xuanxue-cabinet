@@ -1,6 +1,6 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»): кнопки
 // «К какому занятию?» (recpick) и «Записи не будет» (norec) при нескольких
-// ждущих занятиях (ADR-0172). Один вопрос «Запись?» — callback-query.handler.norec-sent.spec.ts.
+// ждущих занятиях (ADR-0175). Один вопрос «Запись?» — callback-query.handler.norec-sent.spec.ts.
 import { Types, type Model } from 'mongoose';
 import { ClassRecord, CLASS_ENCRYPT_SCHEMA } from '../../classes/class.schema';
 import { LessonRecord } from '../../lessons/lesson.schema';

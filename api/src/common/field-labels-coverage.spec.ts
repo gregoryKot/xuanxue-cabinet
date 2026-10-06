@@ -40,6 +40,7 @@ import { ConfirmPaymentDto } from '../payments/dto/confirm-payment.dto';
 import { ListPaymentsDto } from '../payments/dto/list-payments.dto';
 import { SubscribePushDto } from '../push/dto/subscribe-push.dto';
 import { UnsubscribePushDto } from '../push/dto/unsubscribe-push.dto';
+import { BoardNoticeDto } from '../settings/dto/board-notice.dto';
 import { PreviewSettingsDto } from '../settings/dto/preview-settings.dto';
 import {
   UpdatePaymentReminderDto,
@@ -97,6 +98,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   UpdateSettingsDto,
   UpdateTemplatesDto,
   UpdatePaymentReminderDto,
+  BoardNoticeDto,
   ListUsersDto,
   SetNoTelegramDto,
   UpdateMyProfileDto,

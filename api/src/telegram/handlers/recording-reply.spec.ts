@@ -1,5 +1,5 @@
 // Чистая функция без Telegram и Mongo: занятие берётся из кнопки
-// «Записи не будет» сообщения, на которое ответил учитель (ADR-0172).
+// «Записи не будет» сообщения, на которое ответил учитель (ADR-0175).
 import { Types } from 'mongoose';
 import type { Message } from 'telegraf/types';
 import { lessonIdFromRepliedPrompt } from './recording-reply';

@@ -15,7 +15,7 @@ export interface BotSessionLean {
   kind: BotSessionKind;
   /** Есть только у kind 'topic'/'recording'. */
   lessonId?: Types.ObjectId;
-  /** Источник записи до выбора занятия кнопкой (ADR-0172, recording-wait.ts)
+  /** Источник записи до выбора занятия кнопкой (ADR-0175, recording-wait.ts)
    * — есть только у 'recording', когда записи ждут несколько занятий. */
   recordingUrl?: string | null;
   recordingFileId?: string | null;

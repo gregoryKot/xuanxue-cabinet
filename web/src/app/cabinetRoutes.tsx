@@ -45,6 +45,7 @@ const ProfileScreen = lazyRoute(ROUTE_MODULES.profile.load);
 const InstallAppScreen = lazyRoute(ROUTE_MODULES.install.load);
 const NotificationsScreen = lazyRoute(ROUTE_MODULES.notifications.load);
 const NotificationSettingsScreen = lazyRoute(ROUTE_MODULES.notificationSettings.load);
+const BoardScreen = lazyRoute(ROUTE_MODULES.board.load);
 const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
@@ -52,7 +53,7 @@ const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
 const DevErrorsScreen = lazyRoute(ROUTE_MODULES.devErrors.load);
 
 /** «/» — первый экран уже известной роли (решение владельца: у ученика это
- * «Задания», у штата с 2026-09-27 — «Экзамены», ADR-0138). Роль решает
+ * «Доска», ADR-0173, у штата с 2026-09-27 — «Экзамены», ADR-0138). Роль решает
  * rootPathFor (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес
  * корня не разъехался с адресом редиректа при отказе в чужом маршруте. */
 function RootRedirect() {
@@ -125,9 +126,8 @@ export const cabinetRoutes = (
       path={ROUTE_MODULES.notificationSettings.path}
       element={<NotificationSettingsScreen />}
     />
-    {/* «Задания» и «Занятия» — два маршрута ученика (решение владельца:
-        экзамены — отдельный экран и первый после входа, docs/PLAN.md §11).
-        Открыты любой роли, как «/profile» выше. */}
+    {/* Экраны ученика, первый — «Доска» (ADR-0173); открыты любой роли. */}
+    <Route path={ROUTE_MODULES.board.path} element={<BoardScreen />} />
     <Route path={ROUTE_MODULES.tasks.path} element={<TasksScreen />} />
     <Route path={ROUTE_MODULES.studentLessons.path} element={<LessonsScreen />} />
     {/* «Записи занятий» (слой 3.3) — подэкран «Занятий», вход карточкой на

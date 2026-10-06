@@ -58,7 +58,7 @@ export class BotSessionService {
     );
   }
 
-  /** Ждём запись (ADR-0172) — апдейт в recording-wait.ts, как payment-wait.ts. */
+  /** Ждём запись (ADR-0175) — апдейт в recording-wait.ts, как payment-wait.ts. */
   async startRecordingWait(
     chatId: number,
     lessonId: string,
@@ -71,7 +71,7 @@ export class BotSessionService {
     );
   }
 
-  /** Источник записи до выбора занятия кнопкой (ADR-0172) — поверх 'recording', не upsert. */
+  /** Источник записи до выбора занятия кнопкой (ADR-0175) — поверх 'recording', не upsert. */
   async setRecordingSource(chatId: number, source: RecordingSource): Promise<void> {
     await this.model.updateOne(
       { chatId, kind: 'recording' },

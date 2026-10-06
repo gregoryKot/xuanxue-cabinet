@@ -42,7 +42,7 @@ export class BotSessionRecord {
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   lessonId?: Types.ObjectId;
 
-  // Только 'recording' (ADR-0172): присланная ссылка/видео, пока учитель не выбрал
+  // Только 'recording' (ADR-0175): присланная ссылка/видео, пока учитель не выбрал
   // кнопкой, к какому из занятий она (recording-wait.ts). `null`, не пропуск — как month.
   @Prop({ type: String, required: false })
   recordingUrl?: string | null;

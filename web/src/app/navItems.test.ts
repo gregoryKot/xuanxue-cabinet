@@ -126,8 +126,20 @@ describe('activeSectionPath — список бухгалтера', () => {
   });
 });
 
+describe('STUDENT_NAV_ITEMS — порядок (ADR-0173)', () => {
+  it('«Доска», «Задания», «Занятия» — три пункта, «Доска» первым', () => {
+    expect(STUDENT_NAV_ITEMS.map((item) => item.to)).toEqual([
+      '/board',
+      '/tasks',
+      '/lessons',
+    ]);
+    expect(STUDENT_NAV_ITEMS[0]?.label).toBe('Доска');
+  });
+});
+
 describe('activeSectionPath — список ученика', () => {
-  it('«Задания» и «Занятия» подсвечивают себя', () => {
+  it('«Доска», «Задания» и «Занятия» подсвечивают себя', () => {
+    expect(activeSectionPath('/board', STUDENT_NAV_ITEMS)).toBe('/board');
     expect(activeSectionPath('/tasks', STUDENT_NAV_ITEMS)).toBe('/tasks');
     expect(activeSectionPath('/lessons', STUDENT_NAV_ITEMS)).toBe('/lessons');
   });

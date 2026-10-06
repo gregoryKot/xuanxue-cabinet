@@ -214,7 +214,8 @@ describe('JoinScreen — кнопка Google (googleLoginEnabled), код при
 // текст (и любой похожий на него) не должен появиться на экране НИ РАЗУ за
 // весь флоу «код валиден → возврат с Telegram → сессия есть → /schedule»
 // (JoinScreen.tsx уводит туда любую роль; ученика оттуда уводит дальше
-// AppShell.tsx — canSeeRoute/rootPathFor, screenAccess.ts — на «Задания»).
+// AppShell.tsx — canSeeRoute/rootPathFor, screenAccess.ts — на «Доску»,
+// ADR-0173).
 //
 // Старый тест проверял только финальный DOM (после findByText('Расписание'))
 // — на старом двухшаговом коде экран ожидания успевал отрисоваться и
@@ -271,8 +272,13 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
         return Promise.resolve(STUDENT);
       }
       // Ученик без ролей на /schedule (маршрут штата) уходит редиректом на
-      // «Задания» (AppShell.tsx, canSeeRoute/rootPathFor) — его собственные
-      // эндпоинты, пустые списки.
+      // «Доску» (AppShell.tsx, canSeeRoute/rootPathFor) — его собственные
+      // эндпоинты: объявления нет, оплата за месяц пустая, остальное — пустые
+      // списки.
+      if (path.startsWith('/me/board')) return Promise.resolve({ notice: null });
+      if (path.startsWith('/me/payments')) {
+        return Promise.resolve({ month: '2026-10', rows: [], contact: 'Маше' });
+      }
       if (path.startsWith('/me/')) return Promise.resolve([]);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
@@ -299,7 +305,7 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     );
 
     await waitFor(
-      () => expect(screen.getByText('Заданий пока нет.')).toBeInTheDocument(),
+      () => expect(screen.getByText('Экзаменов к сдаче нет.')).toBeInTheDocument(),
       { timeout: 5000 },
     );
     observer.disconnect();

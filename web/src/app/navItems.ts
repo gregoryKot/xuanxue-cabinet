@@ -25,7 +25,14 @@ import { isAccountant, isTeacher } from './screenAccess';
 /** Имя значка нижней панели телефона (NavIcon.tsx, ADR-0097). Union строк,
  * не `enum` (CLAUDE.md «TypeScript строгий»). */
 export type NavIconName =
-  'lessons' | 'broadcasts' | 'exams' | 'people' | 'materials' | 'tasks' | 'payments';
+  | 'lessons'
+  | 'broadcasts'
+  | 'exams'
+  | 'people'
+  | 'materials'
+  | 'tasks'
+  | 'payments'
+  | 'board';
 
 export interface NavItem {
   to: string;
@@ -79,9 +86,11 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/** Решение владельца: экзамены — отдельный экран и первый после входа,
- * занятия — второй (docs/PLAN.md §11). */
+/** Решение владельца 2026-10-06 (ADR-0173): «Доска» — первый экран после
+ * входа, «Задания» и «Занятия» — следом; три пункта, предел ADR-0055 (пять)
+ * не нарушен. Экзамены остаются отдельным экраном (docs/PLAN.md §11). */
 export const STUDENT_NAV_ITEMS: NavItem[] = [
+  { to: '/board', label: 'Доска', childPaths: [], icon: 'board' },
   { to: '/tasks', label: 'Задания', childPaths: [], icon: 'tasks' },
   // «/archive» («Записи занятий», слой 3.3) и «/library» («Библиотека»,
   // слой 3.2) — подэкраны «Занятий», вход карточкой SectionLink на

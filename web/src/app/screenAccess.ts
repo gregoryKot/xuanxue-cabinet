@@ -4,8 +4,8 @@
 // той же роли и того же адреса; cabinetRoutes.tsx зовёт rootPathFor для
 // самого корня «/» (CLAUDE.md «Одна механика — один компонент»).
 //
-// Решение владельца: у ученика теперь два своих маршрута — «Задания»
-// (/tasks, первый после входа) и «Занятия» (/lessons) — вместо экрана-
+// Решение владельца: у ученика свои маршруты — «Доска» (/board, первый после
+// входа, ADR-0173), «Задания» (/tasks) и «Занятия» (/lessons) — вместо экрана-
 // подмены StudentScreen. Чужой маршрут (штата) ведёт на свой корень
 // редиректом, не подменой содержимого.
 //
@@ -29,6 +29,9 @@ const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 // Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
 // адрес корня и опорный путь для «/» не могли разъехаться (ADR-0138).
 export const STAFF_ROOT_PATH = '/exams';
+// «Доска» — первый экран ученика (ADR-0173), «Задания» и «Занятия» — второй и
+// третий пункты меню.
+const STUDENT_BOARD_PATH = '/board';
 const STUDENT_TASKS_PATH = '/tasks';
 const STUDENT_LESSONS_PATH = '/lessons';
 // Подэкран «Занятий» (слой 3.3, docs/PLAN.md §14) — вход карточкой на
@@ -63,16 +66,17 @@ export function isAccountant(me: MeDto | null): boolean {
 }
 
 /** Куда вести сразу после входа и при отказе в чужом маршруте (AppShell.tsx,
- * cabinetRoutes.tsx). Решение владельца: у ученика первый экран — «Задания»
- * (экзамены), «Занятия» — второй; у штата с 2026-09-27 первый экран —
- * «Экзамены», «Занятия» ушли на второй пункт меню (ADR-0138); у бухгалтера —
- * «Оплаты», единственный его экран (ADR-0171). */
+ * cabinetRoutes.tsx). Решение владельца 2026-10-06: у ученика первый экран —
+ * «Доска» (ADR-0173), «Задания» (экзамены) и «Занятия» — следом; у штата
+ * с 2026-09-27 первый экран — «Экзамены», «Занятия» ушли на второй пункт
+ * меню (ADR-0138); у бухгалтера — «Оплаты», единственный его экран
+ * (ADR-0171). */
 export function rootPathFor(me: MeDto | null): string {
   if (isTeacher(me)) return STAFF_ROOT_PATH;
-  return isAccountant(me) ? PAYMENTS_SCREEN_PATH : STUDENT_TASKS_PATH;
+  return isAccountant(me) ? PAYMENTS_SCREEN_PATH : STUDENT_BOARD_PATH;
 }
 
-/** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
+/** «/board»/«/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
  * (личный экран, ADR-0045), «/install» (инструкция установки, docs/PWA.md),
  * «/notifications» (лента событий, ADR-0063), «/notifications/settings»
  * (настройки уведомлений, ADR-0162) и «/attempts/:id» (экран сдачи) — открыты
@@ -85,6 +89,7 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
   if (pathname === PAYMENTS_SCREEN_PATH) return canSeePayments(me);
   return (
     isTeacher(me) ||
+    pathname === STUDENT_BOARD_PATH ||
     pathname === STUDENT_TASKS_PATH ||
     pathname === STUDENT_LESSONS_PATH ||
     pathname === STUDENT_ARCHIVE_PATH ||

@@ -7,9 +7,11 @@ import {
   type MeDto,
 } from '@xuanxue/shared';
 import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { putPrefetched } from '../api/prefetchCache';
+import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
 import { matchRoute } from './routeMatch';
 import { ROUTE_MODULES } from './routeModules';
 import { canSeeRoute, isTeacher, rootPathFor } from './screenAccess';
@@ -40,8 +42,13 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
     route === ROUTE_MODULES.notificationSettings || route === ROUTE_MODULES.notifications;
   const skipsLessonScope =
     isLessonScopeRoute && !hasLessonScopedKinds(availableNotifications(me.roles));
+  // Оплата на «Доске» (ADR-0173) — карточка только ученика: штат (кроме
+  // режима ученика, где карточки тоже нет) за оплатой не пойдёт, а сервер
+  // ответил бы ему отказом (isPaymentContactVisible).
+  const skipsPayments = route === ROUTE_MODULES.board && !isPaymentContactVisible(me);
   const skipped = new Set([
     ...(skipsExams ? [MY_EXAMS_PATH] : []),
+    ...(skipsPayments ? [MY_PAYMENTS_PATH] : []),
     ...(skipsLessonScope ? [MY_LESSON_NOTIFICATIONS_PATH] : []),
   ]);
   const needed = paths.filter((path) => !skipped.has(path));

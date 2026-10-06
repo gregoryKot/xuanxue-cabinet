@@ -108,7 +108,7 @@ export class MessageHandler {
       const chats = await this.personalChats.list(now);
       if (!chats.some((c) => c.chatId === String(from.id))) return;
 
-      // Запись (ADR-0172) — раньше остальных ожиданий штата: ответ (reply) на
+      // Запись (ADR-0175) — раньше остальных ожиданий штата: ответ (reply) на
       // вопрос бота о занятии кладёт запись в него и без активного ожидания.
       if (await this.recordingWaitHandler.handle(ctx, session, from.id, now)) return;
       if (session?.kind === 'topic' && session.lessonId) {
