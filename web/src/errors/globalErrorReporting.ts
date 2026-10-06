@@ -21,6 +21,9 @@ import { reportClientError } from './reportClientError';
 // errorSource.ts.
 const SCRIPT_ERROR_MESSAGE = 'Script error.';
 
+// Имя, с которым браузер отклоняет промис отменённой операции (DOMException).
+const ABORT_ERROR_NAME = 'AbortError';
+
 /** Настоящая ошибка выполнения JS, а не шум. Событие неудачной загрузки
  * ресурса (`<img>`, `<link>`, `<script src>`) тоже называется `error`, но
  * летит с `event.target` — самим элементом, а не `window`, и без
@@ -48,7 +51,29 @@ function handleError(event: ErrorEvent): void {
   void reportClientError('unhandled', event.error ?? event.message);
 }
 
+/** Отмена операции браузером, а не сбой. Имя читаем утиной типизацией, не
+ * `instanceof DOMException`: объект может прийти из другого realm (iframe,
+ * расширение), и тогда `instanceof` нашего окна его не узнает.
+ *
+ * Инцидент 2026-10-03: владельцу пришёл «Сбой в браузере» с `/attempts/:id`
+ * (iPhone Safari), текст `AbortError: The operation was aborted.`, а ученик в
+ * это время спокойно сохранял ответы. Так Safari отклоняет `video.play()`,
+ * прерванный `load()` или сменой источника, и так же — fetch, отменённый
+ * через AbortSignal без своей причины. Это отмена, и человек от неё ничего не
+ * теряет. Источник не определить: у DOMException в Safari нет стека, поэтому
+ * `isForeignScriptError` (errorSource.ts) считает такую ошибку нашей.
+ *
+ * Настоящие сбои этим не прячем: наши отменяемые вызовы (useAbortableFetch,
+ * apiFetch, play() в videoRecoveryController.ts) сами превращают сбой в
+ * ApiError или текст на экране, а до `unhandledrejection` доходит только
+ * отмена, которую никто не ждал и на которую никто не опирается. */
+function isCancellation(reason: unknown): boolean {
+  if (typeof reason !== 'object' || reason === null) return false;
+  return (reason as { name?: unknown }).name === ABORT_ERROR_NAME;
+}
+
 function handleUnhandledRejection(event: PromiseRejectionEvent): void {
+  if (isCancellation(event.reason)) return;
   if (isForeignScriptError({ error: event.reason }, window.location)) return;
   void reportClientError('unhandled', event.reason);
 }
