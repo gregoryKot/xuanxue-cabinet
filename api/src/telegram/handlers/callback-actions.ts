@@ -52,23 +52,6 @@ export async function handleTopicButton(
   await ctx.editMessageText('Напишите тему одним сообщением.').catch(() => null);
 }
 
-/** «Записи не будет» под «Запись?» — recordingPromptedAt уже стоит (ставится
- * до отправки самого вопроса, RecordingPromptService), повторно спрашивать
- * не будет и без этой кнопки; она только закрывает ожидание источника записи
- * в этом чате, чтобы случайное следующее сообщение не приняли за запись.
- * `clearIfLesson`, не `clear` — учитель мог получить второй вопрос «Запись?»
- * по другому занятию раньше, чем ответил на первый: «Записи не будет» под
- * первым не должно погасить ожидание второго. */
-export async function handleNoRecording(
-  ctx: Context,
-  botSessions: BotSessionService,
-  chatId: number,
-  lessonId: string,
-): Promise<void> {
-  await botSessions.clearIfLesson(chatId, lessonId);
-  await ctx.editMessageText('Хорошо, записи не будет.').catch(() => null);
-}
-
 export async function handleSent(
   ctx: Context,
   deliveries: DeliveriesService,

@@ -29,7 +29,7 @@ function isOptionIndex(id: string): boolean {
   return Number.isInteger(index) && index >= 0;
 }
 
-/** cancel/topic/norec/sent/exam/es — id всегда ObjectId; notif —
+/** cancel/topic/norec/recpick/sent/exam/es — id всегда ObjectId; notif —
  * NotificationKind (кнопка «Уведомления»); menu — экран меню; eq/eo —
  * составной параметр «попытка:номер[:номер]» (exam-callback-ids.ts); nqk —
  * ExamItemKind; nqo — номер варианта; nqd — какой шаг завершают; nqf —

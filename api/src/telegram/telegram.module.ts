@@ -1,13 +1,11 @@
 // Бот Telegram (ADR-0015): вебхук + авторегистрация чатов как каналов, кнопки
 // предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
 // ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
-// UsersModule — UsersService (PersonalChats, MessageHandler,
-// BotUserAccessService — /start и остальной доступ бота идут через неё),
-// LoginIdentityService (join-invite-deep-link.ts — ссылка-приглашение,
-// тот же сервис, что и у веба, ADR-0030/0036);
+// UsersModule — UsersService (PersonalChats, MessageHandler, BotUserAccessService
+// — /start и остальной доступ бота), LoginIdentityService (join-invite-deep-link.ts
+// — ссылка-приглашение, тот же сервис, что и у веба, ADR-0030/0036);
 // BroadcastsModule — BroadcastsService.cancel(), LessonLinkRebuildService, модель
-// BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
-// модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
+// BroadcastRecord; LessonsModule — LessonsService, LessonRecord; DeliveriesModule — markSent();
 // ClassesModule — модель ClassRecord (/тема, TopicCommandHandler);
 // SettingsModule — SettingsService.get() (StartHandler, адрес сайта школы для
 // незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
@@ -64,6 +62,7 @@ import { NewExamItemCommandHandler } from './handlers/new-exam-item-command.hand
 import { NewExamItemMessageHandler } from './handlers/new-exam-item-message.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import { PaymentScreenshotMessageHandler } from './handlers/payment-screenshot-message.handler';
+import { RecordingButtonsHandler } from './handlers/recording-buttons.handler';
 import { RecordingWaitHandler } from './handlers/recording-wait.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
@@ -108,6 +107,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     MessageHandler,
     TopicWaitHandler,
     RecordingWaitHandler,
+    RecordingButtonsHandler,
     ExamMediaMessageHandler,
     ExamTextAnswerHandler,
     PaymentScreenshotMessageHandler,

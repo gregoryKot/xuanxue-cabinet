@@ -1,6 +1,5 @@
 // Общая обвязка для callback-query.handler.*.spec.ts (cancel/topic, доступ,
-// norec/sent, уведомления, меню): одним файлом спеки не влезали в лимит 300
-// строк, а обвязка у них одна (jscpd).
+// norec/sent, уведомления, меню): одним файлом спеки не влезали в лимит 300 строк.
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
@@ -21,6 +20,7 @@ import { BotUserAccessService } from '../bot-user-access.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { buildMenuHandler } from '../test-support/build-menu-handler';
+import { buildRecordingButtonsHandler } from '../test-support/build-recording-buttons-handler';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { CallbackQueryHandler } from './callback-query.handler';
@@ -91,6 +91,7 @@ export function buildHandler(
     // «Собрать экзамен» (ТЗ 4б.4) — кнопки проверяются своими спеками
     // (new-exam-*.spec.ts), здесь достаточно рабочего экземпляра.
     new NewExamCommandHandler(personalChats, examBotPorts, botSessions),
+    buildRecordingButtonsHandler(ctx.connection, botSessions),
   );
 }
 
@@ -136,8 +137,7 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     NotificationPrefsRecord.name,
   );
   await botSessionModel.syncIndexes();
-  // Хендлер собирается тем же buildHandler, что и в тестах с подменой сервиса:
-  // две сборки одного конструктора разъезжались бы при каждом новом параметре.
+  // Хендлер — тем же buildHandler, что и в тестах с подменой сервиса (одна сборка).
   const models: CallbackHandlerModels = {
     memory,
     connection,
