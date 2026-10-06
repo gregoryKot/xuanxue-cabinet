@@ -41,8 +41,8 @@ function renderGuarded(me: MeDto) {
       <AuthProvider>
         <Routes>
           <Route element={<RequireAuth />}>
-            <Route path="/exams" element={<p>Экзамены штата</p>} />
-            <Route path="/board" element={<p>Доска ученика</p>} />
+            {/* ADR-0174: «Доска» — корень и штата, и ученика. */}
+            <Route path="/board" element={<p>Доска</p>} />
             <Route element={<RequirePaymentsAccess />}>
               <Route path="/payments" element={<p>Оплаты</p>} />
             </Route>
@@ -66,16 +66,16 @@ describe('RequirePaymentsAccess (ADR-0171)', () => {
     expect(await screen.findByText('Оплаты')).toBeInTheDocument();
   });
 
-  it('учитель — уходит на свой корень «Экзамены», а не получает 403 от API', async () => {
+  it('учитель — уходит на свой корень «Доска», а не получает 403 от API', async () => {
     renderGuarded(makeMe(['teacher']));
 
-    expect(await screen.findByText('Экзамены штата')).toBeInTheDocument();
+    expect(await screen.findByText('Доска')).toBeInTheDocument();
     expect(screen.queryByText('Оплаты')).not.toBeInTheDocument();
   });
 
   it('ученик — уходит на «Доску»', async () => {
     renderGuarded(makeMe([]));
 
-    expect(await screen.findByText('Доска ученика')).toBeInTheDocument();
+    expect(await screen.findByText('Доска')).toBeInTheDocument();
   });
 });

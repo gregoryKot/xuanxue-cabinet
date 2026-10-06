@@ -76,7 +76,7 @@ describe('StudentModeBanner — когда видна', () => {
 });
 
 describe('StudentModeBanner — выход из режима', () => {
-  it('кнопка шлёт PUT { enabled: false }, плашка пропадает, человек на «Экзаменах» штата', async () => {
+  it('кнопка шлёт PUT { enabled: false }, плашка пропадает, человек на «Доске»', async () => {
     const user = userEvent.setup();
     renderBanner(STAFF_IN_STUDENT_MODE_ME, { '/me/student-mode': STAFF_ME });
 
@@ -89,7 +89,7 @@ describe('StudentModeBanner — выход из режима', () => {
       }),
     );
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
-    expect(screen.getByTestId('path')).toHaveTextContent('/exams');
+    expect(screen.getByTestId('path')).toHaveTextContent('/board');
   });
 
   it('с клавиатуры: Tab доходит до кнопки, Enter выходит из режима', async () => {

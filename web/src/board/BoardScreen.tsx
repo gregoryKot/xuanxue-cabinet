@@ -1,51 +1,41 @@
-// Экран «Доска» — первый экран ученика (ADR-0173): всё, что ждёт его сейчас,
-// на одном экране. Сверху вниз: объявление школы (если есть), экзамены к
-// сдаче, оплата за месяц (только ученику), ближайшее занятие. Порядок — по
-// срочности: что сдавать и платить, потом когда прийти. Каждая секция — свой
-// компонент со своим хуком данных, экран только раскладывает.
-// Для штата в режиме ученика (ADR-0163) карточки оплаты нет: деньги в режим
-// не входят, сервер ответил бы отказом (isPaymentContactVisible).
-// Объявление при сбое загрузки даёт баннер с повтором, при отсутствии —
-// ничего; во время загрузки места под него не резервируем: секции может не
-// быть вовсе, и скелетон мигнул бы впустую.
+// Экран «Доска» — первый экран при любом входе: ученика (ADR-0173) и штата
+// (ADR-0174). Один маршрут и одна шапка; что лежит ниже объявления школы,
+// решает роль (isTeacher, screenAccess.ts): ученику — экзамены к сдаче,
+// оплата, ближайшее занятие (StudentBoard.tsx), штату — очередь проверки и
+// входы в расписание, рассылки, материалы (StaffBoard.tsx). Штат в режиме
+// ученика (ADR-0163) приходит с пустыми ролями и видит доску ученика.
+// Объявление — общее для обеих (BoardNotice.tsx), сразу под шапкой.
 import { useAuth } from '../auth/AuthProvider';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { isTeacher } from '../app/screenAccess';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
-import { BoardExamsSection } from './BoardExamsSection';
-import { BoardNextLesson } from './BoardNextLesson';
-import { BoardNoticeCard } from './BoardNoticeCard';
-import { BoardPaymentCard } from './BoardPaymentCard';
-import { useMyBoard } from './useMyBoard';
+import { BoardNotice } from './BoardNotice';
+import { StaffBoard } from './StaffBoard';
+import { StudentBoard } from './StudentBoard';
 
 const TITLE = 'Доска';
 // Объяснение называет, что здесь лежит, и в каком порядке читать: ученик
 // открывает кабинет с телефона узнать, что от него ждут (ADR-0173).
-const EXPLANATION =
+const STUDENT_EXPLANATION =
   'Здесь то, что ждёт вас сейчас: **экзамены к сдаче**, оплата за месяц и ' +
   'объявления школы. Ближайшее занятие — внизу.';
+// Учителю — что ждёт его и куда идти настраивать (ADR-0174).
+const STAFF_EXPLANATION =
+  'Здесь то, что ждёт вас сейчас: объявление школы и **работы на проверке**. ' +
+  'Ниже — входы в расписание, рассылки и материалы.';
 
 export default function BoardScreen() {
   const { me } = useAuth();
-  const { data: board, error, reload } = useMyBoard();
+  const staff = isTeacher(me);
 
   return (
     <section style={screenSectionStyle}>
-      <ScreenHeader title={TITLE} explanation={EXPLANATION} />
-
-      {error && (
-        <LoadErrorBanner
-          message={error}
-          onRetry={() => void reload()}
-          retryLabel="Обновить"
-        />
-      )}
-      {board?.notice && <BoardNoticeCard notice={board.notice} />}
-
-      <BoardExamsSection />
-      {isPaymentContactVisible(me) && <BoardPaymentCard />}
-      <BoardNextLesson />
+      <ScreenHeader
+        title={TITLE}
+        explanation={staff ? STAFF_EXPLANATION : STUDENT_EXPLANATION}
+      />
+      <BoardNotice />
+      {staff ? <StaffBoard /> : <StudentBoard me={me} />}
     </section>
   );
 }

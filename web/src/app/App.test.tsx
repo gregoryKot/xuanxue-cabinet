@@ -1,8 +1,9 @@
 // Смоук-тест маршрутов (CLAUDE.md «Тесты»: ветвление есть — гость на /login,
-// «/» уводит по роли: штат на /exams (ADR-0138, было /planning), ученик на
-// /board (ADR-0173, раньше /tasks — ADR-0046), docs/adr/0025-navigation-by-domain.md) — сами экраны и
-// их логика проверены отдельными тестами (LoginScreen, RequireAuth,
-// ScheduleScreen, PlanningScreen, ExamsScreen).
+// «/» уводит всех на /board: штат — на доску штата (ADR-0174, было /exams —
+// ADR-0138), ученик — на свою доску (ADR-0173, раньше /tasks — ADR-0046),
+// docs/adr/0025-navigation-by-domain.md) — сами экраны и их логика проверены
+// отдельными тестами (LoginScreen, RequireAuth, ScheduleScreen,
+// PlanningScreen, ExamsScreen, BoardScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -80,6 +81,10 @@ function mockRoute(me: MeDto | null, screenData: Record<string, unknown> = {}) {
   });
 }
 
+/** Данные доски штата (ADR-0174): объявление школы и очередь проверки.
+ * `/attempts/queue` ловит и путь с query — mockRoute матчит по префиксу. */
+const STAFF_BOARD_DATA = { '/me/board': { notice: null }, '/attempts/queue': [] };
+
 /** Данные четырёх запросов «Доски» (ADR-0173) — первого экрана ученика. */
 const STUDENT_BOARD_DATA = {
   '/me/exams': [],
@@ -139,14 +144,14 @@ describe('App', () => {
   });
 
   it('вошедший на /privacy — маршрут тоже открывает PrivacyScreen, без редиректа', async () => {
-    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+    mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/privacy');
 
     expect(
       await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Доска' })).not.toBeInTheDocument();
   });
 
   // Заявление о доступности (ADR-0158) — публичное, как политика: правила
@@ -163,14 +168,14 @@ describe('App', () => {
   });
 
   it('вошедший на /accessibility — маршрут тоже открывает AccessibilityScreen, без редиректа', async () => {
-    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+    mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/accessibility');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Доступность' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Доска' })).not.toBeInTheDocument();
   });
 
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
@@ -364,12 +369,14 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
   });
 
-  it('учитель на /payments — уходит на свой корень «Экзамены», а не получает отказ API', async () => {
-    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+  it('учитель на /payments — уходит на свой корень «Доска», а не получает отказ API', async () => {
+    mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/payments');
 
-    expect(await screen.findByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Оплаты' })).not.toBeInTheDocument();
   });
 
@@ -453,15 +460,21 @@ describe('App', () => {
     expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
   });
 
-  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» — основной экран
-  // штата при входе, было «Занятия» (PlanningScreen) — смоук на /exams
-  // отдельно выше, здесь только то, что «/» ведёт туда же.
-  it('учитель на «/» — уводит на «Экзамены»', async () => {
-    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска» —
+  // первый экран штата при входе, было «Экзамены» — смоук на /exams отдельно
+  // выше, здесь только то, что «/» ведёт на доску и в ней есть входы в
+  // расписание, рассылки и материалы.
+  it('учитель на «/» — уводит на «Доску»', async () => {
+    mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/');
 
-    expect(await screen.findByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Расписание/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Рассылки/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Материалы/ })).toBeInTheDocument();
   });
 
   // Решение владельца 2026-10-06 (ADR-0173): «Доска» — первый экран ученика —
@@ -591,10 +604,10 @@ describe('App', () => {
   });
 
   // «Настройки уведомлений» (ADR-0162) — подэкран ленты, открыт любой роли:
-  // учитель не уходит с него редиректом на «/exams», ученик попадает на него,
+  // учитель не уходит с него редиректом на «/board», ученик попадает на него,
   // а не на «Задания». Узкий путь раньше широкого — mockRoute берёт первое
   // совпадение по префиксу.
-  it('учитель на /notifications/settings — открывается экран настроек, а не редирект на «/exams»', async () => {
+  it('учитель на /notifications/settings — открывается экран настроек, а не редирект на «/board»', async () => {
     mockRoute(TEACHER, {
       '/me/notifications': { enabled: [] },
       '/push/public-key': { publicKey: null },

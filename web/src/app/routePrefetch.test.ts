@@ -89,17 +89,12 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/exam-items')).toEqual([examItemsListPath('')]);
   });
 
-  // «/» тоже сюда: STAFF_ROOT_PATH (screenAccess.ts) и EMPTY_PATH_FALLBACK
-  // (routeMatch.ts) — одна константа с 2026-09-27 (ADR-0138), гейт от
-  // повторного расхождения.
-  it('/exams (и /) — список без фильтра, очередь проверки, статистика вопросов', () => {
-    const expected = [
+  it('/exams — список без фильтра, очередь проверки, статистика вопросов', () => {
+    expect(prefetchAt('/exams')).toEqual([
       examsListPath({ status: '' }),
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
-    ];
-    expect(prefetchAt('/exams')).toEqual(expected);
-    expect(prefetchAt('/')).toEqual(expected);
+    ]);
   });
 
   it('/grading — оба раздела: очередь и проверенные', () => {
@@ -127,15 +122,22 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     ]);
   });
 
-  // «Доска» (ADR-0173): четыре запроса первого экрана — все греются сразу,
-  // параллельно с чанком (PLAN §17.2).
-  it('/board — экзамены, занятия, оплата и объявление', () => {
-    expect(prefetchAt('/board')).toEqual([
+  // «Доска» (ADR-0173, у штата — ADR-0174): запись таблицы одна на обе
+  // роли, поэтому греет объединение: экзамены, занятия, оплата и объявление
+  // ученика плюс очередь проверки штата. Лишнее для роли отсекает
+  // firstScreenPaths (prefetchFirstScreen.test.ts), а «/» с ADR-0174 ведёт
+  // сюда же — гейт от повторного расхождения EMPTY_PATH_FALLBACK
+  // (routeMatch.ts) и rootPathFor (screenAccess.ts).
+  it('/board (и /) — экзамены, занятия, оплата, объявление и очередь проверки', () => {
+    const expected = [
       MY_EXAMS_PATH,
       MY_LESSONS_PATH,
       MY_PAYMENTS_PATH,
       MY_BOARD_PATH,
-    ]);
+      GRADING_QUEUE_PATH,
+    ];
+    expect(prefetchAt('/board')).toEqual(expected);
+    expect(prefetchAt('/')).toEqual(expected);
   });
 
   // Решение владельца: экзамены — отдельный экран (docs/PLAN.md §11).

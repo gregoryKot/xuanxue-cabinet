@@ -146,7 +146,7 @@ describe('StudentModeSection — режим выключен', () => {
 });
 
 describe('StudentModeSection — режим включён', () => {
-  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Экзамены» штата', async () => {
+  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Доску»', async () => {
     const user = userEvent.setup();
     renderSection(STAFF_IN_STUDENT_MODE_ME, { '/me/student-mode': STAFF_ME });
 
@@ -162,6 +162,6 @@ describe('StudentModeSection — режим включён', () => {
     expect(
       await screen.findByRole('button', { name: 'Включить режим ученика' }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('path')).toHaveTextContent('/exams');
+    expect(screen.getByTestId('path')).toHaveTextContent('/board');
   });
 });

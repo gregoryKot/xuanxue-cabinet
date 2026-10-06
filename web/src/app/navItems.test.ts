@@ -50,38 +50,53 @@ describe('navItemsFor', () => {
   });
 });
 
+// ADR-0174 (заменяет ADR-0138): «Доска» — первый пункт штата и его корень;
+// расписание, рассылки и материалы вынесены из панели в «Настроить» на доске.
+describe('STAFF_NAV_ITEMS — состав и порядок (ADR-0174)', () => {
+  it('«Доска», «Экзамены», «Ученики» — три пункта, «Доска» первой', () => {
+    expect(STAFF_NAV_ITEMS.map((item) => item.to)).toEqual([
+      '/board',
+      '/exams',
+      '/people',
+    ]);
+    expect(STAFF_NAV_ITEMS.map((item) => item.label)).toEqual([
+      'Доска',
+      'Экзамены',
+      'Ученики',
+    ]);
+  });
+});
+
 describe('activeSectionPath — список штата', () => {
-  it('сам раздел подсвечивает себя', () => {
-    expect(activeSectionPath('/planning', STAFF_NAV_ITEMS)).toBe('/planning');
+  it('«Доска» подсвечивает сама себя', () => {
+    expect(activeSectionPath('/board', STAFF_NAV_ITEMS)).toBe('/board');
   });
 
-  it('/schedule — подэкран «Занятий»', () => {
-    expect(activeSectionPath('/schedule', STAFF_NAV_ITEMS)).toBe('/planning');
+  it('/planning, /schedule, /broadcasts, /channels, /templates — подэкраны «Доски»', () => {
+    for (const path of [
+      '/planning',
+      '/schedule',
+      '/broadcasts',
+      '/channels',
+      '/templates',
+    ]) {
+      expect(activeSectionPath(path, STAFF_NAV_ITEMS)).toBe('/board');
+    }
   });
 
-  it('/channels и /templates — подэкраны «Рассылок»', () => {
-    expect(activeSectionPath('/channels', STAFF_NAV_ITEMS)).toBe('/broadcasts');
-    expect(activeSectionPath('/templates', STAFF_NAV_ITEMS)).toBe('/broadcasts');
+  // ADR-0055/0075: материалы и теги — входы из «Настроить» на доске.
+  it('/materials и /materials/tags — подэкраны «Доски»', () => {
+    expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/board');
+    expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/board');
   });
 
-  it('/exam-items и /grading — подэкраны «Экзаменов»', () => {
+  it('/exams подсвечивает сам себя, /exam-items и /grading — его подэкраны', () => {
+    expect(activeSectionPath('/exams', STAFF_NAV_ITEMS)).toBe('/exams');
     expect(activeSectionPath('/exam-items', STAFF_NAV_ITEMS)).toBe('/exams');
     expect(activeSectionPath('/grading', STAFF_NAV_ITEMS)).toBe('/exams');
   });
 
-  // ADR-0055 — пятый пункт штата, подсвечивает сам себя, как и остальные.
-  it('/materials подсвечивает сам себя', () => {
-    expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/materials');
-  });
-
-  // ADR-0075 — «Теги» подэкран «Материалов», тот же приём, что у
-  // «/archive»/«/library» под «Занятиями» ученика ниже.
-  it('/materials/tags — подэкран «Материалов»', () => {
-    expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/materials');
-  });
-
-  // ADR-0171: шестой пункт не помещается на 360 px (ADR-0055) — «Оплаты»
-  // подсвечивают «Учеников».
+  // ADR-0171: «Оплаты» подсвечивают «Учеников».
   it('/payments — подэкран «Учеников»', () => {
     expect(activeSectionPath('/payments', STAFF_NAV_ITEMS)).toBe('/people');
   });

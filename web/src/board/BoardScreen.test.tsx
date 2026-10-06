@@ -2,9 +2,9 @@
 // сдаче, оплата за месяц и ближайшее занятие, каждое со своим запросом. Сеть —
 // mockApiByPath (ADR-0116), список экзаменов идёт через настоящий
 // MyExamsProvider, как в оболочке. Навигацию проверяем в MemoryRouter.
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Route } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   MeDto,
@@ -14,7 +14,6 @@ import type {
   MyPaymentsPageDto,
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { examSeenPath } from '../test-support/examSeenPath';
 import { makeMe, STAFF_IN_STUDENT_MODE_ME } from '../test-support/meFixture';
 import {
@@ -23,8 +22,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { MyExamsProvider } from '../student/MyExamsProvider';
-import BoardScreen from './BoardScreen';
+import { renderBoardWithRoutes } from './boardTestRender';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -68,12 +66,6 @@ function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {
   };
 }
 
-/** Оболочка в миниатюре: провайдер экзаменов берёт `me` из сессии, как AppShell. */
-function ExamsFromSession({ children }: { children: React.ReactNode }) {
-  const { me } = useAuth();
-  return <MyExamsProvider me={me}>{children}</MyExamsProvider>;
-}
-
 interface BoardData {
   me?: MeDto;
   board?: MyBoardDto | Error;
@@ -100,19 +92,12 @@ function renderBoard({
     '/me/payments': payments,
     '/me/lessons': lessons,
   });
-  return render(
-    <MemoryRouter initialEntries={['/board']}>
-      <AuthProvider>
-        <ExamsFromSession>
-          <Routes>
-            <Route path="/board" element={<BoardScreen />} />
-            <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
-            <Route path="/tasks" element={<p>Экран заданий</p>} />
-            <Route path="/lessons" element={<p>Экран занятий</p>} />
-          </Routes>
-        </ExamsFromSession>
-      </AuthProvider>
-    </MemoryRouter>,
+  return renderBoardWithRoutes(
+    <>
+      <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
+      <Route path="/tasks" element={<p>Экран заданий</p>} />
+      <Route path="/lessons" element={<p>Экран занятий</p>} />
+    </>,
   );
 }
 
