@@ -21,6 +21,7 @@ import { ChannelsModule } from './channels/channels.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AppErrorsModule } from './app-errors/app-errors.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
+import { BoardModule } from './board/board.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { AnswerVideosModule } from './answer-videos/answer-videos.module';
@@ -110,6 +111,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     MaterialsModule,
     NotificationsModule,
     PaymentsModule,
+    BoardModule,
     PushModule,
     SettingsModule,
     SummaryModule,

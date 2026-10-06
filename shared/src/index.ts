@@ -402,6 +402,8 @@ export {
   IDEMPOTENCY_KEY_LIMITS,
   IDEMPOTENCY_KEY_RE,
 } from './broadcasts';
+export type { BoardNotice, MyBoardDto } from './board';
+export { isBoardNoticeActive } from './board';
 export type {
   PaymentReminderSettings,
   SettingsDto,
