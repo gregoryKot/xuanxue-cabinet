@@ -370,6 +370,7 @@ describe('MessageHandler — доступ и сбои', () => {
         { update } as unknown as LessonsService,
         ctx.broadcastModel,
         ctx.classModel,
+        ctx.lessonModel,
       ),
       { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
       { handle: jest.fn() } as unknown as ExamTextAnswerHandler,

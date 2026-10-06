@@ -1,13 +1,9 @@
-// Ожидание бота в личном чате учителя — «жду тему» после кнопки «Изменить
-// тему»/команды /тема, «жду запись» после «Занятие закончилось» (PLAN.md §6).
-// Один активный документ на чат (уникальный индекс `chatId`): новое ожидание
-// вытесняет старое — учитель отвечает на последнее, что видит. TTL-индекс на
-// `expiresAt` — Mongo сама подчищает истёкшие ожидания, раннер бота не
-// обязан помнить про них сам.
-//
-// Не про пользователя школы (userId нет — не в USER_OWNED_COLLECTIONS,
-// CLAUDE.md «Новая коллекция»): ключ — chatId Telegram, живёт минуты-часы,
-// персональных данных не содержит.
+// Ожидание бота в личном чате учителя — «жду тему» после «Изменить тему»//тема,
+// «жду запись» после «Занятие закончилось» (PLAN.md §6). Один активный документ
+// на чат (уникальный индекс `chatId`): новое ожидание вытесняет старое. TTL-индекс
+// на `expiresAt` — Mongo сама подчищает истёкшие. Не про пользователя школы
+// (userId нет — не в USER_OWNED_COLLECTIONS, CLAUDE.md «Новая коллекция»): ключ —
+// chatId Telegram, живёт минуты-часы, персональных данных не содержит.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { NEW_EXAM_STEPS, type NewExamStep } from './new-exam-steps';
 import { SchemaTypes, Types } from 'mongoose';
@@ -25,17 +21,9 @@ import {
   type FieldPolicy,
 } from '../common/field-policy';
 import { BOT_SESSION_KINDS, type BotSessionKind } from './bot-session-kind';
+import { NEW_EXAM_ITEM_STEPS, type NewExamItemStep } from './new-exam-item-steps';
 
 export type { BotSessionKind };
-
-// Шаг диалога заведения вопроса (ТЗ 4б.3) — 'kind' на схеме нет: тип выбирают
-// кнопкой ДО первой записи в bot_sessions (new-exam-item-screens.ts), сессия
-// заводится только с шага 'prompt'. 'options'/'correct' пропускаются у
-// text/video (у них вариантов не бывает, exam-item-options.ts) — сразу
-// 'prompt' → 'confirm'. Шаг 'criteria' убран вместе с самим полем вопроса
-// (ADR-0128).
-const NEW_EXAM_ITEM_STEPS = ['prompt', 'options', 'correct', 'confirm'] as const;
-export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
 export class BotSessionRecord {
@@ -53,6 +41,14 @@ export class BotSessionRecord {
   // прошлого ожидания безвредно.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   lessonId?: Types.ObjectId;
+
+  // Только 'recording' (ADR-0172): присланная ссылка/видео, пока учитель не выбрал
+  // кнопкой, к какому из занятий она (recording-wait.ts). `null`, не пропуск — как month.
+  @Prop({ type: String, required: false })
+  recordingUrl?: string | null;
+
+  @Prop({ type: String, required: false })
+  recordingFileId?: string | null;
 
   // Только 'examMedia'/'examText'.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
@@ -179,6 +175,9 @@ export const BOT_SESSION_FIELD_POLICY: FieldPolicy = {
   month: plain(
     'месяц скриншота оплаты — ключ формата YYYY-MM (ADR-0050), не свободный текст, как month у payments (SECURITY §5)',
   ),
+  // Те же решения, что у recordings.url/telegramFileId самого занятия (LESSON_FIELD_POLICY).
+  recordingUrl: plain('ссылка на запись, принятый риск SECURITY §11'),
+  recordingFileId: plain('работает только у бота, снаружи бесполезен'),
 };
 
 /** Схема шифрования черновика вопроса — одна на запись и чтение

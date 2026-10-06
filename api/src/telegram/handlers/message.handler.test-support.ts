@@ -1,7 +1,5 @@
-// Подъём Mongo + сборка MessageHandler для трёх message.handler.*.spec.ts
-// (спек-лимит 300 строк — CLAUDE.md «Файлы»). fakeCtx/messageOf —
-// message.handler.fake-ctx.ts, seedTeacher/seedLesson — message.handler.seed.ts
-// (файл-лимит 150 у каждого).
+// Подъём Mongo + сборка MessageHandler для message.handler.*.spec.ts (спек-лимит
+// 300 строк). fakeCtx — message.handler.fake-ctx.ts, seedLesson — message.handler.seed.ts.
 import type { Connection, Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
@@ -115,6 +113,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     lessonsService,
     broadcastModel,
     classModel,
+    lessonModel,
   );
   const topicWaitHandler = new TopicWaitHandler(
     new BotSessionService(botSessionModel),

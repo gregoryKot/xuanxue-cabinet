@@ -6,7 +6,7 @@
 import type { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { ExamItemKind } from '@xuanxue/shared';
-import type { NewExamItemStep } from './bot-session.schema';
+import type { NewExamItemStep } from './new-exam-item-steps';
 
 // Составление вопроса — несколько сообщений подряд (формулировка, варианты),
 // дольше, чем «Изменить тему» (10 минут), но не весь день — та же величина,

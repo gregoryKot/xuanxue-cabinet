@@ -89,6 +89,12 @@ export class LessonRecord {
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
 
+  // Записи к занятию не ждём (ADR-0172): учитель нажал «Записи не будет» или
+  // занятие шло без ссылки (recording-prompt.queries.ts). Занятие уходит из
+  // списка «ещё жду запись» бота (recording-pending.ts). Наружу не уходит.
+  @Prop({ type: Date, required: false })
+  recordingDeclinedAt?: Date;
+
   // Рубрикация свободным текстом (ADR-0075, уточняет ADR-0058) — у даты
   // занятия, не у занятия расписания: тег описывает конкретный вечер, а не
   // постоянный признак курса. У дат, заведённых до этого поля, документ его

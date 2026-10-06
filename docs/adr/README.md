@@ -206,3 +206,4 @@
 | [0169](0169-workshop-collaboration.md)                           | Координация с соседними проектами через Workshop: скилл `/collaborate`, метка `project:cabinet`           |
 | [0170](0170-public-lessons-endpoint.md)                          | Публичное расписание `GET /api/public/lessons` для daychi — без Zoom, два режима выборки                  |
 | [0171](0171-payments-screen-returns.md)                          | Экран «Оплаты» возвращается: бухгалтер отмечает перевод в кабинете, отменяет ADR-0157                     |
+| [0172](0172-recording-for-one-of-several-lessons.md)             | Запись к одному из нескольких занятий: ответ на вопрос бота или кнопка; «Запись?» только при ссылке       |
