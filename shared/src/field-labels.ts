@@ -15,8 +15,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   hash: 'Подпись входа',
 
   // users/dto/update-my-profile.dto.ts — экран первого входа (ADR-0044).
-  // camelCase, в отличие от snake_case виджета Telegram выше: это поля
-  // нашей формы, а не чужого контракта.
+  // camelCase, в отличие от snake_case виджета Telegram: это поля нашей формы.
   firstName: 'Имя',
   lastName: 'Фамилия',
 
@@ -76,6 +75,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   dataControllerName: 'Кто отвечает за данные учеников',
   dataControllerContact: 'Как связаться с ответственным за данные',
   paymentReminder: 'Напоминание об оплате',
+  boardNotice: 'Объявление на доске',
+  until: 'Показывать до',
   template: 'Текст напоминания об оплате',
 
   // users — /users (экран «Люди»).
@@ -138,9 +139,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   message: 'Сообщение об ошибке',
   path: 'Адрес экрана',
 
-  // push — /me/push-subscriptions (ADR-0092). Эти поля собирает браузер сам
-  // (`pushManager.subscribe()`), человек их не печатает — подпись нужна на
-  // случай сбоя клиента, не для формы.
+  // push — /me/push-subscriptions (ADR-0092). Поля собирает браузер сам
+  // (`pushManager.subscribe()`): подпись нужна на случай сбоя клиента.
   endpoint: 'Адрес подписки браузера',
   p256dh: 'Ключ шифрования подписки',
   auth: 'Секрет подписки',

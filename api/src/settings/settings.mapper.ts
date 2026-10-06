@@ -25,6 +25,7 @@ export type LeanSettings = Pick<
   | 'dataControllerName'
   | 'dataControllerContact'
   | 'paymentReminder'
+  | 'boardNotice'
 > & {
   updatedAt: Date;
 };
@@ -68,6 +69,11 @@ export function toSettingsDto(doc: LeanSettings): SettingsDto {
     dataControllerName: doc.dataControllerName,
     dataControllerContact: doc.dataControllerContact,
     paymentReminder: toPaymentReminder(doc.paymentReminder),
+    // Без дефолта: объявление, которого учитель не писал, не выдумываем.
+    // Копия в простой объект: lean-документ не должен течь наружу как есть.
+    boardNotice: doc.boardNotice
+      ? { text: doc.boardNotice.text, until: doc.boardNotice.until }
+      : undefined,
     updatedAt: toIsoUtc(doc.updatedAt),
   };
 }

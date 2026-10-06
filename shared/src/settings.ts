@@ -1,6 +1,7 @@
 // DTO и константы API настроек школы (`/settings`) — шаблоны постов
 // (docs/PLAN.md §6 «Шаблоны», ADR-0011). Общий контракт api и web
 // (CLAUDE.md, раздел «Слои»).
+import type { BoardNotice } from './board';
 import {
   DEFAULT_PAYMENT_REMINDER_TEMPLATE,
   type TemplateKind,
@@ -75,6 +76,8 @@ export interface SettingsDto {
   /** Старая база без поля отдаёт `DEFAULT_PAYMENT_REMINDER` целиком, а база
    * с частично заполненным подобъектом — недостающие поля из него же. */
   paymentReminder: PaymentReminderSettings;
+  /** Объявление на доске ученика (ADR-0172). Поля нет — объявления нет. */
+  boardNotice?: BoardNotice;
   updatedAt: string; // ISO UTC с Z
 }
 
@@ -111,6 +114,8 @@ export interface UpdateSettingsInput {
   /** PATCH меняет только переданные поля подобъекта, остальные не трогает
    * (как `templates` выше). Не nullable: «сбросить в ничто» смысла не имеет. */
   paymentReminder?: Partial<PaymentReminderSettings>;
+  /** Заменяется целиком (текст и срок идут парой); `null` — сброс. */
+  boardNotice?: BoardNotice | null;
 }
 
 /** Nullable-поля UpdateSettingsInput — источник правды для DTO
@@ -120,6 +125,7 @@ export const NULLABLE_SETTINGS_FIELDS = [
   'schoolSiteUrl',
   'dataControllerName',
   'dataControllerContact',
+  'boardNotice',
 ] as const;
 
 /** Тело `POST /settings/preview` — рендер сохранённого шаблона (из базы, не
@@ -146,6 +152,7 @@ export const SETTINGS_LIMITS = {
   paymentContactMaxLength: 200,
   dataControllerNameMaxLength: 200,
   dataControllerContactMaxLength: 300,
+  boardNoticeTextMaxLength: 500,
   previewMinutesMin: 1,
   previewMinutesMax: 1440,
   lessonReminderMinutesMin: 5,
