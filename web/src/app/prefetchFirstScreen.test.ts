@@ -29,7 +29,12 @@ afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
+// Доска ученика (ADR-0173): порядок — как в таблице маршрутов.
 const BOARD_PATHS = [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH, MY_BOARD_PATH];
+// Доска штата (ADR-0174): объявление школы и очередь проверки. Работ, планов
+// и оплат ученика у штата на доске нет, а `/attempts/queue` ученику сервер
+// отклонил бы 403 — поэтому наборы разные.
+const STAFF_BOARD_PATHS = [MY_BOARD_PATH, GRADING_QUEUE_PATH];
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {
@@ -58,15 +63,19 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
-  // Решение владельца 2026-09-27 (ADR-0138): «/» у штата ведёт на «Экзамены»
-  // (STAFF_ROOT_PATH), не на «Занятия» — гейт от повторного расхождения
-  // EMPTY_PATH_FALLBACK (routeMatch.ts) и STAFF_ROOT_PATH (screenAccess.ts).
-  it('учитель на «/» — данные «Экзаменов», не «Занятий»', () => {
-    expect(firstScreenPaths('/', makeMe())).toEqual([
+  it('учитель на /exams — список экзаменов, очередь проверки и число раздела', () => {
+    expect(firstScreenPaths('/exams', makeMe())).toEqual([
       examsListPath({ status: '' }),
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
     ]);
+  });
+
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «/» у штата
+  // ведёт на «Доску» (BOARD_PATH, screenAccess.ts), не на «Экзамены» — гейт от
+  // повторного расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и rootPathFor.
+  it('учитель на «/» — данные доски штата: объявление и очередь проверки', () => {
+    expect(firstScreenPaths('/', makeMe())).toEqual(STAFF_BOARD_PATHS);
   });
 
   // ADR-0171: корень бухгалтера — «Оплаты», греем их список без месяца (тот
@@ -85,9 +94,9 @@ describe('firstScreenPaths', () => {
 
   // Учителю оплаты закрыты (canSeeRoute) — греем экран, куда его уведёт
   // редирект, а не запрос, который сервер отклонит.
-  it('учитель на /payments — данные «Экзаменов», куда его уведёт редирект', () => {
+  it('учитель на /payments — данные доски штата, куда его уведёт редирект', () => {
     expect(firstScreenPaths('/payments', makeMe())).toEqual(
-      firstScreenPaths('/exams', makeMe()),
+      firstScreenPaths('/board', makeMe()),
     );
   });
 
@@ -110,14 +119,25 @@ describe('firstScreenPaths', () => {
     expect(firstScreenPaths('/board', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
   });
 
-  // Карточка оплаты — только ученику (isPaymentContactVisible): штат и штат в
-  // режиме ученика за оплатой не пойдут, а сервер ответил бы отказом.
-  it('штат на «/board» и штат в режиме ученика — без оплаты', () => {
-    const withoutPayments = BOARD_PATHS.filter((path) => path !== MY_PAYMENTS_PATH);
-    expect(firstScreenPaths('/board', makeMe())).toEqual(withoutPayments);
-    expect(firstScreenPaths('/board', makeMe({ roles: [], studentMode: true }))).toEqual(
-      withoutPayments,
-    );
+  // ADR-0174: у штата доска своя — объявление и очередь проверки, без
+  // экзаменов, занятий и оплаты ученика; ассистент и админ — как учитель.
+  it('учитель, ассистент и админ на «/board» — объявление и очередь проверки', () => {
+    for (const role of ['teacher', 'assistant', 'admin'] as const) {
+      expect(firstScreenPaths('/board', makeMe({ roles: [role] }))).toEqual(
+        STAFF_BOARD_PATHS,
+      );
+    }
+  });
+
+  // Карточка оплаты — только ученику (isPaymentContactVisible), очередь
+  // проверки — только штату (ученику сервер ответил бы 403): штат в режиме
+  // ученика получает доску ученика без оплаты и без очереди.
+  it('штат в режиме ученика на «/board» — без оплаты и без очереди проверки', () => {
+    expect(firstScreenPaths('/board', makeMe({ roles: [], studentMode: true }))).toEqual([
+      MY_EXAMS_PATH,
+      MY_LESSONS_PATH,
+      MY_BOARD_PATH,
+    ]);
   });
 
   it('ученик на своём «/tasks» — список экзаменов', () => {

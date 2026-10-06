@@ -1,6 +1,7 @@
 // Режим ученика целиком, в настоящей оболочке (ADR-0163): секция в «Профиле»
 // только у штата, включение перестраивает меню и открывает «Доску», плашка
-// стоит на каждом экране, выход возвращает штатное меню и «Экзамены», оплат в
+// стоит на каждом экране, выход возвращает штатное меню и «Доску» штата
+// (ADR-0174: корень у обеих ролей общий, различает их состав меню), оплат в
 // режиме нет. Сеть — по пути; ответ PUT применяется как есть, второго
 // `GET /auth/me` нет (ADR-0087).
 import { render, screen, within } from '@testing-library/react';
@@ -100,9 +101,14 @@ describe('Включение режима в оболочке', () => {
     const user = userEvent.setup();
     renderCabinet(STAFF_ME, STAFF_IN_STUDENT_MODE_ME);
     await screen.findByRole('button', { name: 'Включить режим ученика' });
+    // «Доска» есть в обоих меню, поэтому меню различаем по «Экзаменам»
+    // (только у штата) и «Заданиям» (только у ученика).
     expect(
-      within(navigation()).getByRole('link', { name: 'Рассылки' }),
+      within(navigation()).getByRole('link', { name: 'Экзамены' }),
     ).toBeInTheDocument();
+    expect(
+      within(navigation()).queryByRole('link', { name: 'Задания' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Включить режим ученика' }));
@@ -110,7 +116,10 @@ describe('Включение режима в оболочке', () => {
     expect(await screen.findByText('Экран доски')).toBeInTheDocument();
     expect(within(navigation()).getByRole('link', { name: 'Доска' })).toBeInTheDocument();
     expect(
-      within(navigation()).queryByRole('link', { name: 'Рассылки' }),
+      within(navigation()).getByRole('link', { name: 'Задания' }),
+    ).toBeInTheDocument();
+    expect(
+      within(navigation()).queryByRole('link', { name: 'Экзамены' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Вы в режиме ученика');
     const authMeCalls = mockedApiFetch.mock.calls.filter(([path]) => path === '/auth/me');
@@ -133,20 +142,23 @@ describe('Плашка в оболочке', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
-  it('«Вернуться к роли» возвращает штатное меню и «Экзамены», плашка уходит', async () => {
+  it('«Вернуться к роли» возвращает штатное меню и «Доску», плашка уходит', async () => {
     const user = userEvent.setup();
     renderCabinet(STAFF_IN_STUDENT_MODE_ME, STAFF_ME, '/lessons');
     await screen.findByText('Экран занятий');
     expect(
-      within(navigation()).queryByRole('link', { name: 'Рассылки' }),
+      within(navigation()).queryByRole('link', { name: 'Экзамены' }),
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Вернуться к роли' }));
 
-    expect(await screen.findByText('Экран экзаменов')).toBeInTheDocument();
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
     expect(
-      within(navigation()).getByRole('link', { name: 'Рассылки' }),
+      within(navigation()).getByRole('link', { name: 'Экзамены' }),
     ).toBeInTheDocument();
+    expect(
+      within(navigation()).queryByRole('link', { name: 'Задания' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 

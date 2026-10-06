@@ -254,9 +254,10 @@ describe('MyExamsProvider — markSeen', () => {
 });
 
 // ADR-0074: экзамены — механика ученика, штат школы не сдаёт попыток и
-// запрос ради счётчика уведомлений ему не нужен — кроме «/tasks» и «/board», куда штат
+// запрос ради счётчика уведомлений ему не нужен — кроме «/tasks», куда штат
 // тоже попадает по прямой ссылке (canSeeRoute, screenAccess.ts) и где список
-// нужен самому экрану.
+// нужен самому экрану. На «/board» у штата своя доска без рубрики «Сдавать
+// сейчас» (ADR-0174) — запроса там тоже нет.
 describe('MyExamsProvider — enabled по роли и пути (ADR-0074)', () => {
   function Reader() {
     const { data } = useMyExams();
@@ -274,16 +275,21 @@ describe('MyExamsProvider — enabled по роли и пути (ADR-0074)', () 
     },
   );
 
-  it.each(['/tasks', '/board'])(
-    'штат на «%s» — запрос идёт, список виден',
-    async (path) => {
-      mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
-      renderWithProvider(staffMe('teacher'), <Reader />, path);
+  it('штат на «/board» — запроса нет: доска штата список не читает (ADR-0174)', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+    renderWithProvider(staffMe('teacher'), <Reader />, '/board');
 
-      await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
-      expect(examsCallCount()).toBe(1);
-    },
-  );
+    await screen.findByText('—');
+    expect(examsCallCount()).toBe(0);
+  });
+
+  it('штат на «/tasks» — запрос идёт, список виден', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+    renderWithProvider(staffMe('teacher'), <Reader />, '/tasks');
+
+    await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
+    expect(examsCallCount()).toBe(1);
+  });
 
   it('ученик — запрос идёт на любом пути', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });

@@ -15,12 +15,33 @@
 // вторым, — не подмножество меню штата.
 //
 // Первый пункт списка штата — первый экран после входа, та же механика, что
-// у ученика: отзыв владельца 2026-09-27 «сделай экзамены основным экраном при
-// входе» — «Экзамены» встали первым пунктом STAFF_NAV_ITEMS, «Занятия» ушли
-// вторым (ADR-0138, STAFF_ROOT_PATH в screenAccess.ts).
+// у ученика. Владелец 2026-10-06: «доска стала главным экраном при любом
+// входе. у учителя там кнопки настроить расписание, рассылки, материалы — из
+// навигации можно убрать» — «Доска» первым пунктом STAFF_NAV_ITEMS, а
+// «Занятия», «Рассылки» и «Материалы» ушли из панели в карточки-входы на
+// самой доске (ADR-0174, заменяет ADR-0138; BOARD_PATH в screenAccess.ts).
+// Три пункта у штата, предел ADR-0055 (пять) не нарушен.
 import type { MeDto, UserRole } from '@xuanxue/shared';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
-import { isAccountant, isTeacher } from './screenAccess';
+import { BOARD_PATH, isAccountant, isTeacher } from './screenAccess';
+
+// Разделы, которые открываются с доски, а не из панели (ADR-0174): пока
+// учитель в расписании, рассылках или материалах, подсвечена «Доска» — он
+// пришёл туда с неё и вернётся на неё. Без этого на `/planning` не горел бы
+// ни один пункт, как на `/login`. Подэкраны разделов — тот же приём, что был
+// у них в `childPaths` своих пунктов: `/schedule` под «Занятиями», `/channels`
+// и `/templates` под «Рассылками», `/materials/tags` под «Материалами»
+// (ADR-0075). `/x/new` и `/x/:id` не подсвечивают ничего — как и раньше
+// (`activeSectionPath` сравнивает путь целиком).
+const BOARD_CHILD_PATHS = [
+  '/planning',
+  '/schedule',
+  '/broadcasts',
+  '/channels',
+  '/templates',
+  '/materials',
+  '/materials/tags',
+];
 
 /** Имя значка нижней панели телефона (NavIcon.tsx, ADR-0097). Union строк,
  * не `enum` (CLAUDE.md «TypeScript строгий»). */
@@ -50,18 +71,12 @@ export interface NavItem {
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
+  { to: BOARD_PATH, label: 'Доска', childPaths: BOARD_CHILD_PATHS, icon: 'board' },
   {
     to: '/exams',
     label: 'Экзамены',
     childPaths: ['/exam-items', '/grading'],
     icon: 'exams',
-  },
-  { to: '/planning', label: 'Занятия', childPaths: ['/schedule'], icon: 'lessons' },
-  {
-    to: '/broadcasts',
-    label: 'Рассылки',
-    childPaths: ['/channels', '/templates'],
-    icon: 'broadcasts',
   },
   {
     to: '/people',
@@ -72,25 +87,13 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     childPaths: [PAYMENTS_SCREEN_PATH],
     icon: 'people',
   },
-  // Пятый пункт, добавленный ADR-0055 — единственное названное исключение
-  // из правила выше. `/materials/new` и `/materials/:materialId`
-  // подсвечивать пункт не должны отдельной записью (и без того не
-  // подсвечивают, `activeSectionPath` сравнивает путь целиком) — а
-  // `/materials/tags` (ADR-0075) в childPaths: это подэкран «Материалов»,
-  // тот же приём, что у «/archive»/«/library» под «Занятиями» ученика.
-  {
-    to: '/materials',
-    label: 'Материалы',
-    childPaths: ['/materials/tags'],
-    icon: 'materials',
-  },
 ];
 
 /** Решение владельца 2026-10-06 (ADR-0173): «Доска» — первый экран после
  * входа, «Задания» и «Занятия» — следом; три пункта, предел ADR-0055 (пять)
  * не нарушен. Экзамены остаются отдельным экраном (docs/PLAN.md §11). */
 export const STUDENT_NAV_ITEMS: NavItem[] = [
-  { to: '/board', label: 'Доска', childPaths: [], icon: 'board' },
+  { to: BOARD_PATH, label: 'Доска', childPaths: [], icon: 'board' },
   { to: '/tasks', label: 'Задания', childPaths: [], icon: 'tasks' },
   // «/archive» («Записи занятий», слой 3.3) и «/library» («Библиотека»,
   // слой 3.2) — подэкраны «Занятий», вход карточкой SectionLink на

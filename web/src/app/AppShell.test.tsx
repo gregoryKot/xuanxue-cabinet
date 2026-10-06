@@ -198,12 +198,12 @@ describe('AppShell — навигация по ширине экрана', () =>
 });
 
 describe('AppShell — учитель', () => {
-  it('боковая колонка со знаком школы, пункт «Занятия» и вложенный маршрут', async () => {
+  it('боковая колонка со знаком школы, пункт «Доска» и вложенный маршрут', async () => {
     renderShell(TEACHER);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
     expect(screen.getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
   });
 
   // Направление «Тёплая школа» (ADR-0043) убрало шапку во всю ширину — знак
@@ -237,9 +237,9 @@ describe('AppShell — учитель', () => {
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
   });
 
-  // Пять доменов — потолок навигации (navItems.ts, отзыв владельца
-  // 2026-09-12: «меню всё ещё сложное»; пятым «Материалы» добавил ADR-0055,
-  // шестого домена сюда не заводят); «Ученики» видят admin и teacher
+  // Три пункта — панель штата (navItems.ts, ADR-0174: расписание, рассылки и
+  // материалы ушли на «Доску», отзыв владельца 2026-09-12: «меню всё ещё
+  // сложное»); «Ученики» видят admin и teacher
   // (ADR-0030, уточнение 2026-09-15 — ссылку-приглашение отдаёт и учитель).
   // Фильтр по роли и подсветку раздела детально проверяет AppNav.test.tsx —
   // здесь только то, что AppShell передаёт в AppNav настоящего `me`.
@@ -254,7 +254,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
   });
 
   it('нижняя навигация — у админа тоже «Ученики»', async () => {
@@ -266,7 +266,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
   });
 
   // Ровно то, чего боялся владелец при переносе подвала в колонку (ADR-0043):
@@ -361,7 +361,8 @@ describe('AppShell — помощник учителя', () => {
     renderShell(ASSISTANT);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Экзамены' })).toBeInTheDocument();
   });
 });
 
@@ -384,7 +385,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Рассылки' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Экзамены' })).not.toBeInTheDocument();
     expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
   });
 
