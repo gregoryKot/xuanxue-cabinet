@@ -205,3 +205,4 @@
 | [0168](0168-biweekly-schedule-rule.md)                           | Правило расписания «раз в две недели»: дата первого занятия, чередование считает планировщик              |
 | [0169](0169-workshop-collaboration.md)                           | Координация с соседними проектами через Workshop: скилл `/collaborate`, метка `project:cabinet`           |
 | [0170](0170-public-lessons-endpoint.md)                          | Публичное расписание `GET /api/public/lessons` для daychi — без Zoom, два режима выборки                  |
+| [0171](0171-payments-screen-returns.md)                          | Экран «Оплаты» возвращается: бухгалтер отмечает перевод в кабинете, отменяет ADR-0157                     |
