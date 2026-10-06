@@ -9,15 +9,21 @@
 // подмены StudentScreen. Чужой маршрут (штата) ведёт на свой корень
 // редиректом, не подменой содержимого.
 //
+// Бухгалтер (роль accountant без ролей штата, ADR-0171) — третья роль по
+// экранам: у него один свой маршрут «Оплаты» и он же корень после входа.
+// Админ видит «Оплаты» подэкраном «Учеников», учитель их не видит вовсе.
+//
 // Статуса «ждёт подтверждения» больше нет (ADR-0036): вошедший всегда либо
 // штат, либо ученик — по статусу здесь ничего не ветвится, `blocked` до
 // этого кода не доходит (RequireAuth показывает отказ).
 import type { MeDto } from '@xuanxue/shared';
+import { hasRole } from '../auth/hasRole';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import {
   NOTIFICATIONS_SCREEN_PATH,
   NOTIFICATION_SETTINGS_PATH,
 } from '../notifications/notificationPaths';
+import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 // Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
@@ -42,22 +48,41 @@ export function isTeacher(me: MeDto | null): boolean {
   return me.roles.some((role) => TEACHER_ROLES.has(role));
 }
 
+/** Оплаты видят бухгалтер и админ (ADR-0149/0151); учитель — нет: сервер
+ * ответил бы ему 403 (SECURITY §3), а гвард RequirePaymentsAccess уводит его
+ * на свой корень раньше. */
+export function canSeePayments(me: MeDto | null): boolean {
+  return hasRole(me, 'accountant') || hasRole(me, 'admin');
+}
+
+/** Бухгалтер без ролей штата: ему панель из одного пункта «Оплаты», а не
+ * «Задания»/«Занятия» ученика. Бухгалтер, он же учитель или админ, — штат:
+ * у него меню штата, «Оплаты» админа лежат внутри «Учеников» (ADR-0171). */
+export function isAccountant(me: MeDto | null): boolean {
+  return hasRole(me, 'accountant') && !isTeacher(me);
+}
+
 /** Куда вести сразу после входа и при отказе в чужом маршруте (AppShell.tsx,
  * cabinetRoutes.tsx). Решение владельца: у ученика первый экран — «Задания»
  * (экзамены), «Занятия» — второй; у штата с 2026-09-27 первый экран —
- * «Экзамены», «Занятия» ушли на второй пункт меню (ADR-0138). */
+ * «Экзамены», «Занятия» ушли на второй пункт меню (ADR-0138); у бухгалтера —
+ * «Оплаты», единственный его экран (ADR-0171). */
 export function rootPathFor(me: MeDto | null): string {
-  return isTeacher(me) ? STAFF_ROOT_PATH : STUDENT_TASKS_PATH;
+  if (isTeacher(me)) return STAFF_ROOT_PATH;
+  return isAccountant(me) ? PAYMENTS_SCREEN_PATH : STUDENT_TASKS_PATH;
 }
 
 /** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
  * (личный экран, ADR-0045), «/install» (инструкция установки, docs/PWA.md),
  * «/notifications» (лента событий, ADR-0063), «/notifications/settings»
  * (настройки уведомлений, ADR-0162) и «/attempts/:id» (экран сдачи) — открыты
- * любой роли; остальные маршруты
- * кабинета — только teacher/assistant/admin, иначе AppShell уводит
+ * любой роли; «/payments» — тем, кто видит оплаты (canSeePayments); остальные
+ * маршруты кабинета — только teacher/assistant/admin, иначе AppShell уводит
  * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
+  // «Оплаты» решает роль оплат, а не «штат или нет»: учитель штата их не
+  // видит, бухгалтер без ролей штата — видит (ADR-0171).
+  if (pathname === PAYMENTS_SCREEN_PATH) return canSeePayments(me);
   return (
     isTeacher(me) ||
     pathname === STUDENT_TASKS_PATH ||

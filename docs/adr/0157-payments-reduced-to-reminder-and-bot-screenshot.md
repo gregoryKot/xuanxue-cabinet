@@ -1,6 +1,6 @@
 # 0157. Оплаты: остаются напоминание и снимок в бот, кабинет оплат спрятан
 
-Дата: 2026-09-29. Статус: принято, путь снимка уточнён
+Дата: 2026-09-29. Статус: отменено [ADR-0171](0171-payments-screen-returns.md); путь снимка уточнён
 [ADR-0159](0159-payment-screenshot-straight-to-accountant.md): ученик шлёт снимок бухгалтеру сам. Сужает этап 2 (PLAN §15), уточняет
 [ADR-0049](0049-payment-month-and-statuses.md) и [ADR-0051](0051-payment-reminder-is-personal-not-broadcast.md).
 

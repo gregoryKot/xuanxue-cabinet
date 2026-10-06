@@ -29,6 +29,7 @@ import {
   attemptPath,
 } from '../api/gradingPaths';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import { paymentsListPath } from '../api/paymentsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
@@ -141,6 +142,10 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/library — библиотека материалов ученика', () => {
     expect(prefetchAt('/library')).toEqual([MY_MATERIALS_PATH]);
+  });
+
+  it('/payments — список оплат текущего месяца (месяц называет сервер)', () => {
+    expect(prefetchAt('/payments')).toEqual([paymentsListPath(null)]);
   });
 
   it('/people — ссылка-приглашение; список учеников (GET /users) не греем — он только для admin', () => {
@@ -285,6 +290,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/library',
       '/attempts/652f00000000000000000007',
       '/people',
+      '/payments',
     ];
 
     for (const pathname of samplePathnames) {

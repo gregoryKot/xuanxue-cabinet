@@ -14,6 +14,7 @@ import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import { paymentsListPath } from '../api/paymentsApiPaths';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
 
 vi.mock('../api/http', async () => {
@@ -63,6 +64,28 @@ describe('firstScreenPaths', () => {
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
     ]);
+  });
+
+  // ADR-0171: корень бухгалтера — «Оплаты», греем их список без месяца (тот
+  // же путь запросит usePayments при монтировании).
+  it('бухгалтер на «/» — данные «Оплат»', () => {
+    expect(firstScreenPaths('/', makeMe({ roles: ['accountant'] }))).toEqual([
+      paymentsListPath(null),
+    ]);
+  });
+
+  it('админ на /payments — данные «Оплат»', () => {
+    expect(firstScreenPaths('/payments', makeMe({ roles: ['admin'] }))).toEqual([
+      paymentsListPath(null),
+    ]);
+  });
+
+  // Учителю оплаты закрыты (canSeeRoute) — греем экран, куда его уведёт
+  // редирект, а не запрос, который сервер отклонит.
+  it('учитель на /payments — данные «Экзаменов», куда его уведёт редирект', () => {
+    expect(firstScreenPaths('/payments', makeMe())).toEqual(
+      firstScreenPaths('/exams', makeMe()),
+    );
   });
 
   it('учитель на /login — не маршрут кабинета, греть нечего', () => {
