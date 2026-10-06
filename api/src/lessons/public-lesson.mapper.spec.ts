@@ -70,4 +70,44 @@ describe('toPublicLessonDto', () => {
   it('нет тегов у занятия (данные до ADR-0075) — пустой массив', () => {
     expect(toPublicLessonDto(lesson(), CLASS).tags).toEqual([]);
   });
+
+  it('пустые строки и нулевая длительность остаются в ответе', () => {
+    const dto = toPublicLessonDto(lesson({ topic: '', durationMin: 0 }), {
+      ...CLASS,
+      title: '',
+      groupLabel: '',
+      location: '',
+    });
+    expect(dto.topic).toBe('');
+    expect(dto.classTitle).toBe('');
+    expect(dto.groupLabel).toBe('');
+    expect(dto.location).toBe('');
+    expect(dto.durationMin).toBe(0);
+  });
+
+  // Контракт, случай 6: битое обязательное поле — отказ всего ответа, не
+  // дырка в JSON. Каст — значения, которые схема не пустила бы, но lean()
+  // из уже лежащего документа отдаёт как есть.
+  it.each([
+    ['нет durationMin', { durationMin: undefined }, {}],
+    ['durationMin NaN', { durationMin: Number.NaN }, {}],
+    ['durationMin Infinity', { durationMin: Number.POSITIVE_INFINITY }, {}],
+    ['durationMin строка', { durationMin: '60' }, {}],
+    ['topic не строка', { topic: undefined }, {}],
+    ['status вне перечисления', { status: 'done' }, {}],
+    ['пустой id', { _id: { toString: () => '' } }, {}],
+    ['tags не массив', { tags: 'дракон' }, {}],
+    ['в tags не строка', { tags: [1] }, {}],
+    ['format вне перечисления', {}, { format: 'hybrid' }],
+    ['нет названия класса', {}, { title: undefined }],
+    ['groupLabel не строка', {}, { groupLabel: 1 }],
+    ['location null', {}, { location: null }],
+  ])('%s — отказ', (_name, lessonPatch, classPatch) => {
+    expect(() =>
+      toPublicLessonDto(lesson(lessonPatch), {
+        ...CLASS,
+        ...classPatch,
+      } as typeof CLASS),
+    ).toThrow(/Публичное занятие/);
+  });
 });

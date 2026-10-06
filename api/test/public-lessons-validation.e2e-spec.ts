@@ -76,4 +76,58 @@ describe('GET /public/lessons — отказы (e2e)', () => {
     expect(Array.isArray(res.body)).toBe(false);
     expect((res.body as ApiErrorBody).code).toBe('internal_error');
   });
+
+  // Контракт, случай 6: схема required/enum не даёт записать битое через
+  // create(), а уже лежащий документ lean() отдаёт как есть. updateOne без
+  // runValidators кладёт значение мимо enum.
+  it('занятие без durationMin — 500 internal_error, не массив', async () => {
+    const classId = await h.createClass();
+    const id = await h.createLesson({
+      classId,
+      startsAt: new Date(NOW.getTime() + 3_600_000),
+    });
+    await h.lessonModel().updateOne({ _id: id }, { $unset: { durationMin: 1 } });
+
+    const res = await h.getPublic();
+
+    expect(res.status).toBe(500);
+    expect(Array.isArray(res.body)).toBe(false);
+    expect((res.body as ApiErrorBody).code).toBe('internal_error');
+    expect(JSON.stringify(res.body)).not.toContain('Публичное занятие');
+  });
+
+  it('класс с format вне перечисления — 500 internal_error, не массив', async () => {
+    const classId = await h.createClass();
+    await h.createLesson({ classId, startsAt: new Date(NOW.getTime() + 3_600_000) });
+    await h.classModel().updateOne({ _id: classId }, { $set: { format: 'hybrid' } });
+
+    const res = await h.getPublic();
+
+    expect(res.status).toBe(500);
+    expect(Array.isArray(res.body)).toBe(false);
+    expect((res.body as ApiErrorBody).code).toBe('internal_error');
+    expect(JSON.stringify(res.body)).not.toContain('Публичное занятие');
+  });
+
+  it('битое занятие рядом с нормальным — конверт ошибки, не частичный массив', async () => {
+    const classId = await h.createClass();
+    await h.createLesson({
+      classId,
+      startsAt: new Date(NOW.getTime() + 3_600_000),
+      topic: 'Живое занятие',
+    });
+    const brokenId = await h.createLesson({
+      classId,
+      startsAt: new Date(NOW.getTime() + 7_200_000),
+    });
+    await h.lessonModel().updateOne({ _id: brokenId }, { $unset: { durationMin: 1 } });
+
+    const res = await h.getPublic();
+
+    expect(res.status).toBe(500);
+    expect(Array.isArray(res.body)).toBe(false);
+    expect((res.body as ApiErrorBody).code).toBe('internal_error');
+    expect(JSON.stringify(res.body)).not.toContain('Живое занятие');
+    expect(JSON.stringify(res.body)).not.toContain('Публичное занятие');
+  });
 });
