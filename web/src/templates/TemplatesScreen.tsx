@@ -23,6 +23,7 @@ import { primaryActionStyle } from '../components/screenLayout';
 import { editorPageStyle, editorSectionStyle } from '../components/editorLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
+import { BoardNoticeField } from './BoardNoticeField';
 import { DataControllerField } from './DataControllerField';
 import { NewcomerContactField } from './NewcomerContactField';
 import { PaymentContactField } from './PaymentContactField';
@@ -111,6 +112,7 @@ export default function TemplatesScreen() {
               терракотовое «Сохранить» внизу закрывает именно шаблоны постов. */}
           <PaymentReminderSection settings={settings} update={settingsState.update} />
           <PaymentContactField settings={settings} update={settingsState.update} />
+          <BoardNoticeField settings={settings} update={settingsState.update} />
 
           {TEMPLATE_KINDS.map((kind) => (
             <TemplateEditor
