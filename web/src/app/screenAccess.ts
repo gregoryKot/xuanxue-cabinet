@@ -9,6 +9,9 @@
 // подмены StudentScreen. Чужой маршрут (штата) ведёт на свой корень
 // редиректом, не подменой содержимого.
 //
+// «Доска» — первый экран и у штата (владелец 2026-10-06, ADR-0174): один
+// маршрут, экран сам решает по роли, что на нём лежит (board/BoardScreen.tsx).
+//
 // Бухгалтер (роль accountant без ролей штата, ADR-0171) — третья роль по
 // экранам: у него один свой маршрут «Оплаты» и он же корень после входа.
 // Админ видит «Оплаты» подэкраном «Учеников», учитель их не видит вовсе.
@@ -26,12 +29,11 @@ import {
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
-// Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
-// адрес корня и опорный путь для «/» не могли разъехаться (ADR-0138).
-export const STAFF_ROOT_PATH = '/exams';
-// «Доска» — первый экран ученика (ADR-0173), «Задания» и «Занятия» — второй и
-// третий пункты меню.
-const STUDENT_BOARD_PATH = '/board';
+// «Доска» — первый экран после входа у ученика (ADR-0173) и у штата
+// (ADR-0174). Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK,
+// чтобы адрес корня и опорный путь для «/» не могли разъехаться (ADR-0138).
+export const BOARD_PATH = '/board';
+// «Задания» и «Занятия» — второй и третий пункты меню ученика.
 const STUDENT_TASKS_PATH = '/tasks';
 const STUDENT_LESSONS_PATH = '/lessons';
 // Подэкран «Занятий» (слой 3.3, docs/PLAN.md §14) — вход карточкой на
@@ -66,14 +68,13 @@ export function isAccountant(me: MeDto | null): boolean {
 }
 
 /** Куда вести сразу после входа и при отказе в чужом маршруте (AppShell.tsx,
- * cabinetRoutes.tsx). Решение владельца 2026-10-06: у ученика первый экран —
- * «Доска» (ADR-0173), «Задания» (экзамены) и «Занятия» — следом; у штата
- * с 2026-09-27 первый экран — «Экзамены», «Занятия» ушли на второй пункт
- * меню (ADR-0138); у бухгалтера — «Оплаты», единственный его экран
- * (ADR-0171). */
+ * cabinetRoutes.tsx). Решение владельца 2026-10-06: «Доска» — первый экран
+ * при любом входе — у ученика (ADR-0173) и у штата (ADR-0174; до того с
+ * 2026-09-27 штат попадал на «Экзамены», ADR-0138). Исключение — бухгалтер
+ * без ролей штата: у него «Оплаты», единственный его экран (ADR-0171), а на
+ * доске для него нет ничего — ни экзаменов, ни занятий, ни входа в оплаты. */
 export function rootPathFor(me: MeDto | null): string {
-  if (isTeacher(me)) return STAFF_ROOT_PATH;
-  return isAccountant(me) ? PAYMENTS_SCREEN_PATH : STUDENT_BOARD_PATH;
+  return isAccountant(me) ? PAYMENTS_SCREEN_PATH : BOARD_PATH;
 }
 
 /** «/board»/«/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
@@ -89,7 +90,7 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
   if (pathname === PAYMENTS_SCREEN_PATH) return canSeePayments(me);
   return (
     isTeacher(me) ||
-    pathname === STUDENT_BOARD_PATH ||
+    pathname === BOARD_PATH ||
     pathname === STUDENT_TASKS_PATH ||
     pathname === STUDENT_LESSONS_PATH ||
     pathname === STUDENT_ARCHIVE_PATH ||

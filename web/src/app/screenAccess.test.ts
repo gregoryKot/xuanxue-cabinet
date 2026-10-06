@@ -73,20 +73,21 @@ describe('isAccountant', () => {
 });
 
 describe('rootPathFor', () => {
-  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» — основной экран
-  // штата при входе, было «Занятия»/планирование.
-  it('штат — «Экзамены»', () => {
-    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/exams');
-    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/exams');
-    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/exams');
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска» —
+  // первый экран при любом входе, у штата тоже; «Экзамены» остались вторым
+  // пунктом панели.
+  it('штат — «Доска»', () => {
+    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/board');
+    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/board');
+    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/board');
   });
 
   it('бухгалтер без ролей штата — «Оплаты» (ADR-0171)', () => {
     expect(rootPathFor(makeMe({ roles: ['accountant'] }))).toBe('/payments');
   });
 
-  it('бухгалтер с ролью штата — корень штата', () => {
-    expect(rootPathFor(makeMe({ roles: ['accountant', 'teacher'] }))).toBe('/exams');
+  it('бухгалтер с ролью штата — «Доска»: он штат, не бухгалтер', () => {
+    expect(rootPathFor(makeMe({ roles: ['accountant', 'teacher'] }))).toBe('/board');
   });
 
   it('ученик — «Доска» (решение владельца 2026-10-06, ADR-0173)', () => {

@@ -6,7 +6,8 @@ import {
   hasLessonScopedKinds,
   type MeDto,
 } from '@xuanxue/shared';
-import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { MY_EXAMS_PATH, MY_LESSONS_PATH } from '../api/apiPaths';
+import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
 import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
@@ -42,12 +43,20 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
     route === ROUTE_MODULES.notificationSettings || route === ROUTE_MODULES.notifications;
   const skipsLessonScope =
     isLessonScopeRoute && !hasLessonScopedKinds(availableNotifications(me.roles));
-  // Оплата на «Доске» (ADR-0173) — карточка только ученика: штат (кроме
-  // режима ученика, где карточки тоже нет) за оплатой не пойдёт, а сервер
-  // ответил бы ему отказом (isPaymentContactVisible).
-  const skipsPayments = route === ROUTE_MODULES.board && !isPaymentContactVisible(me);
+  // «Доска» одна на две роли (ADR-0173/0174), таблица называет запросы обеих.
+  // Штат видит объявление и очередь проверки — экзамены, занятия и оплата
+  // ученика ему не нужны; ученик (и штат в режиме ученика, ADR-0163) очередь
+  // проверки не видит, а сервер ответил бы ему 403. Оплата — карточка только
+  // ученика: штат в режиме ученика за ней не пойдёт, сервер отказал бы
+  // (isPaymentContactVisible).
+  const isBoard = route === ROUTE_MODULES.board;
+  const skipsStudentBoard = isBoard && isTeacher(me);
+  const skipsStaffBoard = isBoard && !isTeacher(me);
+  const skipsPayments = isBoard && !isPaymentContactVisible(me);
   const skipped = new Set([
     ...(skipsExams ? [MY_EXAMS_PATH] : []),
+    ...(skipsStudentBoard ? [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH] : []),
+    ...(skipsStaffBoard ? [GRADING_QUEUE_PATH] : []),
     ...(skipsPayments ? [MY_PAYMENTS_PATH] : []),
     ...(skipsLessonScope ? [MY_LESSON_NOTIFICATIONS_PATH] : []),
   ]);

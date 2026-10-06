@@ -52,8 +52,8 @@ const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
 const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
 const DevErrorsScreen = lazyRoute(ROUTE_MODULES.devErrors.load);
 
-/** «/» — первый экран уже известной роли (решение владельца: у ученика это
- * «Доска», ADR-0173, у штата с 2026-09-27 — «Экзамены», ADR-0138). Роль решает
+/** «/» — первый экран уже известной роли (владелец 2026-10-06: «Доска» при
+ * любом входе — ADR-0173/0174; у бухгалтера «Оплаты», ADR-0171). Роль решает
  * rootPathFor (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес
  * корня не разъехался с адресом редиректа при отказе в чужом маршруте. */
 function RootRedirect() {

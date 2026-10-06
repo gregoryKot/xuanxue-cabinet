@@ -8,12 +8,14 @@
 //
 // `me` — тем же приёмом, что у NotificationsProvider.tsx (проп, не второй
 // useAuth() внутри): им решается, нужен ли сам запрос (ADR-0074). Экзамены —
-// механика ученика, у штата школы запрос выключен везде, кроме «/tasks» и
-// «/board» (ADR-0173; рубрика «Сдавать сейчас» читает тот же список) — туда штат
-// тоже попадает по прямой ссылке (canSeeRoute, screenAccess.ts) и там список
-// нужен для самого экрана, не для счётчика. Роль, при которой счётчик всё равно не должен считать эти формы «новым заданием» (штат на
-// «/tasks»), фильтруется в useNotificationsData.ts — этот провайдер решает
-// только «идёт ли запрос», не «что из ответа значит „новое“».
+// механика ученика, у штата школы запрос выключен везде, кроме «/tasks» —
+// туда штат тоже попадает по прямой ссылке (canSeeRoute, screenAccess.ts) и
+// там список нужен для самого экрана, не для счётчика. На «/board» у штата
+// своя доска без рубрики «Сдавать сейчас» (ADR-0174); штат в режиме ученика
+// (ADR-0163) приходит с пустыми ролями и считается учеником. Роль, при которой
+// счётчик не должен считать эти формы «новым заданием» (штат на «/tasks»),
+// фильтруется в useNotificationsData.ts — провайдер решает только «идёт ли
+// запрос», не «что из ответа значит „новое“».
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ExamAttemptDto, MeDto, MyExamDto } from '@xuanxue/shared';
@@ -26,11 +28,9 @@ import {
 import { applyExamAttempt } from './applyExamAttempt';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить экзамены. Попробуйте ещё раз.';
-// Экраны штата, которым список экзаменов нужен напрямую — сами маршруты
-// открыты любой роли (STUDENT_TASKS_PATH и STUDENT_BOARD_PATH в
-// screenAccess.ts, константы не экспортированы оттуда, поэтому здесь свои
-// копии строк, как в notificationTarget.ts/NewTaskCard.tsx).
-const EXAM_LIST_PATHS: ReadonlySet<string> = new Set(['/tasks', '/board']);
+// Экран, где список экзаменов нужен и штату (STUDENT_TASKS_PATH в
+// screenAccess.ts не экспортирован — своя копия, как в notificationTarget.ts).
+const TASKS_PATH = '/tasks';
 
 export interface UseMyExamsResult extends UseAbortableFetchResult<MyExamDto[]> {
   startAttempt: (examId: string) => Promise<ExamAttemptDto>;
@@ -59,7 +59,7 @@ function noopApplyAttempt(): void {}
  * для NotificationsProvider.tsx). */
 function useMyExamsData(me: MeDto | null): UseMyExamsResult {
   const { pathname } = useLocation();
-  const enabled = !isTeacher(me) || EXAM_LIST_PATHS.has(pathname);
+  const enabled = !isTeacher(me) || pathname === TASKS_PATH;
   const { applyData, ...result } = useAbortableFetch(
     (signal) => apiRoute('GET /me/exams', { signal }),
     LOAD_ERROR_MESSAGE,

@@ -144,16 +144,25 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     renderNav(true, { ...TEACHER, roles: ['accountant', 'teacher'] });
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
   });
 
-  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» первым пунктом —
-  // тот же порядок, что открывается при входе (STAFF_ROOT_PATH).
-  it('админ — пять пунктов, «Экзамены» первым, «Материалы» последним', () => {
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска»
+  // первым пунктом — тот же порядок, что открывается при входе
+  // (rootPathFor). Расписание, рассылки и материалы ушли с панели на доску.
+  it('админ — три пункта, «Доска» первой, «Ученики» последними', () => {
     renderNav(true, ADMIN);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
+  });
+
+  // Ассистенту «Ученики» не виден (roles пункта: admin/teacher).
+  it('ассистент — два пункта, «Доска» и «Экзамены»', () => {
+    renderNav(true, { ...TEACHER, roles: ['assistant'] });
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Доска', 'Экзамены']);
   });
 
   // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение раздаёт и
@@ -162,7 +171,7 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     renderNav(true, TEACHER);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
   });
 
   // ADR-0103 (заменил ADR-0097): на телефоне имя раздела снова видно — словом
@@ -173,8 +182,8 @@ describe('AppNav — пункты и роль (отзыв владельца 202
   // осталась — её эта правка не трогает.
   it('телефон — подпись словом под значком, значок decorative-only; колонка — подпись текстом', () => {
     const { unmount } = renderNav(true);
-    const link = screen.getByRole('link', { name: 'Занятия' });
-    expect(link.textContent).toBe('Занятия');
+    const link = screen.getByRole('link', { name: 'Экзамены' });
+    expect(link.textContent).toBe('Экзамены');
     expect(link).not.toHaveAttribute('aria-label');
     const svg = link.querySelector('svg');
     expect(svg).not.toBeNull();
@@ -182,29 +191,45 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     unmount();
 
     renderNav(false);
-    expect(screen.getByText('Занятия')).toBeInTheDocument();
+    expect(screen.getByText('Экзамены')).toBeInTheDocument();
   });
 });
 
 describe('AppNav — подсветка раздела', () => {
   it('открыт сам раздел — его ссылка активна', () => {
-    renderNav(true, TEACHER, '/broadcasts');
+    renderNav(true, TEACHER, '/exams');
 
-    expect(screen.getByRole('link', { name: /Рассылки/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Экзамены/ })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(screen.getByRole('link', { name: /Занятия/ })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Доска/ })).not.toHaveAttribute(
       'aria-current',
     );
   });
 
+  // ADR-0174: рассылки и каналы — входы с доски, подсвечена «Доска».
   it('открыт подэкран раздела — подсвечен сам раздел, не подэкран', () => {
-    renderNav(true, TEACHER, '/channels');
+    renderNav(true, TEACHER, '/broadcasts');
 
-    expect(screen.getByRole('link', { name: /Рассылки/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Доска/ })).toHaveAttribute(
       'aria-current',
       'page',
+    );
+    expect(screen.getByRole('link', { name: /Экзамены/ })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('/channels — тоже подэкран «Доски»', () => {
+    renderNav(true, TEACHER, '/channels');
+
+    expect(screen.getByRole('link', { name: /Доска/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: /Экзамены/ })).not.toHaveAttribute(
+      'aria-current',
     );
   });
 
@@ -223,11 +248,11 @@ describe('AppNav — подсветка раздела', () => {
   it('старой точки-маркера в разметке больше нет — ни у активного, ни у остальных', () => {
     renderNav(true, TEACHER, '/broadcasts');
 
-    const active = screen.getByRole('link', { name: /Рассылки/ });
+    const active = screen.getByRole('link', { name: /Доска/ });
     expect(active).toHaveAttribute('aria-current', 'page');
     expect(active.querySelector('.xuanxue-nav-dot')).toBeNull();
 
-    const inactive = screen.getByRole('link', { name: /Занятия/ });
+    const inactive = screen.getByRole('link', { name: /Экзамены/ });
     expect(inactive.querySelector('.xuanxue-nav-dot')).toBeNull();
   });
 });
@@ -240,7 +265,7 @@ describe('AppNav — цель нажатия и плашка нижней пан
   it('плашка — внутренний <span> без своей минимальной высоты, у <Link> нет фона', () => {
     renderNav(true, TEACHER, '/planning');
 
-    const active = screen.getByRole('link', { name: 'Занятия' });
+    const active = screen.getByRole('link', { name: 'Доска' });
     expect(active.style.minHeight).toBe('44px');
     expect(active.style.background).toBe('');
 
@@ -374,19 +399,19 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
   // (bottomStyle(items.length), bottomNavStyles.ts) — иначе лишний пункт
   // уезжает на вторую строку сетки, и высота панели (4 + 44 + 4 = 52 плюс
   // безопасная зона, расчёт в bottomNavStyles.ts) рвётся.
-  it('дорожек ровно по числу пунктов — пять у штата, три у ученика, четыре у ассистента', () => {
+  it('дорожек ровно по числу пунктов — три у штата, три у ученика, два у ассистента', () => {
     const teacher = renderNav(true, TEACHER);
     expect(
       screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
         .gridTemplateColumns,
-    ).toBe('repeat(5, 1fr)');
+    ).toBe('repeat(3, 1fr)');
     teacher.unmount();
 
     const admin = renderNav(true, ADMIN);
     expect(
       screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
         .gridTemplateColumns,
-    ).toBe('repeat(5, 1fr)');
+    ).toBe('repeat(3, 1fr)');
     admin.unmount();
 
     const student: MeDto = { ...TEACHER, roles: [] };
@@ -398,13 +423,13 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
     studentRender.unmount();
 
     // Ассистенту «Ученики» не виден (у пункта roles: admin/teacher) — из
-    // пяти пунктов штата у него остаётся четыре.
+    // трёх пунктов штата у него остаются два.
     const assistant: MeDto = { ...TEACHER, roles: ['assistant'] };
     renderNav(true, assistant);
     expect(
       screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
         .gridTemplateColumns,
-    ).toBe('repeat(4, 1fr)');
+    ).toBe('repeat(2, 1fr)');
   });
 });
 
@@ -421,11 +446,11 @@ describe('AppNav — нижняя панель на бумаге страниц�
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     expect(nav.style.background).toBe('var(--paper)');
 
-    const active = screen.getByRole('link', { name: 'Занятия' });
+    const active = screen.getByRole('link', { name: 'Доска' });
     const activePill = active.querySelector('span') as HTMLElement;
     expect(activePill.style.background).toBe('var(--panel)');
 
-    const inactive = screen.getByRole('link', { name: 'Рассылки' });
+    const inactive = screen.getByRole('link', { name: 'Экзамены' });
     const inactivePill = inactive.querySelector('span') as HTMLElement;
     expect(inactivePill.style.background).toBe('transparent');
   });
@@ -487,14 +512,14 @@ describe('AppNav — вкладки телефона называют себя �
   it('столбец «значок и подпись» не выше цели нажатия 44px', () => {
     renderNav(true, ADMIN);
 
-    const link = screen.getByRole('link', { name: 'Материалы' });
+    const link = screen.getByRole('link', { name: 'Экзамены' });
     const pill = link.querySelector('span');
     expect(pill).not.toBeNull();
     const svg = link.querySelector('svg');
     const iconHeightPx = Number(svg?.getAttribute('height') ?? 0);
     expect(iconHeightPx).toBeGreaterThan(0);
 
-    const label = screen.getByText('Материалы');
+    const label = screen.getByText('Экзамены');
     const lineHeightPx = px(label.style.fontSize) * Number(label.style.lineHeight);
     const columnPx =
       2 * px(pill?.style.paddingTop) +
@@ -511,11 +536,11 @@ describe('AppNav — вкладки телефона называют себя �
   it('подпись подрезается в своей дорожке, а не растягивает её', () => {
     renderNav(true, ADMIN);
 
-    const label = screen.getByText('Материалы');
+    const label = screen.getByText('Экзамены');
     expect(label.style.whiteSpace).toBe('nowrap');
     expect(label.style.overflow).toBe('hidden');
     expect(label.style.maxWidth).toBe('100%');
     // Доступное имя ссылки остаётся целым: подрезает CSS, а не разметка.
-    expect(screen.getByRole('link', { name: 'Материалы' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Экзамены' })).toBeInTheDocument();
   });
 });
