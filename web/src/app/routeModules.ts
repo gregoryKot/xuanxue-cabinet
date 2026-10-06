@@ -28,9 +28,6 @@ import {
   INVITE_LINK_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
-  MY_LESSONS_ARCHIVE_PATH,
-  MY_LESSONS_PATH,
-  MY_MATERIALS_PATH,
   NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
@@ -56,6 +53,7 @@ import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
+import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -372,39 +370,8 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
   },
-  // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
-  // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,
-  // открыты любой роли (screenAccess.ts, canSeeRoute).
-  tasks: {
-    path: '/tasks',
-    load: () => import('../student/TasksScreen'),
-    warm: true,
-    prefetch: () => [MY_EXAMS_PATH],
-  },
-  studentLessons: {
-    path: '/lessons',
-    load: () => import('../student/LessonsScreen'),
-    warm: true,
-    prefetch: () => [MY_LESSONS_PATH],
-  },
-  // «Записи занятий» (слой 3.3, docs/PLAN.md §14) — подэкран «Занятий», вход
-  // карточкой SectionLink на LessonsScreen.tsx, не пункт меню (ADR-0025), тот
-  // же приём, что у «Библиотеки» ученика (library ниже).
-  archive: {
-    path: '/archive',
-    load: () => import('../student/ArchiveScreen'),
-    warm: true,
-    prefetch: () => [MY_LESSONS_ARCHIVE_PATH],
-  },
-  // «Библиотека» ученика (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий»,
-  // вход карточкой SectionLink на LessonsScreen.tsx, не пункт меню
-  // (ADR-0025), тот же приём, что у «Записей занятий» (archive) выше.
-  library: {
-    path: '/library',
-    load: () => import('../student/LibraryScreen'),
-    warm: true,
-    prefetch: () => [MY_MATERIALS_PATH],
-  },
+  // Экраны ученика — «Доска», «Задания», «Занятия» и их подэкраны.
+  ...STUDENT_ROUTE_MODULES,
   attempt: {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),

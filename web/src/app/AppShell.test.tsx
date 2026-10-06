@@ -68,11 +68,10 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<AppShell />}>
             <Route path="/schedule" element={<p>Содержимое расписания</p>} />
-            {/* Экраны ученика (решение владельца: экзамены — отдельный
-                маршрут и первый после входа) — заглушки вместо настоящих
-                TasksScreen/LessonsScreen: здесь важна раскладка оболочки, не
-                сами экраны (те проверяют TasksScreen.test.tsx,
-                LessonsScreen.test.tsx). */}
+            {/* Экраны ученика («Доска» первым, ADR-0173) — заглушки вместо
+                настоящих BoardScreen/TasksScreen/LessonsScreen: здесь важна
+                раскладка оболочки, не сами экраны (те проверяют их тесты). */}
+            <Route path="/board" element={<p>Экран доски</p>} />
             <Route path="/tasks" element={<p>Экран заданий</p>} />
             <Route path="/lessons" element={<p>Экран занятий</p>} />
             {/* Личный экран человека — маршрут внутри AppShell, но не за
@@ -366,21 +365,23 @@ describe('AppShell — помощник учителя', () => {
   });
 });
 
-// Решение владельца: экзамены — отдельный экран и первый после входа. У
-// ученика больше нет отдельной подмены содержимого (StudentScreen) — вместо
-// неё та же раскладка, что у штата, и редирект с чужих маршрутов.
+// Решение владельца 2026-10-06: «Доска» — первый экран после входа
+// (ADR-0173). У ученика больше нет отдельной подмены содержимого
+// (StudentScreen) — вместо неё та же раскладка, что у штата, и редирект с
+// чужих маршрутов.
 describe('AppShell — ученик (без роли teacher/assistant/admin)', () => {
-  it('на маршруте штата — редирект на «Задания», не подмена содержимого', async () => {
+  it('на маршруте штата — редирект на «Доску», не подмена содержимого', async () => {
     renderShell(STUDENT);
 
-    expect(await screen.findByText('Экран заданий')).toBeInTheDocument();
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
   });
 
-  it('своя навигация — «Задания» и «Занятия», без пунктов штата', async () => {
+  it('своя навигация — «Доска», «Задания» и «Занятия», без пунктов штата', async () => {
     renderShell(STUDENT);
-    await screen.findByText('Экран заданий');
+    await screen.findByText('Экран доски');
 
+    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Рассылки' })).not.toBeInTheDocument();
@@ -391,7 +392,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
   // мониторе несёт знак школы и блок человека сама (см. шапку AppShell.tsx).
   it('на мониторе — боковая колонка со знаком школы и блоком человека, как у штата', async () => {
     renderShell(STUDENT);
-    await screen.findByText('Экран заданий');
+    await screen.findByText('Экран доски');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const column = nav.parentElement as HTMLElement;
@@ -405,7 +406,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
   it('на телефоне — нижняя панель вкладок и знак школы над содержимым, как у штата', async () => {
     stubMobileViewport();
     renderShell(STUDENT);
-    await screen.findByText('Экран заданий');
+    await screen.findByText('Экран доски');
 
     expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
@@ -419,7 +420,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     renderShell(STUDENT, '/profile');
 
     expect(await screen.findByText('Экран профиля')).toBeInTheDocument();
-    expect(screen.queryByText('Экран заданий')).not.toBeInTheDocument();
+    expect(screen.queryByText('Экран доски')).not.toBeInTheDocument();
   });
 
   // То же самое для экрана сдачи (ТЗ student-exams.md) — вход в него не
@@ -429,7 +430,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     renderShell(STUDENT, '/attempts/a1');
 
     expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
-    expect(screen.queryByText('Экран заданий')).not.toBeInTheDocument();
+    expect(screen.queryByText('Экран доски')).not.toBeInTheDocument();
   });
 });
 
@@ -464,7 +465,7 @@ describe('AppShell — знак школы и блок человека: все 
 
   it('ученик, монитор — колонка несёт знак и блок человека, ровно как у штата', async () => {
     renderShell(STUDENT);
-    await screen.findByText('Экран заданий');
+    await screen.findByText('Экран доски');
 
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
@@ -477,7 +478,7 @@ describe('AppShell — знак школы и блок человека: все 
   it('ученик, телефон — строка над содержимым, ровно как у штата', async () => {
     stubMobileViewport();
     renderShell(STUDENT);
-    await screen.findByText('Экран заданий');
+    await screen.findByText('Экран доски');
 
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(

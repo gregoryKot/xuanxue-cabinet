@@ -89,12 +89,12 @@ describe('rootPathFor', () => {
     expect(rootPathFor(makeMe({ roles: ['accountant', 'teacher'] }))).toBe('/exams');
   });
 
-  it('ученик — «Задания» (решение владельца: экзамены — первый экран)', () => {
-    expect(rootPathFor(makeMe({ roles: [] }))).toBe('/tasks');
+  it('ученик — «Доска» (решение владельца 2026-10-06, ADR-0173)', () => {
+    expect(rootPathFor(makeMe({ roles: [] }))).toBe('/board');
   });
 
   it('сессия ещё не известна (null) — тот же безопасный минимум, что у ученика', () => {
-    expect(rootPathFor(null)).toBe('/tasks');
+    expect(rootPathFor(null)).toBe('/board');
   });
 });
 
@@ -142,7 +142,8 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/materials/tags')).toBe(false);
   });
 
-  it('ученик на своих «/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
+  it('ученик на своих «/board»/«/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/board')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/lessons')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/archive')).toBe(true);

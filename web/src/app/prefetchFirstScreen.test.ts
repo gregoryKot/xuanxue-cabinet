@@ -14,7 +14,8 @@ import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
-import { paymentsListPath } from '../api/paymentsApiPaths';
+import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
+import { MY_BOARD_PATH } from '../api/boardApiPaths';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
 
 vi.mock('../api/http', async () => {
@@ -27,6 +28,8 @@ const mockedApiFetch = vi.mocked(apiFetch);
 afterEach(() => {
   mockedApiFetch.mockReset();
 });
+
+const BOARD_PATHS = [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH, MY_BOARD_PATH];
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {
@@ -97,10 +100,24 @@ describe('firstScreenPaths', () => {
   });
 
   // Маршрут штата ученику не открыт (screenAccess.ts, canSeeRoute) — редирект
-  // уводит на rootPathFor(me), греем данные экрана-назначения («Задания»),
+  // уводит на rootPathFor(me), греем данные экрана-назначения («Доска»),
   // а не расписание учителя.
-  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Задания»', () => {
-    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual([MY_EXAMS_PATH]);
+  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Доска»', () => {
+    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
+  });
+
+  it('ученик на своей «/board» — экзамены, занятия, оплата и объявление', () => {
+    expect(firstScreenPaths('/board', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
+  });
+
+  // Карточка оплаты — только ученику (isPaymentContactVisible): штат и штат в
+  // режиме ученика за оплатой не пойдут, а сервер ответил бы отказом.
+  it('штат на «/board» и штат в режиме ученика — без оплаты', () => {
+    const withoutPayments = BOARD_PATHS.filter((path) => path !== MY_PAYMENTS_PATH);
+    expect(firstScreenPaths('/board', makeMe())).toEqual(withoutPayments);
+    expect(firstScreenPaths('/board', makeMe({ roles: [], studentMode: true }))).toEqual(
+      withoutPayments,
+    );
   });
 
   it('ученик на своём «/tasks» — список экзаменов', () => {

@@ -28,3 +28,7 @@ export function paymentsListPath(month: string | null): string {
 export function paymentScreenshotSrc(userId: string, month: string): string {
   return `/api/payments/${userId}/${month}/screenshot`;
 }
+
+/** Оплата ученика за месяц — карточка «Доски» и «Профиль» (ADR-0173). Строка
+ * нужна предзагрузке первого экрана: ключ prefetchCache.ts — тот же путь. */
+export const MY_PAYMENTS_PATH = apiRoutePath('GET /me/payments');

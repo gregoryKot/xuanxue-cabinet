@@ -32,6 +32,7 @@ describe('matchRoute', () => {
       ROUTE_MODULES.notificationSettings.load,
     );
     expect(loaderAt('/install')).toBe(ROUTE_MODULES.install.load);
+    expect(loaderAt('/board')).toBe(ROUTE_MODULES.board.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);

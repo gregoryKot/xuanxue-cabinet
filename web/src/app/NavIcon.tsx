@@ -63,6 +63,13 @@ const SHAPES: Record<NavIconName, ReactNode> = {
       <path d="M9.5 5.5h7.5M9.5 13.5h7.5" />
     </>
   ),
+  // Доска с колонкой записей — «Доска».
+  board: (
+    <>
+      <rect x="3" y="3.5" width="14" height="13" rx="2" />
+      <path d="M8.5 3.5v13M11 7h3.5M11 10h3.5M11 13h2" />
+    </>
+  ),
   // Купюра — «Оплаты».
   payments: (
     <>

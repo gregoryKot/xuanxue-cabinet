@@ -1,5 +1,5 @@
 // Режим ученика целиком, в настоящей оболочке (ADR-0163): секция в «Профиле»
-// только у штата, включение перестраивает меню и открывает «Задания», плашка
+// только у штата, включение перестраивает меню и открывает «Доску», плашка
 // стоит на каждом экране, выход возвращает штатное меню и «Экзамены», оплат в
 // режиме нет. Сеть — по пути; ответ PUT применяется как есть, второго
 // `GET /auth/me` нет (ADR-0087).
@@ -52,6 +52,7 @@ function renderCabinet(me: MeDto, afterPut: MeDto, initialPath = '/profile') {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/board" element={<p>Экран доски</p>} />
             <Route path="/tasks" element={<p>Экран заданий</p>} />
             <Route path="/lessons" element={<p>Экран занятий</p>} />
             <Route path="/exams" element={<p>Экран экзаменов</p>} />
@@ -95,7 +96,7 @@ describe('«Профиль» — кому виден переключатель'
 });
 
 describe('Включение режима в оболочке', () => {
-  it('меню становится ученическим, открываются «Задания», появляется плашка', async () => {
+  it('меню становится ученическим, открывается «Доска», появляется плашка', async () => {
     const user = userEvent.setup();
     renderCabinet(STAFF_ME, STAFF_IN_STUDENT_MODE_ME);
     await screen.findByRole('button', { name: 'Включить режим ученика' });
@@ -106,10 +107,8 @@ describe('Включение режима в оболочке', () => {
 
     await user.click(screen.getByRole('button', { name: 'Включить режим ученика' }));
 
-    expect(await screen.findByText('Экран заданий')).toBeInTheDocument();
-    expect(
-      within(navigation()).getByRole('link', { name: 'Задания' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
+    expect(within(navigation()).getByRole('link', { name: 'Доска' })).toBeInTheDocument();
     expect(
       within(navigation()).queryByRole('link', { name: 'Рассылки' }),
     ).not.toBeInTheDocument();
