@@ -29,7 +29,8 @@ import {
   attemptPath,
 } from '../api/gradingPaths';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
-import { paymentsListPath } from '../api/paymentsApiPaths';
+import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
+import { MY_BOARD_PATH } from '../api/boardApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
@@ -126,8 +127,18 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     ]);
   });
 
-  // Решение владельца: экзамены — отдельный экран и первый после входа
-  // (docs/PLAN.md §11).
+  // «Доска» (ADR-0173): четыре запроса первого экрана — все греются сразу,
+  // параллельно с чанком (PLAN §17.2).
+  it('/board — экзамены, занятия, оплата и объявление', () => {
+    expect(prefetchAt('/board')).toEqual([
+      MY_EXAMS_PATH,
+      MY_LESSONS_PATH,
+      MY_PAYMENTS_PATH,
+      MY_BOARD_PATH,
+    ]);
+  });
+
+  // Решение владельца: экзамены — отдельный экран (docs/PLAN.md §11).
   it('/tasks — список своих экзаменов', () => {
     expect(prefetchAt('/tasks')).toEqual([MY_EXAMS_PATH]);
   });
@@ -284,6 +295,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/profile',
       '/notifications',
       '/notifications/settings',
+      '/board',
       '/tasks',
       '/lessons',
       '/archive',

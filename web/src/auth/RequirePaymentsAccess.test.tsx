@@ -42,7 +42,7 @@ function renderGuarded(me: MeDto) {
         <Routes>
           <Route element={<RequireAuth />}>
             <Route path="/exams" element={<p>Экзамены штата</p>} />
-            <Route path="/tasks" element={<p>Задания ученика</p>} />
+            <Route path="/board" element={<p>Доска ученика</p>} />
             <Route element={<RequirePaymentsAccess />}>
               <Route path="/payments" element={<p>Оплаты</p>} />
             </Route>
@@ -73,9 +73,9 @@ describe('RequirePaymentsAccess (ADR-0171)', () => {
     expect(screen.queryByText('Оплаты')).not.toBeInTheDocument();
   });
 
-  it('ученик — уходит на «Задания»', async () => {
+  it('ученик — уходит на «Доску»', async () => {
     renderGuarded(makeMe([]));
 
-    expect(await screen.findByText('Задания ученика')).toBeInTheDocument();
+    expect(await screen.findByText('Доска ученика')).toBeInTheDocument();
   });
 });
