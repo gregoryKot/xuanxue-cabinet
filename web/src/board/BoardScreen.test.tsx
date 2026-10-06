@@ -120,6 +120,15 @@ function paymentCalls() {
   return mockedApiFetch.mock.calls.filter(([path]) => path.startsWith('/me/payments'));
 }
 
+/** «Обновить» в баннере секции повторяет ровно её запрос: один GET до нажатия,
+ * два после — остальные секции за собой не тянет. */
+async function expectRetryRefetches(path: string) {
+  const callsTo = () => mockedApiFetch.mock.calls.filter(([p]) => p === path).length;
+  expect(callsTo()).toBe(1);
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Обновить' }));
+  expect(callsTo()).toBe(2);
+}
+
 describe('BoardScreen — шапка', () => {
   it('«Доска» и объяснение, что на ней лежит', async () => {
     renderBoard();
@@ -179,7 +188,7 @@ describe('BoardScreen — объявление школы', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(await screen.findByText('Экзаменов к сдаче нет.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Обновить' })).toBeInTheDocument();
+    await expectRetryRefetches('/me/board');
   });
 });
 
@@ -258,6 +267,7 @@ describe('BoardScreen — «Сдавать сейчас»', () => {
       'Не удалось загрузить экзамены. Попробуйте ещё раз.',
     );
     expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    await expectRetryRefetches('/me/exams');
   });
 });
 
@@ -322,6 +332,7 @@ describe('BoardScreen — оплата за месяц', () => {
     );
     expect(await screen.findByText('Экзаменов к сдаче нет.')).toBeInTheDocument();
     expect(screen.getByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    await expectRetryRefetches('/me/payments');
   });
 
   // ADR-0163: штат в режиме ученика видит доску как ученик, но деньги в режим
@@ -365,5 +376,6 @@ describe('BoardScreen — ближайшее занятие', () => {
       'Не удалось загрузить ближайшие занятия. Попробуйте ещё раз.',
     );
     expect(await screen.findByText('Экзаменов к сдаче нет.')).toBeInTheDocument();
+    await expectRetryRefetches('/me/lessons');
   });
 });

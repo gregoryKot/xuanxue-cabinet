@@ -30,7 +30,13 @@ export function BoardPaymentCard() {
 
   return (
     <BoardSection heading={view?.heading ?? LOADING_HEADING}>
-      {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
+      {error && (
+        <LoadErrorBanner
+          message={error}
+          onRetry={() => void reload()}
+          retryLabel="Обновить"
+        />
+      )}
       {loading && !error && <SkeletonLines widths={['40%', '70%']} />}
 
       {view && (
