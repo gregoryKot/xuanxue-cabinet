@@ -16,12 +16,12 @@ import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
-import { editorSectionStyle } from '../components/editorLayout';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { Toggle } from '../components/Toggle';
 import { tzBadge } from '../schedule/timezoneLabel';
-import { PlaceholderChips } from './PlaceholderChips';
-import { PAYMENT_REMINDER_HINTS } from './placeholderHints';
+import { PlaceholderChips } from '../templates/PlaceholderChips';
+import { PAYMENT_REMINDER_HINTS } from '../templates/placeholderHints';
+import { schoolSectionStyle } from './schoolSectionStyle';
 import { usePaymentReminderSection } from './usePaymentReminderSection';
 
 const EXPLANATION =
@@ -32,12 +32,6 @@ const EXPLANATION =
 const HINT_OFF = 'Сейчас выключено — ученикам ничего не приходит.';
 const HINT_ON = 'Включено — тем, кто выбрал день, напоминание придёт в час ниже.';
 
-const sectionStyle: CSSProperties = {
-  ...editorSectionStyle,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
 const rowStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 16 };
 const timeInputStyle: CSSProperties = { ...inputStyle, width: 140 };
 
@@ -55,7 +49,7 @@ export function PaymentReminderSection({
   const schoolTz = settings?.tz ? tzBadge(settings.tz) : null;
 
   return (
-    <section style={sectionStyle}>
+    <section style={schoolSectionStyle}>
       <h2 className="xuanxue-eyebrow" style={{ margin: 0 }}>
         Оплаты
       </h2>

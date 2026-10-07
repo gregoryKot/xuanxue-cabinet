@@ -126,6 +126,15 @@ describe('matchRoute', () => {
     await expect(ROUTE_MODULES.examPreview.load()).resolves.toHaveProperty('default');
   });
 
+  // «Школа» (ADR-0176) — свой чанк, а не часть «Шаблонов»: с «Шаблонов»
+  // настройки школы переехали, и /school не должен проваливаться в соседний экран.
+  it('«/school» — свой чанк, греется в фоне, не «Шаблоны» (ADR-0176)', async () => {
+    expect(loaderAt('/school')).toBe(ROUTE_MODULES.school.load);
+    expect(ROUTE_MODULES.school.load).not.toBe(ROUTE_MODULES.templates.load);
+    expect(ROUTE_MODULES.school.warm).toBe(true);
+    await expect(ROUTE_MODULES.school.load()).resolves.toHaveProperty('default');
+  });
+
   it('«/archive» — свой чанк, загрузчик и правда приводит экран', async () => {
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
     await expect(ROUTE_MODULES.archive.load()).resolves.toHaveProperty('default');

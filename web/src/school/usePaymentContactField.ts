@@ -9,7 +9,7 @@ import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import {
   useSettingsTextField,
   type UseSettingsTextFieldResult,
-} from './useSettingsTextField';
+} from '../templates/useSettingsTextField';
 
 const SAVE_ERROR = 'Не удалось сохранить контакт для оплаты. Попробуйте ещё раз.';
 

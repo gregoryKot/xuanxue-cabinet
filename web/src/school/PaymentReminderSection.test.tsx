@@ -22,8 +22,8 @@ import {
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone, TEST_VIEWER_TZ } from '../test-support/viewerTimeZone';
 import { PaymentReminderSection } from './PaymentReminderSection';
-import TemplatesScreen from './TemplatesScreen';
-import { useSettings } from './useSettings';
+import SchoolScreen from './SchoolScreen';
+import { useSettings } from '../templates/useSettings';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -244,17 +244,32 @@ describe('PaymentReminderSection', () => {
   });
 });
 
-// Две кнопки сохранения живут на одном экране и не должны мешать друг другу:
-// напоминание сохраняется своей, шаблоны постов — терракотовой внизу.
-describe('PaymentReminderSection на экране «Шаблоны»', () => {
-  it('правка напоминания включает «Сохранить напоминание», но не «Сохранить» у постов', async () => {
+// Каждый раздел экрана «Школа» сохраняется своей кнопкой: правка напоминания
+// включает только «Сохранить напоминание», а не кнопки соседей.
+describe('PaymentReminderSection на экране «Школа»', () => {
+  it('правка напоминания включает «Сохранить напоминание», но не кнопки соседних разделов', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/settings': makeSettings(), '/lessons': [] });
-    render(<TemplatesScreen />);
+    mockApiByPath({
+      '/settings': makeSettings(),
+      '/notifications/lesson-prefs-stats': {
+        activeStudents: 0,
+        chosenClasses: 0,
+        ownReminder: 0,
+      },
+    });
+    render(<SchoolScreen />);
 
     await user.click(await screen.findByLabelText('Напоминать об оплате'));
 
     expect(screen.getByRole('button', { name: 'Сохранить напоминание' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
+    for (const name of [
+      'Сохранить контакт для оплаты',
+      'Сохранить контакт',
+      'Сохранить напоминание о занятии',
+      'Сохранить адрес',
+      'Сохранить ответственного',
+    ]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
   });
 });

@@ -101,7 +101,9 @@ describe('TemplatesScreen — шапка раздела', () => {
     expect(
       await screen.findByRole('heading', { name: 'Шаблоны', level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/посты в канал и напоминание об оплате/)).toBeInTheDocument();
+    // Акцент дошёл как <strong>, а не звёздочками (ADR-0124).
+    expect(screen.getByText('в канал школы').tagName).toBe('STRONG');
+    expect(screen.getByText(/Что бот пишет/)).toBeInTheDocument();
   });
 });
 
@@ -252,126 +254,9 @@ describe('TemplatesScreen — оба редактора', () => {
   });
 });
 
-// Секция «Школа» (В6 аудита, docs/adr/0009-domain-xuanxue-su.md дополнение) —
-// та же PATCH-механика, что у шаблонов (useSettings.ts), отдельная кнопка
-// «Сохранить адрес» не мешает «Сохранить» у шаблонов рядом (SchoolSiteField.tsx).
-describe('TemplatesScreen — адрес сайта школы', () => {
-  it('поле пустое, пока учитель не заполнил — «Сохранить адрес» неактивна', async () => {
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    expect(screen.getByLabelText('Адрес сайта школы')).toHaveValue('');
-    expect(screen.getByRole('button', { name: 'Сохранить адрес' })).toBeDisabled();
-  });
-
-  it('сохранённый адрес показан в поле', async () => {
-    mockByPath({
-      '/settings': makeSettings({ schoolSiteUrl: 'https://xuanxue.su' }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    // SchoolSiteField синхронизирует значение своим отдельным эффектом
-    // (useSchoolSiteField.ts) — на кадр позже, чем появляется заголовок
-    // выше; findByDisplayValue дожидается его, а не проверяет DOM сразу.
-    expect(await screen.findByDisplayValue('https://xuanxue.su')).toHaveAccessibleName(
-      'Адрес сайта школы',
-    );
-  });
-
-  it('«Сохранить адрес» — PATCH /settings с { schoolSiteUrl }', async () => {
-    const user = userEvent.setup();
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    await user.type(screen.getByLabelText('Адрес сайта школы'), 'https://xuanxue.su');
-
-    mockByPath({
-      '/settings': makeSettings({
-        schoolSiteUrl: 'https://xuanxue.su',
-        updatedAt: '2026-01-02T00:00:00Z',
-      }),
-      '/lessons': [],
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/settings',
-        expect.objectContaining({
-          method: 'PATCH',
-          body: { schoolSiteUrl: 'https://xuanxue.su' },
-        }),
-      ),
-    );
-  });
-
-  it('поле очищено — «Сохранить адрес» шлёт schoolSiteUrl: null (снятие)', async () => {
-    const user = userEvent.setup();
-    mockByPath({
-      '/settings': makeSettings({ schoolSiteUrl: 'https://xuanxue.su' }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    // Сохранённое значение стоит в поле с первого рендера секции
-    // (useSavedDraft.ts), ждать эффекта синхронизации не нужно.
-    const field = screen.getByDisplayValue('https://xuanxue.su');
-    await user.clear(field);
-
-    mockByPath({
-      '/settings': makeSettings({ updatedAt: '2026-01-02T00:00:00Z' }),
-      '/lessons': [],
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/settings',
-        expect.objectContaining({ method: 'PATCH', body: { schoolSiteUrl: null } }),
-      ),
-    );
-  });
-
-  it('сбой сохранения — ошибка сервера видна под полем', async () => {
-    const user = userEvent.setup();
-    const { ApiError } = await import('../api/http');
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    await user.type(screen.getByLabelText('Адрес сайта школы'), 'http://xuanxue.su');
-
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError(
-        'Адрес сайта школы: должна начинаться с https://.',
-        400,
-        'invalid_input',
-      ),
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
-
-    expect(
-      await screen.findByText('Адрес сайта школы: должна начинаться с https://.'),
-    ).toBeInTheDocument();
-  });
-});
-
-// Поле «За сколько минут показывать черновик» (ТЗ preview-minutes.md) — та же
-// PATCH-механика и та же секция «Школа», что у адреса сайта выше, отдельная
-// кнопка «Сохранить время предпросмотра» (SchoolSiteField.tsx).
+// Раздел «Черновик поста», поле «За сколько минут показывать черновик» (ТЗ
+// preview-minutes.md) — PATCH-механика useSettings.ts, отдельная кнопка
+// «Сохранить время предпросмотра» (PreviewMinutesField.tsx).
 describe('TemplatesScreen — время предпросмотра', () => {
   it('дефолт школы без документа настроек — поле показывает 5', async () => {
     mockByPath({ '/settings': makeSettings(), '/lessons': [] });
@@ -446,216 +331,28 @@ describe('TemplatesScreen — время предпросмотра', () => {
   });
 });
 
-// Поле «За сколько минут напомнить ученикам о занятии» (ADR-0135) — та же
-// механика, что у времени предпросмотра выше, обобщённая в useMinutesField.ts.
-describe('TemplatesScreen — напоминание ученикам о занятии', () => {
-  const LABEL = 'За сколько минут напомнить ученикам о занятии';
-
-  it('дефолт школы без документа настроек — поле показывает 60', async () => {
+// Настройки школы ушли на экран «Школа» (ADR-0176): здесь остались только
+// посты и черновик. Без этой проверки вернувшийся раздел молча удвоил бы
+// экран — поле, которое меняют в двух местах, и вопрос «где настоящее».
+describe('TemplatesScreen — настройки школы переехали на «Школу»', () => {
+  it('есть «Черновик поста» и шаблоны, нет «Контакта для оплаты», «Оплат» и «Сайта школы»', async () => {
     mockByPath({ '/settings': makeSettings(), '/lessons': [] });
 
     renderScreen();
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
-    // Секция «Школа» рисуется уже с сохранённым значением (useSavedDraft.ts),
-    // а не пустой с догрузкой эффектом.
-    expect(screen.getByLabelText(LABEL)).toHaveValue('60');
-  });
-
-  it('сохранённое значение показано в поле', async () => {
-    mockByPath({
-      '/settings': makeSettings({ lessonReminderMinutes: 30 }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    expect(await screen.findByDisplayValue('30')).toHaveAccessibleName(LABEL);
-  });
-
-  it('«Сохранить напоминание о занятии» — PATCH /settings с { lessonReminderMinutes }', async () => {
-    const user = userEvent.setup();
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    const field = await screen.findByLabelText(LABEL);
-    await user.clear(field);
-    await user.type(field, '45');
-
-    mockByPath({
-      '/settings': makeSettings({
-        lessonReminderMinutes: 45,
-        updatedAt: '2026-01-02T00:00:00Z',
-      }),
-      '/lessons': [],
-    });
-
-    await user.click(
-      screen.getByRole('button', { name: 'Сохранить напоминание о занятии' }),
-    );
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/settings',
-        expect.objectContaining({ method: 'PATCH', body: { lessonReminderMinutes: 45 } }),
-      ),
-    );
-  });
-
-  it('вне диапазона (1441) — кнопка неактивна, PATCH не уходит', async () => {
-    const user = userEvent.setup();
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    const field = await screen.findByLabelText(LABEL);
-    await user.clear(field);
-    await user.type(field, '1441');
-
-    expect(
-      screen.getByRole('button', { name: 'Сохранить напоминание о занятии' }),
-    ).toBeDisabled();
-  });
-});
-
-// Поле «Кому писать, если человек ещё не в школе» (ADR-0115) — та же
-// PATCH-механика, что у адреса сайта и времени предпросмотра выше
-// (NewcomerContactField.tsx), отдельная кнопка «Сохранить контакт». В
-// отличие от адреса сайта поле нельзя очистить: пустое значение не проходит
-// на сервере (UpdateSettingsInput.newcomerContact, shared/src/settings.ts).
-describe('TemplatesScreen — контакт для новичков', () => {
-  const LABEL = 'Кому писать, если человек ещё не в школе';
-
-  it('дефолт школы без документа настроек — поле показывает контакт по умолчанию', async () => {
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    // Та же гонка, что у «напоминания» выше: под нагрузкой CI ответ /settings
-    // приезжал позже, чем находилось поле (web-coverage, PR #442, 2026-09-27).
-    await waitFor(() =>
-      expect(screen.getByLabelText(LABEL)).toHaveValue(DEFAULT_NEWCOMER_CONTACT),
-    );
-  });
-
-  it('сохранённый контакт показан в поле', async () => {
-    mockByPath({
-      '/settings': makeSettings({ newcomerContact: 'Ире @irina_school' }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    expect(await screen.findByDisplayValue('Ире @irina_school')).toHaveAccessibleName(
-      LABEL,
-    );
-  });
-
-  it('«Сохранить контакт» — PATCH /settings с { newcomerContact }', async () => {
-    const user = userEvent.setup();
-    mockByPath({
-      '/settings': makeSettings({ newcomerContact: 'Старый контакт' }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    // До ответа /settings поле уже показывает дефолт школы, а приход настроек
-    // перезаписывает его (useSettingsTextField, эффект по updatedAt). Под
-    // нагрузкой ответ приезжал между очисткой и набором, и в поле оказывалось
-    // «Диме @Dmitry_DeitchИре @irina_school» (снова 2026-09-27, прошлое
-    // «ждём значение после набора» причину не убирало). Поэтому сначала ждём
-    // значение, которого без ответа сервера быть не может, и только потом
-    // печатаем.
-    const field = await screen.findByDisplayValue('Старый контакт');
-    await user.clear(field);
-    await user.type(field, 'Ире @irina_school');
-    expect(field).toHaveValue('Ире @irina_school');
-
-    mockByPath({
-      '/settings': makeSettings({
-        newcomerContact: 'Ире @irina_school',
-        paymentContact: DEFAULT_PAYMENT_CONTACT,
-        updatedAt: '2026-01-02T00:00:00Z',
-      }),
-      '/lessons': [],
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Сохранить контакт' }));
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/settings',
-        expect.objectContaining({
-          method: 'PATCH',
-          body: { newcomerContact: 'Ире @irina_school' },
-        }),
-      ),
-    );
-  });
-
-  it('поле очищено — «Сохранить контакт» неактивна, PATCH не уходит', async () => {
-    const user = userEvent.setup();
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    const field = await screen.findByLabelText(LABEL);
-    await user.clear(field);
-
-    expect(screen.getByRole('button', { name: 'Сохранить контакт' })).toBeDisabled();
-
-    expect(mockedApiFetch).not.toHaveBeenCalledWith(
-      '/settings',
-      expect.objectContaining({ method: 'PATCH' }),
-    );
-  });
-
-  it('сбой сохранения — ошибка сервера видна под полем', async () => {
-    const user = userEvent.setup();
-    const { ApiError } = await import('../api/http');
-    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    const field = await screen.findByLabelText(LABEL);
-    await user.clear(field);
-    await user.type(field, 'Ире @irina_school');
-
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Контакт для новичков: заполните поле.', 400, 'invalid_input'),
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Сохранить контакт' }));
-
-    expect(
-      await screen.findByText('Контакт для новичков: заполните поле.'),
-    ).toBeInTheDocument();
-  });
-});
-
-// Поле «Кому и куда присылать скриншот об оплате» (ADR-0159) — сам компонент и его
-// сохранение проверены в PaymentContactField.test.tsx; здесь только то, что
-// экран «Шаблоны» его рисует и кладёт в него контакт из /settings.
-describe('TemplatesScreen — контакт для оплаты', () => {
-  it('поле показывает сохранённый контакт бухгалтера', async () => {
-    mockByPath({
-      '/settings': makeSettings({ paymentContact: 'Кате @katya_books' }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    expect(await screen.findByDisplayValue('Кате @katya_books')).toHaveAccessibleName(
-      'Кому и куда присылать скриншот об оплате',
-    );
+    expect(screen.getByRole('heading', { name: 'Черновик поста' })).toBeInTheDocument();
+    for (const name of [
+      'Контакт для оплаты',
+      'Оплаты',
+      'Сайт школы',
+      'Контакт для новичков',
+      'Напоминание о занятии',
+      'Кто отвечает за данные',
+    ]) {
+      expect(screen.queryByRole('heading', { name })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByLabelText('Адрес сайта школы')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Напоминать об оплате')).not.toBeInTheDocument();
   });
 });

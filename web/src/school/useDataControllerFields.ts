@@ -8,7 +8,7 @@ import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import {
   useSettingsTextField,
   type UseSettingsTextFieldResult,
-} from './useSettingsTextField';
+} from '../templates/useSettingsTextField';
 
 const NAME_SAVE_ERROR =
   'Не удалось сохранить, кто отвечает за данные. Попробуйте ещё раз.';

@@ -1,5 +1,5 @@
 // Доска штата (ADR-0174): рубрики «Ждёт вас» и «Настроить», очередь проверки
-// и три входа в разделы. Рендерим через BoardScreen — он ветвится по роли, и
+// и четыре входа в разделы. Рендерим через BoardScreen — он ветвится по роли, и
 // ветку ученика тоже проверяем отсюда (штат в режиме ученика). Сеть —
 // mockApiByPath (ADR-0116).
 import { screen } from '@testing-library/react';
@@ -88,6 +88,7 @@ function renderStaffBoard({
       <Route path="/planning" element={<p>Экран занятий штата</p>} />
       <Route path="/broadcasts" element={<p>Экран рассылок</p>} />
       <Route path="/materials" element={<p>Экран материалов</p>} />
+      <Route path="/school" element={<p>Экран школы</p>} />
     </>,
   );
 }
@@ -105,7 +106,9 @@ describe('StaffBoard — шапка и рубрики', () => {
     ).toBeInTheDocument();
     const explanation = screen.getByText(/Здесь объявление ученикам/);
     expect(explanation).toHaveTextContent('работы на проверке');
-    expect(explanation).toHaveTextContent('входы в расписание, рассылки и материалы');
+    expect(explanation).toHaveTextContent(
+      'входы в расписание, рассылки, материалы и настройки школы',
+    );
   });
 
   it('рубрики идут сверху вниз: «Ждёт вас», «Настроить», рубрик ученика нет', async () => {
@@ -149,7 +152,7 @@ describe('StaffBoard — карточка «Проверка»', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(QUEUE_ERROR_TEXT);
     expect(screen.getByRole('link', { name: /Проверка/ })).toBeInTheDocument();
-    for (const name of ['Расписание', 'Рассылки', 'Материалы']) {
+    for (const name of ['Расписание', 'Рассылки', 'Материалы', 'Школа']) {
       expect(screen.getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     }
 
@@ -160,10 +163,22 @@ describe('StaffBoard — карточка «Проверка»', () => {
 });
 
 describe('StaffBoard — входы в «Настроить»', () => {
+  it('четыре карточки-входа: расписание, рассылки, материалы, школа (ADR-0176)', async () => {
+    renderStaffBoard();
+    await screen.findByRole('heading', { name: 'Настроить' });
+
+    const hrefs = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+      .filter((href) => href !== '/grading');
+    expect(hrefs).toEqual(['/planning', '/broadcasts', '/materials', '/school']);
+  });
+
   it.each([
     ['Расписание', 'Экран занятий штата'],
     ['Рассылки', 'Экран рассылок'],
     ['Материалы', 'Экран материалов'],
+    ['Школа', 'Экран школы'],
   ])('«%s» ведёт на свой экран', async (name, screenText) => {
     const user = userEvent.setup();
     renderStaffBoard();

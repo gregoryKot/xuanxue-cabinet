@@ -84,6 +84,11 @@ describe('activeSectionPath — список штата', () => {
     }
   });
 
+  // ADR-0176: «Школа» — вход из «Настроить» на доске.
+  it('/school — подэкран «Доски»', () => {
+    expect(activeSectionPath('/school', STAFF_NAV_ITEMS)).toBe('/board');
+  });
+
   // ADR-0055/0075: материалы и теги — входы из «Настроить» на доске.
   it('/materials и /materials/tags — подэкраны «Доски»', () => {
     expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/board');

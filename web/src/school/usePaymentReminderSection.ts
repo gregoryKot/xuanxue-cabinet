@@ -17,9 +17,9 @@ import {
   type UpdateSettingsInput,
 } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
-import { useInsertAtCursor } from './useInsertAtCursor';
-import { useSavedDraft } from './useSavedDraft';
-import { validateTemplateText } from './templateValidation';
+import { useInsertAtCursor } from '../templates/useInsertAtCursor';
+import { useSavedDraft } from '../templates/useSavedDraft';
+import { validateTemplateText } from '../templates/templateValidation';
 
 const SAVE_ERROR = 'Не удалось сохранить напоминание. Попробуйте ещё раз.';
 const TIME_ERROR = 'Время — часы и минуты, например 10:00.';
