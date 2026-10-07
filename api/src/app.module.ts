@@ -28,6 +28,7 @@ import { AnswerVideosModule } from './answer-videos/answer-videos.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
 import { GradingPresetsModule } from './grading-presets/grading-presets.module';
+import { SchoolEventsModule } from './school-events/school-events.module';
 import { MaterialsModule } from './materials/materials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -108,6 +109,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     AppErrorsModule,
     ClientErrorsModule,
     GradingPresetsModule,
+    SchoolEventsModule,
     MaterialsModule,
     NotificationsModule,
     PaymentsModule,

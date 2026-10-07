@@ -118,6 +118,11 @@ import {
   GRADING_COMMENT_PRESET_FIELD_POLICY,
 } from '../grading-presets/grading-comment-preset.schema';
 import {
+  SchoolEventRecord,
+  SchoolEventSchema,
+  SCHOOL_EVENT_FIELD_POLICY,
+} from '../school-events/school-event.schema';
+import {
   MaterialRecord,
   MaterialSchema,
   MATERIAL_FIELD_POLICY,
@@ -250,6 +255,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: GradingCommentPresetRecord.name,
     schema: GradingCommentPresetSchema,
     fieldPolicy: GRADING_COMMENT_PRESET_FIELD_POLICY,
+  },
+  {
+    name: SchoolEventRecord.name,
+    schema: SchoolEventSchema,
+    fieldPolicy: SCHOOL_EVENT_FIELD_POLICY,
   },
   {
     name: MaterialRecord.name,

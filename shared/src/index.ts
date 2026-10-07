@@ -619,3 +619,15 @@ export type {
   UserDataExportReferenceDto,
   UserDataExportSectionDto,
 } from './user-export';
+export type {
+  SchoolEventDto,
+  CreateSchoolEventInput,
+  UpdateSchoolEventInput,
+  ListSchoolEventsQuery,
+} from './school-events';
+export {
+  SCHOOL_EVENT_LIMITS,
+  MY_SCHOOL_EVENTS_LIMIT,
+  SCHOOL_EVENT_NOT_FOUND_MESSAGE,
+  SCHOOL_EVENT_ENDS_BEFORE_START_MESSAGE,
+} from './school-events';

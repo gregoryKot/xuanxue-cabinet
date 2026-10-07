@@ -275,6 +275,11 @@ export const USER_EXPORT_REFERENCES = [
   },
   { model: 'MaterialRecord', path: 'createdBy', title: 'Материалы, которые добавил' },
   {
+    model: 'SchoolEventRecord',
+    path: 'createdBy',
+    title: 'События школы, которые завёл',
+  },
+  {
     model: 'PaymentRecord',
     path: 'confirmedBy',
     title: 'Оплаты других людей, которые подтвердил',
