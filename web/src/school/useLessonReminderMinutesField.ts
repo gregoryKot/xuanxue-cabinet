@@ -3,7 +3,10 @@
 // (useMinutesField.ts), тем же приёмом, что usePreviewMinutesField.ts рядом.
 import { DEFAULT_LESSON_REMINDER_MINUTES, SETTINGS_LIMITS } from '@xuanxue/shared';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
-import { useMinutesField, type UseMinutesFieldResult } from './useMinutesField';
+import {
+  useMinutesField,
+  type UseMinutesFieldResult,
+} from '../templates/useMinutesField';
 
 const SAVE_ERROR = 'Не удалось сохранить напоминание о занятии. Попробуйте ещё раз.';
 

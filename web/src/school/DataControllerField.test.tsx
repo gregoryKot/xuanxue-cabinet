@@ -19,7 +19,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { DataControllerField } from './DataControllerField';
-import { useSettings } from './useSettings';
+import { useSettings } from '../templates/useSettings';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');

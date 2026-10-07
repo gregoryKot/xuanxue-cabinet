@@ -9,7 +9,7 @@
 import { SectionLink } from '../components/SectionLink';
 
 const CHANNELS_LINK_HINT = 'Куда уходят посты.';
-const TEMPLATES_LINK_HINT = 'Тексты постов, напоминание об оплате и адрес сайта школы.';
+const TEMPLATES_LINK_HINT = 'Тексты постов и за сколько минут прислать черновик.';
 
 export function BroadcastsSectionLinks() {
   return (

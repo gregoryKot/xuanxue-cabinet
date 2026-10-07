@@ -18,7 +18,7 @@ import {
 } from '../test-support/apiFetchMock';
 import { LessonPrefsStats } from './LessonPrefsStats';
 import { LESSON_PREFS_NOBODY_TEXT } from './lessonPrefsStatsText';
-import { SchoolSiteField } from './SchoolSiteField';
+import { LessonReminderField } from './LessonReminderField';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -86,13 +86,13 @@ describe('LessonPrefsStats', () => {
   });
 });
 
-describe('SchoolSiteField — число под школьным напоминанием', () => {
-  it('строка стоит в разделе «Школа», после поля «За сколько минут напомнить»', async () => {
+describe('LessonReminderField — число под школьным напоминанием', () => {
+  it('строка стоит в разделе «Напоминание о занятии», после поля «За сколько минут напомнить»', async () => {
     mockApiByPath({
       [STATS_PATH]: { activeStudents: 12, chosenClasses: 2, ownReminder: 0 },
     });
 
-    render(<SchoolSiteField settings={SETTINGS} update={vi.fn()} />);
+    render(<LessonReminderField settings={SETTINGS} update={vi.fn()} />);
 
     const stats = await screen.findByText('2 из 12');
     const field = screen.getByLabelText('За сколько минут напомнить ученикам о занятии');

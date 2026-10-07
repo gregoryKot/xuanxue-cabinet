@@ -41,6 +41,8 @@ const BOARD_CHILD_PATHS = [
   '/templates',
   '/materials',
   '/materials/tags',
+  // Экран «Школа» (ADR-0176) — тоже вход с доски.
+  '/school',
 ];
 
 /** Имя значка нижней панели телефона (NavIcon.tsx, ADR-0097). Union строк,

@@ -6,7 +6,6 @@
 // (useDataControllerFields.ts), компонент только рендерит. В отличие от
 // контакта для новичков поля можно очистить — страница тогда отправляет к
 // учителю, а не выдумывает имя.
-import type { CSSProperties } from 'react';
 import {
   SETTINGS_LIMITS,
   type SettingsDto,
@@ -14,22 +13,14 @@ import {
 } from '@xuanxue/shared';
 import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
-import { editorSectionStyle } from '../components/editorLayout';
-import { SettingsTextField } from './SettingsTextField';
+import { SettingsTextField } from '../templates/SettingsTextField';
 import { useDataControllerFields } from './useDataControllerFields';
+import { schoolSectionStyle } from './schoolSectionStyle';
 
 const EXPLANATION =
   'Закон требует назвать на странице политики конфиденциальности, ' +
   '**кто отвечает за данные учеников** и как с ним связаться.';
 const NAME_HINT = 'Пока поле пустое, страница отправляет учеников к учителю.';
-
-// Раздел отбит волосяной линией сверху, как «Контакт для новичков» рядом.
-const sectionStyle: CSSProperties = {
-  ...editorSectionStyle,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
 
 interface DataControllerFieldProps {
   settings: SettingsDto | null;
@@ -40,7 +31,7 @@ export function DataControllerField({ settings, update }: DataControllerFieldPro
   const { name, contact } = useDataControllerFields(settings, update);
 
   return (
-    <section style={sectionStyle}>
+    <section style={schoolSectionStyle}>
       <h2 className="xuanxue-eyebrow" style={{ margin: 0 }}>
         Кто отвечает за данные
       </h2>

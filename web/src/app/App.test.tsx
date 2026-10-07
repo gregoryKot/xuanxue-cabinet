@@ -249,6 +249,23 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /school — маршрут «Школа» открывает SchoolScreen (ADR-0176)', async () => {
+    mockRoute(TEACHER, {
+      '/settings': SETTINGS,
+      '/notifications/lesson-prefs-stats': {
+        activeStudents: 0,
+        chosenClasses: 0,
+        ownReminder: 0,
+      },
+    });
+
+    renderAt('/school');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Школа', level: 1 }),
+    ).toBeInTheDocument();
+  });
+
   // «Занятия» — ежедневный экран и один из трёх пунктов навигации
   // (navItems.ts), смоук на него обязателен.
   it('учитель на /planning — маршрут «Занятия» открывает PlanningScreen', async () => {

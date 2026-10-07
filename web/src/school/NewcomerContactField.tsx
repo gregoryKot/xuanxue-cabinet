@@ -6,7 +6,6 @@
 // остаётся неактивной на пустом значении, как «Сохранить имя» на пустом
 // обязательном имени (ProfileNameSection.tsx): свой вид ошибки на пустое поле
 // здесь не заводится.
-import type { CSSProperties } from 'react';
 import {
   DEFAULT_NEWCOMER_CONTACT,
   SETTINGS_LIMITS,
@@ -14,20 +13,12 @@ import {
   type UpdateSettingsInput,
 } from '@xuanxue/shared';
 import { screenExplanationStyle } from '../components/screenLayout';
-import { editorSectionStyle } from '../components/editorLayout';
-import { SettingsTextField } from './SettingsTextField';
+import { SettingsTextField } from '../templates/SettingsTextField';
 import { useNewcomerContactField } from './useNewcomerContactField';
+import { schoolSectionStyle } from './schoolSectionStyle';
 
 const EXPLANATION =
   'Бот даёт этот контакт тому, кто написал ему, а в школе ещё не занимается.';
-
-// Раздел отбит волосяной линией сверху, как «Школа» рядом (SchoolSiteField.tsx).
-const sectionStyle: CSSProperties = {
-  ...editorSectionStyle,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
 
 interface NewcomerContactFieldProps {
   settings: SettingsDto | null;
@@ -38,7 +29,7 @@ export function NewcomerContactField({ settings, update }: NewcomerContactFieldP
   const contact = useNewcomerContactField(settings, update);
 
   return (
-    <section style={sectionStyle}>
+    <section style={schoolSectionStyle}>
       <h2 className="xuanxue-eyebrow" style={{ margin: 0 }}>
         Контакт для новичков
       </h2>

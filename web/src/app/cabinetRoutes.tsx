@@ -1,11 +1,8 @@
 // Маршруты внутри кабинета — всё, что живёт под AppShell за RequireAuth.
-// Вынесены из App.tsx отдельным списком: App.tsx остался про вход, охрану и
-// корень дерева, а таблица экранов растёт здесь и не упирается в предел
-// размера файла (CLAUDE.md «Храповики», check-file-size-ratchet).
+// Вынесены из App.tsx: тот остался про вход, охрану и корень дерева.
 //
-// Пути и загрузчики чанков — из routeModules.ts (React.lazy: тяжёлые экраны
-// не тянутся в стартовый бандл): оттуда же их берёт предзагрузка (main.tsx,
-// usePrefetchRoutes.ts), и два списка не разъезжаются.
+// Пути и загрузчики чанков — из routeModules.ts (React.lazy): оттуда же их
+// берёт предзагрузка (main.tsx, usePrefetchRoutes.ts) — списки не разъезжаются.
 //
 // Фрагмент, а не компонент: `<Routes>` разбирает детей сам и умеет заглянуть
 // внутрь `<React.Fragment>`, а компонент между `<Route>` и его детьми сломал
@@ -31,6 +28,7 @@ const MaterialEditorScreen = lazyRoute(ROUTE_MODULES.materialEditor.load);
 const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazyRoute(ROUTE_MODULES.templates.load);
+const SchoolScreen = lazyRoute(ROUTE_MODULES.school.load);
 const PeopleScreen = lazyRoute(ROUTE_MODULES.people.load);
 const PaymentsScreen = lazyRoute(ROUTE_MODULES.payments.load);
 const ExamItemsScreen = lazyRoute(ROUTE_MODULES.examItems.load);
@@ -88,6 +86,7 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
     <Route path={ROUTE_MODULES.templates.path} element={<TemplatesScreen />} />
+    <Route path={ROUTE_MODULES.school.path} element={<SchoolScreen />} />
     <Route path={ROUTE_MODULES.examItems.path} element={<ExamItemsScreen />} />
     <Route path={ROUTE_MODULES.examItemNew.path} element={<ExamItemEditorScreen />} />
     <Route path={ROUTE_MODULES.examItemEditor.path} element={<ExamItemEditorScreen />} />

@@ -24,7 +24,7 @@ const STUDENT_EXPLANATION =
 // здесь же и пишет (ADR-0172, дополнение).
 const STAFF_EXPLANATION =
   'Здесь объявление ученикам и **работы на проверке**. ' +
-  'Ниже — входы в расписание, рассылки и материалы.';
+  'Ниже — входы в расписание, рассылки, материалы и настройки школы.';
 
 export default function BoardScreen() {
   const { me } = useAuth();

@@ -271,6 +271,18 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [SETTINGS_PATH, nextLessonsPath()],
   },
+  // «Школа» (ADR-0176) — настройки школы, вход карточкой с доски штата. Те же
+  // настройки, что у «Шаблонов», плюс число «сколько учеников выбрали своё
+  // время напоминания» (LessonPrefsStats.tsx).
+  school: {
+    path: '/school',
+    load: () => import('../school/SchoolScreen'),
+    warm: true,
+    prefetch: () => [
+      SETTINGS_PATH,
+      apiRoutePath('GET /notifications/lesson-prefs-stats'),
+    ],
+  },
   examItems: {
     path: '/exam-items',
     load: () => import('../exam-items/ExamItemsScreen'),

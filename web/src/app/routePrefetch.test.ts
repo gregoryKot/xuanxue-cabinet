@@ -85,6 +85,15 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/templates')).toEqual([SETTINGS_PATH, nextLessonsPath()]);
   });
 
+  // Тот же GET /settings, что у «Шаблонов», плюс число «сколько учеников
+  // выбрали своё время напоминания» под полем (ADR-0176).
+  it('/school — настройки школы и число выбравших своё напоминание', () => {
+    expect(prefetchAt('/school')).toEqual([
+      SETTINGS_PATH,
+      '/notifications/lesson-prefs-stats',
+    ]);
+  });
+
   it('/exam-items — вопросы без фильтра', () => {
     expect(prefetchAt('/exam-items')).toEqual([examItemsListPath('')]);
   });
@@ -288,6 +297,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/materials/tags',
       '/materials/652f00000000000000000008',
       '/templates',
+      '/school',
       '/exam-items',
       '/exam-items/652f00000000000000000004',
       '/exams',
