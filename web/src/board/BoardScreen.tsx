@@ -1,10 +1,11 @@
 // Экран «Доска» — первый экран при любом входе: ученика (ADR-0173) и штата
-// (ADR-0174). Один маршрут и одна шапка; что лежит ниже объявления школы,
-// решает роль (isTeacher, screenAccess.ts): ученику — экзамены к сдаче,
-// оплата, ближайшее занятие (StudentBoard.tsx), штату — очередь проверки и
-// входы в расписание, рассылки, материалы (StaffBoard.tsx). Штат в режиме
-// ученика (ADR-0163) приходит с пустыми ролями и видит доску ученика.
-// Объявление — общее для обеих (BoardNotice.tsx), сразу под шапкой.
+// (ADR-0174). Один маршрут и одна шапка; что ниже, решает роль (isTeacher,
+// screenAccess.ts): ученику — объявление школы (BoardNotice.tsx, GET
+// /me/board), экзамены к сдаче, оплата, ближайшее занятие (StudentBoard.tsx);
+// штату — то же объявление с правкой на месте, очередь проверки и входы в
+// расписание, рассылки, материалы (StaffBoard.tsx, читает GET /settings).
+// Штат в режиме ученика (ADR-0163) приходит с пустыми ролями и видит доску
+// ученика.
 import { useAuth } from '../auth/AuthProvider';
 import { isTeacher } from '../app/screenAccess';
 import { screenSectionStyle } from '../components/screenLayout';
@@ -19,9 +20,10 @@ const TITLE = 'Доска';
 const STUDENT_EXPLANATION =
   'Здесь то, что ждёт вас сейчас: **экзамены к сдаче**, оплата за месяц и ' +
   'объявления школы. Ближайшее занятие — внизу.';
-// Учителю — что ждёт его и куда идти настраивать (ADR-0174).
+// Учителю — что ждёт его и куда идти настраивать (ADR-0174); объявление он
+// здесь же и пишет (ADR-0172, дополнение).
 const STAFF_EXPLANATION =
-  'Здесь то, что ждёт вас сейчас: объявление школы и **работы на проверке**. ' +
+  'Здесь объявление ученикам и **работы на проверке**. ' +
   'Ниже — входы в расписание, рассылки и материалы.';
 
 export default function BoardScreen() {
@@ -34,8 +36,14 @@ export default function BoardScreen() {
         title={TITLE}
         explanation={staff ? STAFF_EXPLANATION : STUDENT_EXPLANATION}
       />
-      <BoardNotice />
-      {staff ? <StaffBoard /> : <StudentBoard me={me} />}
+      {staff ? (
+        <StaffBoard />
+      ) : (
+        <>
+          <BoardNotice />
+          <StudentBoard me={me} />
+        </>
+      )}
     </section>
   );
 }

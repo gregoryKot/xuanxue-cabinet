@@ -5,13 +5,13 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
-import type {
-  ExamAttemptQueueItemDto,
-  MeDto,
-  MyBoardDto,
-  MyExamDto,
-  MyLessonDto,
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  type ExamAttemptQueueItemDto,
+  type MeDto,
+  type MyExamDto,
+  type MyLessonDto,
+  type SettingsDto,
 } from '@xuanxue/shared';
 import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
@@ -22,7 +22,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { renderBoardWithRoutes } from './boardTestRender';
+import { renderBoardWithRoutes, SETTINGS_EMPTY } from './boardTestRender';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -32,8 +32,19 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 stubViewerTimeZone();
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(TODAY);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 const TEACHER = makeMe({ id: 't1', name: 'Дима', roles: ['teacher'] });
-const NO_NOTICE: MyBoardDto = { notice: null };
+// «Сегодня» доски штата — new Date() (StaffBoard.tsx): фиксируем, чтобы
+// «до 20 октября» не истекло от того, что тест запустили позже.
+const TODAY = new Date('2026-10-10T12:00:00Z');
 const QUEUE_ERROR_TEXT = 'Не удалось загрузить очередь проверки. Попробуйте ещё раз.';
 
 function makeAttempt(id: string): ExamAttemptQueueItemDto {
@@ -52,20 +63,21 @@ function makeAttempt(id: string): ExamAttemptQueueItemDto {
 
 interface StaffBoardData {
   me?: MeDto;
-  board?: MyBoardDto | Error;
+  settings?: SettingsDto | Error;
   queue?: ExamAttemptQueueItemDto[] | Error;
 }
 
 function renderStaffBoard({
   me = TEACHER,
-  board = NO_NOTICE,
+  settings = SETTINGS_EMPTY,
   queue = [],
 }: StaffBoardData = {}) {
   // Ответы ученических запросов нужны только штату в режиме ученика.
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': {},
-    '/me/board': board,
+    '/settings': settings,
+    '/me/board': { notice: null },
     [GRADING_QUEUE_PATH]: queue,
     '/me/exams': [] satisfies MyExamDto[],
     '/me/lessons': [] satisfies MyLessonDto[],
@@ -91,7 +103,7 @@ describe('StaffBoard — шапка и рубрики', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Доска' }),
     ).toBeInTheDocument();
-    const explanation = screen.getByText(/Здесь то, что ждёт вас сейчас/);
+    const explanation = screen.getByText(/Здесь объявление ученикам/);
     expect(explanation).toHaveTextContent('работы на проверке');
     expect(explanation).toHaveTextContent('входы в расписание, рассылки и материалы');
   });
@@ -164,19 +176,23 @@ describe('StaffBoard — входы в «Настроить»', () => {
 });
 
 describe('StaffBoard — запросы и объявление', () => {
-  it('запросов ученика нет, объявление школы запрашивается', async () => {
+  it('запросов ученика нет, настройки школы запрашиваются один раз', async () => {
     renderStaffBoard();
     await screen.findByText('Пока нечего проверять.');
+    await screen.findByRole('button', { name: /Добавить объявление/ });
 
-    for (const prefix of ['/me/exams', '/me/lessons', '/me/payments']) {
+    for (const prefix of ['/me/exams', '/me/lessons', '/me/payments', '/me/board']) {
       expect(callsTo(prefix)).toHaveLength(0);
     }
-    expect(callsTo('/me/board')).toHaveLength(1);
+    expect(callsTo('/settings')).toHaveLength(1);
   });
 
   it('объявление школы стоит и на доске штата', async () => {
     renderStaffBoard({
-      board: { notice: { text: 'Ретрит в ноябре', until: '2026-10-20' } },
+      settings: {
+        ...SETTINGS_EMPTY,
+        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
+      },
     });
 
     const notice = await screen.findByRole('complementary', {

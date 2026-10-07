@@ -7,7 +7,13 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { MeDto } from '@xuanxue/shared';
+import {
+  DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
+  type MeDto,
+  type SettingsDto,
+} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import App from './App';
@@ -81,9 +87,22 @@ function mockRoute(me: MeDto | null, screenData: Record<string, unknown> = {}) {
   });
 }
 
-/** Данные доски штата (ADR-0174): объявление школы и очередь проверки.
- * `/attempts/queue` ловит и путь с query — mockRoute матчит по префиксу. */
-const STAFF_BOARD_DATA = { '/me/board': { notice: null }, '/attempts/queue': [] };
+/** Минимальные настройки школы: доска штата читает `GET /settings` целиком,
+ * объявление ученикам правится прямо с доски (ADR-0172, дополнение 2026-10-07). */
+const SETTINGS: SettingsDto = {
+  templates: { lesson_link: '', recording: '' },
+  tz: 'Asia/Jerusalem',
+  previewMinutes: 5,
+  lessonReminderMinutes: 60,
+  newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
+  paymentReminder: DEFAULT_PAYMENT_REMINDER,
+  updatedAt: '2026-10-06T10:00:00.000Z',
+};
+
+/** Данные доски штата (ADR-0174): настройки школы с объявлением и очередь
+ * проверки. `/attempts/queue` ловит и путь с query — mockRoute матчит по префиксу. */
+const STAFF_BOARD_DATA = { '/settings': SETTINGS, '/attempts/queue': [] };
 
 /** Данные четырёх запросов «Доски» (ADR-0173) — первого экрана ученика. */
 const STUDENT_BOARD_DATA = {
