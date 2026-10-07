@@ -31,6 +31,7 @@ import {
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
+import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
@@ -138,7 +139,7 @@ describe('RouteModule.prefetch — маршруты без параметра', 
   // firstScreenPaths (prefetchFirstScreen.test.ts), а «/» с ADR-0174 ведёт
   // сюда же — гейт от повторного расхождения EMPTY_PATH_FALLBACK
   // (routeMatch.ts) и rootPathFor (screenAccess.ts).
-  it('/board (и /) — экзамены, занятия, оплата, объявление, настройки и очередь проверки', () => {
+  it('/board (и /) — запросы обеих досок, включая события ученика и штата', () => {
     const expected = [
       MY_EXAMS_PATH,
       MY_LESSONS_PATH,
@@ -146,6 +147,8 @@ describe('RouteModule.prefetch — маршруты без параметра', 
       MY_BOARD_PATH,
       SETTINGS_PATH,
       GRADING_QUEUE_PATH,
+      MY_EVENTS_PATH,
+      SCHOOL_EVENTS_PATH,
     ];
     expect(prefetchAt('/board')).toEqual(expected);
     expect(prefetchAt('/')).toEqual(expected);
@@ -237,6 +240,12 @@ describe('RouteModule.prefetch — редактор существующей з�
     ]);
   });
 
+  // ADR-0177: одиночного GET у события нет, правка находит его в списке штата.
+  it('/events/new — читать нечего, /events/:id — список событий штата', () => {
+    expect(prefetchAt('/events/new')).toEqual([]);
+    expect(prefetchAt('/events/652f00000000000000000009')).toEqual([SCHOOL_EVENTS_PATH]);
+  });
+
   it('/exams/:id — карточка экзамена и вопросы, вместе с удалёнными из банка (ADR-0140)', () => {
     expect(prefetchAt('/exams/652f00000000000000000006')).toEqual([
       '/exams/652f00000000000000000006',
@@ -296,6 +305,8 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/materials/new',
       '/materials/tags',
       '/materials/652f00000000000000000008',
+      '/events/new',
+      '/events/652f00000000000000000009',
       '/templates',
       '/school',
       '/exam-items',

@@ -25,6 +25,7 @@ const ChannelEditorScreen = lazyRoute(ROUTE_MODULES.channelEditor.load);
 const MaterialsScreen = lazyRoute(ROUTE_MODULES.materials.load);
 const MaterialsTagsScreen = lazyRoute(ROUTE_MODULES.materialsTags.load);
 const MaterialEditorScreen = lazyRoute(ROUTE_MODULES.materialEditor.load);
+const EventEditorScreen = lazyRoute(ROUTE_MODULES.eventEditor.load);
 const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazyRoute(ROUTE_MODULES.templates.load);
@@ -75,14 +76,16 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />
-    {/* «Материалы» — пятый пункт меню штата (ADR-0055). Роли на маршруте
-        нет: Outlet штата отдаёт AppShell.tsx, API закрыт ролью контроллера. */}
+    {/* «Материалы» (ADR-0055): роль на маршруте не нужна, Outlet штата отдаёт AppShell.tsx. */}
     <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
     <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
     {/* Выдача по тегу (ADR-0075/0078) — подэкран «Материалов»; раньше
         /materials/:materialId: статический сегмент выигрывает у параметра. */}
     <Route path={ROUTE_MODULES.materialsTags.path} element={<MaterialsTagsScreen />} />
     <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
+    {/* События школы (ADR-0177) — штат, ученику маршрут закрыт canSeeRoute. */}
+    <Route path={ROUTE_MODULES.eventNew.path} element={<EventEditorScreen />} />
+    <Route path={ROUTE_MODULES.eventEditor.path} element={<EventEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
     <Route path={ROUTE_MODULES.templates.path} element={<TemplatesScreen />} />
@@ -104,15 +107,11 @@ export const cabinetRoutes = (
         на контроллере (ExamAttemptsController). */}
     <Route path={ROUTE_MODULES.grading.path} element={<GradingQueueScreen />} />
     <Route path={ROUTE_MODULES.attemptReview.path} element={<AttemptReviewScreen />} />
-    {/* Личный экран человека, не раздел домена — вход из подвала кабинета на
-        мониторе и значка профиля на телефоне (ADR-0045, AppShellBrandRow.tsx),
-        не из навигации разделов (docs/adr/0025). Доступен любой роли:
-        canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
+    {/* Личный экран человека (ADR-0045), вход из подвала кабинета и значком
+        профиля, не из навигации разделов (docs/adr/0025). Открыт любой роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
-    {/* Инструкция «как поставить кабинет на телефон» (docs/PWA.md) — личное
-        место человека, как «/profile» выше, вход карточкой в оболочке или
-        ссылкой на «Профиле», не пункт меню. Доступен любой роли: canSeeRoute
-        (screenAccess.ts) не ограничивает его. */}
+    {/* Как поставить кабинет на телефон (docs/PWA.md): личное место, как
+        «/profile» выше, вход карточкой, не пункт меню. Открыт любой роли. */}
     <Route path={ROUTE_MODULES.install.path} element={<InstallAppScreen />} />
     {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
         «/profile» выше, вход значком в оболочке, не из навигации разделов

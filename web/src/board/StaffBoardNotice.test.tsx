@@ -16,7 +16,11 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { renderBoardWithRoutes, SETTINGS_EMPTY } from './boardTestRender';
+import {
+  NO_EVENTS_RESPONSES,
+  renderBoardWithRoutes,
+  SETTINGS_EMPTY,
+} from './boardTestRender';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -56,6 +60,7 @@ function mockBoard(settings: SettingsDto) {
     '/auth/config': {},
     '/settings': settings,
     [GRADING_QUEUE_PATH]: [],
+    ...NO_EVENTS_RESPONSES,
   });
 }
 

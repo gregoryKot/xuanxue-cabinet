@@ -1,12 +1,15 @@
 // Доска ученика (ADR-0173): сверху вниз экзамены к сдаче, оплата за месяц
-// (только ученику), ближайшее занятие. Порядок — по срочности: что сдавать и
-// платить, потом когда прийти. Каждая секция — свой компонент со своим хуком
-// данных, здесь только раскладка. Объявление школы стоит выше, в
-// BoardScreen.tsx: оно общее с доской штата (BoardNotice.tsx).
+// (только ученику), события школы (ADR-0177; рубрика есть, только когда
+// события есть), ближайшее занятие. Порядок — по срочности: что сдавать и
+// платить, потом что случится в школе, потом когда прийти. Каждая секция —
+// свой компонент со своим хуком данных, здесь только раскладка. Объявление
+// школы стоит выше, в BoardScreen.tsx: оно общее с доской штата
+// (BoardNotice.tsx).
 // Для штата в режиме ученика (ADR-0163) карточки оплаты нет: деньги в режим
 // не входят, сервер ответил бы отказом (isPaymentContactVisible).
 import type { MeDto } from '@xuanxue/shared';
 import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
+import { BoardEvents } from './BoardEvents';
 import { BoardExamsSection } from './BoardExamsSection';
 import { BoardNextLesson } from './BoardNextLesson';
 import { BoardPaymentCard } from './BoardPaymentCard';
@@ -20,6 +23,7 @@ export function StudentBoard({ me }: StudentBoardProps) {
     <>
       <BoardExamsSection />
       {isPaymentContactVisible(me) && <BoardPaymentCard />}
+      <BoardEvents />
       <BoardNextLesson />
     </>
   );

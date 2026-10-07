@@ -9,7 +9,7 @@
 // StaffBoard.tsx): ответ PATCH сразу перерисовывает секцию (ADR-0087).
 import { useState, type CSSProperties } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
-import { RichText } from '../components/RichText';
+import { AddCard } from '../components/AddCard';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { BoardNoticeCard } from './BoardNoticeCard';
 import { BoardNoticeDialog } from './BoardNoticeDialog';
@@ -23,32 +23,6 @@ const EDIT_LABEL = 'Изменить объявление';
 // «До 20 октября» → «было до 20 октября»: та же дата, что видел ученик.
 const EXPIRED_PREFIX = 'Объявление снято:';
 
-// Карточка-плюс — контур пунктиром, в отличие от сплошного контура
-// карточек-переходов (SectionLink.tsx): это не вход в раздел, а место, где
-// объявления пока нет. Кликабельна вся карточка, цель ≥44 за счёт паддинга.
-const addCardStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 14,
-  width: '100%',
-  padding: '14px 18px',
-  borderRadius: 'var(--radius-block)',
-  border: '1px dashed var(--control-border)',
-  background: 'transparent',
-  color: 'inherit',
-  font: 'inherit',
-  textAlign: 'left',
-  cursor: 'pointer',
-};
-const plusStyle: CSSProperties = {
-  fontSize: 26,
-  lineHeight: 1,
-  color: 'var(--terracotta-text)',
-  flexShrink: 0,
-};
-const addTextStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 };
-const addTitleStyle: CSSProperties = { fontSize: 15, fontWeight: 500 };
-const addHintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 const expiredStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 const blockStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
 
@@ -65,17 +39,7 @@ export function StaffBoardNotice({ settings, update, now }: StaffBoardNoticeProp
   return (
     <div style={blockStyle}>
       {state.kind === 'none' && (
-        <button type="button" style={addCardStyle} onClick={() => setEditing(true)}>
-          <span aria-hidden="true" style={plusStyle}>
-            +
-          </span>
-          <span style={addTextStyle}>
-            <span style={addTitleStyle}>{ADD_TITLE}</span>
-            <span style={addHintStyle}>
-              <RichText text={ADD_HINT} />
-            </span>
-          </span>
-        </button>
+        <AddCard title={ADD_TITLE} hint={ADD_HINT} onClick={() => setEditing(true)} />
       )}
       {state.kind === 'active' && <BoardNoticeCard notice={state.notice} />}
       {state.kind === 'expired' && (

@@ -143,6 +143,16 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/materials/tags')).toBe(false);
   });
 
+  // ADR-0177: страницы события — только штату; ученик видит события на доске.
+  it('«/events/new» и «/events/:id» — штату true, ученику и бухгалтеру false', () => {
+    for (const pathname of ['/events/new', '/events/652f00000000000000000009']) {
+      expect(canSeeRoute(makeMe({ roles: ['teacher'] }), pathname)).toBe(true);
+      expect(canSeeRoute(makeMe({ roles: ['admin'] }), pathname)).toBe(true);
+      expect(canSeeRoute(makeMe({ roles: [] }), pathname)).toBe(false);
+      expect(canSeeRoute(makeMe({ roles: ['accountant'] }), pathname)).toBe(false);
+    }
+  });
+
   it('ученик на своих «/board»/«/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/board')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);

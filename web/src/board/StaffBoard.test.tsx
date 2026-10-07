@@ -22,7 +22,11 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { renderBoardWithRoutes, SETTINGS_EMPTY } from './boardTestRender';
+import {
+  NO_EVENTS_RESPONSES,
+  renderBoardWithRoutes,
+  SETTINGS_EMPTY,
+} from './boardTestRender';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -81,6 +85,7 @@ function renderStaffBoard({
     [GRADING_QUEUE_PATH]: queue,
     '/me/exams': [] satisfies MyExamDto[],
     '/me/lessons': [] satisfies MyLessonDto[],
+    ...NO_EVENTS_RESPONSES,
   });
   return renderBoardWithRoutes(
     <>
@@ -106,17 +111,22 @@ describe('StaffBoard — шапка и рубрики', () => {
     ).toBeInTheDocument();
     const explanation = screen.getByText(/Здесь объявление ученикам/);
     expect(explanation).toHaveTextContent('работы на проверке');
+    expect(explanation).toHaveTextContent('ближайшие события школы');
     expect(explanation).toHaveTextContent(
       'входы в расписание, рассылки, материалы и настройки школы',
     );
   });
 
-  it('рубрики идут сверху вниз: «Ждёт вас», «Настроить», рубрик ученика нет', async () => {
+  it('рубрики идут сверху вниз: «Ждёт вас», «События», «Настроить», рубрик ученика нет', async () => {
     renderStaffBoard();
     await screen.findByText('Пока нечего проверять.');
 
     const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual(['Ждёт вас', 'Настроить']);
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'Ждёт вас',
+      'События',
+      'Настроить',
+    ]);
     expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
     expect(screen.queryByText(/Оплата/)).not.toBeInTheDocument();
     expect(screen.queryByText('Ближайшее занятие')).not.toBeInTheDocument();
@@ -170,7 +180,7 @@ describe('StaffBoard — входы в «Настроить»', () => {
     const hrefs = screen
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'))
-      .filter((href) => href !== '/grading');
+      .filter((href) => href !== '/grading' && href !== '/events/new');
     expect(hrefs).toEqual(['/planning', '/broadcasts', '/materials', '/school']);
   });
 
@@ -196,7 +206,13 @@ describe('StaffBoard — запросы и объявление', () => {
     await screen.findByText('Пока нечего проверять.');
     await screen.findByRole('button', { name: /Добавить объявление/ });
 
-    for (const prefix of ['/me/exams', '/me/lessons', '/me/payments', '/me/board']) {
+    for (const prefix of [
+      '/me/exams',
+      '/me/lessons',
+      '/me/payments',
+      '/me/board',
+      '/me/events',
+    ]) {
       expect(callsTo(prefix)).toHaveLength(0);
     }
     expect(callsTo('/settings')).toHaveLength(1);
