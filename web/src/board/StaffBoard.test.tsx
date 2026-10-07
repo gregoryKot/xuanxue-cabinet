@@ -200,6 +200,23 @@ describe('StaffBoard — запросы и объявление', () => {
     });
     expect(notice).toHaveTextContent('Ретрит в ноябре');
   });
+
+  // Настройки не пришли — объявления не видно, но доска живёт: баннер с
+  // повтором, очередь и входы на месте, «Обновить» перечитывает настройки.
+  it('сбой загрузки настроек — баннер с «Обновить», повтор перечитывает настройки', async () => {
+    const user = userEvent.setup();
+    renderStaffBoard({ settings: new TypeError('Failed to fetch') });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось загрузить настройки. Попробуйте ещё раз.',
+    );
+    expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Добавить объявление/ })).toBeNull();
+
+    expect(callsTo('/settings')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Обновить' }));
+    expect(callsTo('/settings')).toHaveLength(2);
+  });
 });
 
 describe('StaffBoard — роли', () => {
