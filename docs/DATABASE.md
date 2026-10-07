@@ -135,9 +135,9 @@
 | `app_errors`          | журнал сбоев: текст ошибки, браузер, адрес экрана, без `userId` | текст ошибки | 30 дней и не больше 5000 записей (`APP_ERROR_LIMITS`)                                                                        |
 
 Данные школы (личных данных учеников нет; в них лежат ссылки на людей школы, а токены
-и ссылки Zoom шифруются): `classes`, `lessons`, `channels`, `broadcasts`,
+и ссылки Zoom шифруются, как и тексты событий): `classes`, `lessons`, `channels`, `broadcasts`,
 `deliveries`, `exams`, `exam_items`, `exam_images`, `exam_videos`,
-`grading_comment_presets`, `materials`, `settings`, `invite_links`,
+`grading_comment_presets`, `school_events`, `materials`, `settings`, `invite_links`,
 `storage_orphans`. Живут, пока школа их не удалит. Ссылки на человека в них
 (`leaderId`, `createdBy`) удаление аккаунта обнуляет.
 

@@ -42,6 +42,11 @@
 // завёл заготовку, не признак владения (см. USER_REFERENCE_PATHS ниже) —
 // при удалении аккаунта поле обнуляется, сама заготовка остаётся общей.
 //
+// События школы (school_events, ADR-0177) — ретрит, семинар, выезд. Данные
+// школы, не ученика: `createdBy` — кто завёл событие, не признак владения (см.
+// USER_REFERENCE_PATHS ниже) — при удалении аккаунта поле обнуляется, само
+// событие остаётся на доске.
+//
 // Этап 3, слой 3.1 (materials, ADR-0047, PLAN §14) — библиотека материалов
 // школы. Данные школы, не ученика: `createdBy` — кто завёл материал, не
 // признак владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта
@@ -166,5 +171,6 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamVideoRecord', path: 'createdBy' },
   { model: 'GradingCommentPresetRecord', path: 'createdBy' },
   { model: 'MaterialRecord', path: 'createdBy' },
+  { model: 'SchoolEventRecord', path: 'createdBy' },
   { model: 'PaymentRecord', path: 'confirmedBy' },
 ] as const;
