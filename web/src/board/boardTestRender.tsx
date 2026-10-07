@@ -6,9 +6,28 @@
 import type { ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
+  type SettingsDto,
+} from '@xuanxue/shared';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import BoardScreen from './BoardScreen';
+
+/** Настройки школы без объявления: штат читает их на доске (`GET /settings`,
+ * ADR-0172 дополнение), объявление в них — поле `boardNotice`. */
+export const SETTINGS_EMPTY: SettingsDto = {
+  templates: { lesson_link: '', recording: '' },
+  tz: 'Asia/Jerusalem',
+  previewMinutes: 5,
+  lessonReminderMinutes: 60,
+  newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
+  paymentReminder: DEFAULT_PAYMENT_REMINDER,
+  updatedAt: '2026-10-06T10:00:00.000Z',
+};
 
 /** Оболочка в миниатюре: провайдер экзаменов берёт `me` из сессии, как AppShell.
  * Пока сессия не пришла, не рисуем ничего: провайдер с `me === null` считает

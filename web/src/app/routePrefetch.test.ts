@@ -124,16 +124,18 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   // «Доска» (ADR-0173, у штата — ADR-0174): запись таблицы одна на обе
   // роли, поэтому греет объединение: экзамены, занятия, оплата и объявление
-  // ученика плюс очередь проверки штата. Лишнее для роли отсекает
+  // ученика плюс настройки школы (объявление штат правит с доски, ADR-0172,
+  // дополнение 2026-10-07) и очередь проверки штата. Лишнее для роли отсекает
   // firstScreenPaths (prefetchFirstScreen.test.ts), а «/» с ADR-0174 ведёт
   // сюда же — гейт от повторного расхождения EMPTY_PATH_FALLBACK
   // (routeMatch.ts) и rootPathFor (screenAccess.ts).
-  it('/board (и /) — экзамены, занятия, оплата, объявление и очередь проверки', () => {
+  it('/board (и /) — экзамены, занятия, оплата, объявление, настройки и очередь проверки', () => {
     const expected = [
       MY_EXAMS_PATH,
       MY_LESSONS_PATH,
       MY_PAYMENTS_PATH,
       MY_BOARD_PATH,
+      SETTINGS_PATH,
       GRADING_QUEUE_PATH,
     ];
     expect(prefetchAt('/board')).toEqual(expected);

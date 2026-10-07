@@ -7,6 +7,7 @@ import {
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   NOTIFICATIONS_FEED_PATH,
+  SETTINGS_PATH,
   examsListPath,
   lessonsListPath,
 } from '../api/apiPaths';
@@ -31,10 +32,12 @@ afterEach(() => {
 
 // Доска ученика (ADR-0173): порядок — как в таблице маршрутов.
 const BOARD_PATHS = [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH, MY_BOARD_PATH];
-// Доска штата (ADR-0174): объявление школы и очередь проверки. Работ, планов
-// и оплат ученика у штата на доске нет, а `/attempts/queue` ученику сервер
-// отклонил бы 403 — поэтому наборы разные.
-const STAFF_BOARD_PATHS = [MY_BOARD_PATH, GRADING_QUEUE_PATH];
+// Доска штата (ADR-0174, дополнение 2026-10-07): штат правит объявление прямо
+// с доски и читает настройки школы целиком (`GET /settings`), поэтому
+// `/me/board` ему не нужен. Работ, планов и оплат ученика у штата на доске
+// нет, а настройки и `/attempts/queue` ученику сервер отклонил бы 403 —
+// поэтому наборы разные.
+const STAFF_BOARD_PATHS = [SETTINGS_PATH, GRADING_QUEUE_PATH];
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {

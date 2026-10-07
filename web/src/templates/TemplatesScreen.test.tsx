@@ -255,25 +255,6 @@ describe('TemplatesScreen — оба редактора', () => {
 // Секция «Школа» (В6 аудита, docs/adr/0009-domain-xuanxue-su.md дополнение) —
 // та же PATCH-механика, что у шаблонов (useSettings.ts), отдельная кнопка
 // «Сохранить адрес» не мешает «Сохранить» у шаблонов рядом (SchoolSiteField.tsx).
-describe('TemplatesScreen — доска', () => {
-  it('сохранённое объявление показано в разделе «Доска»', async () => {
-    mockByPath({
-      '/settings': makeSettings({
-        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
-      }),
-      '/lessons': [],
-    });
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Анонс занятия' });
-
-    expect(screen.getByRole('heading', { name: 'Доска' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Объявление ученикам')).toHaveValue('Ретрит в ноябре');
-    expect(screen.getByLabelText('Показывать до')).toHaveValue('2026-10-20');
-    expect(screen.getByRole('button', { name: 'Сохранить объявление' })).toBeDisabled();
-  });
-});
-
 describe('TemplatesScreen — адрес сайта школы', () => {
   it('поле пустое, пока учитель не заполнил — «Сохранить адрес» неактивна', async () => {
     mockByPath({ '/settings': makeSettings(), '/lessons': [] });

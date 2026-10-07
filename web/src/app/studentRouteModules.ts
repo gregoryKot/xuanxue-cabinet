@@ -10,6 +10,7 @@ import {
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   MY_MATERIALS_PATH,
+  SETTINGS_PATH,
 } from '../api/apiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
 import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
@@ -17,13 +18,14 @@ import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import type { RouteModule } from './routeModules';
 
 export const STUDENT_ROUTE_MODULES = {
-  // «Доска» — первый экран при любом входе: у ученика (ADR-0173) объявление,
-  // экзамены к сдаче, оплата за месяц и ближайшее занятие; у штата (ADR-0174)
-  // объявление и очередь проверки, остальное — карточки-входы без данных.
-  // Таблица от роли не зависит и называет запросы обеих досок; кому что
-  // греть, решает prefetchFirstScreen.ts: штату — без экзаменов, занятий и
-  // оплаты, ученику — без очереди проверки, оплату — только тому, кому видна
-  // карточка (isPaymentContactVisible).
+  // «Доска» — первый экран при любом входе: у ученика (ADR-0173) объявление
+  // (`/me/board`), экзамены к сдаче, оплата за месяц и ближайшее занятие; у
+  // штата (ADR-0174) настройки школы (объявление с правкой, ADR-0172 доп.) и
+  // очередь проверки, остальное — карточки-входы без данных. Таблица от роли
+  // не зависит и называет запросы обеих досок; кому что греть, решает
+  // prefetchFirstScreen.ts: штату — без запросов ученика, ученику — без
+  // настроек и очереди (сервер ответил бы 403), оплату — только тому, кому
+  // видна карточка (isPaymentContactVisible).
   board: {
     path: '/board',
     load: () => import('../board/BoardScreen'),
@@ -33,6 +35,7 @@ export const STUDENT_ROUTE_MODULES = {
       MY_LESSONS_PATH,
       MY_PAYMENTS_PATH,
       MY_BOARD_PATH,
+      SETTINGS_PATH,
       GRADING_QUEUE_PATH,
     ],
   },
