@@ -13,6 +13,7 @@ import {
   SETTINGS_PATH,
 } from '../api/apiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
+import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
 import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
 import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import type { RouteModule } from './routeModules';
@@ -24,8 +25,9 @@ export const STUDENT_ROUTE_MODULES = {
   // очередь проверки, остальное — карточки-входы без данных. Таблица от роли
   // не зависит и называет запросы обеих досок; кому что греть, решает
   // prefetchFirstScreen.ts: штату — без запросов ученика, ученику — без
-  // настроек и очереди (сервер ответил бы 403), оплату — только тому, кому
-  // видна карточка (isPaymentContactVisible).
+  // настроек, очереди и списка событий штата (сервер ответил бы 403), оплату —
+  // только тому, кому видна карточка (isPaymentContactVisible). События
+  // (ADR-0177): ученик читает `/me/events`, штат — `/events`.
   board: {
     path: '/board',
     load: () => import('../board/BoardScreen'),
@@ -37,6 +39,8 @@ export const STUDENT_ROUTE_MODULES = {
       MY_BOARD_PATH,
       SETTINGS_PATH,
       GRADING_QUEUE_PATH,
+      MY_EVENTS_PATH,
+      SCHOOL_EVENTS_PATH,
     ],
   },
   // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный

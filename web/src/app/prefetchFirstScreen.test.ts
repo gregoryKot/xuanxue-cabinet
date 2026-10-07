@@ -17,6 +17,7 @@ import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
+import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
 
 vi.mock('../api/http', async () => {
@@ -31,13 +32,20 @@ afterEach(() => {
 });
 
 // Доска ученика (ADR-0173): порядок — как в таблице маршрутов.
-const BOARD_PATHS = [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH, MY_BOARD_PATH];
+const BOARD_PATHS = [
+  MY_EXAMS_PATH,
+  MY_LESSONS_PATH,
+  MY_PAYMENTS_PATH,
+  MY_BOARD_PATH,
+  MY_EVENTS_PATH,
+];
 // Доска штата (ADR-0174, дополнение 2026-10-07): штат правит объявление прямо
 // с доски и читает настройки школы целиком (`GET /settings`), поэтому
 // `/me/board` ему не нужен. Работ, планов и оплат ученика у штата на доске
 // нет, а настройки и `/attempts/queue` ученику сервер отклонил бы 403 —
-// поэтому наборы разные.
-const STAFF_BOARD_PATHS = [SETTINGS_PATH, GRADING_QUEUE_PATH];
+// поэтому наборы разные. События (ADR-0177) делятся так же: штат читает список
+// `/events`, ученик — `/me/events`.
+const STAFF_BOARD_PATHS = [SETTINGS_PATH, GRADING_QUEUE_PATH, SCHOOL_EVENTS_PATH];
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {
@@ -118,13 +126,13 @@ describe('firstScreenPaths', () => {
     expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
   });
 
-  it('ученик на своей «/board» — экзамены, занятия, оплата и объявление', () => {
+  it('ученик на своей «/board» — экзамены, занятия, оплата, объявление и события', () => {
     expect(firstScreenPaths('/board', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
   });
 
   // ADR-0174: у штата доска своя — объявление и очередь проверки, без
   // экзаменов, занятий и оплаты ученика; ассистент и админ — как учитель.
-  it('учитель, ассистент и админ на «/board» — объявление и очередь проверки', () => {
+  it('учитель, ассистент и админ на «/board» — объявление, очередь проверки и события', () => {
     for (const role of ['teacher', 'assistant', 'admin'] as const) {
       expect(firstScreenPaths('/board', makeMe({ roles: [role] }))).toEqual(
         STAFF_BOARD_PATHS,
@@ -135,11 +143,12 @@ describe('firstScreenPaths', () => {
   // Карточка оплаты — только ученику (isPaymentContactVisible), очередь
   // проверки — только штату (ученику сервер ответил бы 403): штат в режиме
   // ученика получает доску ученика без оплаты и без очереди.
-  it('штат в режиме ученика на «/board» — без оплаты и без очереди проверки', () => {
+  it('штат в режиме ученика на «/board» — без оплаты, очереди проверки и списка событий штата', () => {
     expect(firstScreenPaths('/board', makeMe({ roles: [], studentMode: true }))).toEqual([
       MY_EXAMS_PATH,
       MY_LESSONS_PATH,
       MY_BOARD_PATH,
+      MY_EVENTS_PATH,
     ]);
   });
 

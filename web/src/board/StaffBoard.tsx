@@ -3,13 +3,14 @@
 // материалы — из навигации можно убрать»). Сверху объявление ученикам — то же,
 // что видит ученик, и здесь же правится (StaffBoardNotice.tsx, ADR-0172
 // дополнение): ему нужны настройки школы целиком, поэтому штат читает
-// GET /settings, а не GET /me/board ученика. Дальше две рубрики: «Ждёт вас» —
+// GET /settings, а не GET /me/board ученика. Дальше три рубрики: «Ждёт вас» —
 // число работ на проверке кликабельной строкой внутри карточки «Проверка»
 // (тот же приём, что на «Экзаменах»: exams/ExamsSectionStats.tsx,
-// gradingQueueHint.ts), и «Настроить» — карточки-входы в разделы, ушедшие
-// из панели: «Расписание» (экран «Занятия» штата, /planning, где кнопка в
-// постоянное расписание), «Рассылки», «Материалы», и «Школа» — настройки
-// школы (ADR-0176). Карточки — общий
+// gradingQueueHint.ts); «События» — ближайшие ретриты и семинары и карточка
+// «Добавить событие» (StaffBoardEvents.tsx, ADR-0177); «Настроить» —
+// карточки-входы в разделы, ушедшие из панели: «Расписание» (экран «Занятия»
+// штата, /planning, где кнопка в постоянное расписание), «Рассылки»,
+// «Материалы» и «Школа» — настройки школы (ADR-0176). Карточки — общий
 // SectionLink (CLAUDE.md «Одна механика — один компонент»).
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { SectionLink } from '../components/SectionLink';
@@ -17,6 +18,7 @@ import { formatGradingQueueHint } from '../grading/gradingQueueHint';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { useSettings } from '../templates/useSettings';
 import { BoardSection } from './BoardSection';
+import { StaffBoardEvents } from './StaffBoardEvents';
 import { StaffBoardNotice } from './StaffBoardNotice';
 
 const QUEUE_HEADING = 'Ждёт вас';
@@ -89,6 +91,8 @@ export function StaffBoard() {
           hint={GRADING_HINT}
         />
       </BoardSection>
+
+      <StaffBoardEvents />
 
       <BoardSection heading={SETUP_HEADING}>
         <div className="xuanxue-block-grid">

@@ -22,7 +22,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import { renderBoardWithRoutes } from './boardTestRender';
+import { NO_EVENTS_RESPONSES, renderBoardWithRoutes } from './boardTestRender';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -86,6 +86,7 @@ function renderBoard({
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': {},
+    ...NO_EVENTS_RESPONSES,
     ...extra,
     '/me/board': board,
     '/me/exams': exams,
@@ -122,7 +123,7 @@ describe('BoardScreen — шапка', () => {
       await screen.findByRole('heading', { level: 1, name: 'Доска' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Здесь то, что ждёт вас сейчас/)).toHaveTextContent(
-      'экзамены к сдаче, оплата за месяц и объявления школы. Ближайшее занятие — внизу.',
+      'экзамены к сдаче, оплата за месяц, объявления и события школы. Ближайшее занятие — внизу.',
     );
   });
 

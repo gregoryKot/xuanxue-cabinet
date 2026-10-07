@@ -53,6 +53,7 @@ import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
+import { EVENT_ROUTE_MODULES } from './eventRouteModules';
 import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
@@ -186,8 +187,7 @@ export const ROUTE_MODULES = {
     // запрос экрана, который можно погреть параллельно с чанком.
     prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
-  // Учителя — как у classNew: LessonEditorForm.tsx спрашивает их после
-  // классов и самой записи.
+  // Учителей, как у classNew, LessonEditorForm.tsx спрашивает после записи.
   lessonNew: {
     path: '/planning/new',
     load: loadLessonEditor,
@@ -219,9 +219,8 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [apiRoutePath('GET /channels/:id', recordOf(pathname))],
   },
-  // «Материалы» — пятый пункт меню штата (ADR-0055). Занятия расписания
-  // нужны и списку (MaterialCard.tsx), и форме (MaterialClassesField.tsx) —
-  // греем их вместе с самим ресурсом.
+  // «Материалы» (ADR-0055). Занятия нужны и списку (MaterialCard.tsx), и форме
+  // (MaterialClassesField.tsx) — греем их вместе с ресурсом.
   materials: {
     path: '/materials',
     load: () => import('../materials/MaterialsScreen'),
@@ -382,8 +381,9 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
   },
-  // Экраны ученика — «Доска», «Задания», «Занятия» и их подэкраны.
+  // Экраны ученика («Доска», «Задания», «Занятия») и страница события школы.
   ...STUDENT_ROUTE_MODULES,
+  ...EVENT_ROUTE_MODULES,
   attempt: {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),

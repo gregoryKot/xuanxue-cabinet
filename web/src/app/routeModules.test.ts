@@ -54,6 +54,10 @@ describe('matchRoute', () => {
     expect(loaderAt('/materials/652f00000000000000000008')).toBe(
       ROUTE_MODULES.materialEditor.load,
     );
+    expect(loaderAt('/events/new')).toBe(ROUTE_MODULES.eventNew.load);
+    expect(loaderAt('/events/652f00000000000000000009')).toBe(
+      ROUTE_MODULES.eventEditor.load,
+    );
   });
 
   // Публичный маршрут подтверждения почты (ADR-0059) — вошедшему он не нужен,
@@ -102,6 +106,13 @@ describe('matchRoute', () => {
   it('«/materials/tags» — свой чанк, не редактор материала', async () => {
     expect(ROUTE_MODULES.materialsTags.load).not.toBe(ROUTE_MODULES.materialEditor.load);
     await expect(ROUTE_MODULES.materialsTags.load()).resolves.toHaveProperty('default');
+  });
+
+  // ADR-0177: «/events/new» объявлен раньше «/events/:eventId» — иначе :eventId
+  // совпал бы со строкой «new»; чанк один на создание и правку.
+  it('страница события — один чанк на «новое» и на правку (ADR-0177)', async () => {
+    expect(ROUTE_MODULES.eventNew.load).toBe(ROUTE_MODULES.eventEditor.load);
+    await expect(ROUTE_MODULES.eventNew.load()).resolves.toHaveProperty('default');
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
