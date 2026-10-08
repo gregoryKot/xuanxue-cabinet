@@ -499,7 +499,7 @@ describe('App', () => {
   // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска» —
   // первый экран штата при входе, было «Экзамены» — смоук на /exams отдельно
   // выше, здесь только то, что «/» ведёт на доску и в ней есть входы в
-  // расписание, рассылки и материалы.
+  // занятия, рассылки и материалы.
   it('учитель на «/» — уводит на «Доску»', async () => {
     mockRoute(TEACHER, STAFF_BOARD_DATA);
 
@@ -508,7 +508,7 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Доска' }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: /Расписание/ })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Занятия/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Рассылки/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Материалы/ })).toBeInTheDocument();
   });
