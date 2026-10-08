@@ -1,6 +1,6 @@
-// Рубрика «События» на доске штата (ADR-0177): ближайшие события карточками-
-// ссылками на правку и карточка-плюс «Добавить событие» в конце. Прошедшее с
-// доски уходит, хотя GET /events его отдаёт. Сеть — mockApiByPath (ADR-0116).
+// События на главной штата (ADR-0177, ADR-0178): ближайшие события плитками-
+// ссылками на правку и карточка-плюс «Добавить событие» в конце, без рубрики
+// «События». Прошедшее с главной уходит, хотя GET /events его отдаёт. Сеть — mockApiByPath (ADR-0116).
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -23,7 +23,7 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 stubViewerTimeZone('Asia/Jerusalem');
 
-// «Сейчас» доски — new Date() (StaffBoardEvents.tsx): фиксируем, чтобы
+// «Сейчас» главной — new Date() (StaffBoardEvents.tsx): фиксируем, чтобы
 // «прошедшее» не зависело от дня запуска теста.
 const TODAY = new Date('2030-11-15T12:00:00Z');
 
@@ -74,8 +74,10 @@ describe('StaffBoardEvents — список', () => {
     renderEvents();
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'События' }),
+      await screen.findByRole('heading', { level: 2, name: 'Ретрит в Галилее' }),
     ).toBeInTheDocument();
+    // Рубрики над плитками нет: у каждой свой заголовок.
+    expect(screen.queryByRole('heading', { name: 'События' })).toBeNull();
     const links = screen.getAllByRole('link');
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/events/sooner',
@@ -107,7 +109,7 @@ describe('StaffBoardEvents — список', () => {
     renderEvents();
 
     const plus = await screen.findByRole('link', { name: /Добавить событие/ });
-    expect(plus).toHaveTextContent('дату и место увидит каждый ученик');
+    expect(plus).toHaveTextContent('дату и место каждый ученик увидит на главной');
     await user.click(plus);
 
     expect(await screen.findByText('Страница нового события')).toBeInTheDocument();

@@ -28,10 +28,13 @@ export interface UseMyPaymentsResult {
   applyReminder: (reminder: MyPaymentReminderDto) => void;
 }
 
-export function useMyPayments(): UseMyPaymentsResult {
+/** `enabled: false` — запрос не уходит: главная не просит оплату у того, кому
+ * карточка не положена (штат в режиме ученика, ADR-0163, board/useStudentHome.ts). */
+export function useMyPayments(options: { enabled?: boolean } = {}): UseMyPaymentsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiRoute('GET /me/payments', { signal }),
     LOAD_ERROR_MESSAGE,
+    options,
   );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);

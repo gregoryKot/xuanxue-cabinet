@@ -75,7 +75,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   dataControllerName: 'Кто отвечает за данные учеников',
   dataControllerContact: 'Как связаться с ответственным за данные',
   paymentReminder: 'Напоминание об оплате',
-  boardNotice: 'Объявление на доске',
+  boardNotice: 'Объявление на главной',
   until: 'Показывать до',
   template: 'Текст напоминания об оплате',
 

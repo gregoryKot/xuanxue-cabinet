@@ -232,7 +232,7 @@ describe('EventEditorScreen — правка', () => {
     renderAt('/events/ev1');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Это событие уже удалено. Вернитесь на доску.',
+      'Это событие уже удалено. Вернитесь на главную.',
     );
     expect(
       screen.getByRole('button', { name: 'Попробовать ещё раз' }),

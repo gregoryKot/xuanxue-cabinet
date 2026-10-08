@@ -47,7 +47,11 @@ function stubMobileViewport() {
   );
 }
 
-function renderShell(me: MeDto, initialPath = '/schedule') {
+// Экзамен ученика: пункт «Задания» в панели появляется, только когда
+// `GET /me/exams` вернул хоть один (ADR-0178).
+const AN_EXAM = { id: 'e1', title: 'Форма', attemptsAllowed: 1, attemptsUsed: 0 };
+
+function renderShell(me: MeDto, initialPath = '/schedule', exams: unknown[] = []) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
@@ -57,7 +61,7 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     // консоль отказами «неожиданный путь».
     if (path.startsWith('/me/inbox'))
       return Promise.resolve({ items: [], unreadCount: 0 });
-    if (path === '/me/exams') return Promise.resolve([]);
+    if (path === '/me/exams') return Promise.resolve(exams);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -68,7 +72,7 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<AppShell />}>
             <Route path="/schedule" element={<p>Содержимое расписания</p>} />
-            {/* Экраны ученика («Доска» первым, ADR-0173) — заглушки вместо
+            {/* Экраны ученика («Главная» первым, ADR-0173) — заглушки вместо
                 настоящих BoardScreen/TasksScreen/LessonsScreen: здесь важна
                 раскладка оболочки, не сами экраны (те проверяют их тесты). */}
             <Route path="/board" element={<p>Экран доски</p>} />
@@ -198,12 +202,12 @@ describe('AppShell — навигация по ширине экрана', () =>
 });
 
 describe('AppShell — учитель', () => {
-  it('боковая колонка со знаком школы, пункт «Доска» и вложенный маршрут', async () => {
+  it('боковая колонка со знаком школы, пункт «Главная» и вложенный маршрут', async () => {
     renderShell(TEACHER);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
     expect(screen.getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Главная' })).toBeInTheDocument();
   });
 
   // Направление «Тёплая школа» (ADR-0043) убрало шапку во всю ширину — знак
@@ -238,7 +242,7 @@ describe('AppShell — учитель', () => {
   });
 
   // Три пункта — панель штата (navItems.ts, ADR-0174: расписание, рассылки и
-  // материалы ушли на «Доску», отзыв владельца 2026-09-12: «меню всё ещё
+  // материалы ушли на «Главную», отзыв владельца 2026-09-12: «меню всё ещё
   // сложное»); «Ученики» видят admin и teacher
   // (ADR-0030, уточнение 2026-09-15 — ссылку-приглашение отдаёт и учитель).
   // Фильтр по роли и подсветку раздела детально проверяет AppNav.test.tsx —
@@ -254,7 +258,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Главная', 'Экзамены', 'Ученики']);
   });
 
   it('нижняя навигация — у админа тоже «Ученики»', async () => {
@@ -266,7 +270,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Доска', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Главная', 'Экзамены', 'Ученики']);
   });
 
   // Ровно то, чего боялся владелец при переносе подвала в колонку (ADR-0043):
@@ -361,32 +365,46 @@ describe('AppShell — помощник учителя', () => {
     renderShell(ASSISTANT);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Главная' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Экзамены' })).toBeInTheDocument();
   });
 });
 
-// Решение владельца 2026-10-06: «Доска» — первый экран после входа
+// Решение владельца 2026-10-06: «Главная» — первый экран после входа
 // (ADR-0173). У ученика больше нет отдельной подмены содержимого
 // (StudentScreen) — вместо неё та же раскладка, что у штата, и редирект с
 // чужих маршрутов.
 describe('AppShell — ученик (без роли teacher/assistant/admin)', () => {
-  it('на маршруте штата — редирект на «Доску», не подмена содержимого', async () => {
+  it('на маршруте штата — редирект на «Главную», не подмена содержимого', async () => {
     renderShell(STUDENT);
 
     expect(await screen.findByText('Экран доски')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
   });
 
-  it('своя навигация — «Доска», «Задания» и «Занятия», без пунктов штата', async () => {
-    renderShell(STUDENT);
+  it('своя навигация — «Главная», «Задания» и «Занятия», без пунктов штата', async () => {
+    renderShell(STUDENT, '/schedule', [AN_EXAM]);
     await screen.findByText('Экран доски');
 
-    expect(screen.getByRole('link', { name: 'Доска' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Главная' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Задания' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Экзамены' })).not.toBeInTheDocument();
     expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
+  });
+
+  // ADR-0178: кто пришёл за расписанием и архивом, на курсе не учится, и
+  // пункта про задания у него нет — пока список не пришёл, он не мигает.
+  it('экзаменов нет — в панели «Главная» и «Занятия», «Заданий» нет', async () => {
+    renderShell(STUDENT);
+    await screen.findByText('Экран доски');
+    await vi.waitFor(() =>
+      expect(mockedApiFetch.mock.calls.some(([path]) => path === '/me/exams')).toBe(true),
+    );
+
+    expect(screen.getByRole('link', { name: 'Главная' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Задания' })).not.toBeInTheDocument();
   });
 
   // У ученика теперь та же раскладка, что у штата: боковая колонка на
@@ -406,10 +424,10 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
 
   it('на телефоне — нижняя панель вкладок и знак школы над содержимым, как у штата', async () => {
     stubMobileViewport();
-    renderShell(STUDENT);
+    renderShell(STUDENT, '/schedule', [AN_EXAM]);
     await screen.findByText('Экран доски');
 
-    expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Задания' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();

@@ -23,7 +23,7 @@ import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось открыть событие. Попробуйте ещё раз.';
-const MISSING_MESSAGE = 'Это событие уже удалено. Вернитесь на доску.';
+const MISSING_MESSAGE = 'Это событие уже удалено. Вернитесь на главную.';
 
 export interface UseEventEditorResult {
   /** `null` — новое событие, его ещё нет на сервере. */

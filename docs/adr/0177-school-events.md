@@ -2,7 +2,9 @@
 
 Дата: 2026-10-07. Статус: принято. Дополняет [ADR-0172](0172-board-notice-is-a-setting.md)
 (объявление — одна строка, учёта сборов нет) и [ADR-0173](0173-student-board-first-screen.md)/
-[ADR-0174](0174-board-first-screen-for-everyone.md) (доска).
+[ADR-0174](0174-board-first-screen-for-everyone.md) (доска). С 2026-10-08 доска
+называется «Главная», а событие — плитка без рубрики «События»
+([ADR-0178](0178-home-screen-tiles.md)).
 
 ## Контекст
 

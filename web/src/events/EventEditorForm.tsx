@@ -11,10 +11,10 @@ import { EventFormFields } from './EventFormFields';
 import { useEventForm } from './useEventForm';
 import type { UseEventEditorResult } from './useEventEditor';
 
-const BACK_TEXT = 'К доске';
+const BACK_TEXT = 'На главную';
 const NEW_EVENT_TITLE = 'Новое событие';
 const REMOVE_LABEL = 'Удалить событие';
-const REMOVE_MESSAGE = 'Событие исчезнет с доски каждого ученика. Отменить нельзя.';
+const REMOVE_MESSAGE = 'Событие исчезнет у всех учеников. Отменить нельзя.';
 
 interface EventEditorFormProps {
   event: SchoolEventDto | null;

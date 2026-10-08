@@ -76,7 +76,7 @@ describe('StudentModeBanner — когда видна', () => {
 });
 
 describe('StudentModeBanner — выход из режима', () => {
-  it('кнопка шлёт PUT { enabled: false }, плашка пропадает, человек на «Доске»', async () => {
+  it('кнопка шлёт PUT { enabled: false }, плашка пропадает, человек на «Главной»', async () => {
     const user = userEvent.setup();
     renderBanner(STAFF_IN_STUDENT_MODE_ME, { '/me/student-mode': STAFF_ME });
 

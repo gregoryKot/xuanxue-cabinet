@@ -83,7 +83,7 @@ describe('firstScreenPaths', () => {
   });
 
   // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «/» у штата
-  // ведёт на «Доску» (BOARD_PATH, screenAccess.ts), не на «Экзамены» — гейт от
+  // ведёт на «Главную» (BOARD_PATH, screenAccess.ts), не на «Экзамены» — гейт от
   // повторного расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и rootPathFor.
   it('учитель на «/» — данные доски штата: объявление и очередь проверки', () => {
     expect(firstScreenPaths('/', makeMe())).toEqual(STAFF_BOARD_PATHS);
@@ -120,9 +120,9 @@ describe('firstScreenPaths', () => {
   });
 
   // Маршрут штата ученику не открыт (screenAccess.ts, canSeeRoute) — редирект
-  // уводит на rootPathFor(me), греем данные экрана-назначения («Доска»),
+  // уводит на rootPathFor(me), греем данные экрана-назначения («Главная»),
   // а не расписание учителя.
-  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Доска»', () => {
+  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Главная»', () => {
     expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
   });
 

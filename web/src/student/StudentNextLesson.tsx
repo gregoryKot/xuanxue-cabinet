@@ -22,10 +22,9 @@ const CANCELLED_TEXT = 'Занятие отменено';
 // что у --radius-block ниже, docs/adr/0043).
 const HERO_SHADOW = '0 2px 6px rgba(36, 40, 31, 0.08)';
 
+const bareStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
 const cardStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
+  ...bareStyle,
   padding: 20,
   borderRadius: 'var(--radius-block)',
   background: 'var(--card)',
@@ -60,9 +59,17 @@ interface StudentNextLessonProps {
    * браузерный пояс и текущий момент. */
   timeZone?: string;
   nowIso?: string;
+  /** Без своей карточки: главная кладёт занятие в плитку (board/BoardTile.tsx,
+   * ADR-0178), и рамка с тенью внутри рамки читалась бы двойной. */
+  bare?: boolean;
 }
 
-export function StudentNextLesson({ lesson, timeZone, nowIso }: StudentNextLessonProps) {
+export function StudentNextLesson({
+  lesson,
+  timeZone,
+  nowIso,
+  bare = false,
+}: StudentNextLessonProps) {
   const cancelled = lesson.status === 'cancelled';
   const now = nowIso ?? new Date().toISOString();
   const meta = [lesson.groupLabel, lesson.topic].filter(Boolean).join(' · ');
@@ -72,7 +79,7 @@ export function StudentNextLesson({ lesson, timeZone, nowIso }: StudentNextLesso
   const rubric = countdown ? `${day}, ${countdown}` : day;
 
   return (
-    <div style={cardStyle}>
+    <div style={bare ? bareStyle : cardStyle}>
       <span style={rubricStyle}>{rubric}</span>
       <span style={timeStyle}>{formatTime(lesson.startsAt, timeZone)}</span>
       <span style={titleStyle}>{lesson.classTitle}</span>
