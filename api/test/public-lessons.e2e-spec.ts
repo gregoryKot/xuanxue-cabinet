@@ -1,8 +1,8 @@
 // e2e на GET /public/lessons (ADR-0170, контракт Workshop public-lessons.md):
 // публичное расписание школы без Zoom, два режима выборки. Настоящий AppModule
 // на MongoMemoryServer. Часы заморожены через Settings.now Luxon (CLAUDE.md
-// «Детерминизм»): контроллер берёт `DateTime.utc()`. Ошибки запроса и 500 —
-// в public-lessons-validation.e2e-spec.ts.
+// «Детерминизм»): контроллер берёт `DateTime.utc()`. Отказы запроса — в
+// public-lessons-validation, битые занятия и 500 — в public-lessons-omission.
 import { Settings } from 'luxon';
 import type { MyLessonDto, PublicLessonDto } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';

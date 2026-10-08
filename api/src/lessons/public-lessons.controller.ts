@@ -7,11 +7,12 @@
 // Троттлинг — общий глобальный, бакет по IP (неверифицированная идентичность,
 // CLAUDE.md правило 4, ADR-0164). `@SkipThrottle` не ставим: открытый маршрут
 // без лимита — дармовая нагрузка на базу.
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { PublicLessonDto } from '@xuanxue/shared';
 import { Public } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
+import { requestIdOf, type RequestLike } from '../common/request-info';
 import { ListPublicLessonsDto } from './dto/list-public-lessons.dto';
 import { PublicLessonsService } from './public-lessons.service';
 
@@ -22,7 +23,10 @@ export class PublicLessonsController {
   @Get()
   @Public()
   @ApiRoute('GET /public/lessons')
-  list(@Query() query: ListPublicLessonsDto): Promise<PublicLessonDto[]> {
-    return this.publicLessonsService.list(query, DateTime.utc());
+  list(
+    @Query() query: ListPublicLessonsDto,
+    @Req() request: RequestLike,
+  ): Promise<PublicLessonDto[]> {
+    return this.publicLessonsService.list(query, DateTime.utc(), requestIdOf(request));
   }
 }

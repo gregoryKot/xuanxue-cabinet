@@ -1,8 +1,8 @@
-// e2e на отказы GET /public/lessons (ADR-0170, контракт Workshop): все ошибки
-// запроса — 400 `invalid_input`, а занятие без класса — 500 `internal_error`
-// без частичного массива. Успешные ответы — public-lessons.e2e-spec.ts.
-// Часы заморожены через Settings.now Luxon (CLAUDE.md «Детерминизм»).
-import { Types } from 'mongoose';
+// e2e на отказы запроса GET /public/lessons (ADR-0170, контракт Workshop): все
+// ошибки запроса — 400 `invalid_input`. Успешные ответы —
+// public-lessons.e2e-spec.ts, битые занятия и сбой чтения —
+// public-lessons-omission.e2e-spec.ts. Часы заморожены через Settings.now
+// Luxon (CLAUDE.md «Детерминизм»).
 import { Settings } from 'luxon';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -58,22 +58,5 @@ describe('GET /public/lessons — отказы (e2e)', () => {
     const res = await h.getPublic(`${FROM}&to=2026-11-02T00:00:00Z`);
 
     expect(res.status).toBe(200);
-  });
-
-  // Контракт: пропавший класс — 500, а не молчаливо потерянное занятие, и без
-  // частичного массива (даже если рядом есть нормальное занятие).
-  it('занятие с несуществующим классом — 500 internal_error, не массив', async () => {
-    const classId = await h.createClass();
-    await h.createLesson({ classId, startsAt: new Date(NOW.getTime() + 3_600_000) });
-    await h.createLesson({
-      classId: new Types.ObjectId(),
-      startsAt: new Date(NOW.getTime() + 7_200_000),
-    });
-
-    const res = await h.getPublic();
-
-    expect(res.status).toBe(500);
-    expect(Array.isArray(res.body)).toBe(false);
-    expect((res.body as ApiErrorBody).code).toBe('internal_error');
   });
 });

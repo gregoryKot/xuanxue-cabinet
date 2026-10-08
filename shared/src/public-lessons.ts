@@ -1,6 +1,6 @@
 // Публичное расписание школы для daychi (`GET /api/public/lessons`, ADR-0170).
-// Контракт Workshop, ревизия e209d27239391be3af2be71b898c79f453851c01:
-// https://github.com/dveyarangi/xuanxue-workshop/blob/e209d27239391be3af2be71b898c79f453851c01/docs/contracts/public-lessons.md
+// Контракт Workshop, ревизия 4aec5f84130c2dd8df6875c30fd94c3cf2a5ec74:
+// https://github.com/dveyarangi/xuanxue-workshop/blob/4aec5f84130c2dd8df6875c30fd94c3cf2a5ec74/docs/contracts/public-lessons.md
 // Ровно проекция контракта, без Zoom и служебных полей: маршрут открыт всему
 // интернету, поэтому лишнее поле здесь — утечка (маппер в api — allowlist).
 import type { ClassFormat, LessonStatus } from './domain';

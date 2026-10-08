@@ -1,8 +1,10 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): фильтр «ближайшие» и окно `from <= startsAt < to`, сортировка,
-// лимит, проекция без Zoom и отказ при занятии без класса. Маршрут открыт без
-// сессии (ADR-0170), поэтому утечку Zoom и тихую потерю занятия держит именно
-// этот спек: юнит-джоба e2e не видит, а покрытие api должно расти, не падать.
+// лимит, проекция без Zoom, пропуск битого занятия с error-логом и сбой
+// чтения как ошибка. Маршрут открыт без сессии (ADR-0170), поэтому утечку Zoom
+// держит именно этот спек: юнит-джоба e2e не видит, а покрытие api должно
+// расти, не падать.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
@@ -222,13 +224,66 @@ describe('PublicLessonsService', () => {
     });
   });
 
-  it('занятие с несуществующим классом — ошибка с id занятия, а не пропуск', async () => {
-    const lessonId = await createLesson(new Types.ObjectId().toString());
+  describe('битые занятия (контракт, случай 6)', () => {
+    let errorLog: jest.SpyInstance;
 
-    const attempt = service.list({}, NOW);
+    beforeEach(() => {
+      errorLog = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+    });
 
-    await expect(attempt).rejects.toThrow();
-    await expect(attempt).rejects.toThrow(lessonId);
+    afterEach(() => {
+      errorLog.mockRestore();
+    });
+
+    it('занятие с несуществующим классом пропущено с error-логом, соседнее отдано', async () => {
+      const classId = await createClass();
+      const validId = await createLesson(classId);
+      const missingClassId = new Types.ObjectId().toString();
+      const orphanId = await createLesson(missingClassId, {
+        startsAt: NOW.plus({ hours: 2 }).toJSDate(),
+      });
+
+      const list = await service.list({}, NOW, 'req-42');
+
+      expect(list.map((l) => l.id)).toEqual([validId]);
+      expect(errorLog).toHaveBeenCalledTimes(1);
+      const [message] = errorLog.mock.calls[0] as [string];
+      expect(message).toContain('класс не найден');
+      expect(message).toContain(`lessonId=${orphanId}`);
+      expect(message).toContain(`classId=${missingClassId}`);
+      expect(message).toContain('requestId=req-42');
+    });
+
+    // «Ближайшие» берут limit кандидатов до проверки: выпавший первый не
+    // заменяется третьим (контракт: no refill).
+    it('limit=2, первый кандидат битый — только второй, без добора', async () => {
+      const classId = await createClass();
+      const brokenId = await createLesson(classId);
+      const secondId = await createLesson(classId, {
+        startsAt: NOW.plus({ hours: 2 }).toJSDate(),
+      });
+      await createLesson(classId, { startsAt: NOW.plus({ hours: 3 }).toJSDate() });
+      await lessonModel.updateOne({ _id: brokenId }, { $unset: { durationMin: 1 } });
+
+      const list = await service.list({ limit: 2 }, NOW);
+
+      expect(list.map((l) => l.id)).toEqual([secondId]);
+      expect(errorLog).toHaveBeenCalledTimes(1);
+    });
+
+    it('сбой чтения классов — ошибка наружу, а не пустой ответ', async () => {
+      const classId = await createClass();
+      await createLesson(classId);
+      const find = jest.spyOn(classModel, 'find').mockImplementation(() => {
+        throw new Error('Mongo недоступна');
+      });
+
+      await expect(service.list({}, NOW)).rejects.toThrow('Mongo недоступна');
+      expect(errorLog).not.toHaveBeenCalled();
+      find.mockRestore();
+    });
   });
 
   it('from без to — InvalidInputError', async () => {
