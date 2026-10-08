@@ -36,13 +36,13 @@ async function buildController(
 }
 
 describe('PublicLessonsController', () => {
-  it('list() передаёт query и время в сервис и отдаёт его ответ как есть', async () => {
+  it('list() передаёт query, время и requestId в сервис и отдаёт его ответ как есть', async () => {
     const list = jest.fn().mockResolvedValue(LESSONS);
     const controller = await buildController({ list });
     const query: ListPublicLessonsDto = { limit: 5 };
 
-    await expect(controller.list(query)).resolves.toEqual(LESSONS);
-    expect(list).toHaveBeenCalledWith(query, expect.anything());
+    await expect(controller.list(query, { id: 'req-1' })).resolves.toEqual(LESSONS);
+    expect(list).toHaveBeenCalledWith(query, expect.anything(), 'req-1');
   });
 
   it('list() помечен @Public(): расписание без Zoom открыто без сессии (ADR-0170)', () => {
