@@ -2,7 +2,7 @@
 // через бота (link.telegramUrl, ADR-0030 «Бот»). Вынесена из
 // InviteLinkCard.tsx: карточка перешагнула порог 150 строк храповика
 // (CLAUDE.md «Храповики» — «Компонент React больше 150 — выноси хуки и
-// подкомпоненты», образец — broadcasts/BroadcastsSectionLinks.tsx).
+// подкомпоненты», образец — board/StaffBoardEvents.tsx).
 //
 // Свой useCopyText — «Скопировано» здесь не должно переключать кнопку
 // строки сайта в InviteLinkCard.tsx и наоборот (независимые состояния одной

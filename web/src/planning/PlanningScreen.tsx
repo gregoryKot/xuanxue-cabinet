@@ -1,10 +1,8 @@
 // «Занятия» — второй пункт меню штата, было первым до ADR-0138 (docs/PLAN.md
 // §6): сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
-// Вход в сетку расписания — тихая кнопка в шапке рядом с «Разовым занятием»
-// (PlanningActions.tsx), не пункт меню (docs/adr/0025-navigation-by-domain.md,
-// дополнение 2026-09-18): расписание раньше было карточкой внизу списка, и на
-// телефоне до неё было не долистать (отзыв владельца). Материалы — свой
-// раздел меню (ADR-0055), из этой шапки в них больше не ходят.
+// Вход в сетку расписания — тихая кнопка в шапке (components/ScreenActions.tsx,
+// docs/adr/0025, дополнение 2026-09-18): карточку внизу списка на телефоне
+// было не долистать. Материалы — свой раздел меню (ADR-0055).
 // Облик — направление «Тёплая школа» (docs/adr/0043, макет 1c-planning.html):
 // заголовок антиквой, строка объяснения, день — карточка со строками занятий.
 // Правка и создание занятия — своя страница `/planning/new` и
@@ -15,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatRecordingSummary, PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { RichText } from '../components/RichText';
+import { ScreenActions } from '../components/ScreenActions';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -22,7 +21,6 @@ import { useScrollToHash } from '../hooks/useScrollToHash';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { LessonDayGroup } from './LessonDayGroup';
-import { PlanningActions } from './PlanningActions';
 import { PlanningToday } from './PlanningToday';
 import { upcomingDayGroups } from './upcomingDayGroups';
 import { useLessons } from './useLessons';
@@ -30,12 +28,9 @@ import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
 const TITLE = 'Занятия';
 const EXPLANATION = `Занятия на **${PLANNING_HORIZON_WEEKS} недели** вперёд. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
-// Блок текста шапки уже макета (1c-planning.html, docs/adr/0043) — рядом
-// теперь пара действий, «Расписание» и «Разовое занятие»
-// (PlanningActions.tsx, отзыв владельца 2026-09-18): на 880px общей ширины
-// экрана столбец текста 620 (значение ScreenHeader по умолчанию) сталкивал бы
-// их на вторую строку раньше, чем нужно — у 540 для пары действий ещё
-// остаётся запас.
+// Блок текста шапки уже макета (1c-planning.html, docs/adr/0043): рядом пара
+// действий, и на 880px столбец 620 (по умолчанию) сталкивал бы их на вторую
+// строку раньше нужного — у 540 запас остаётся (отзыв владельца 2026-09-18).
 const TITLE_MAX_WIDTH_PX = 540;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
@@ -105,7 +100,12 @@ export default function PlanningScreen() {
         titleMaxWidth={TITLE_MAX_WIDTH_PX}
         action={
           !lessonsState.loading && (
-            <PlanningActions onOpenSchedule={openSchedule} onCreateOneOff={openCreate} />
+            <ScreenActions
+              actions={[
+                { label: 'Расписание', onClick: openSchedule },
+                { label: 'Разовое занятие', onClick: openCreate, variant: 'primary' },
+              ]}
+            />
           )
         }
       />

@@ -1,5 +1,5 @@
 // Доска штата (ADR-0174): рубрики «Ждёт вас» и «Настроить», очередь проверки
-// и четыре входа в разделы. Рендерим через BoardScreen — он ветвится по роли, и
+// и четыре входа в разделы (занятия, рассылки, материалы, школа). Рендерим через BoardScreen — он ветвится по роли, и
 // ветку ученика тоже проверяем отсюда (штат в режиме ученика). Сеть —
 // mockApiByPath (ADR-0116).
 import { screen } from '@testing-library/react';
@@ -113,7 +113,7 @@ describe('StaffBoard — шапка и рубрики', () => {
     expect(explanation).toHaveTextContent('работы на проверке');
     expect(explanation).toHaveTextContent('ближайшие события школы');
     expect(explanation).toHaveTextContent(
-      'входы в расписание, рассылки, материалы и настройки школы',
+      'входы в занятия, рассылки, материалы и настройки школы',
     );
   });
 
@@ -162,7 +162,7 @@ describe('StaffBoard — карточка «Проверка»', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(QUEUE_ERROR_TEXT);
     expect(screen.getByRole('link', { name: /Проверка/ })).toBeInTheDocument();
-    for (const name of ['Расписание', 'Рассылки', 'Материалы', 'Школа']) {
+    for (const name of ['Занятия', 'Рассылки', 'Материалы', 'Школа']) {
       expect(screen.getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     }
 
@@ -173,7 +173,7 @@ describe('StaffBoard — карточка «Проверка»', () => {
 });
 
 describe('StaffBoard — входы в «Настроить»', () => {
-  it('четыре карточки-входа: расписание, рассылки, материалы, школа (ADR-0176)', async () => {
+  it('четыре карточки-входа: занятия, рассылки, материалы, школа (ADR-0176)', async () => {
     renderStaffBoard();
     await screen.findByRole('heading', { name: 'Настроить' });
 
@@ -184,8 +184,21 @@ describe('StaffBoard — входы в «Настроить»', () => {
     expect(hrefs).toEqual(['/planning', '/broadcasts', '/materials', '/school']);
   });
 
+  // «Расписание» значит один экран, /schedule (ADR-0025, дополнение
+  // 2026-10-08): карточка на доске ведёт на «Занятия» и так называется.
+  it('карточка «Занятия» с подсказкой про четыре недели, карточки «Расписание» нет', async () => {
+    renderStaffBoard();
+    await screen.findByRole('heading', { name: 'Настроить' });
+
+    const card = screen.getByRole('link', { name: /Занятия/ });
+    expect(card).toHaveAttribute('href', '/planning');
+    expect(card).toHaveTextContent('Занятия на четыре недели');
+    expect(card).toHaveTextContent('разовое занятие и постоянное расписание');
+    expect(screen.queryByRole('link', { name: /Расписание/ })).not.toBeInTheDocument();
+  });
+
   it.each([
-    ['Расписание', 'Экран занятий штата'],
+    ['Занятия', 'Экран занятий штата'],
     ['Рассылки', 'Экран рассылок'],
     ['Материалы', 'Экран материалов'],
     ['Школа', 'Экран школы'],
@@ -255,7 +268,7 @@ describe('StaffBoard — роли', () => {
     renderStaffBoard({ me: makeMe({ roles: [role] }) });
 
     expect(await screen.findByRole('heading', { name: 'Настроить' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Расписание/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Занятия/ })).toBeInTheDocument();
   });
 
   it('штат в режиме ученика — доска ученика, очередь проверки не запрашивается', async () => {
