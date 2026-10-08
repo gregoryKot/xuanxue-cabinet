@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from '../auth/hasRole';
+import { useHasExams } from '../student/useHasExams';
 import { SchoolBrandLink } from '../components/SchoolBrandLink';
 import { NavIcon } from './NavIcon';
 import {
@@ -50,7 +51,9 @@ interface AppNavProps {
 
 export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps) {
   const { pathname } = useLocation();
-  const items = navItemsFor(me).filter(
+  // «Задания» в панели ученика — только если у него есть экзамены (ADR-0178).
+  const hasExams = useHasExams();
+  const items = navItemsFor(me, { hasExams }).filter(
     (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
   );
   const active = activeSectionPath(pathname, items);

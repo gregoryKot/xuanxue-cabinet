@@ -84,3 +84,6 @@
 read-after-write, «Убрать»), `board/boardNoticeState.test.ts` (граница дня по
 поясу школы, в том числе переход на зимнее время), `templates/TemplatesScreen.test.tsx`
 (раздела «Доска» больше нет), `app/prefetchFirstScreen.test.ts`.
+
+Переименование 2026-10-08: экран называется «Главная», объявление стоит на нём
+карточкой без заголовка среди плиток ([ADR-0178](0178-home-screen-tiles.md)).

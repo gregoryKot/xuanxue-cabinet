@@ -44,6 +44,7 @@ export const SCHOOL_EVENT_LIMITS = { title: 120, place: 200, description: 2000 }
 export const MY_SCHOOL_EVENTS_LIMIT = 20;
 
 // VOICE.md: что случилось и что делать.
-export const SCHOOL_EVENT_NOT_FOUND_MESSAGE = 'Это событие уже удалено. Обновите доску.';
+export const SCHOOL_EVENT_NOT_FOUND_MESSAGE =
+  'Это событие уже удалено. Вернитесь на главную.';
 export const SCHOOL_EVENT_ENDS_BEFORE_START_MESSAGE =
   'Конец события раньше начала. Проверьте даты.';

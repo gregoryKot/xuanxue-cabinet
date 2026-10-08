@@ -21,18 +21,25 @@
 // «Занятия», «Рассылки» и «Материалы» ушли из панели в карточки-входы на
 // самой доске (ADR-0174, заменяет ADR-0138; BOARD_PATH в screenAccess.ts).
 // Три пункта у штата, предел ADR-0055 (пять) не нарушен.
+//
+// «Главная» (ADR-0178, раньше «Доска»): адрес `/board` и `BOARD_PATH` остались,
+// ссылки и закладки целы. «Задания» у ученика — только при наличии экзаменов.
 import type { MeDto, UserRole } from '@xuanxue/shared';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { BOARD_PATH, isAccountant, isTeacher } from './screenAccess';
 
-// Разделы, которые открываются с доски, а не из панели (ADR-0174): пока
-// учитель в расписании, рассылках или материалах, подсвечена «Доска» — он
+const TASKS_PATH = '/tasks';
+
+// Разделы, которые открываются с главной, а не из панели (ADR-0174): пока
+// учитель в расписании, рассылках или материалах, подсвечена «Главная» — он
 // пришёл туда с неё и вернётся на неё. Без этого на `/planning` не горел бы
 // ни один пункт, как на `/login`. Подэкраны разделов — тот же приём, что был
 // у них в `childPaths` своих пунктов: `/schedule` под «Занятиями», `/channels`
 // и `/templates` под «Рассылками», `/materials/tags` под «Материалами»
 // (ADR-0075). `/x/new` и `/x/:id` не подсвечивают ничего — как и раньше
 // (`activeSectionPath` сравнивает путь целиком).
+const BOARD_LABEL = 'Главная';
+
 const BOARD_CHILD_PATHS = [
   '/planning',
   '/schedule',
@@ -41,7 +48,7 @@ const BOARD_CHILD_PATHS = [
   '/templates',
   '/materials',
   '/materials/tags',
-  // Экран «Школа» (ADR-0176) — тоже вход с доски.
+  // Экран «Школа» (ADR-0176) — тоже вход с главной.
   '/school',
 ];
 
@@ -73,7 +80,7 @@ export interface NavItem {
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
-  { to: BOARD_PATH, label: 'Доска', childPaths: BOARD_CHILD_PATHS, icon: 'board' },
+  { to: BOARD_PATH, label: BOARD_LABEL, childPaths: BOARD_CHILD_PATHS, icon: 'board' },
   {
     to: '/exams',
     label: 'Экзамены',
@@ -91,12 +98,12 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/** Решение владельца 2026-10-06 (ADR-0173): «Доска» — первый экран после
- * входа, «Задания» и «Занятия» — следом; три пункта, предел ADR-0055 (пять)
- * не нарушен. Экзамены остаются отдельным экраном (docs/PLAN.md §11). */
+/** Решение владельца 2026-10-06 (ADR-0173): первый экран после входа, «Задания»
+ * и «Занятия» — следом; три пункта, предел ADR-0055 (пять) не нарушен.
+ * «Задания» убирает navItemsFor, когда экзаменов нет (ADR-0178). */
 export const STUDENT_NAV_ITEMS: NavItem[] = [
-  { to: BOARD_PATH, label: 'Доска', childPaths: [], icon: 'board' },
-  { to: '/tasks', label: 'Задания', childPaths: [], icon: 'tasks' },
+  { to: BOARD_PATH, label: BOARD_LABEL, childPaths: [], icon: 'board' },
+  { to: TASKS_PATH, label: 'Задания', childPaths: [], icon: 'tasks' },
   // «/archive» («Записи занятий», слой 3.3) и «/library» («Библиотека»,
   // слой 3.2) — подэкраны «Занятий», вход карточкой SectionLink на
   // LessonsScreen.tsx (ADR-0025): вкладка «Занятия» остаётся подсвеченной,
@@ -114,10 +121,21 @@ export const ACCOUNTANT_NAV_ITEMS: NavItem[] = [
   { to: PAYMENTS_SCREEN_PATH, label: 'Оплаты', childPaths: [], icon: 'payments' },
 ];
 
+export interface NavContext {
+  /** Есть ли у ученика хоть один экзамен в `GET /me/exams`. Пока список
+   * грузится или не загрузился, `false`: пункт не мигает у тех, кто не учится
+   * на курсе. Маршрут `/tasks` от этого не закрывается — глубокие ссылки из
+   * уведомлений работают (ADR-0129). Штата и бухгалтера признак не касается. */
+  hasExams: boolean;
+}
+
 /** Пункты навигации для роли этого человека (AppNav.tsx). */
-export function navItemsFor(me: MeDto | null): NavItem[] {
+export function navItemsFor(me: MeDto | null, { hasExams }: NavContext): NavItem[] {
   if (isTeacher(me)) return STAFF_NAV_ITEMS;
-  return isAccountant(me) ? ACCOUNTANT_NAV_ITEMS : STUDENT_NAV_ITEMS;
+  if (isAccountant(me)) return ACCOUNTANT_NAV_ITEMS;
+  return hasExams
+    ? STUDENT_NAV_ITEMS
+    : STUDENT_NAV_ITEMS.filter((item) => item.to !== TASKS_PATH);
 }
 
 /** Какой пункт меню подсветить для текущего пути — сам раздел или один из

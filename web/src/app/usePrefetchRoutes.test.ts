@@ -120,9 +120,9 @@ describe('usePrefetchRoutes', () => {
     expect(loadTasks).not.toHaveBeenCalled();
   });
 
-  // ADR-0174: «Доска» — первый экран и штата, и ученика, один чанк на обе
+  // ADR-0174: «Главная» — первый экран и штата, и ученика, один чанк на обе
   // роли; бухгалтеру она не нужна — его корень «Оплаты» (ADR-0171).
-  it('«Доска» греется и штату, и ученику, бухгалтеру — нет', async () => {
+  it('«Главная» греется и штату, и ученику, бухгалтеру — нет', async () => {
     stubIdleCallback();
 
     const teacher = renderHook(() => usePrefetchRoutes(TEACHER));

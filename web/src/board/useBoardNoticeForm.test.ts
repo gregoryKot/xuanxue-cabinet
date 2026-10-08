@@ -134,7 +134,11 @@ describe('useBoardNoticeForm — save()', () => {
     const update = vi
       .fn()
       .mockRejectedValue(
-        new ApiError('Объявление на доске: слишком длинный текст.', 400, 'invalid_input'),
+        new ApiError(
+          'Объявление на главной: слишком длинный текст.',
+          400,
+          'invalid_input',
+        ),
       );
     const { result } = renderHook(() => useBoardNoticeForm(SETTINGS_EMPTY, update));
 
@@ -145,7 +149,7 @@ describe('useBoardNoticeForm — save()', () => {
     });
 
     expect(result.current.error?.message).toBe(
-      'Объявление на доске: слишком длинный текст.',
+      'Объявление на главной: слишком длинный текст.',
     );
     expect(result.current.form.text).toBe('Ретрит в ноябре');
     expect(result.current.pending).toBe(false);

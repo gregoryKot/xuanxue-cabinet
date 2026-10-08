@@ -11,7 +11,7 @@
 // механика ученика, у штата школы запрос выключен везде, кроме «/tasks» —
 // туда штат тоже попадает по прямой ссылке (canSeeRoute, screenAccess.ts) и
 // там список нужен для самого экрана, не для счётчика. На «/board» у штата
-// своя доска без рубрики «Сдавать сейчас» (ADR-0174); штат в режиме ученика
+// своя главная без плитки экзаменов (ADR-0174, ADR-0178); штат в режиме ученика
 // (ADR-0163) приходит с пустыми ролями и считается учеником. Роль, при которой
 // счётчик не должен считать эти формы «новым заданием» (штат на «/tasks»),
 // фильтруется в useNotificationsData.ts — провайдер решает только «идёт ли
@@ -47,7 +47,7 @@ export interface UseMyExamsResult extends UseAbortableFetchResult<MyExamDto[]> {
   markSeen: (examId: string) => void;
 }
 
-const MyExamsContext = createContext<UseMyExamsResult | null>(null);
+export const MyExamsContext = createContext<UseMyExamsResult | null>(null);
 
 /** No-op для useMyExamsApplyAttempt() ниже, когда провайдера нет —
  * см. комментарий у неё: в проде экран сдачи всегда внутри MyExamsProvider

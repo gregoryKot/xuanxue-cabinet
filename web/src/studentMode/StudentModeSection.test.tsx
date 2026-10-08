@@ -70,7 +70,7 @@ describe('StudentModeSection — режим выключен', () => {
     ).toBeInTheDocument();
   });
 
-  it('нажатие шлёт PUT { enabled: true }, подпись меняется по ответу, ведёт на «Доску»', async () => {
+  it('нажатие шлёт PUT { enabled: true }, подпись меняется по ответу, ведёт на «Главную»', async () => {
     const user = userEvent.setup();
     renderSection(STAFF_ME, { '/me/student-mode': STAFF_IN_STUDENT_MODE_ME });
 
@@ -146,7 +146,7 @@ describe('StudentModeSection — режим выключен', () => {
 });
 
 describe('StudentModeSection — режим включён', () => {
-  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Доску»', async () => {
+  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Главную»', async () => {
     const user = userEvent.setup();
     renderSection(STAFF_IN_STUDENT_MODE_ME, { '/me/student-mode': STAFF_ME });
 

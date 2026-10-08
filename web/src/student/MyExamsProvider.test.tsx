@@ -18,6 +18,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { MyExamsProvider, useMyExams, useMyExamsApplyAttempt } from './MyExamsProvider';
+import { useHasExams } from './useHasExams';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -275,7 +276,7 @@ describe('MyExamsProvider — enabled по роли и пути (ADR-0074)', () 
     },
   );
 
-  it('штат на «/board» — запроса нет: доска штата список не читает (ADR-0174)', async () => {
+  it('штат на «/board» — запроса нет: главная штата список не читает (ADR-0174)', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
     renderWithProvider(staffMe('teacher'), <Reader />, '/board');
 
@@ -297,5 +298,47 @@ describe('MyExamsProvider — enabled по роли и пути (ADR-0074)', () 
 
     await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
     expect(examsCallCount()).toBe(1);
+  });
+});
+
+// ADR-0178: пункт «Задания» в панели ученика зависит от одного признака.
+describe('useHasExams', () => {
+  function HasExams() {
+    return <p>{useHasExams() ? 'есть' : 'нет'}</p>;
+  }
+
+  it('пока список грузится — нет: пункт не мигает', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: new Promise(() => {}) });
+    renderWithProvider(STUDENT, <HasExams />);
+
+    expect(screen.getByText('нет')).toBeInTheDocument();
+    await waitFor(() => expect(examsCallCount()).toBe(1));
+    expect(screen.getByText('нет')).toBeInTheDocument();
+  });
+
+  it('есть хоть один экзамен — есть', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+    renderWithProvider(STUDENT, <HasExams />);
+
+    expect(await screen.findByText('есть')).toBeInTheDocument();
+  });
+
+  it('список пуст или сбой — нет', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [] });
+    const { unmount } = renderWithProvider(STUDENT, <HasExams />);
+    await waitFor(() => expect(examsCallCount()).toBe(1));
+    expect(screen.getByText('нет')).toBeInTheDocument();
+    unmount();
+
+    mockApiByPath({ [MY_EXAMS_PATH]: new TypeError('Failed to fetch') });
+    renderWithProvider(STUDENT, <HasExams />);
+    await waitFor(() => expect(examsCallCount()).toBe(2));
+    expect(screen.getByText('нет')).toBeInTheDocument();
+  });
+
+  it('вне провайдера не бросает: панель рисуется и в изолированных тестах', () => {
+    render(<HasExams />);
+
+    expect(screen.getByText('нет')).toBeInTheDocument();
   });
 });

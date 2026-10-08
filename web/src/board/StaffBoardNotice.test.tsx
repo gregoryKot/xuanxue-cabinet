@@ -1,7 +1,7 @@
-// Объявление ученикам на доске штата (ADR-0172, дополнение 2026-10-07):
+// Объявление ученикам на главной штата (ADR-0172, дополнение 2026-10-07):
 // карточка-плюс, диалог правки, «Убрать» и истёкшее объявление. Рендерим
 // через BoardScreen поверх настоящего useSettings — read-after-write
-// (ADR-0087): доска показывает ответ PATCH, а не второй GET. Логика формы —
+// (ADR-0087): главная показывает ответ PATCH, а не второй GET. Логика формы —
 // useBoardNoticeForm.test.ts, состояния — boardNoticeState.test.ts.
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -30,7 +30,7 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 stubViewerTimeZone();
 
-// «Сегодня» доски — new Date() (StaffBoard.tsx): без фиксации «до 20 октября»
+// «Сегодня» главной — new Date() (StaffBoard.tsx): без фиксации «до 20 октября»
 // истекло бы само, когда тест запустят позже.
 const TODAY = new Date('2026-10-10T12:00:00Z');
 beforeEach(() => {
@@ -67,7 +67,7 @@ function mockBoard(settings: SettingsDto) {
 async function renderBoard(settings: SettingsDto) {
   mockBoard(settings);
   renderBoardWithRoutes(null);
-  await screen.findByRole('heading', { name: 'Настроить' });
+  await screen.findByRole('link', { name: /Школа/ });
   // Объявление рисуется, когда пришли настройки: ждём любое из его состояний.
   await waitFor(() =>
     expect(

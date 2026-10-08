@@ -104,7 +104,7 @@ const SETTINGS: SettingsDto = {
  * проверки. `/attempts/queue` ловит и путь с query — mockRoute матчит по префиксу. */
 const STAFF_BOARD_DATA = { '/settings': SETTINGS, '/attempts/queue': [] };
 
-/** Данные четырёх запросов «Доски» (ADR-0173) — первого экрана ученика. */
+/** Данные четырёх запросов «Главной» (ADR-0173) — первого экрана ученика. */
 const STUDENT_BOARD_DATA = {
   '/me/exams': [],
   '/me/lessons': [],
@@ -170,7 +170,7 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Доска' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Главная' })).not.toBeInTheDocument();
   });
 
   // Заявление о доступности (ADR-0158) — публичное, как политика: правила
@@ -194,7 +194,7 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Доступность' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Доска' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Главная' })).not.toBeInTheDocument();
   });
 
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
@@ -405,18 +405,18 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
   });
 
-  it('учитель на /payments — уходит на свой корень «Доска», а не получает отказ API', async () => {
+  it('учитель на /payments — уходит на свой корень «Главная», а не получает отказ API', async () => {
     mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/payments');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Оплаты' })).not.toBeInTheDocument();
   });
 
-  it('ученик без роли на /people — уводит редиректом на «Доску» (маршрут штата ему не открыт)', async () => {
+  it('ученик без роли на /people — уводит редиректом на «Главную» (маршрут штата ему не открыт)', async () => {
     // AppShell.tsx: canSeeRoute не пускает ученика на маршруты штата вовсе —
     // редирект на rootPathFor(me) срабатывает раньше, чем запрос доходит до
     // вложенного RequirePeopleAccess.
@@ -439,7 +439,7 @@ describe('App', () => {
     renderAt('/people');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
   });
@@ -471,7 +471,7 @@ describe('App', () => {
     expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
   });
 
-  it('ученик без роли на /dev/errors — уводит редиректом на «Доску» (маршрут штата ему не открыт)', async () => {
+  it('ученик без роли на /dev/errors — уводит редиректом на «Главную» (маршрут штата ему не открыт)', async () => {
     const student: MeDto = {
       id: 's2',
       name: 'Оля',
@@ -491,31 +491,31 @@ describe('App', () => {
     renderAt('/dev/errors');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
   });
 
-  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска» —
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Главная» —
   // первый экран штата при входе, было «Экзамены» — смоук на /exams отдельно
   // выше, здесь только то, что «/» ведёт на доску и в ней есть входы в
   // занятия, рассылки и материалы.
-  it('учитель на «/» — уводит на «Доску»', async () => {
+  it('учитель на «/» — уводит на «Главную»', async () => {
     mockRoute(TEACHER, STAFF_BOARD_DATA);
 
     renderAt('/');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /Занятия/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Рассылки/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Материалы/ })).toBeInTheDocument();
   });
 
-  // Решение владельца 2026-10-06 (ADR-0173): «Доска» — первый экран ученика —
+  // Решение владельца 2026-10-06 (ADR-0173): «Главная» — первый экран ученика —
   // ученик с «/» попадает не туда же, куда учитель.
-  it('ученик на «/» — уводит на «Доску»', async () => {
+  it('ученик на «/» — уводит на «Главную»', async () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
@@ -535,20 +535,22 @@ describe('App', () => {
     renderAt('/');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
   });
 
-  it('ученик на /board — маршрут «Доска» открывает BoardScreen', async () => {
+  it('ученик на /board — маршрут «Главная» открывает BoardScreen', async () => {
     const student: MeDto = { ...TEACHER, id: 's3', name: 'Катя', roles: [] };
     mockRoute(student, STUDENT_BOARD_DATA);
 
     renderAt('/board');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Доска' }),
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
-    expect(await screen.findByText('Экзаменов к сдаче нет.')).toBeInTheDocument();
+    // Оплата ученику показывается всегда; про экзамены и занятия — ни слова.
+    expect(await screen.findByText('Оплаты за октябрь нет')).toBeInTheDocument();
+    expect(screen.queryByText(/экзамен/i)).not.toBeInTheDocument();
   });
 
   it('ученик на /tasks — маршрут «Задания» открывает TasksScreen', async () => {

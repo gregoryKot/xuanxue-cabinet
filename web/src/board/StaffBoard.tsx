@@ -1,33 +1,29 @@
-// Доска штата (ADR-0174, владелец 2026-10-06: «доска стала главным экраном
+// Главная штата (ADR-0174, владелец 2026-10-06: «доска стала главным экраном
 // при любом входе. у учителя там кнопки настроить расписание, рассылки,
-// материалы — из навигации можно убрать»). Сверху объявление ученикам — то же,
-// что видит ученик, и здесь же правится (StaffBoardNotice.tsx, ADR-0172
-// дополнение): ему нужны настройки школы целиком, поэтому штат читает
-// GET /settings, а не GET /me/board ученика. Дальше три рубрики: «Ждёт вас» —
-// число работ на проверке кликабельной строкой внутри карточки «Проверка»
-// (тот же приём, что на «Экзаменах»: exams/ExamsSectionStats.tsx,
-// gradingQueueHint.ts); «События» — ближайшие ретриты и семинары и карточка
-// «Добавить событие» (StaffBoardEvents.tsx, ADR-0177); «Настроить» —
-// карточки-входы в разделы, ушедшие из панели: «Занятия» (экран штата
-// /planning, в шапке которого кнопка «Расписание» в постоянное расписание —
-// «Расписание» значит один экран, /schedule), «Рассылки»,
-// «Материалы» и «Школа» — настройки школы (ADR-0176). Карточки — общий
-// SectionLink (CLAUDE.md «Одна механика — один компонент»).
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
+// материалы — из навигации можно убрать»; название «Главная» и плитки без
+// рубрик — ADR-0178). Сверху объявление ученикам — то же, что видит ученик, и
+// здесь же правится (StaffBoardNotice.tsx, ADR-0172 дополнение): ему нужны
+// настройки школы целиком, поэтому штат читает GET /settings, а не GET
+// /me/board ученика. Дальше плитки подряд, без рубрик: «Проверка» с числом
+// работ на проверке кликабельной строкой (тот же приём, что на «Экзаменах»:
+// exams/ExamsSectionStats.tsx, gradingQueueHint.ts); ближайшие события и
+// карточка «Добавить событие» (StaffBoardEvents.tsx, ADR-0177); карточки-входы
+// в разделы, ушедшие из панели, сеткой в две колонки на широком экране:
+// «Занятия» (/planning; «Расписание» — только кнопка в его шапке, ADR-0176),
+// «Рассылки», «Материалы» и «Школа» — настройки школы (ADR-0176).
+// Карточки — общий SectionLink (CLAUDE.md «Одна механика — один компонент»).
 import { SectionLink } from '../components/SectionLink';
 import { formatGradingQueueHint } from '../grading/gradingQueueHint';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { useSettings } from '../templates/useSettings';
-import { BoardSection } from './BoardSection';
+import { BoardLoadError } from './BoardLoadError';
 import { StaffBoardEvents } from './StaffBoardEvents';
 import { StaffBoardNotice } from './StaffBoardNotice';
 
-const QUEUE_HEADING = 'Ждёт вас';
 const GRADING_PATH = '/grading';
 const GRADING_TITLE = 'Проверка';
 const GRADING_HINT = 'Сданные работы учеников, которые ждут вашей оценки.';
 
-const SETUP_HEADING = 'Настроить';
 // Подписи говорят, что внутри раздела, одной строкой — чтобы за пять секунд
 // было понятно, куда нажать (CLAUDE.md «Каждая фича объясняет…»).
 const SETUP_LINKS = [
@@ -61,14 +57,14 @@ export function StaffBoard() {
   return (
     <>
       {settingsState.error && (
-        <LoadErrorBanner
+        <BoardLoadError
           message={settingsState.error}
           onRetry={() => void settingsState.reload()}
-          retryLabel="Обновить"
         />
       )}
-      {/* Пока настройки грузятся, места под объявление не резервируем — как
-          у ученика (BoardNotice.tsx): объявления может не быть вовсе. */}
+      {/* Пока настройки грузятся, места под объявление не резервируем:
+          объявления может не быть вовсе, а карточка-плюс появится вместе с
+          настройками. */}
       {settingsState.settings && (
         <StaffBoardNotice
           settings={settingsState.settings}
@@ -77,31 +73,21 @@ export function StaffBoard() {
         />
       )}
 
-      <BoardSection heading={QUEUE_HEADING}>
-        {error && (
-          <LoadErrorBanner
-            message={error}
-            onRetry={() => void reload()}
-            retryLabel="Обновить"
-          />
-        )}
-        <SectionLink
-          to={GRADING_PATH}
-          title={GRADING_TITLE}
-          headline={formatGradingQueueHint(attempts?.length ?? null)}
-          hint={GRADING_HINT}
-        />
-      </BoardSection>
+      {error && <BoardLoadError message={error} onRetry={() => void reload()} />}
+      <SectionLink
+        to={GRADING_PATH}
+        title={GRADING_TITLE}
+        headline={formatGradingQueueHint(attempts?.length ?? null)}
+        hint={GRADING_HINT}
+      />
 
       <StaffBoardEvents />
 
-      <BoardSection heading={SETUP_HEADING}>
-        <div className="xuanxue-block-grid">
-          {SETUP_LINKS.map((link) => (
-            <SectionLink key={link.to} to={link.to} title={link.title} hint={link.hint} />
-          ))}
-        </div>
-      </BoardSection>
+      <div className="xuanxue-block-grid">
+        {SETUP_LINKS.map((link) => (
+          <SectionLink key={link.to} to={link.to} title={link.title} hint={link.hint} />
+        ))}
+      </div>
     </>
   );
 }

@@ -178,10 +178,10 @@ describe('matchRoute', () => {
   // Роль ушла в rootPathFor (screenAccess.ts, screenAccess.test.ts) — этот
   // резолвер по-прежнему без роли, «/» (сегментов нет) сопоставляется с
   // BOARD_PATH как единственным опорным путём для чанка/prefetch — с
-  // 2026-10-06 это «Доска», не «Экзамены» (ADR-0174, заменяет ADR-0138). Гейт
+  // 2026-10-06 это «Главная», не «Экзамены» (ADR-0174, заменяет ADR-0138). Гейт
   // от повторного расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и
   // rootPathFor (screenAccess.ts).
-  it('корень (сегментов нет) — чанк «Доски»', () => {
+  it('корень (сегментов нет) — чанк «Главной»', () => {
     expect(loaderAt('/')).toBe(ROUTE_MODULES.board.load);
   });
 

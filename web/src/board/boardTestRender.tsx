@@ -1,4 +1,4 @@
-// Общая обвязка тестов «Доски» (ADR-0173, ADR-0174): ученик и штат
+// Общая обвязка тестов «Главной» (ADR-0173, ADR-0174, ADR-0178): ученик и штат
 // рендерятся одним экраном BoardScreen, оболочка вокруг у них одна. Сам
 // `vi.mock('../api/http', …)` остаётся в файле теста — vitest поднимает его
 // до импортов. Вынесено, чтобы две раскладки не повторяли один каркас
@@ -12,6 +12,7 @@ import {
   DEFAULT_PAYMENT_REMINDER,
   type SettingsDto,
 } from '@xuanxue/shared';
+import { AppNav } from '../app/AppNav';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import BoardScreen from './BoardScreen';
@@ -37,19 +38,32 @@ export const NO_EVENTS_RESPONSES = { '/events': [], '/me/events': [] };
 /** Оболочка в миниатюре: провайдер экзаменов берёт `me` из сессии, как AppShell.
  * Пока сессия не пришла, не рисуем ничего: провайдер с `me === null` считает
  * человека учеником и успел бы послать `GET /me/exams` даже штату (ADR-0074). */
-function ExamsFromSession({ children }: { children: ReactNode }) {
+function ExamsFromSession({
+  children,
+  withNav,
+}: {
+  children: ReactNode;
+  withNav: boolean;
+}) {
   const { me } = useAuth();
   if (!me) return null;
-  return <MyExamsProvider me={me}>{children}</MyExamsProvider>;
+  return (
+    <MyExamsProvider me={me}>
+      {withNav && <AppNav isMobile me={me} />}
+      {children}
+    </MyExamsProvider>
+  );
 }
 
-/** `/board` с настоящей доской и заглушки соседних экранов из `routes`,
- * чтобы по клику видеть, куда ушли. */
-export function renderBoardWithRoutes(routes: ReactNode) {
+/** `/board` с настоящей главной и заглушки соседних экранов из `routes`,
+ * чтобы по клику видеть, куда ушли. `withNav` ставит рядом нижнюю панель с
+ * тем же провайдером экзаменов — пункт «Задания» зависит от его списка
+ * (ADR-0178). */
+export function renderBoardWithRoutes(routes: ReactNode, { withNav = false } = {}) {
   return render(
     <MemoryRouter initialEntries={['/board']}>
       <AuthProvider>
-        <ExamsFromSession>
+        <ExamsFromSession withNav={withNav}>
           <Routes>
             <Route path="/board" element={<BoardScreen />} />
             {routes}

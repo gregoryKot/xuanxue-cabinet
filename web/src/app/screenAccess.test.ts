@@ -73,10 +73,10 @@ describe('isAccountant', () => {
 });
 
 describe('rootPathFor', () => {
-  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Доска» —
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Главная» —
   // первый экран при любом входе, у штата тоже; «Экзамены» остались вторым
   // пунктом панели.
-  it('штат — «Доска»', () => {
+  it('штат — «Главная»', () => {
     expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/board');
     expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/board');
     expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/board');
@@ -86,11 +86,11 @@ describe('rootPathFor', () => {
     expect(rootPathFor(makeMe({ roles: ['accountant'] }))).toBe('/payments');
   });
 
-  it('бухгалтер с ролью штата — «Доска»: он штат, не бухгалтер', () => {
+  it('бухгалтер с ролью штата — «Главная»: он штат, не бухгалтер', () => {
     expect(rootPathFor(makeMe({ roles: ['accountant', 'teacher'] }))).toBe('/board');
   });
 
-  it('ученик — «Доска» (решение владельца 2026-10-06, ADR-0173)', () => {
+  it('ученик — «Главная» (решение владельца 2026-10-06, ADR-0173)', () => {
     expect(rootPathFor(makeMe({ roles: [] }))).toBe('/board');
   });
 

@@ -214,7 +214,7 @@ describe('JoinScreen — кнопка Google (googleLoginEnabled), код при
 // текст (и любой похожий на него) не должен появиться на экране НИ РАЗУ за
 // весь флоу «код валиден → возврат с Telegram → сессия есть → /schedule»
 // (JoinScreen.tsx уводит туда любую роль; ученика оттуда уводит дальше
-// AppShell.tsx — canSeeRoute/rootPathFor, screenAccess.ts — на «Доску»,
+// AppShell.tsx — canSeeRoute/rootPathFor, screenAccess.ts — на «Главную»,
 // ADR-0173).
 //
 // Старый тест проверял только финальный DOM (после findByText('Расписание'))
@@ -272,7 +272,7 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
         return Promise.resolve(STUDENT);
       }
       // Ученик без ролей на /schedule (маршрут штата) уходит редиректом на
-      // «Доску» (AppShell.tsx, canSeeRoute/rootPathFor) — его собственные
+      // «Главную» (AppShell.tsx, canSeeRoute/rootPathFor) — его собственные
       // эндпоинты: объявления нет, оплата за месяц пустая, остальное — пустые
       // списки.
       if (path.startsWith('/me/board')) return Promise.resolve({ notice: null });
@@ -305,7 +305,8 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     );
 
     await waitFor(
-      () => expect(screen.getByText('Экзаменов к сдаче нет.')).toBeInTheDocument(),
+      // Дошли до «Главной»: оплата ученику показывается всегда.
+      () => expect(screen.getByText('Оплаты за октябрь нет')).toBeInTheDocument(),
       { timeout: 5000 },
     );
     observer.disconnect();
