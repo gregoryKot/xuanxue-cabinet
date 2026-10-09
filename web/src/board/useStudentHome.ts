@@ -3,9 +3,11 @@
 // и рисовать ли скелетон. Список экзаменов — из MyExamsProvider.tsx, тот же
 // запрос, что у «Заданий» и колокольчика; остальные хуки — свои, read-only.
 // Оплату просим только тому, кому карточка положена (isPaymentContactVisible):
-// штат в режиме ученика (ADR-0163) получил бы от сервера отказ.
+// штат в режиме ученика (ADR-0163) получил бы от сервера отказ. Скрытую человеком
+// плитку (`me.homeHiddenTiles`, ADR-0179) не запрашиваем вовсе — кроме экзаменов:
+// список нужен пункту «Задания» в панели (useHasExams), он и так общий.
 import { useEffect, useState } from 'react';
-import type { MeDto } from '@xuanxue/shared';
+import type { HomeTileKey, MeDto } from '@xuanxue/shared';
 import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
 import { useMyExams } from '../student/MyExamsProvider';
 import { useMyLessons } from '../student/useMyLessons';
@@ -13,10 +15,11 @@ import { useMyPayments } from '../student/useMyPayments';
 import {
   buildStudentHome,
   isHomeLoading,
-  type HomeSource,
   type StudentHomeInput,
   type StudentHomeView,
 } from './studentHomeView';
+import type { HomeSource } from './homeSourceTile';
+import { hiddenTilesOf } from './homeTileOptions';
 import { useMyBoard } from './useMyBoard';
 import { useMyEvents } from './useMyEvents';
 
@@ -27,12 +30,14 @@ export interface UseStudentHomeResult {
 }
 
 export function useStudentHome(me: MeDto | null): UseStudentHomeResult {
+  const hidden = hiddenTilesOf(me);
   const paymentVisible = isPaymentContactVisible(me);
-  const board = useMyBoard();
+  const isShown = (tile: HomeTileKey) => !hidden.includes(tile);
+  const board = useMyBoard({ enabled: isShown('notice') });
   const exams = useMyExams();
-  const payments = useMyPayments({ enabled: paymentVisible });
-  const events = useMyEvents();
-  const lessons = useMyLessons();
+  const payments = useMyPayments({ enabled: paymentVisible && isShown('payment') });
+  const events = useMyEvents({ enabled: isShown('events') });
+  const lessons = useMyLessons({ enabled: isShown('nextLesson') });
 
   const input: Omit<StudentHomeInput, 'firstLoadDone'> = {
     board,
@@ -41,6 +46,7 @@ export function useStudentHome(me: MeDto | null): UseStudentHomeResult {
     paymentVisible,
     events,
     lessons,
+    hidden,
   };
 
   // Защёлка: повтор после сбоя снова даёт «загрузка без данных», но

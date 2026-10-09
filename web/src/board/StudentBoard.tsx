@@ -1,13 +1,15 @@
-// Главная ученика (ADR-0173, плитки — ADR-0178): объявление школы, потом
-// плитки только с тем, что к человеку относится: экзамены к сдаче, оплата за
-// месяц (только ученику), события школы (ADR-0177), ближайшее занятие.
-// Порядок — по срочности: что сдавать и платить, потом что случится в школе,
-// потом когда прийти. Какие плитки есть, решает чистая studentHomeView.ts по
-// данным useStudentHome.ts; здесь только раскладка. Сбой источника — баннер с
+// Главная ученика (ADR-0173, плитки — ADR-0178): плитки только с тем, что к
+// человеку относится. Порядок (ADR-0179, владелец 2026-10-09): ближайшее занятие
+// первым — «когда мне идти» главный вопрос того, кто открыл ссылку с телефона, —
+// затем объявление школы, экзамены к сдаче, оплата за месяц (только ученику) и
+// события школы (ADR-0177). Скрытые человеком плитки не рисуются. Какие плитки
+// есть, решает чистая studentHomeView.ts по данным useStudentHome.ts; здесь
+// только раскладка. Сбой источника — баннер с
 // «Обновить» на месте его плитки. Пока всё грузится впервые — один скелетон по
 // форме двух плиток; нечего показывать совсем — одна спокойная строка.
 // Для штата в режиме ученика (ADR-0163) оплаты нет: деньги в режим не входят.
 import type { MeDto } from '@xuanxue/shared';
+import { noteStyle } from '../components/screenLayout';
 import { Skeleton } from '../components/Skeleton';
 import { BoardExamsTile } from './BoardExamsTile';
 import { BoardLoadError } from './BoardLoadError';
@@ -16,9 +18,12 @@ import { BoardNoticeCard } from './BoardNoticeCard';
 import { BoardPaymentTile } from './BoardPaymentTile';
 import { EventTile } from './EventTile';
 import { useStudentHome } from './useStudentHome';
-import type { HomeSource } from './studentHomeView';
+import type { HomeSource } from './homeSourceTile';
 
 const NOTHING_WAITS_MESSAGE = 'Сейчас от вас ничего не ждут.';
+// Только тому, кто сам скрыл плитки (view.hasHidden): иначе подсказка вернуть то,
+// чего человек не убирал, сбивала бы с толку.
+const RESTORE_HINT = 'Скрытые плитки можно вернуть через «Настроить главную».';
 // Форма скелетона — две плитки средней высоты: ровно столько занимают
 // «Оплата» и «Ближайшее занятие», самые частые из плиток.
 const SKELETON_TILE_HEIGHT_PX = 120;
@@ -41,8 +46,14 @@ export function StudentBoard({ me }: StudentBoardProps) {
       </>
     );
   }
-  if (view.status === 'empty')
-    return <p style={{ margin: 0 }}>{NOTHING_WAITS_MESSAGE}</p>;
+  if (view.status === 'empty') {
+    return (
+      <>
+        <p style={{ margin: 0 }}>{NOTHING_WAITS_MESSAGE}</p>
+        {view.hasHidden && <p style={noteStyle}>{RESTORE_HINT}</p>}
+      </>
+    );
+  }
 
   const errorOf = (source: HomeSource) => {
     const message = view.errors[source];
@@ -51,6 +62,8 @@ export function StudentBoard({ me }: StudentBoardProps) {
 
   return (
     <>
+      {errorOf('lessons')}
+      {view.nextLesson && <BoardNextLessonTile lesson={view.nextLesson} />}
       {errorOf('board')}
       {view.notice && <BoardNoticeCard notice={view.notice} />}
       {errorOf('exams')}
@@ -61,8 +74,6 @@ export function StudentBoard({ me }: StudentBoardProps) {
       {view.events.map((event) => (
         <EventTile key={event.id} event={event} editable={false} />
       ))}
-      {errorOf('lessons')}
-      {view.nextLesson && <BoardNextLessonTile lesson={view.nextLesson} />}
     </>
   );
 }
