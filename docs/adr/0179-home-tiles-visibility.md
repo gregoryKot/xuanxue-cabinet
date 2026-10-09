@@ -80,4 +80,6 @@
 - Гейты: `shared/src/home-tiles.spec.ts`, `api/src/users/user-home-tiles.service.spec.ts`,
   `api/test/me-home-tiles.e2e-spec.ts` (401, владение, 400, read-after-write),
   `api/test/api-routes.e2e-spec.ts` (карта маршрутов), `board/studentHomeView.test.ts`
-  (порядок, фильтр, подсказка).
+  (фильтр, подсказка), `board/BoardScreen.test.tsx` (порядок плиток),
+  `board/HomeTilesSettings.test.tsx` (диалог, `PUT`, скрытое не запрашивается),
+  `app/prefetchFirstScreen.test.ts` (прогрев не греет скрытое).

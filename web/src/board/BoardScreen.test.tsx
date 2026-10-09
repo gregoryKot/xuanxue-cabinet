@@ -1,5 +1,5 @@
 // Экран «Главная» — первый экран ученика (ADR-0173, плитки — ADR-0178):
-// объявление, экзамены к сдаче, оплата за месяц и ближайшее занятие, плиткой
+// ближайшее занятие, объявление, экзамены к сдаче и оплата за месяц, плиткой
 // на каждое, и только то, что к человеку относится. Сеть —
 // mockApiByPath (ADR-0116), список экзаменов идёт через настоящий
 // MyExamsProvider, как в оболочке. Навигацию проверяем в MemoryRouter.
@@ -133,17 +133,27 @@ describe('BoardScreen — шапка и плитки', () => {
     expect(screen.queryByText('Доска')).not.toBeInTheDocument();
   });
 
-  it('плитки идут сверху вниз: экзамены, оплата, ближайшее занятие, и рубрик нет', async () => {
-    const { container } = renderBoard({ exams: [makeExam()], lessons: [makeLesson()] });
+  // ADR-0179: ближайшее занятие первым, за ним объявление, экзамены, оплата.
+  it('плитки идут сверху вниз: занятие, объявление, экзамены, оплата, и рубрик нет', async () => {
+    const { container } = renderBoard({
+      board: { notice: { text: 'Ретрит в ноябре', until: '2026-10-20' } },
+      exams: [makeExam()],
+      lessons: [makeLesson()],
+    });
     await screen.findByText('Оплаты за октябрь нет');
     await screen.findByText('Тайцзицюань');
 
-    const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual([
-      'Сдать экзамен',
-      'Оплата за октябрь 2026',
-      'Ближайшее занятие',
-    ]);
+    const lesson = screen.getByRole('heading', { level: 2, name: 'Ближайшее занятие' });
+    const notice = screen.getByRole('complementary', { name: 'Объявление школы' });
+    const exam = screen.getByRole('heading', { level: 2, name: 'Сдать экзамен' });
+    const payment = screen.getByRole('heading', {
+      level: 2,
+      name: 'Оплата за октябрь 2026',
+    });
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(lesson.compareDocumentPosition(notice)).toBe(FOLLOWING);
+    expect(notice.compareDocumentPosition(exam)).toBe(FOLLOWING);
+    expect(exam.compareDocumentPosition(payment)).toBe(FOLLOWING);
     // Рубрик «ЗАГОЛОВОК КАПСОМ» над блоками больше нет (ADR-0178).
     expect(container.querySelector('.xuanxue-eyebrow')).toBeNull();
   });

@@ -153,6 +153,35 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
+  // ADR-0179: скрытую плитку экран не запросит — греть её нечего. Экзамены
+  // греются всегда: от них зависит пункт «Задания» в панели.
+  it('ученик скрыл оплату, событие и занятие — их пути не греются, экзамены остаются', () => {
+    const me = makeMe({
+      roles: [],
+      homeHiddenTiles: ['payment', 'events', 'nextLesson'],
+    });
+
+    expect(firstScreenPaths('/board', me)).toEqual([MY_EXAMS_PATH, MY_BOARD_PATH]);
+  });
+
+  it('ученик скрыл экзамены — путь экзаменов всё равно греется', () => {
+    const me = makeMe({ roles: [], homeHiddenTiles: ['exams'] });
+
+    expect(firstScreenPaths('/board', me)).toEqual(BOARD_PATHS);
+  });
+
+  it('штат скрыл проверку — очередь не греется, настройки и события остаются', () => {
+    const me = makeMe({ homeHiddenTiles: ['grading'] });
+
+    expect(firstScreenPaths('/board', me)).toEqual([SETTINGS_PATH, SCHOOL_EVENTS_PATH]);
+  });
+
+  it('скрытое не мешает другим экранам: «/tasks» греет экзамены как обычно', () => {
+    const me = makeMe({ roles: [], homeHiddenTiles: ['exams', 'payment'] });
+
+    expect(firstScreenPaths('/tasks', me)).toEqual([MY_EXAMS_PATH]);
+  });
+
   it('ученик на своём «/tasks» — список экзаменов', () => {
     expect(firstScreenPaths('/tasks', makeMe({ roles: [] }))).toEqual([MY_EXAMS_PATH]);
   });

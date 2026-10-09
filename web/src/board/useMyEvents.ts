@@ -6,14 +6,19 @@ import type { SchoolEventDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import {
   useAbortableFetch,
+  type UseAbortableFetchOptions,
   type UseAbortableFetchResult,
 } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить события школы. Попробуйте ещё раз.';
 
-export function useMyEvents(): UseAbortableFetchResult<SchoolEventDto[]> {
+/** `enabled: false` — запрос не уходит: плитку скрыли на главной (ADR-0179). */
+export function useMyEvents(
+  options: UseAbortableFetchOptions,
+): UseAbortableFetchResult<SchoolEventDto[]> {
   return useAbortableFetch(
     (signal) => apiRoute('GET /me/events', { signal }),
     LOAD_ERROR_MESSAGE,
+    options,
   );
 }

@@ -14,6 +14,7 @@ import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import { apiFetch } from '../api/http';
 import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { putPrefetched } from '../api/prefetchCache';
+import { hiddenTilePaths } from '../board/hiddenTilePaths';
 import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
 import { matchRoute } from './routeMatch';
 import { ROUTE_MODULES } from './routeModules';
@@ -57,7 +58,9 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   const skipsStudentBoard = isBoard && isTeacher(me);
   const skipsStaffBoard = isBoard && !isTeacher(me);
   const skipsPayments = isBoard && !isPaymentContactVisible(me);
+  // Плитки, скрытые человеком (ADR-0179), экран не запросит — греть их незачем.
   const skipped = new Set([
+    ...(isBoard ? hiddenTilePaths(me) : []),
     ...(skipsExams ? [MY_EXAMS_PATH] : []),
     ...(skipsStudentBoard
       ? [MY_EXAMS_PATH, MY_LESSONS_PATH, MY_PAYMENTS_PATH, MY_BOARD_PATH, MY_EVENTS_PATH]

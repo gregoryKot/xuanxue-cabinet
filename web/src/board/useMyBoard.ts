@@ -6,14 +6,19 @@ import type { MyBoardDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import {
   useAbortableFetch,
+  type UseAbortableFetchOptions,
   type UseAbortableFetchResult,
 } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить объявление школы. Попробуйте ещё раз.';
 
-export function useMyBoard(): UseAbortableFetchResult<MyBoardDto> {
+/** `enabled: false` — запрос не уходит: плитку скрыли на главной (ADR-0179). */
+export function useMyBoard(
+  options: UseAbortableFetchOptions,
+): UseAbortableFetchResult<MyBoardDto> {
   return useAbortableFetch(
     (signal) => apiRoute('GET /me/board', { signal }),
     LOAD_ERROR_MESSAGE,
+    options,
   );
 }

@@ -50,6 +50,7 @@ function quiet(overrides: Partial<StudentHomeInput> = {}): StudentHomeInput {
     events: ready([]),
     lessons: ready([]),
     firstLoadDone: true,
+    hidden: [],
     ...overrides,
   };
 }
@@ -161,6 +162,96 @@ describe('buildStudentHome — загрузка и сбои', () => {
 
   it('сбой оплаты не считается, когда оплата ученику не положена', () => {
     const view = buildStudentHome(quiet({ payments: failed(), paymentVisible: false }));
+
+    expect(view.errors).toEqual({});
+    expect(view.status).toBe('empty');
+  });
+});
+
+// ADR-0179: плитку, скрытую человеком, функция не отдаёт и не ждёт.
+describe('buildStudentHome — скрытые плитки', () => {
+  const FULL = quiet({
+    board: ready({ notice: { text: 'Ретрит', until: '2026-10-20' } }),
+    exams: ready([EXAM]),
+    payments: ready(PAGE),
+    paymentVisible: true,
+    events: ready([makeSchoolEvent()]),
+    lessons: ready([LESSON]),
+  });
+
+  it('ничего не скрыто — все пять плиток на месте', () => {
+    const view = buildStudentHome(FULL);
+
+    expect(view.nextLesson).not.toBeNull();
+    expect(view.notice).not.toBeNull();
+    expect(view.toDo).toHaveLength(1);
+    expect(view.payment).not.toBeNull();
+    expect(view.events).toHaveLength(1);
+    expect(view.hasHidden).toBe(false);
+  });
+
+  it.each([
+    ['nextLesson', (view: ReturnType<typeof buildStudentHome>) => view.nextLesson],
+    ['notice', (view: ReturnType<typeof buildStudentHome>) => view.notice],
+    ['payment', (view: ReturnType<typeof buildStudentHome>) => view.payment],
+  ] as const)('скрыта %s — плитки нет, остальные на месте', (key, pick) => {
+    const view = buildStudentHome({ ...FULL, hidden: [key] });
+
+    expect(pick(view)).toBeNull();
+    expect(view.status).toBe('ready');
+    expect(view.hasHidden).toBe(true);
+  });
+
+  it('скрыты экзамены и события — списки пустые', () => {
+    const view = buildStudentHome({ ...FULL, hidden: ['exams', 'events'] });
+
+    expect(view.toDo).toEqual([]);
+    expect(view.events).toEqual([]);
+    expect(view.nextLesson).not.toBeNull();
+  });
+
+  it('скрыто всё — empty, и это не «загрузка»: hasHidden подскажет, как вернуть', () => {
+    const view = buildStudentHome({
+      ...FULL,
+      hidden: ['nextLesson', 'notice', 'exams', 'payment', 'events'],
+    });
+
+    expect(view.status).toBe('empty');
+    expect(view.hasHidden).toBe(true);
+  });
+
+  it('ничего нет и ничего не скрыто — hasHidden false: подсказки не будет', () => {
+    expect(buildStudentHome(quiet()).hasHidden).toBe(false);
+  });
+
+  it('ключ штата в списке ученику не мешает и «скрытым» для него не считается', () => {
+    const view = buildStudentHome({ ...FULL, hidden: ['grading'] });
+
+    expect(view.hasHidden).toBe(false);
+    expect(view.nextLesson).not.toBeNull();
+  });
+
+  it('скелетон не ждёт скрытый источник', () => {
+    const input = quiet({
+      lessons: LOADING,
+      firstLoadDone: false,
+      hidden: ['nextLesson'],
+    });
+
+    expect(isHomeLoading(input)).toBe(false);
+    expect(buildStudentHome(input).status).toBe('empty');
+  });
+
+  it('сбой скрытого источника баннера не рисует, видимого — рисует', () => {
+    const hiddenFails = buildStudentHome(
+      quiet({ lessons: failed(), exams: failed('Экзамены.'), hidden: ['nextLesson'] }),
+    );
+
+    expect(hiddenFails.errors).toEqual({ exams: 'Экзамены.' });
+  });
+
+  it('сбой скрытых экзаменов не показывается: плитки, где стоял бы баннер, нет', () => {
+    const view = buildStudentHome(quiet({ exams: failed(), hidden: ['exams'] }));
 
     expect(view.errors).toEqual({});
     expect(view.status).toBe('empty');
