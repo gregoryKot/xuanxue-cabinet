@@ -50,6 +50,7 @@ const STUDENT_ME: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 /** teacher/assistant/admin — тот же список, что TEACHER_ROLES в

@@ -25,6 +25,7 @@ const STUDENT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const TEACHER: MeDto = {
   id: 'u2',
@@ -39,6 +40,7 @@ const TEACHER: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 describe('useNotificationPrefs — виды по роли', () => {

@@ -74,6 +74,15 @@ export type {
 } from './auth';
 export type { MeDto, SetNoTelegramInput, SetStudentModeInput } from './me';
 export { STUDENT_MODE_PAYMENT_MESSAGE, STUDENT_MODE_STAFF_ONLY_MESSAGE } from './me';
+export type { HomeTileKey, SetHomeTilesInput } from './home-tiles';
+export {
+  HOME_TILES,
+  HOME_TILES_MAX,
+  STAFF_HOME_TILES,
+  STUDENT_HOME_TILES,
+  buildHomeTilesInput,
+  normalizeHomeHiddenTiles,
+} from './home-tiles';
 export type { VerifyEmailCodeInput } from './email-login-code';
 export {
   EMAIL_LOGIN_CODE_LENGTH,

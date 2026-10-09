@@ -38,6 +38,7 @@ const TEACHER: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function renderRow(isMobile: boolean, me: MeDto | null = null) {

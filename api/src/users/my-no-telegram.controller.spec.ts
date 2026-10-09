@@ -80,6 +80,7 @@ describe('MyNoTelegramController.update', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 });

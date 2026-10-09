@@ -36,7 +36,9 @@
 // штата — `UserLean.studentMode` требует настоящую роль штата, student-mode.ts)
 // или настоящие роли штата на месте. Через ответ ничего не включить — это
 // подпись для экрана; сервер проверяет роли заново при каждом включении.
-import { isStaffRole, type MeDto } from '@xuanxue/shared';
+// `homeHiddenTiles` (ADR-0179): нет поля в базе — `[]`, неизвестные ключи прежних
+// версий отсеивает normalizeHomeHiddenTiles.
+import { isStaffRole, normalizeHomeHiddenTiles, type MeDto } from '@xuanxue/shared';
 import { actingUser } from '../users/student-mode';
 import type { UserLean } from '../users/users.service';
 
@@ -60,5 +62,6 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     needsProfile: user.profileNamedAt == null,
     studentMode: user.studentMode,
     canUseStudentMode: user.studentMode || isStaffRole(user.roles),
+    homeHiddenTiles: normalizeHomeHiddenTiles(user.homeHiddenTiles),
   };
 }

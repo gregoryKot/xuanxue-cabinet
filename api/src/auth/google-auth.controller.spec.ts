@@ -145,6 +145,7 @@ describe('GoogleAuthController.login', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 

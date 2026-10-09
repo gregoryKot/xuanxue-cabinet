@@ -92,6 +92,7 @@ describe('EmailLinkController.link', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 });

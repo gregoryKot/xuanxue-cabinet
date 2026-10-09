@@ -233,6 +233,7 @@ describe('AuthController.me', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 
@@ -342,6 +343,7 @@ describe('AuthController.verifyEmailLogin', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 });
@@ -394,6 +396,7 @@ describe('AuthController.loginWithTelegram', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 

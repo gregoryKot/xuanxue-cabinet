@@ -82,6 +82,7 @@ describe('MyProfileController.update', () => {
       needsProfile: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 });

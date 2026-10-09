@@ -42,6 +42,7 @@ function meNeedingProfile(name: string): MeDto {
     googleLinked: false,
     studentMode: false,
     canUseStudentMode: false,
+    homeHiddenTiles: [],
   };
 }
 
