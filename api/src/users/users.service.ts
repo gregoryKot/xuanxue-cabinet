@@ -36,6 +36,7 @@ export interface UserLean {
   noTelegramAt?: Date;
   /** Режим ученика включён (ADR-0163, student-mode.ts). `roles` при этом настоящие. */
   studentMode: boolean;
+  homeHiddenTiles?: UserRecord['homeHiddenTiles']; // ADR-0179, нет поля — всё видно
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -65,6 +66,7 @@ export function toLean(doc: UserDoc): UserLean {
     profileNamedAt: doc.profileNamedAt,
     noTelegramAt: doc.noTelegramAt,
     studentMode: isStudentModeOn(doc.studentModeAt, doc.roles),
+    homeHiddenTiles: doc.homeHiddenTiles,
   };
 }
 
@@ -120,11 +122,10 @@ export class UsersService {
     return doc;
   }
 
-  /** null — только если upsert упал на E11000: Mongo повторяет upsert при
-   * гонке по уникальному индексу не всегда (частичный индекс telegramId),
-   * и без этой ветки второй из двух одновременных первых входов получал 500.
-   * Вызывающий код перечитывает документ, который записал конкурент.
-   * Сам upsert — общий приём с email-входом, см. upsert-user-by-key.ts. */
+  /** null — только если upsert упал на E11000: Mongo повторяет upsert при гонке
+   * по частичному индексу telegramId не всегда, и второй из двух одновременных
+   * первых входов получал 500. Вызывающий перечитывает документ конкурента.
+   * Сам upsert — общий с email-входом, см. upsert-user-by-key.ts. */
   private async upsertByTelegramId(input: NewTelegramUser): Promise<UserLean | null> {
     const doc = await upsertUserByKey<UserDoc>(
       this.model,
@@ -139,8 +140,7 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
-  /** Время — параметром (CLAUDE.md «Время»): вызывающий код решает, что
-   * считать «сейчас», сервис не трогает Date.now()/DateTime.utc() сам. */
+  /** Время — параметром (CLAUDE.md «Время»): «сейчас» решает вызывающий код. */
   async touchLogin(id: string, now: DateTime): Promise<void> {
     await this.model.updateOne({ _id: id }, { $set: { lastLoginAt: now.toJSDate() } });
   }

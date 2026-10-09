@@ -42,6 +42,7 @@ const TEACHER: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ACCOUNTANT: MeDto = {
   id: 'b1',
@@ -56,6 +57,7 @@ const ACCOUNTANT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -70,6 +72,7 @@ const ADMIN: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -433,6 +436,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
 
@@ -485,6 +489,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
 
@@ -529,6 +534,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
 
@@ -567,6 +573,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -592,6 +599,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, { '/me/lessons': [] });
 
@@ -627,6 +635,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student);
 
@@ -674,6 +683,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockRoute(student, {
       '/me/notifications/lessons': { scope: { mode: 'all', classIds: [] }, classes: [] },
@@ -706,6 +716,7 @@ describe('App', () => {
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     // Своя попытка своим адресом, не список (ADR-0126).
     mockRoute(student, {

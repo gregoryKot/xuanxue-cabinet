@@ -17,6 +17,7 @@ export function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     googleLinked: false,
     studentMode: false,
     canUseStudentMode: false,
+    homeHiddenTiles: [],
     ...overrides,
   };
 }

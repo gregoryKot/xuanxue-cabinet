@@ -87,6 +87,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
         'email',
         'googleLinked',
         'hasEmail',
+        'homeHiddenTiles',
         'id',
         'name',
         'needsProfile',

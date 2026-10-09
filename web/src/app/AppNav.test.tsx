@@ -33,6 +33,7 @@ const TEACHER: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -47,6 +48,7 @@ const ADMIN: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 const ACCOUNTANT: MeDto = { ...TEACHER, id: 'b1', name: 'Оля', roles: ['accountant'] };

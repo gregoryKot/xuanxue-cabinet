@@ -52,6 +52,7 @@ const STUDENT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const TEACHER: MeDto = { ...STUDENT, id: 't1', roles: ['teacher'] };
 

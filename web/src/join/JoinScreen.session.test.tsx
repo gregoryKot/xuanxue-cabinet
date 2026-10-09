@@ -51,6 +51,7 @@ const ACTIVE_ME: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 describe('JoinScreen — сессия уже есть (ADR-0036: вход уже создал/подтвердил человека)', () => {

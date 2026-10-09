@@ -37,6 +37,7 @@ const personWith = (roles: UserRole[]): MeDto => ({
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 });
 
 const lessons = (minutes: number | null): MyLessonNotificationsDto => ({

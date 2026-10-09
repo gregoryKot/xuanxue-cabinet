@@ -128,6 +128,7 @@ describe('EmailCodeController.verifyEmailCode', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 });

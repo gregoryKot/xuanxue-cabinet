@@ -32,6 +32,7 @@ describe('toMeDto', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 
@@ -70,6 +71,7 @@ describe('toMeDto', () => {
         roles: [],
         studentMode: false,
         canUseStudentMode: false,
+        homeHiddenTiles: [],
       });
     });
 
@@ -78,6 +80,7 @@ describe('toMeDto', () => {
         roles: ['accountant'],
         studentMode: false,
         canUseStudentMode: false,
+        homeHiddenTiles: [],
       });
     });
   });
@@ -143,6 +146,7 @@ describe('toMeDto', () => {
       'email',
       'googleLinked',
       'hasEmail',
+      'homeHiddenTiles',
       'id',
       'name',
       'needsProfile',
@@ -196,5 +200,31 @@ describe('toMeDto', () => {
       expect(dto.pendingEmail).toBe('ждёт@example.com');
       expect(dto.hasEmail).toBe(dto.email !== undefined);
     });
+  });
+});
+
+// ADR-0179: личная настройка плиток «Главной» едет в MeDto как есть, а старое
+// в базе (нет поля, неизвестный ключ) не роняет экран.
+describe('toMeDto: homeHiddenTiles', () => {
+  it('нет поля у человека — пустой список, а не undefined', () => {
+    expect(toMeDto(fullUser(), false).homeHiddenTiles).toEqual([]);
+  });
+
+  it('скрытое отдаётся в каноническом порядке без повторов', () => {
+    const dto = toMeDto(
+      { ...fullUser(), homeHiddenTiles: ['events', 'payment', 'events'] },
+      false,
+    );
+
+    expect(dto.homeHiddenTiles).toEqual(['payment', 'events']);
+  });
+
+  it('ключ, которого уже нет среди плиток, отсеивается', () => {
+    const stale = { ...fullUser(), homeHiddenTiles: ['payment', 'gone'] };
+
+    // Приведение: в базе бывает то, чего нет в типе (след прежней версии).
+    expect(toMeDto(stale as unknown as UserLean, false).homeHiddenTiles).toEqual([
+      'payment',
+    ]);
   });
 });

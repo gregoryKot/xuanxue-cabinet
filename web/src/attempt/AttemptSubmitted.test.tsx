@@ -36,6 +36,7 @@ const STUDENT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 const VIDEO_BLOCKS: AttemptBlockDto[] = [

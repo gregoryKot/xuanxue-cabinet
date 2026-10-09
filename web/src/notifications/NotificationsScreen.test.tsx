@@ -67,6 +67,7 @@ const ME_LINKED: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ME_NOT_LINKED: MeDto = {
   ...ME_LINKED,

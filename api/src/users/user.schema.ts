@@ -21,10 +21,13 @@
 // studentModeAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY:
 // момент, когда сотрудник школы включил себе режим ученика (ADR-0163,
 // PUT /me/student-mode, UserStudentModeService.setStudentMode).
+// homeHiddenTiles — enum ключей плиток (ADR-0179), не свободный текст: не в policy.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
+  HOME_TILES,
   USER_ROLES,
   USER_STATUSES,
+  type HomeTileKey,
   type UserRole,
   type UserStatus,
 } from '@xuanxue/shared';
@@ -114,6 +117,11 @@ export class UserRecord {
   // однозначно как «режима нет».
   @Prop({ type: Date, required: false })
   studentModeAt?: Date;
+
+  // Скрытые плитки «Главной» (ADR-0179, PUT /me/home-tiles), форма как у `roles`.
+  // `default: undefined`: нет поля — показываем всё; пустой выбор — $unset.
+  @Prop({ type: [{ type: String, enum: HOME_TILES }], default: undefined })
+  homeHiddenTiles?: HomeTileKey[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserRecord);

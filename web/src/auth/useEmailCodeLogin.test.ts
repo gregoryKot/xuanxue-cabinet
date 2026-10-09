@@ -38,6 +38,7 @@ const ME: MeDto = {
   hasEmail: true,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 afterEach(() => {

@@ -29,6 +29,7 @@ function makeMe(roles: UserRole[]): MeDto {
     googleLinked: false,
     studentMode: false,
     canUseStudentMode: false,
+    homeHiddenTiles: [],
   };
 }
 
