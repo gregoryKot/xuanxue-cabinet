@@ -545,26 +545,13 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 ## Workshop collaboration
 
+Workshop revision `e209d27239391be3af2be71b898c79f453851c01`
+
 Existing boundary: Cabinet backend ↔ Cabinet frontend, implemented in `api/`, `web/` and
 shared contracts in `shared/`. Target boundaries, integration unverified: Cabinet backend ↔
 Daychi clients; Cabinet backend ↔ Daychi backend. See
 [current source evidence](https://github.com/dveyarangi/xuanxue-workshop/blob/HEAD/docs/current-system.md#cabinet)
 and [target contracts](https://github.com/dveyarangi/xuanxue-workshop/blob/HEAD/docs/boundaries.md#target-connections).
-
-Checked against this repository at installation (Workshop revision
-`e209d27239391be3af2be71b898c79f453851c01`). Existing boundary: `api/` and `web/` both
-depend on `@xuanxue/shared`; the contract between them is the typed route map
-`shared/src/api-routes.ts` assembled from `shared/src/*-routes.ts` (ADR-0148), with DTO
-types in `shared/src/`, controllers in `api/src/<domain>/` and client calls through
-`web/src/api/apiRoute.ts`; `api/test/api-routes.e2e-spec.ts` checks the map against Nest.
-Implemented: `GET /api/public/lessons` for Daychi clients per the
-[public lessons contract](https://github.com/dveyarangi/xuanxue-workshop/blob/e209d27239391be3af2be71b898c79f453851c01/docs/contracts/public-lessons.md)
-in `api/src/lessons/public-lessons.controller.ts` and `shared/src/public-lessons-routes.ts`
-(ADR-0170). Target, not implemented yet: the content-admission check for the Daychi
-backend per the
-[accepted content admission](https://github.com/dveyarangi/xuanxue-workshop/blob/e209d27239391be3af2be71b898c79f453851c01/docs/boundaries.md#accepted-content-admission);
-no other Daychi-facing code exists in `api/src` today. Work touching `shared/src/*-routes.ts`,
-`api/src/lessons/`, `api/src/auth/` or anything Daychi-facing is boundary work.
 
 Use the [/collaborate skill](.claude/skills/collaborate/SKILL.md) at the start of every session,
 before work affecting any boundary described above, and whenever coordinating across
