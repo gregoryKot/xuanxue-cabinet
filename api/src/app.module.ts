@@ -39,6 +39,7 @@ import { TagsModule } from './tags/tags.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { NativeAuthModule } from './native-auth/native-auth.module';
 import { SESSION_SECRET } from './auth/session-token';
 import { throttleTracker, type ThrottleRequestLike } from './auth/throttle-tracker';
 import { SeedModule } from './seed/seed.module';
@@ -130,6 +131,9 @@ import { staticAssetsOptions } from './static/static-cache-control';
     // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
     // раньше провайдеров импортированных модулей).
     AuthModule,
+    // Нативный Daychi (ADR-0181): bearer вместо cookie, свои маршруты под
+    // /api/auth/native, @Public() для AuthGuard.
+    NativeAuthModule,
     TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     // Заголовки кеша (хэшированные ассеты — на год, index.html/sw.js —

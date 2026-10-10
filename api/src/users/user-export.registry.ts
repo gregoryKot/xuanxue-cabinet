@@ -23,6 +23,7 @@ import {
   formatDaysRu,
   formatYearsRu,
 } from '@xuanxue/shared';
+import { NATIVE_AUTH_EXPORT_SECTIONS } from '../native-auth/native-auth.export';
 import { toStudentBlock } from '../exams/exam-attempt.mapper';
 import type { AttemptBlockRecord } from '../exams/exam-attempt.schema';
 import {
@@ -237,6 +238,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
     include: ['email', 'expiresAt'],
     omit: { tokenHash: SECRET_HASH },
   },
+  ...NATIVE_AUTH_EXPORT_SECTIONS,
 };
 
 /** Ссылки на человека в данных школы — только число записей (что и где он

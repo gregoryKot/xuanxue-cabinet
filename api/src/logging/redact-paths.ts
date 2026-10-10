@@ -25,6 +25,10 @@ export const REDACT_PATHS: string[] = [
   // /login/google?code=…&state=… — тот же GET, что логируется по пути;
   // req.query покрывает этот случай, req.url — redactRequestSerializer ниже.
   'req.body.state',
+  // Нативный Daychi (ADR-0181): форма POST /auth/native/revoke несёт bearer
+  // полем `token`. `*.token` ниже достаёт только `<ключ>.token`, а bearer в
+  // `req.body.token` — на уровень глубже.
+  'req.body.token',
   // Query-параметры: код приглашения (?join=, POST /auth/telegram, ADR-0030)
   // и токен входа по email (?token=, если его когда-нибудь передадут GET'ом —
   // сейчас он в теле, см. req.body.hash ниже). pino-std-serializers кладёт
