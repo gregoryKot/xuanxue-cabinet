@@ -45,6 +45,16 @@ describe('makeIsVideoPart', () => {
     ).toBe(true);
   });
 
+  // ADR-0180: запись занятия файлом — тот же предикат, свой путь части.
+  it('PUT на /api/lesson-videos/:id/parts/:n — true (запись занятия)', () => {
+    expect(
+      isAnswerVideoPart(
+        req({ url: '/api/lesson-videos/507f1f77bcf86cd799439011/parts/250' }),
+      ),
+    ).toBe(true);
+    expect(isAnswerVideoPart(req({ url: '/api/lesson-videos/uploads' }))).toBe(false);
+  });
+
   it('PUT на /api/exam-videos без /:id/parts/:n — false: прежняя сырая загрузка идёт своим предикатом', () => {
     expect(isAnswerVideoPart(req({ url: '/api/exam-videos' }))).toBe(false);
     expect(isAnswerVideoPart(req({ url: '/api/exam-videos/uploads' }))).toBe(false);

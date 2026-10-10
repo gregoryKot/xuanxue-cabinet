@@ -7,19 +7,7 @@ import { SchemaTypes, Types } from 'mongoose';
 import { LESSON_STATUSES, type LessonStatus, type Recording } from '@xuanxue/shared';
 import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
-
-@Schema({ _id: true })
-class RecordingSubdoc implements Recording {
-  @Prop({ type: String, required: true })
-  title!: string;
-
-  @Prop({ type: String, required: false })
-  url?: string;
-
-  @Prop({ type: String, required: false })
-  telegramFileId?: string;
-}
-const RecordingSchema = SchemaFactory.createForClass(RecordingSubdoc);
+import { RecordingSchema } from './lesson-recording.subdoc';
 
 @Schema({ timestamps: true, collection: 'lessons' })
 export class LessonRecord {
@@ -130,6 +118,12 @@ LessonSchema.index(
 // Фильтр по тегу (GET /api/lessons?tag=…, ADR-0075) — тот же приём, что у
 // MaterialSchema.index({ tags: 1 }).
 LessonSchema.index({ tags: 1 });
+// «На какую запись ссылается видео» (ADR-0180): доступ к видео и уборщик сирот.
+// Частичный — у большинства записей файла нет, и в индекс они не попадают.
+LessonSchema.index(
+  { 'recordings.videoId': 1 },
+  { partialFilterExpression: { 'recordings.videoId': { $exists: true } } },
+);
 
 export const LESSON_FIELD_POLICY: FieldPolicy = {
   topic: plain('публикуется в посте'),
@@ -139,6 +133,7 @@ export const LESSON_FIELD_POLICY: FieldPolicy = {
   'recordings.title': plain('публикуется в посте'),
   'recordings.url': plain('ссылка на запись, принятый риск SECURITY §11'),
   'recordings.telegramFileId': plain('работает только у бота, снаружи бесполезен'),
+  'recordings.videoId': plain('id видео в lesson_videos, случайный ObjectId'),
   tags: plain('рубрика занятия, фильтр и экран тега; не персональные данные'),
 };
 

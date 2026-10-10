@@ -13,6 +13,7 @@ import { ChannelRecord } from '../../channels/channel.schema';
 import { ClassRecord } from '../../classes/class.schema';
 import { DeliveryRecord } from '../../deliveries/delivery.schema';
 import { LessonRecord } from '../../lessons/lesson.schema';
+import type { LessonVideosService } from '../../lesson-videos/lesson-videos.service';
 import { LessonsService } from '../../lessons/lessons.service';
 import { MaterialRecord } from '../../materials/material.schema';
 import { SettingsRecord } from '../../settings/settings.schema';
@@ -53,6 +54,7 @@ export function buildRecordingButtonsHandler(
     broadcastModel,
     userModel,
     connection.model<MaterialRecord>(MaterialRecord.name),
+    {} as unknown as LessonVideosService,
   );
   const recordingWait = new RecordingWaitHandler(
     botSessions,

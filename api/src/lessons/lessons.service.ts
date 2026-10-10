@@ -1,7 +1,7 @@
 // CRUD дат занятий (данные школы, ADR-0010: доступ по роли, не по владельцу).
 // Инкапсулирует шифрование секретов (CLAUDE.md «Данные») — контроллер только валидирует
-// тело и зовёт эти методы (образец — ClassesService). Подготовка тела create/addRecording
-// — lessons.create.ts/lessons.recording.ts, запросы и тексты ошибок — lessons.queries.ts.
+// тело и зовёт эти методы (образец — ClassesService). Тело create/addRecording —
+// lessons.create.ts/lessons.recording.ts, запросы и ошибки — lessons.queries.ts.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -20,6 +20,7 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
+import { LessonVideosService } from '../lesson-videos/lesson-videos.service';
 import { MaterialRecord } from '../materials/material.schema';
 import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
@@ -58,6 +59,7 @@ export class LessonsService {
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
     @InjectModel(MaterialRecord.name)
     private readonly materialModel: Model<MaterialRecord>,
+    private readonly lessonVideos: LessonVideosService,
   ) {}
 
   // Окно и его обязательность — findLessonsList/resolveLessonsWindow
@@ -129,20 +131,19 @@ export class LessonsService {
     assertLessonId(id);
     assertHasRecordingSource(input);
     assertValidRecordingUrl(input.url);
+    if (input.videoId !== undefined) await this.lessonVideos.assertReady(input.videoId);
     const lesson = await this.model
       .findById(id, { classId: 1 })
       .lean<{ _id: Types.ObjectId; classId: Types.ObjectId } | null>();
     if (!lesson) throw new NotFoundError(LESSON_NOT_FOUND);
     const title = await findClassTitle(this.classModel, lesson.classId);
     const recording = buildRecordingPush(input, title);
-    // Повтор url/file_id не плодит вторую запись ($nor, lessons.recording.ts);
-    // вместе с первой записью встаёт и `recordingReadyAt` (ADR-0162).
+    // Повтор url/file_id/videoId не плодит запись ($nor); `recordingReadyAt` — ADR-0162.
     await this.model.updateOne(
       { _id: id, $nor: buildRecordingDuplicateConditions(input) },
       buildRecordingAddCommand(recording, now),
     );
-    // Зовём всегда, не только при $push: идемпотентность — на уникальном индексе
-    // (lessonId, recordingKey), не на факте изменения (docs/PLAN.md §6 «Записи»).
+    // Зовём всегда: идемпотентность на уникальном (lessonId, recordingKey), PLAN §6.
     await this.recordingBroadcast.ensureForRecording(lesson._id, recording, now);
     return this.getById(id);
   }

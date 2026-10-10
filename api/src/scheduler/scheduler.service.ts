@@ -13,7 +13,6 @@ import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
-import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonCancelNoticeService } from '../lessons/lesson-cancel-notice.service';
@@ -27,6 +26,7 @@ import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { runStep } from './scheduler-step';
+import { VideoOrphansSweepService } from './video-orphans-sweep.service';
 import { formatNoticeResults, runNoticeSteps } from './scheduler-notice-steps';
 import { formatSweepResults, runSweepSteps } from './scheduler-sweep-steps';
 
@@ -51,7 +51,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly paymentReminderService: PaymentReminderService,
     private readonly examImageSweepService: ExamImageSweepService,
-    private readonly examVideoSweepService: ExamVideoSweepService,
+    private readonly videoOrphansSweep: VideoOrphansSweepService,
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     private readonly storageOrphansService: StorageOrphansService,
     private readonly answerVideoSweepService: AnswerVideoSweepService,
@@ -118,7 +118,7 @@ export class SchedulerService implements OnApplicationShutdown {
     // Шесть шагов уборки по сроку — scheduler-sweep-steps.ts (файл на потолке).
     const sweep = await runSweepSteps((name, n, run) => this.step(name, n, run), now, {
       removeImageOrphans: (n) => this.examImageSweepService.removeOrphans(n),
-      removeVideoOrphans: (n) => this.examVideoSweepService.removeOrphans(n),
+      removeVideoOrphans: (n) => this.videoOrphansSweep.removeOrphans(n),
       removeExpiredScreenshots: (n) =>
         this.paymentScreenshotSweepService.removeExpired(n),
       sweepStorageOrphans: (n) => this.storageOrphansService.sweep(n),

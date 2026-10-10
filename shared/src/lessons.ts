@@ -97,11 +97,9 @@ export const NULLABLE_LESSON_FIELDS = [
   'note',
 ] as const;
 
-export interface AddRecordingInput {
-  title?: string;
-  url?: string;
-  telegramFileId?: string;
-}
+/** Тело добавления записи: всё необязательно, источник нужен хотя бы один
+ * (проверка в сервисе). `videoId` — готовое видео из `/lesson-videos` (ADR-0180). */
+export type AddRecordingInput = Partial<Recording>;
 
 export const LESSON_LIMITS = {
   topic: 200,

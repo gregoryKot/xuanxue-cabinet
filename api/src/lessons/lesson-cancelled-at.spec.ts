@@ -14,6 +14,7 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { LESSON_NOT_FOUND } from './lessons.queries';
+import type { LessonVideosService } from '../lesson-videos/lesson-videos.service';
 import { LessonsService } from './lessons.service';
 
 const CANCELLED_AT = DateTime.fromISO('2026-09-03T12:00:00Z', { zone: 'utc' });
@@ -41,6 +42,7 @@ describe('LessonsService.update — cancelledAt (ADR-0162)', () => {
       connection.model<BroadcastRecord>(BroadcastRecord.name, BroadcastSchema),
       connection.model<UserRecord>(UserRecord.name, UserSchema),
       connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema),
+      {} as unknown as LessonVideosService,
     );
   }, 60_000);
 

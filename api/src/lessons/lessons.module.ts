@@ -21,6 +21,7 @@
 import { Module } from '@nestjs/common';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
+import { LessonVideosModule } from '../lesson-videos/lesson-videos.module';
 import { MaterialModelModule } from '../materials/material-model.module';
 import { MaterialsModule } from '../materials/materials.module';
 import { UserModelModule } from '../users/user-model.module';
@@ -46,6 +47,7 @@ import { PublicLessonsService } from './public-lessons.service';
     UserModelModule,
     MaterialModelModule,
     MaterialsModule,
+    LessonVideosModule, // addRecording проверяет videoId (ADR-0180)
   ],
   controllers: [LessonsController, MyLessonsController, PublicLessonsController],
   providers: [
