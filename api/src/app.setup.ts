@@ -2,7 +2,7 @@
 // test/e2e-support/create-app.ts (e2e), чтобы поведение сервера не
 // расходилось с тем, что видят тесты (правило CLAUDE.md «одна механика —
 // одно место»). Сюда НЕ входит .listen() — в e2e его не вызывают.
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, RequestMethod, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
@@ -16,6 +16,7 @@ import { SESSION_SECRET } from './auth/session-token';
 import { CSP_DIRECTIVES } from './security/csp';
 import { makeAppVersionHeader } from './common/app-version-header';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { ROOT_ROUTES } from './common/root-routes';
 import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
 import { shortCommitSha } from './health/health-commit';
@@ -119,7 +120,9 @@ export function configureApp(app: NestExpressApplication): void {
   // ошибки парсеров тела на его путях получают свой формат ответа.
   configureNativeBodyParsing(app);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ROOT_ROUTES.map((path) => ({ path, method: RequestMethod.GET })),
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

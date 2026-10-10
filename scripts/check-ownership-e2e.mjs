@@ -11,23 +11,35 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { parseControllerPrefixes, extractRoutes } from './check-route-collisions.mjs';
+import { stripComments } from './source-text.mjs';
 
 // Общий "40" — числа отказа все начинаются с него: 401, 403, 404.
 const DENIAL_PATTERN =
   /\.expect\(40[134]\)|\btoBe\(40[134]\)|\btoEqual\(40[134]\)|HttpStatus\.(FORBIDDEN|UNAUTHORIZED|NOT_FOUND)\b/;
 
+/** Маршруты от корня сайта, вне `/api` (ADR-0181): строковые литералы файла
+ * api/src/common/root-routes.ts. Разбор по тексту, как и всё в гейте, —
+ * поэтому тот файл держит в списке только литералы. */
+export function parseRootRoutes(src) {
+  const list = /ROOT_ROUTES\s*=\s*\[([^\]]*)\]/.exec(stripComments(src));
+  if (!list) return [];
+  return [...list[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
+}
+
 /** Ключи поиска по спекам для одного контроллера: `/api/<префикс>` на
  * каждый префикс из `@Controller(...)` (parseControllerPrefixes — общий
  * парсер с check-route-collisions.mjs, дублировать нельзя, jscpd-храповик;
- * комментарии он гасит сам через scripts/source-text.mjs).
+ * комментарии он гасит сам через scripts/source-text.mjs). Префикс из
+ * `rootRoutes` отвечает от корня сайта, его ключ — `/<префикс>`.
  * Пустой префикс (`@Controller()` без аргумента или с нераспознанным) —
  * своего сегмента нет, берём первый сегмент пути каждого хендлера через
  * extractRoutes: у exam-attempts.controller.ts так выйдут `exams` и
  * `attempts` — оба корня, которыми он реально отвечает. */
-export function controllerSearchKeys(src) {
+export function controllerSearchKeys(src, rootRoutes = []) {
   const prefixes = parseControllerPrefixes(src) ?? [];
   const named = [...new Set(prefixes.filter((p) => p !== ''))];
-  if (named.length > 0) return named.map((p) => `/api/${p}`);
+  const keyOf = (p) => (rootRoutes.includes(p) ? `/${p}` : `/api/${p}`);
+  if (named.length > 0) return named.map(keyOf);
 
   const segments = new Set();
   for (const { route } of extractRoutes('', src)) {
@@ -51,10 +63,10 @@ export function hasDenialAssertion(specSrc) {
  * содержит утверждение об отказе — сама спека, не конкретный `it()` внутри:
  * как и check-route-collisions.mjs, гейт грубый по тексту файла, точнее
  * значило бы парсить TS. */
-export function findUncoveredControllers(controllers, specs) {
+export function findUncoveredControllers(controllers, specs, rootRoutes = []) {
   const uncovered = [];
   for (const { fileLabel, src } of controllers) {
-    const keys = controllerSearchKeys(src);
+    const keys = controllerSearchKeys(src, rootRoutes);
     const touching = specs.filter((spec) => keys.some((key) => spec.src.includes(key)));
     const covered = touching.some((spec) => hasDenialAssertion(spec.src));
     if (!covered) uncovered.push({ file: fileLabel, keys });
@@ -86,7 +98,10 @@ function main() {
       src: readFileSync(join(TEST, name), 'utf8'),
     }));
 
-  const uncovered = findUncoveredControllers(controllers, specs);
+  const rootRoutes = parseRootRoutes(
+    readFileSync(join(SRC, 'common', 'root-routes.ts'), 'utf8'),
+  );
+  const uncovered = findUncoveredControllers(controllers, specs, rootRoutes);
 
   if (uncovered.length > 0) {
     for (const { file, keys } of uncovered) {

@@ -98,6 +98,8 @@ import { TelegramLinkController } from './telegram-link.controller';
   ],
   // SESSION_SECRET — ключу бакета троттлера (app.module.ts, ADR-0164): та же
   // подпись cookie, что у AuthGuard, вторую фабрику секрета не заводим.
-  exports: [SESSION_SECRET],
+  // AuthService — браузерной части входа Daychi (ADR-0181): сессию она читает
+  // тем же findSessionUser, что вход через Google.
+  exports: [SESSION_SECRET, AuthService],
 })
 export class AuthModule {}

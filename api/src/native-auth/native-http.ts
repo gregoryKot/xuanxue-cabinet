@@ -1,7 +1,7 @@
 // Что нативные маршруты требуют от самого HTTP-запроса (профиль Workshop
-// 3c98d4a, «Transport», «Account read and renewal», revoke): точный вид
+// 3c98d4a, «Transport», «Account read and renewal», token, revoke): точный вид
 // bearer-заголовка, отсутствие query и тела у `me`, ровно `{}` у `renew`,
-// только форма у `revoke`, строгий разбор форм. Правила собраны в одном файле,
+// только форма у `token` и `revoke`, строгий разбор форм. Правила собраны в одном файле,
 // чтобы расходиться с профилем было негде. Тесты — native-account.e2e-spec.ts
 // и native-http.spec.ts.
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -11,8 +11,11 @@ import { NativeAuthError } from './native-auth-error';
 import { sendNativeError, type NativeResponseLike } from './native-response';
 
 const NATIVE_ROUTE_PREFIX = '/api/auth/native';
-/** Маршруты с телом-формой. Код обмена (`token`) добавится вместе с самим маршрутом. */
-const NATIVE_FORM_PATHS: ReadonlySet<string> = new Set([`${NATIVE_ROUTE_PREFIX}/revoke`]);
+/** Маршруты с телом-формой. */
+const NATIVE_FORM_PATHS: ReadonlySet<string> = new Set([
+  `${NATIVE_ROUTE_PREFIX}/token`,
+  `${NATIVE_ROUTE_PREFIX}/revoke`,
+]);
 /** Тело формы — два-три поля по 43 знака; больше — не наш клиент. */
 const NATIVE_FORM_LIMIT = '4kb';
 const FORM_MEDIA_TYPE = 'application/x-www-form-urlencoded';
@@ -86,7 +89,7 @@ export function assertEmptyJsonObject(req: NativeRequestLike): void {
   }
 }
 
-/** `POST revoke`: только форма. JSON с теми же полями парсер тела тоже
+/** `POST token` и `revoke`: только форма. JSON с теми же полями парсер тела тоже
  * разберёт, поэтому тип проверяем отдельно. */
 export function assertFormRequest(req: NativeRequestLike): void {
   if (!hasMediaType(req, FORM_MEDIA_TYPE)) throw new NativeAuthError('invalid_request');

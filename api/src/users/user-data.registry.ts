@@ -113,9 +113,10 @@
 // модель есть и здесь (сверка user-data.registry.spec.ts требует явного
 // решения для КАЖДОЙ модели с userId), и в USER_OWNED_STORAGE_CASCADES ниже.
 //
-// ADR-0181 (native_grants, native_credentials) — нативный вход Daychi: доступ
-// и его bearer, `userId` — чей аккаунт. Удаление аккаунта гасит все доступы и
-// стирает хеши bearer, иначе удалённый человек остался бы входом в базе.
+// ADR-0181 (native_grants, native_credentials, native_authorizations) —
+// нативный вход Daychi: доступ, его bearer и попытка входа с кодом, `userId` —
+// чей аккаунт. Удаление аккаунта гасит все доступы и стирает хеши bearer и
+// незабранных кодов, иначе удалённый человек остался бы входом в базе.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -130,6 +131,7 @@ export const USER_OWNED_COLLECTIONS = [
   'AnswerVideoRecord',
   'NativeGrantRecord',
   'NativeCredentialRecord',
+  'NativeAuthorizationRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с

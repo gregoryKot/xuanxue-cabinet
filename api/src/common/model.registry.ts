@@ -162,6 +162,11 @@ import {
   NativeCredentialSchema,
   NATIVE_CREDENTIAL_FIELD_POLICY,
 } from '../native-auth/native-credential.schema';
+import {
+  NativeAuthorizationRecord,
+  NativeAuthorizationSchema,
+  NATIVE_AUTHORIZATION_FIELD_POLICY,
+} from '../native-auth/native-authorization.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -320,5 +325,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: NativeCredentialRecord.name,
     schema: NativeCredentialSchema,
     fieldPolicy: NATIVE_CREDENTIAL_FIELD_POLICY,
+  },
+  {
+    name: NativeAuthorizationRecord.name,
+    schema: NativeAuthorizationSchema,
+    fieldPolicy: NATIVE_AUTHORIZATION_FIELD_POLICY,
   },
 ];

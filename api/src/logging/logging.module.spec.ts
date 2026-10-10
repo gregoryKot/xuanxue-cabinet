@@ -125,6 +125,10 @@ describe('строка «request completed» в production', () => {
   const SECRET_AUTH = 'SECRET_AUTH_VALUE';
   const SECRET_BODY = 'SECRET_BODY_VALUE';
   const SECRET_SET_COOKIE = 'SECRET_SET_COOKIE_VALUE';
+  // Вход Daychi (ADR-0181): код уходит в Location перехода, номер попытки и
+  // challenge — в query.
+  const SECRET_LOCATION = 'SECRET_LOCATION_VALUE';
+  const SECRET_QUERY = 'SECRET_QUERY_VALUE';
 
   let server: Server | undefined;
 
@@ -152,13 +156,18 @@ describe('строка «request completed» в production', () => {
         logger(req, res);
         if (withError) (res as unknown as { err: Error }).err = new Error('boom');
         res.setHeader('set-cookie', `session=${SECRET_SET_COOKIE}; HttpOnly`);
+        res.setHeader(
+          'Location',
+          `su.xuanxue.daychi:/oauth/cabinet?code=${SECRET_LOCATION}`,
+        );
         res.statusCode = statusCode;
         res.end('{}');
       });
     });
     await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${port}/api/anything`, {
+    const query = `attempt=${SECRET_QUERY}&code_challenge=${SECRET_QUERY}`;
+    const response = await fetch(`http://127.0.0.1:${port}/api/anything?${query}`, {
       method: 'POST',
       headers: {
         cookie: `session=${SECRET_COOKIE}`,
@@ -176,7 +185,15 @@ describe('строка «request completed» в production', () => {
   }
 
   function expectNoLeak(line: string): void {
-    for (const secret of [SECRET_COOKIE, SECRET_AUTH, SECRET_BODY, SECRET_SET_COOKIE]) {
+    const secrets = [
+      SECRET_COOKIE,
+      SECRET_AUTH,
+      SECRET_BODY,
+      SECRET_SET_COOKIE,
+      SECRET_LOCATION,
+      SECRET_QUERY,
+    ];
+    for (const secret of secrets) {
       expect(line).not.toContain(secret);
     }
     expect(line).not.toContain('rawHeaders');

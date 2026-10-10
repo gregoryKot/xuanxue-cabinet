@@ -1,7 +1,7 @@
 // Общее для e2e нативного входа Daychi (ADR-0181): выдача доступа напрямую
-// сервисом — код обмена приедет отдельным PR, а проверяются здесь bearer-маршруты —
-// запросы к трём маршрутам, ожидания про заголовки и управление временем через
-// Luxon `Settings.now` (CLAUDE.md «Детерминизм»).
+// сервисом для проверки bearer-маршрутов, запросы к ним, ожидания про заголовки
+// и управление временем через Luxon `Settings.now` (CLAUDE.md «Детерминизм»).
+// Браузерная часть входа — native-browser-fixtures.ts.
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';

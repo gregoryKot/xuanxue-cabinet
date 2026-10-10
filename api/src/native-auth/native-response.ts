@@ -21,19 +21,19 @@ export interface NativeResponseLike {
   json(body: unknown): unknown;
 }
 
-const RETRY_AFTER_HEADER = 'Retry-After';
+export const RETRY_AFTER_HEADER = 'Retry-After';
 /** Профиль: `Retry-After` — целое число секунд от 1 до 3600. */
 const RETRY_AFTER_MIN_SEC = 1;
 const RETRY_AFTER_MAX_SEC = 3600;
 /** Окно троттлера (login-throttle.ts) — подсказка, если сам троттлер её не дал. */
 const RETRY_AFTER_FALLBACK_SEC = 60;
 
-function setNoStoreHeaders(res: NativeResponseLike): void {
+export function setNoStoreHeaders(res: Pick<NativeResponseLike, 'setHeader'>): void {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Pragma', 'no-cache');
 }
 
-function retryAfterSeconds(res: NativeResponseLike): number {
+export function retryAfterSeconds(res: Pick<NativeResponseLike, 'getHeader'>): number {
   const raw = res.getHeader(RETRY_AFTER_HEADER);
   const parsed = Number.parseInt(String(raw ?? ''), 10);
   const seconds = Number.isFinite(parsed) ? parsed : RETRY_AFTER_FALLBACK_SEC;
