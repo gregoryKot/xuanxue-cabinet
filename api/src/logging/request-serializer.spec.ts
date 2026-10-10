@@ -74,6 +74,19 @@ describe('redactRequestSerializer', () => {
     expect(serialized.url).toContain('x=1');
   });
 
+  it('вход Daychi: state, code_challenge и номер попытки в url не остаются (ADR-0181)', () => {
+    const secret = 's'.repeat(43);
+    const authorize = `/auth/native/authorize?client_id=daychi-native&state=${secret}&code_challenge=${secret}`;
+    const resume = `/api/auth/native/continue?attempt=${'a'.repeat(24)}`;
+
+    const authorizeUrl = redactRequestSerializer(buildIncomingMessage(authorize)).url;
+    const resumeUrl = redactRequestSerializer(buildIncomingMessage(resume)).url;
+
+    expect(authorizeUrl).not.toContain(secret);
+    expect(authorizeUrl).toContain('client_id=daychi-native');
+    expect(resumeUrl).toBe(`/api/auth/native/continue?attempt=${REDACTED_VALUE}`);
+  });
+
   // Ключевой критерий ревью: строка лога с ?join=<код> не содержит сам код —
   // ни в url, ни в разобранном req.query (его редактирует REDACT_PATHS).
   it('в реальном логе pino код приглашения не встречается нигде в строке', () => {

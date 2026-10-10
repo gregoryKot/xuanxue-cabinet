@@ -72,6 +72,13 @@ const EXPECTED_UNIQUE_INDEXES: readonly ExpectedUniqueIndex[] = [
     key: { tokenHash: 1 },
     source: 'PLAN §4 native_credentials: «Уникальный индекс tokenHash» (ADR-0181)',
   },
+  {
+    collection: 'native_authorizations',
+    key: { codeHash: 1 },
+    partialFilterExpression: { codeHash: { $type: 'string' } },
+    source:
+      'PLAN §4 native_authorizations: «уникальный частичный индекс codeHash» (ADR-0181)',
+  },
 ];
 
 describe('Уникальные индексы из PLAN §4 существуют в Mongo', () => {

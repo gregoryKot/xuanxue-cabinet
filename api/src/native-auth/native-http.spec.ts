@@ -130,10 +130,14 @@ describe('assertFormRequest и предикат парсера форм', () => 
     expect(codeOf(() => assertFormRequest(request({})))).toBe('invalid_request');
   });
 
-  it('парсер форм включается только для POST revoke с формой', () => {
+  it('парсер форм включается только для POST token и revoke с формой', () => {
     const base = { method: 'POST', url: '/api/auth/native/revoke', headers: form };
 
     expect(isNativeFormRequest(base)).toBe(true);
+    expect(isNativeFormRequest({ ...base, url: '/api/auth/native/token' })).toBe(true);
+    expect(isNativeFormRequest({ ...base, url: '/api/auth/native/continue' })).toBe(
+      false,
+    );
     expect(isNativeFormRequest({ ...base, url: '/api/auth/native/revoke?x=1' })).toBe(
       true,
     );

@@ -29,6 +29,9 @@ export const REDACT_PATHS: string[] = [
   // полем `token`. `*.token` ниже достаёт только `<ключ>.token`, а bearer в
   // `req.body.token` — на уровень глубже.
   'req.body.token',
+  // Обмен кода Daychi (POST /auth/native/token): код (`req.body.code` выше) и
+  // PKCE verifier — вместе они дают bearer.
+  'req.body.code_verifier',
   // Query-параметры: код приглашения (?join=, POST /auth/telegram, ADR-0030)
   // и токен входа по email (?token=, если его когда-нибудь передадут GET'ом —
   // сейчас он в теле, см. req.body.hash ниже). pino-std-serializers кладёт
@@ -41,6 +44,9 @@ export const REDACT_PATHS: string[] = [
   // /login/google?code=…&state=…, тот же уровень секретности.
   'req.query.code',
   'req.query.state',
+  // Вход Daychi (ADR-0181): /auth/native/authorize и /api/auth/native/continue.
+  'req.query.code_challenge',
+  'req.query.attempt',
   // Тело апдейта Telegram-вебхука (POST /api/telegram/webhook) — тот же код
   // ссылки-приглашения приходит текстом `/start join_<code>` (ADR-0030
   // «Бот»), а не полем `code`/`inviteCode`; `*.text` (ниже) редактирует
@@ -95,4 +101,7 @@ export const REDACT_PATHS: string[] = [
   // pino-http логирует res.getHeaders() целиком — свежий Set-Cookie при
   // входе и при rolling-перевыпуске содержит токен сессии открытым текстом.
   'res.headers["set-cookie"]',
+  // Переход в Daychi после входа (ADR-0181) несёт код обмена в `Location`;
+  // getHeaders() отдаёт имена в нижнем регистре.
+  'res.headers.location',
 ];

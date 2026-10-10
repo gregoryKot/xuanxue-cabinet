@@ -88,4 +88,13 @@ describe('Кеш статики (e2e)', () => {
     expect(res.text).toContain(INDEX_MARKER);
     expect(res.headers['cache-control']).toBe(REVALIDATE_CACHE_CONTROL);
   });
+
+  // Вход Daychi (ADR-0181) отвечает от корня сайта: отдай SPA на этот адрес
+  // index.html, Nest-контроллер до запроса бы не дошёл.
+  it('маршрут от корня (ROOT_ROUTES) SPA не отдаёт', async () => {
+    const res = await request(server()).get('/auth/native/authorize?client_id=x');
+
+    expect(res.status).toBe(404);
+    expect(res.text).not.toContain(INDEX_MARKER);
+  });
 });
