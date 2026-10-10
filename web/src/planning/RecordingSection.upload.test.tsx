@@ -163,12 +163,12 @@ describe('RecordingSection — файл записи', () => {
     expect(screen.queryByText('zanyatie.mp4')).not.toBeInTheDocument();
   });
 
-  it('объяснение на пути: файла достаточно, в каналы запись уходит по ссылке', () => {
+  it('объяснение на пути: куда попадёт файл и что нужно для каналов', () => {
     renderSection();
 
-    expect(screen.getByText(/Файла достаточно/)).toBeInTheDocument();
     expect(
-      screen.getByText(/Без ссылки запись пока остаётся только в кабинете/),
+      screen.getByText(/ученики увидят запись в «Записях занятий»/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Без ссылки запись видна/)).toBeInTheDocument();
   });
 });
