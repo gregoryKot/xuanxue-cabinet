@@ -130,11 +130,14 @@ export const DEFAULT_NEWCOMER_CONTACT = 'Диме @Dmitry_Deitch';
 export const DEFAULT_PAYMENT_CONTACT =
   'Маше Вязовой — например, в Telegram @marievyazova';
 
-/** Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id. */
+/** Запись занятия: ссылка (Drive, облако Zoom), файл в Telegram по file_id или
+ * файл, загруженный в кабинет (`videoId` → `lesson_videos`, ADR-0180). Источники
+ * можно держать вместе: одна запись — один пост (ADR-0180). */
 export interface Recording {
   title: string;
   url?: string;
   telegramFileId?: string;
+  videoId?: string;
 }
 
 /** На сколько недель вперёд планировщик держит `lessons` заполненными

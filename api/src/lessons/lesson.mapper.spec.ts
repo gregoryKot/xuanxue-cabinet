@@ -109,4 +109,19 @@ describe('toLessonDto', () => {
 
     expect(dto.tags).toEqual([]);
   });
+
+  // ADR-0180: запись с файлом в кабинете несёт videoId наружу; у старых записей
+  // его нет, и ключ в ответе не появляется.
+  it('запись с файлом в кабинете — videoId в ответе, у старой записи его нет', () => {
+    const doc = fullLesson();
+    doc.recordings = [
+      ...doc.recordings,
+      { _id: new Types.ObjectId(), title: 'Файл', videoId: 'video-1' },
+    ];
+
+    const { recordings } = toLessonDto(doc);
+
+    expect(recordings[0]?.videoId).toBeUndefined();
+    expect(recordings[1]).toMatchObject({ title: 'Файл', videoId: 'video-1' });
+  });
 });

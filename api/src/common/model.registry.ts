@@ -108,6 +108,11 @@ import {
   EXAM_VIDEO_FIELD_POLICY,
 } from '../exam-videos/exam-video.schema';
 import {
+  LessonVideoRecord,
+  LessonVideoSchema,
+  LESSON_VIDEO_FIELD_POLICY,
+} from '../lesson-videos/lesson-video.schema';
+import {
   AnswerVideoRecord,
   AnswerVideoSchema,
   ANSWER_VIDEO_FIELD_POLICY,
@@ -245,6 +250,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamVideoRecord.name,
     schema: ExamVideoSchema,
     fieldPolicy: EXAM_VIDEO_FIELD_POLICY,
+  },
+  {
+    name: LessonVideoRecord.name,
+    schema: LessonVideoSchema,
+    fieldPolicy: LESSON_VIDEO_FIELD_POLICY,
   },
   {
     name: AnswerVideoRecord.name,

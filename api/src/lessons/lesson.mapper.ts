@@ -68,5 +68,6 @@ function toRecordingDto(recording: Recording & { _id: Types.ObjectId }): Recordi
     title: recording.title,
     url: recording.url,
     telegramFileId: recording.telegramFileId,
+    videoId: recording.videoId,
   };
 }

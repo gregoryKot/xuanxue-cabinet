@@ -297,6 +297,13 @@ export {
   VIDEO_DOWNLOAD_QUERY_VALUE,
   EXAM_VIDEO_UPLOADING_MESSAGE,
 } from './exam-videos';
+export type { LessonVideoDto, StartLessonVideoInput } from './lesson-videos';
+export {
+  LESSON_VIDEO_LIMITS,
+  LESSON_VIDEO_TOO_LARGE_MESSAGE,
+  LESSON_VIDEO_UPLOADING_MESSAGE,
+  LESSON_VIDEO_NOT_FOUND_MESSAGE,
+} from './lesson-videos';
 export type {
   StartAnswerVideoInput,
   AnswerVideoUploadDto,

@@ -13,6 +13,7 @@ import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
+import type { LessonVideosService } from '../lesson-videos/lesson-videos.service';
 import { LessonsService } from './lessons.service';
 
 const FIRST = DateTime.fromISO('2026-09-03T20:00:00Z', { zone: 'utc' });
@@ -44,6 +45,7 @@ describe('LessonsService.addRecording — recordingReadyAt (ADR-0162)', () => {
       connection.model<BroadcastRecord>(BroadcastRecord.name, BroadcastSchema),
       connection.model<UserRecord>(UserRecord.name, UserSchema),
       connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema),
+      {} as unknown as LessonVideosService,
     );
   }, 60_000);
 

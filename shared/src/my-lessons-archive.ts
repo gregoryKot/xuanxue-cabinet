@@ -14,6 +14,9 @@ export interface ArchivedRecordingDto {
   title?: string;
   /** Есть, когда запись открывается ссылкой. */
   url?: string;
+  /** Есть, когда запись загружена в кабинет файлом (ADR-0180): играет
+   * `GET /api/lesson-videos/:id`. Ссылка и файл могут быть вместе. */
+  videoId?: string;
   /** true — запись существует, но живёт файлом в Telegram: браузеру её
    * открыть нечем, экран говорит искать её в канале школы (ТЗ §14). */
   inTelegramOnly?: true;

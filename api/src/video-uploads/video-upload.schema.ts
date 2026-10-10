@@ -23,7 +23,7 @@ export interface VideoUploadPart {
 
 /** Часть, принятая R2 — номер и ETag, нужны в неизменном порядке для
  * `CompleteMultipartUpload` (multipart-store.service.ts). Тот же приём
- * субдокумента, что RecordingSubdoc (lessons/lesson.schema.ts). */
+ * субдокумента, что RecordingSubdoc (lessons/lesson-recording.subdoc.ts). */
 @Schema({ _id: false })
 class VideoUploadPartSubdoc implements VideoUploadPart {
   @Prop({ type: Number, required: true })

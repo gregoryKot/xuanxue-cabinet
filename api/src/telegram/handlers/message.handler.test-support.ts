@@ -9,6 +9,7 @@ import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.s
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
+import type { LessonVideosService } from '../../lesson-videos/lesson-videos.service';
 import { LessonsService } from '../../lessons/lessons.service';
 import { MaterialRecord, MaterialSchema } from '../../materials/material.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
@@ -107,6 +108,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     broadcastModel,
     userModel,
     materialModel,
+    {} as unknown as LessonVideosService,
   );
   const recordingWaitHandler = new RecordingWaitHandler(
     new BotSessionService(botSessionModel),

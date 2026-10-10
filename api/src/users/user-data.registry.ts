@@ -35,7 +35,8 @@
 // Этап 4, слой 4.2 (exam_videos, ADR-0133) — видео вопроса/варианта в R2,
 // тем же смыслом и тем же решением, что exam_images выше: `createdBy` — кто
 // загрузил, не признак владения, при удалении аккаунта поле обнуляется, само
-// видео остаётся у вопроса банка.
+// видео остаётся у вопроса банка. Так же `lesson_videos` (запись занятия файлом,
+// ADR-0180): видео остаётся у записи занятия.
 //
 // Этап 4, слой 4.6 (grading_comment_presets, ADR-0041) — заготовки частых
 // комментариев при проверке. Данные школы, не ученика: `createdBy` — кто
@@ -169,6 +170,7 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamGradingRecord', path: 'graderId' },
   { model: 'ExamImageRecord', path: 'createdBy' },
   { model: 'ExamVideoRecord', path: 'createdBy' },
+  { model: 'LessonVideoRecord', path: 'createdBy' },
   { model: 'GradingCommentPresetRecord', path: 'createdBy' },
   { model: 'MaterialRecord', path: 'createdBy' },
   { model: 'SchoolEventRecord', path: 'createdBy' },

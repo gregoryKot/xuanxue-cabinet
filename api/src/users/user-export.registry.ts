@@ -268,6 +268,7 @@ export const USER_EXPORT_REFERENCES = [
     path: 'createdBy',
     title: 'Видео к вопросам, которые загрузил',
   },
+  { model: 'LessonVideoRecord', path: 'createdBy', title: 'Файлы записей, что загрузил' },
   {
     model: 'GradingCommentPresetRecord',
     path: 'createdBy',

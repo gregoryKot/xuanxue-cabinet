@@ -13,11 +13,12 @@ import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-bo
 
 const CONTENT_TYPE = 'application/octet-stream';
 
-/** Маршруты `PUT …/:id/parts/:n` всех видов видео: ответ ученика (ADR-0137) и
- * видео вопроса (ADR-0165). */
+/** Маршруты `PUT …/:id/parts/:n` всех видов видео: ответ ученика (ADR-0137),
+ * видео вопроса (ADR-0165) и запись занятия (ADR-0180). */
 export const VIDEO_PART_PATH_PATTERNS: readonly RegExp[] = [
   /^\/api\/answer-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
   /^\/api\/exam-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
+  /^\/api\/lesson-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
 ];
 
 /** Фабрика — секрет сессии из DI замыкается один раз в app.setup.ts, тем же
