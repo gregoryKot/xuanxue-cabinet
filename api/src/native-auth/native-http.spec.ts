@@ -1,8 +1,10 @@
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import {
   assertEmptyJsonObject,
   assertFormRequest,
   assertNoRequestInput,
   bearerTokenOf,
+  configureNativeBodyParsing,
   isNativeFormRequest,
   nativeBodyErrorHandler,
   type NativeRequestLike,
@@ -181,5 +183,18 @@ describe('nativeBodyErrorHandler', () => {
 
     expect(sent).toEqual([]);
     expect(next.mock.calls).toEqual([[parseError], [other]]);
+  });
+});
+
+describe('configureNativeBodyParsing', () => {
+  it('форма — без вложенных ключей, только нативные маршруты, ошибки парсера — свои', () => {
+    const app = { useBodyParser: jest.fn(), use: jest.fn() };
+
+    configureNativeBodyParsing(app as unknown as NestExpressApplication);
+
+    expect(app.useBodyParser.mock.calls).toEqual([
+      ['urlencoded', { extended: false, type: isNativeFormRequest, limit: '4kb' }],
+    ]);
+    expect(app.use.mock.calls).toEqual([[nativeBodyErrorHandler]]);
   });
 });
