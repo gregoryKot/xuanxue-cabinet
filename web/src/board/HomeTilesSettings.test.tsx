@@ -2,7 +2,7 @@
 // плиток своей роли, сохранение через `PUT /me/home-tiles` и перерисовка главной
 // по ответу — без второго `GET /auth/me`. Сеть — mockApiByPath (ADR-0116); ответ PUT
 // — тот `MeDto`, который вернул бы сервер.
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -146,11 +146,13 @@ describe('«Настроить главную» — ученик', () => {
       makeMe({ homeHiddenTiles: ['payment', 'nextLesson', 'notice', 'events'] }),
     );
     await screen.findByRole('button', { name: OPEN_LABEL });
+    // Запрос экзаменов уходит из эффекта и может не успеть к появлению кнопки:
+    // сначала ждём его, иначе отсутствие остальных проверяется слишком рано.
+    await waitFor(() => expect(callsTo('/me/exams')).toHaveLength(1));
 
     for (const path of ['/me/payments', '/me/lessons', '/me/board', '/me/events']) {
       expect(callsTo(path)).toHaveLength(0);
     }
-    expect(callsTo('/me/exams')).toHaveLength(1);
   });
 
   it('вернул скрытую оплату: диалог показывает её выключенной, после сохранения плитка приходит с запросом', async () => {
