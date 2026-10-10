@@ -1,12 +1,7 @@
 // Загрузка видео частями (ADR-0137, ADR-0165) — состояние одного экземпляра:
-// экран заводит свой хук на каждое видео (на каждый вопрос), поэтому два
-// видео одной попытки прогрессируют независимо, без Map по itemId. Сам
-// сквозной прогон (отпечаток → старт → части → завершение, повтор, отмена) —
-// videoUploadRunner.ts, а к какому маршруту сервера он ведёт — транспорт вида
-// видео. Здесь только React state machine поверх них: idle → compressing
-// (сжатие в браузере, ADR-0165; у маленького файла или браузера без WebCodecs
-// пропускается, а человек может отказаться от него кнопкой — compressThenUpload.ts)
-// → uploading → waiting (пауза перед повтором) → done | failed | cancelled.
+// экран заводит свой хук на каждое видео, два видео прогрессируют независимо.
+// Прогон — videoUploadRunner.ts, маршруты — транспорт вида видео; здесь React state
+// machine: idle → compressing (ADR-0165) → uploading → waiting → done | failed | cancelled.
 import { useCallback, useRef, useState } from 'react';
 import {
   IDLE_VIDEO_UPLOAD_STATE,
@@ -23,16 +18,18 @@ import { realSleep, useUploadPause } from './useUploadPause';
 
 export interface UseVideoUploadOptions<TResult extends object> {
   /** Собирает транспорт на каждый выбор файла — так он видит актуальные
-   * `attemptId`/`itemId`, а выбор файла не зависит от того, как часто
-   * перерисовывается экран. */
+   * `attemptId`/`itemId`. */
   createTransport: () => VideoUploadTransport<TResult>;
   /** Готовый результат — кладёт его на экран без второго GET
-   * (useAttempt.ts, ADR-0087). */
+   * (ADR-0087). */
   onDone: (result: TResult) => void;
   /** Потолок размера и текст отказа у каждого вида видео свой. */
   maxBytes: number;
   tooLargeMessage: string;
   sleep?: (ms: number) => Promise<void>;
+  /** `false` — без сжатия: сжатие часа видео держит результат в памяти вкладки
+   * (запись занятия, ADR-0180). */
+  canCompress?: boolean;
   /** Подмена сжатия в тестах (сам перегон — compressVideo.ts). */
   compress?: typeof compressVideo;
 }
@@ -61,12 +58,12 @@ export function useVideoUpload<TResult extends object>({
   maxBytes,
   tooLargeMessage,
   sleep = realSleep,
+  canCompress = true,
   compress = compressVideo,
 }: UseVideoUploadOptions<TResult>): UseVideoUploadResult {
   const [state, setState] = useState<VideoUploadState>(IDLE_VIDEO_UPLOAD_STATE);
-  // Пока видео готовится, грузится или ждёт повтора — экран не гаснет (ADR-0165):
-  // iOS усыпляет страницу с погасшим экраном, и загрузка встаёт. Закрыть
-  // вкладку в это время браузер тоже переспросит: так у всех видов видео.
+  // Пока видео в работе — экран не гаснет (iOS усыпляет страницу, ADR-0165) и
+  // закрытие вкладки браузер переспросит: так у всех видов видео.
   const isActive = isVideoUploadActive(state);
   useScreenWakeLock(isActive);
   useWarnBeforeUnload(isActive);
@@ -79,8 +76,7 @@ export function useVideoUpload<TResult extends object>({
     [],
   );
   // Размонтирование загрузку не обрывает (аудит 2026-10-01, F04): «Отправить»
-  // переключает экран, а части идут дальше, и результат попадёт на экран через
-  // onDone (живёт выше блока загрузки). Обрыв — только cancel и новый файл.
+  // переключает экран, части идут дальше, результат придёт через onDone.
   const { waitForResume, release } = useUploadPause(sleep, markWaiting);
 
   const cancel = useCallback(() => {
@@ -117,12 +113,8 @@ export function useVideoUpload<TResult extends object>({
           tooLargeMessage,
         });
 
-      if (!canCompressVideo(file.size)) {
-        setState({
-          ...IDLE_VIDEO_UPLOAD_STATE,
-          phase: 'uploading',
-          totalBytes: file.size,
-        });
+      // Без сжатия: beginVideoUpload сам ставит `uploading` или отказ по размеру.
+      if (!canCompress || !canCompressVideo(file.size)) {
         upload(file);
         return;
       }
@@ -136,7 +128,15 @@ export function useVideoUpload<TResult extends object>({
         upload,
       });
     },
-    [createTransport, onDone, maxBytes, tooLargeMessage, waitForResume, compress],
+    [
+      createTransport,
+      onDone,
+      maxBytes,
+      tooLargeMessage,
+      waitForResume,
+      canCompress,
+      compress,
+    ],
   );
 
   const reset = useCallback(() => {
