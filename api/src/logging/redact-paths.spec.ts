@@ -37,6 +37,7 @@ function logSample(): Record<string, unknown> {
           code: 'b'.repeat(32),
           inviteCode: 'c'.repeat(32),
           state: 'i'.repeat(43),
+          token: 'j'.repeat(43),
           message: { text: '/start join_' + 'd'.repeat(32), chat: { id: 1 } },
         },
       },
@@ -114,6 +115,7 @@ describe('REDACT_PATHS', () => {
     expect(body.code).toBe('[Redacted]');
     expect(body.inviteCode).toBe('[Redacted]');
     expect(body.state).toBe('[Redacted]');
+    expect(body.token).toBe('[Redacted]');
     expect((body.message as Record<string, unknown>).text).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');

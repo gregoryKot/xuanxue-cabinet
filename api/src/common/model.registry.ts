@@ -152,6 +152,16 @@ import {
   AppErrorSchema,
   APP_ERROR_FIELD_POLICY,
 } from '../app-errors/app-error.schema';
+import {
+  NativeGrantRecord,
+  NativeGrantSchema,
+  NATIVE_GRANT_FIELD_POLICY,
+} from '../native-auth/native-grant.schema';
+import {
+  NativeCredentialRecord,
+  NativeCredentialSchema,
+  NATIVE_CREDENTIAL_FIELD_POLICY,
+} from '../native-auth/native-credential.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -300,5 +310,15 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: AppErrorRecord.name,
     schema: AppErrorSchema,
     fieldPolicy: APP_ERROR_FIELD_POLICY,
+  },
+  {
+    name: NativeGrantRecord.name,
+    schema: NativeGrantSchema,
+    fieldPolicy: NATIVE_GRANT_FIELD_POLICY,
+  },
+  {
+    name: NativeCredentialRecord.name,
+    schema: NativeCredentialSchema,
+    fieldPolicy: NATIVE_CREDENTIAL_FIELD_POLICY,
   },
 ];

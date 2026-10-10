@@ -74,6 +74,21 @@ export type {
 } from './auth';
 export type { MeDto, SetNoTelegramInput, SetStudentModeInput } from './me';
 export { STUDENT_MODE_PAYMENT_MESSAGE, STUDENT_MODE_STAFF_ONLY_MESSAGE } from './me';
+export type {
+  NativeAccountResponse,
+  NativeErrorCode,
+  NativeRevokeInput,
+  NativeTokenResponse,
+} from './native-auth';
+export {
+  NATIVE_CLIENT_ID,
+  NATIVE_CREDENTIAL_LIFETIME_SEC,
+  NATIVE_ERROR_CODES,
+  NATIVE_RENEW_THRESHOLD_SEC,
+  NATIVE_SCOPE,
+  NATIVE_TOKEN_TYPE,
+  NATIVE_TOKEN_TYPE_HINT,
+} from './native-auth';
 export type { HomeTileKey, SetHomeTilesInput } from './home-tiles';
 export {
   HOME_TILES,

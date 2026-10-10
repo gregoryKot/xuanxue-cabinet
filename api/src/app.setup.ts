@@ -21,6 +21,7 @@ import { formatValidationErrors } from './common/validation-messages';
 import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
+import { configureNativeBodyParsing } from './native-auth/native-http';
 import {
   makeIsVideoPart,
   VIDEO_PART_PATH_PATTERNS,
@@ -113,6 +114,10 @@ export function configureApp(app: NestExpressApplication): void {
     type: isVideoPart,
     limit: ANSWER_VIDEO_LIMITS.partBytes,
   });
+
+  // Формы нативного Daychi (ADR-0181) — единственные urlencoded-тела в API;
+  // ошибки парсеров тела на его путях получают свой формат ответа.
+  configureNativeBodyParsing(app);
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
