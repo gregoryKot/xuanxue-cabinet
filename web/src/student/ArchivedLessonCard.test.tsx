@@ -114,6 +114,34 @@ describe('ArchivedLessonCard — записи', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
+  // ADR-0180: запись, загруженная файлом в кабинет, играет прямо в архиве.
+  it('запись с videoId — нативный video из кабинета с кадром и названием', () => {
+    const { container } = renderCard({
+      recordings: [{ title: 'Занятие целиком', videoId: 'v1' }],
+    });
+
+    const video = container.querySelector('video');
+    expect(video).toHaveAttribute('src', '/api/lesson-videos/v1');
+    expect(video).toHaveAttribute('poster', '/api/lesson-videos/v1/poster');
+    expect(video).toHaveAttribute('aria-label', 'Занятие целиком');
+    expect(screen.getByText('Занятие целиком')).toBeInTheDocument();
+    // Мёртвой ссылки «Открыть запись» без адреса быть не должно.
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Запись ушла/)).not.toBeInTheDocument();
+  });
+
+  it('запись с файлом и ссылкой — video раньше ссылки, ссылка остаётся', () => {
+    const { container } = renderCard({
+      recordings: [{ videoId: 'v1', url: 'https://cloud.example/rec' }],
+    });
+
+    const video = container.querySelector('video');
+    const link = screen.getByRole('link', { name: 'Открыть запись' });
+    expect(link).toHaveAttribute('href', 'https://cloud.example/rec');
+    expect(video?.compareDocumentPosition(link)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(video).toHaveAttribute('aria-label', 'Запись занятия');
+  });
+
   it('несколько записей — каждая своей строкой', () => {
     renderCard({
       recordings: [
