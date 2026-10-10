@@ -19,6 +19,7 @@ import { ROUTE_MODULES } from './routeModules';
 const LoginScreen = lazyRoute(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
 const GoogleLoginCallbackScreen = lazyRoute(ROUTE_MODULES.googleLogin.load);
+const NativeLoginScreen = lazyRoute(ROUTE_MODULES.nativeLogin.load);
 const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
 const PrivacyScreen = lazyRoute(ROUTE_MODULES.privacy.load);
 const AccessibilityScreen = lazyRoute(ROUTE_MODULES.accessibility.load);
@@ -54,6 +55,12 @@ export default function App() {
             <Route
               path={ROUTE_MODULES.googleLogin.path}
               element={<GoogleLoginCallbackScreen />}
+            />
+            {/* Вход для приложения Daychi (ADR-0181) — публичный маршрут:
+                гость входит здесь же, вошедшего экран сам уводит в Daychi. */}
+            <Route
+              path={ROUTE_MODULES.nativeLogin.path}
+              element={<NativeLoginScreen />}
             />
             {/* Ссылка-приглашение школы (ADR-0030) — публичный маршрут: до
                 входа проверяет код сама (useJoinByInvite.ts), внутрь

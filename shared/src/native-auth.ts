@@ -25,6 +25,9 @@ export const NATIVE_ATTEMPT_LIFETIME_SEC = 900;
 export const NATIVE_CONTINUATION_PATH = '/login/native';
 export const NATIVE_ATTEMPT_PARAM = 'attempt';
 export const NATIVE_CANCEL_PARAM = 'cancel';
+/** Адрес сервера, на который экран `/login/native` уходит полным переходом
+ * вкладки, не `apiFetch`: ответ — 302 в Daychi или обратно на экран входа. */
+export const NATIVE_CONTINUE_ENDPOINT_PATH = '/api/auth/native/continue';
 
 /** 90 дней; считается от выдачи самого bearer, продление отсчитывает заново. */
 export const NATIVE_CREDENTIAL_LIFETIME_SEC = 7_776_000;

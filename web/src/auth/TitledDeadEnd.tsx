@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
-import { postLoginPath } from './returnTo';
+import { loginPath, postLoginPath } from './returnTo';
 
 const fullWidthStyle = { width: '100%' };
 const DEFAULT_BUTTON_LABEL = 'На страницу входа';
@@ -33,7 +33,7 @@ export function TitledDeadEnd({
   const navigate = useNavigate();
 
   function handleClick(): void {
-    void navigate(hasSession ? postLoginPath() : '/login');
+    void navigate(hasSession ? postLoginPath() : loginPath());
   }
 
   return (

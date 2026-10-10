@@ -20,7 +20,11 @@
 // prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
-import { APP_ERRORS_SCREEN_PATH, GOOGLE_LOGIN_CALLBACK_PATH } from '@xuanxue/shared';
+import {
+  APP_ERRORS_SCREEN_PATH,
+  GOOGLE_LOGIN_CALLBACK_PATH,
+  NATIVE_CONTINUATION_PATH,
+} from '@xuanxue/shared';
 import {
   CLASSES_LIST_PATH,
   EXAM_EDITOR_ITEMS_PATH,
@@ -120,6 +124,12 @@ export const ROUTE_MODULES = {
   googleLogin: {
     path: GOOGLE_LOGIN_CALLBACK_PATH,
     load: () => import('../auth/GoogleLoginCallbackScreen'),
+    warm: false,
+  },
+  // Вход для приложения Daychi (ADR-0181) — публичный, как login выше.
+  nativeLogin: {
+    path: NATIVE_CONTINUATION_PATH,
+    load: () => import('../auth/NativeLoginScreen'),
     warm: false,
   },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },

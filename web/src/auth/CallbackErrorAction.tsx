@@ -8,7 +8,7 @@ import { Button } from '../components/Button';
 import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { INVITE_HINT_MESSAGE } from './inviteHintMessage';
-import { postLoginPath } from './returnTo';
+import { loginPath, postLoginPath } from './returnTo';
 
 const FORBIDDEN_STATUS = 403;
 const fullWidthStyle = { width: '100%' };
@@ -40,7 +40,7 @@ export function CallbackErrorAction({
   }
 
   function handleClick(): void {
-    void navigate(hasSession ? postLoginPath() : '/login');
+    void navigate(hasSession ? postLoginPath() : loginPath());
   }
 
   return (

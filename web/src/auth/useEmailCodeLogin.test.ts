@@ -7,8 +7,11 @@ import type * as RouterModule from 'react-router-dom';
 import type * as HttpModule from '../api/http';
 import type { MeDto } from '@xuanxue/shared';
 import { ApiError, apiFetch } from '../api/http';
+import { saveNativeAttempt } from './nativeAttempt';
 import { saveReturnTo } from './returnTo';
 import { useEmailCodeLogin } from './useEmailCodeLogin';
+
+const NATIVE_ATTEMPT_ID = '0123456789abcdef01234567';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -89,6 +92,21 @@ describe('useEmailCodeLogin', () => {
 
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith('/planning?week=2', { replace: true }),
+    );
+  });
+
+  it('успех, во вкладке попытка Daychi (ADR-0181) — переход на её экран', async () => {
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockedApiFetch.mockResolvedValue(ME);
+    const { result } = renderHook(() => useEmailCodeLogin(vi.fn()));
+
+    await result.current.submit('a@example.com', '123456');
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith(
+        `/login/native?attempt=${NATIVE_ATTEMPT_ID}`,
+        { replace: true },
+      ),
     );
   });
 

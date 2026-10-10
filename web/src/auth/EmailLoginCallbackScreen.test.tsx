@@ -4,13 +4,14 @@
 // «ссылка неполная» и «уже вошедшего» его не было вовсе.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
 import EmailLoginCallbackScreen from './EmailLoginCallbackScreen';
+import { saveNativeAttempt } from './nativeAttempt';
 import { saveReturnTo } from './returnTo';
 
 vi.mock('../api/http', async () => {
@@ -20,6 +21,7 @@ vi.mock('../api/http', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const VALID_TOKEN = 'a'.repeat(64);
+const NATIVE_ATTEMPT_ID = '0123456789abcdef01234567';
 
 const ME: MeDto = {
   id: 'u1',
@@ -68,6 +70,10 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
+function NativeLoginProbe() {
+  return <p>Вход в Daychi {useLocation().search}</p>;
+}
+
 function renderScreen(search: string) {
   return render(
     <MemoryRouter initialEntries={[`/login/email${search}`]}>
@@ -78,6 +84,7 @@ function renderScreen(search: string) {
           <Route path="/schedule" element={<p>Расписание</p>} />
           <Route path="/" element={<p>Занятия</p>} />
           <Route path="/exams" element={<p>Экзамены</p>} />
+          <Route path="/login/native" element={<NativeLoginProbe />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -97,6 +104,19 @@ describe('EmailLoginCallbackScreen — битая ссылка (verify не ух
 
     await user.click(screen.getByRole('button', { name: 'На страницу входа' }));
     expect(await screen.findByText('Экран входа')).toBeInTheDocument();
+  });
+
+  it('нет токена, во вкладке попытка Daychi (ADR-0181) — кнопка ведёт на её экран', async () => {
+    const user = userEvent.setup();
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockMe('guest');
+    renderScreen('');
+
+    await user.click(await screen.findByRole('button', { name: 'На страницу входа' }));
+
+    expect(
+      await screen.findByText(`Вход в Daychi ?attempt=${NATIVE_ATTEMPT_ID}`),
+    ).toBeInTheDocument();
   });
 
   it('токен не 64 hex — «Ссылка неполная», как без токена вовсе, verify не уходит', async () => {
@@ -156,6 +176,16 @@ describe('EmailLoginCallbackScreen — валидный токен, вход с�
 
     await waitFor(() => expect(screen.getByText('Экзамены')).toBeInTheDocument());
     expect(verifyCalls()).toHaveLength(1);
+  });
+
+  it('гость, во вкладке попытка Daychi (ADR-0181) — назад на её экран', async () => {
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockGuestAndVerifySuccess();
+    renderScreen(`?token=${VALID_TOKEN}`);
+
+    expect(
+      await screen.findByText(`Вход в Daychi ?attempt=${NATIVE_ATTEMPT_ID}`),
+    ).toBeInTheDocument();
   });
 
   it('401 от сервера — текст с сервера, кнопка «Запросить новую» ведёт на /login, повторного запроса не было', async () => {

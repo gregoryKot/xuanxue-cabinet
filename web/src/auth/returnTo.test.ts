@@ -1,7 +1,10 @@
 // Аудит L2 (docs/audits/2026-09-12-quality-audit.md): проверяем каждую
 // ветку валидации и то, что недоступное хранилище не роняет вызывающий код.
 import { afterEach, describe, expect, it } from 'vitest';
-import { consumeReturnTo, postLoginPath, saveReturnTo } from './returnTo';
+import { consumeNativeAttempt, saveNativeAttempt } from './nativeAttempt';
+import { consumeReturnTo, loginPath, postLoginPath, saveReturnTo } from './returnTo';
+
+const ATTEMPT_ID = '0123456789abcdef01234567';
 
 afterEach(() => {
   sessionStorage.clear();
@@ -84,6 +87,46 @@ describe('postLoginPath', () => {
 
     expect(postLoginPath()).toBe('/exams');
     expect(postLoginPath()).toBe('/');
+  });
+
+  // ADR-0181: вход, начатый из Daychi, возвращается на его экран, а не на
+  // сохранённый экран кабинета; returnTo при этом остаётся на потом.
+  it('попытка Daychi во вкладке — её экран, раньше returnTo и домашнего', () => {
+    saveReturnTo('/exams');
+    saveNativeAttempt(ATTEMPT_ID);
+
+    expect(postLoginPath()).toBe(`/login/native?attempt=${ATTEMPT_ID}`);
+    expect(postLoginPath()).toBe(`/login/native?attempt=${ATTEMPT_ID}`);
+
+    consumeNativeAttempt();
+    expect(postLoginPath()).toBe('/exams');
+  });
+
+  it('попытка Daychi без returnTo — её экран, не домашний', () => {
+    saveNativeAttempt(ATTEMPT_ID);
+
+    expect(postLoginPath()).toBe(`/login/native?attempt=${ATTEMPT_ID}`);
+  });
+
+  // N17 профиля: ключ попытки — своя ветка, returnTo экран входа по-прежнему
+  // не пускает, в том числе сам экран Daychi.
+  it('returnTo не пускает /login/native — попытка живёт только своим ключом', () => {
+    saveReturnTo(`/login/native?attempt=${ATTEMPT_ID}`);
+
+    expect(postLoginPath()).toBe('/');
+  });
+});
+
+describe('loginPath', () => {
+  it('без попытки Daychi — обычный экран входа', () => {
+    expect(loginPath()).toBe('/login');
+  });
+
+  it('попытка Daychi во вкладке — её экран; ключ не снимается', () => {
+    saveNativeAttempt(ATTEMPT_ID);
+
+    expect(loginPath()).toBe(`/login/native?attempt=${ATTEMPT_ID}`);
+    expect(loginPath()).toBe(`/login/native?attempt=${ATTEMPT_ID}`);
   });
 });
 
