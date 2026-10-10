@@ -56,10 +56,15 @@ export function redactQueryValues(url: string, params: readonly string[]): strin
   return `${path}?${query}`;
 }
 
+// Имя сравнивается раскодированным тем же URLSearchParams, которым query
+// разбирают обработчики (native-browser-query.ts, браузер): `%73tate=` для них
+// тот же `state`, и сырое сравнение оставляло значение в логе (Workshop #7,
+// ревью 2026-10-11).
 function redactPair(pair: string, params: readonly string[]): string {
   const separatorIndex = pair.indexOf('=');
-  const name = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
-  return params.includes(name) ? `${name}=${REDACTED_VALUE}` : pair;
+  const rawName = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+  const [decoded] = new URLSearchParams(pair);
+  return decoded && params.includes(decoded[0]) ? `${rawName}=${REDACTED_VALUE}` : pair;
 }
 
 // Обёртка над стандартным сериализатором pino (`pino.stdSerializers.req`):

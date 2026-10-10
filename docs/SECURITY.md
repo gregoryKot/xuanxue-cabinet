@@ -526,11 +526,15 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   ссылка, которую видит любой прохожий из поисковика, — разные вещи. Теперь они в
   `api/seed/zoom-links.local.json` вне репозитория, образец —
   `zoom-links.example.json`.
-- В логи не попадают: пароли, ссылки Zoom, токены, cookie, `authorization`, email,
-  query-параметры `join`/`token` (код ссылки-приглашения и токен email-входа —
-  утекли бы вместе с URL в строке «request completed»). Список путей —
-  `api/src/logging/redact-paths.ts`, покрыт тестом. Тело запроса целиком
-  не логируется.
+- В логи не попадают: пароли, ссылки Zoom, токены, cookie, `authorization`, email.
+  Список путей — `api/src/logging/redact-paths.ts`, покрыт тестом. Тело запроса
+  целиком не логируется.
+- Адрес запроса в строке «request completed» пишется без значений `join`,
+  `token`, `code`, `state`, `code_challenge`, `code_verifier`, `attempt`
+  (`request-serializer.ts`). Имя параметра сравнивается раскодированным тем же
+  `URLSearchParams`, которым query разбирают обработчики: `%73tate=` скрывается
+  как `state=`. Гейт — `logging.module.spec.ts`, настоящий pino-http на запросе
+  входа Daychi с закодированными именами.
 - Неиспользуемый секрет удаляется из env: каждая лишняя переменная — лишняя поверхность.
 - Переменные Railway видны всем участникам проекта Railway — участников там двое:
   владелец и, при необходимости, один агент-деплой. Ученики и учителя доступа не имеют.
