@@ -69,6 +69,14 @@ describe('matchRoute', () => {
     await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
   });
 
+  // Вход для Daychi (ADR-0181) — свой чанк, не экран входа кабинета: адрес
+  // `/login/native` не должен провалиться в `/login`.
+  it('вход для Daychi — свой чанк, в фоне не греется (ADR-0181)', async () => {
+    expect(loaderAt('/login/native')).toBe(ROUTE_MODULES.nativeLogin.load);
+    expect(ROUTE_MODULES.nativeLogin.warm).toBe(false);
+    await expect(ROUTE_MODULES.nativeLogin.load()).resolves.toHaveProperty('default');
+  });
+
   // Центр уведомлений (ADR-0063) — свой чанк, греется в фоне, как «Профиль».
   // Загрузчик зовём по-настоящему: опечатка в пути модуля иначе всплыла бы
   // только в браузере, пустым экраном под Suspense.
@@ -209,6 +217,7 @@ describe('ROUTE_MODULES', () => {
       '/login',
       '/login/email',
       '/login/google',
+      '/login/native',
       '/privacy',
       '/welcome',
     ]);

@@ -19,8 +19,10 @@ import { useSearchParams } from 'react-router-dom';
 import { GOOGLE_OAUTH_CODE_RE, GOOGLE_OAUTH_STATE_RE } from '@xuanxue/shared';
 import { hasSession, useAuth } from './AuthProvider';
 import { CallbackInProgress } from './CallbackInProgress';
+import { NativeLeavingStatus } from './NativeLeavingStatus';
 import { TitledDeadEnd } from './TitledDeadEnd';
 import { useCallbackLogin } from './useCallbackLogin';
+import { useNativeProviderCancel } from './useNativeLogin';
 
 const INCOMPLETE_LINK_MESSAGE = 'Ссылка не подошла. Начните вход через Google заново.';
 const CANCELLED_TITLE = 'Вход не завершён';
@@ -54,6 +56,11 @@ export default function GoogleLoginCallbackScreen() {
   );
   const sessionActive = hasSession(authStatus);
   const returnLabel = sessionActive ? RETURN_LABEL : LOGIN_LABEL;
+  // Отмена у провайдера при входе из Daychi (ADR-0181) — сразу назад в
+  // приложение с отказом, тупик ему не нужен.
+  const leavingToNative = useNativeProviderCancel(cancelled);
+
+  if (leavingToNative) return <NativeLeavingStatus />;
 
   if (cancelled) {
     return (

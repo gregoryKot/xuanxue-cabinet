@@ -12,6 +12,7 @@
 // Это НЕ токен из SECURITY §2 («токены в localStorage запрещены») — там речь
 // о секрете сессии; путь экрана и так виден в адресной строке, хранить его
 // в браузере нечего скрывать.
+import { nativeLoginPath, peekNativeAttempt } from './nativeAttempt';
 
 const RETURN_TO_KEY = 'xuanxue:returnTo';
 
@@ -19,6 +20,7 @@ const RETURN_TO_KEY = 'xuanxue:returnTo';
  * (аудит L2): «/» сам решает, куда вести (App.tsx), так экран после входа
  * совпадает с тем, что видно по нажатию логотипа. */
 const HOME_PATH = '/';
+const LOGIN_PATH = '/login';
 
 /** Только внутренний путь: один ведущий слэш и не два (`//evil.com` —
  * протокол-независимый редирект на чужой хост, браузер трактует его как
@@ -59,9 +61,24 @@ export function consumeReturnTo(): string | null {
   }
 }
 
-/** Куда вести после успешного входа — сохранённый экран или домашний.
- * Единая функция для всех точек завершения входа (LoginScreen,
- * useTelegramAuthResultLogin, useEmailLoginVerify, EmailLoginCallbackScreen). */
+/** Куда вести после успешного входа — экран входа Daychi, сохранённый экран
+ * или домашний. Единая функция для всех точек завершения входа (LoginScreen,
+ * useTelegramAuthResultLogin, useEmailLoginVerify, EmailLoginCallbackScreen).
+ * Попытка Daychi в этой вкладке (nativeAttempt.ts) — своей веткой и первой:
+ * человек начал вход из приложения, и вернуть его надо туда; returnTo при
+ * этом не снимается — он пригодится следующему обычному входу. */
 export function postLoginPath(): string {
-  return consumeReturnTo() ?? HOME_PATH;
+  return nativeAttemptPath() ?? consumeReturnTo() ?? HOME_PATH;
+}
+
+/** Куда вести гостя с тупика входа (битая ссылка, сбой callback-входа):
+ * при попытке Daychi в этой вкладке — на её экран, где можно и войти
+ * снова, и вернуться в приложение; иначе — на обычный экран входа. */
+export function loginPath(): string {
+  return nativeAttemptPath() ?? LOGIN_PATH;
+}
+
+function nativeAttemptPath(): string | null {
+  const nativeAttempt = peekNativeAttempt();
+  return nativeAttempt === null ? null : nativeLoginPath(nativeAttempt);
 }

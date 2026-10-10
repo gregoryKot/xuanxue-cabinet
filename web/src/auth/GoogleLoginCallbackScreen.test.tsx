@@ -3,25 +3,41 @@
 // тот же механизм, что у EmailLoginCallbackScreen.test.tsx).
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { StrictMode } from 'react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
-import { AuthProvider } from './AuthProvider';
+import { mockApiByPath } from '../test-support/apiFetchMock';
+import { AuthProvider, useAuth } from './AuthProvider';
 import GoogleLoginCallbackScreen from './GoogleLoginCallbackScreen';
+import { peekNativeAttempt, saveNativeAttempt } from './nativeAttempt';
 import { saveReturnTo } from './returnTo';
+import type * as TelegramRedirectModule from './telegramAuthRedirect';
+import { redirectCurrentTab } from './telegramAuthRedirect';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
   return { ...actual, apiFetch: vi.fn() };
 });
 
+// Уход вкладки в Daychi (ADR-0181) — настоящий window.location.assign увёл
+// бы jsdom со страницы.
+vi.mock('./telegramAuthRedirect', async () => {
+  const actual = await vi.importActual<typeof TelegramRedirectModule>(
+    './telegramAuthRedirect',
+  );
+  return { ...actual, redirectCurrentTab: vi.fn() };
+});
+
 const mockedApiFetch = vi.mocked(apiFetch);
+const redirectSpy = vi.mocked(redirectCurrentTab);
 // Формат из shared/src/google-login.ts: state 43 знака base64url, code —
 // печатные ASCII-знаки без пробелов, 10..512.
 const VALID_STATE = 'a'.repeat(43);
 const VALID_CODE = 'b'.repeat(20);
+const NATIVE_ATTEMPT_ID = '0123456789abcdef01234567';
 
 const ME: MeDto = {
   id: 'u1',
@@ -65,22 +81,36 @@ function googleCalls() {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  redirectSpy.mockClear();
   sessionStorage.clear();
 });
 
-function renderScreen(search: string) {
+function NativeLoginProbe() {
+  return <p>Вход в Daychi {useLocation().search}</p>;
+}
+
+/** Статус сессии рядом с экраном: проверить, что тупик не всплыл и после
+ * ответа /auth/me, а не только до него. */
+function AuthStatusProbe() {
+  return <span data-testid="auth-status">{useAuth().status}</span>;
+}
+
+function renderScreen(search: string, wrapper?: typeof StrictMode) {
   return render(
     <MemoryRouter initialEntries={[`/login/google${search}`]}>
       <AuthProvider>
+        <AuthStatusProbe />
         <Routes>
           <Route path="/login/google" element={<GoogleLoginCallbackScreen />} />
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route path="/" element={<p>Занятия</p>} />
           <Route path="/exams" element={<p>Экзамены</p>} />
           <Route path="/profile" element={<p>Профиль</p>} />
+          <Route path="/login/native" element={<NativeLoginProbe />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
+    { wrapper },
   );
 }
 
@@ -98,6 +128,27 @@ describe('GoogleLoginCallbackScreen — отменённый вход (POST не
 
     await user.click(screen.getByRole('button', { name: 'На страницу входа' }));
     expect(await screen.findByText('Экран входа')).toBeInTheDocument();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  // ADR-0181: отмена у провайдера при входе из Daychi — сразу continue с
+  // отменой, Daychi получает access_denied; тупика нет.
+  it('во вкладке попытка Daychi — один переход на continue с отменой, ключ снят', async () => {
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockMe('guest');
+    renderScreen('?error=access_denied', StrictMode);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Открываем Daychi');
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('guest'),
+    );
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+    expect(redirectSpy).toHaveBeenCalledWith(
+      `/api/auth/native/continue?attempt=${NATIVE_ATTEMPT_ID}&cancel=1`,
+    );
+    expect(peekNativeAttempt()).toBeNull();
+    expect(screen.queryByText('Вход не завершён')).not.toBeInTheDocument();
+    expect(googleCalls()).toHaveLength(0);
   });
 });
 
@@ -164,6 +215,16 @@ describe('GoogleLoginCallbackScreen — валидные code/state, вход с
     await waitFor(() => expect(screen.getByText('Экзамены')).toBeInTheDocument());
   });
 
+  it('гость, во вкладке попытка Daychi (ADR-0181) — назад на её экран', async () => {
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockGuestAndGoogleSuccess();
+    renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
+
+    expect(
+      await screen.findByText(`Вход в Daychi ?attempt=${NATIVE_ATTEMPT_ID}`),
+    ).toBeInTheDocument();
+  });
+
   it('401 от сервера — текст с сервера, кнопка «На страницу входа»', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
@@ -191,6 +252,30 @@ describe('GoogleLoginCallbackScreen — валидные code/state, вход с
     await user.click(screen.getByRole('button', { name: 'На страницу входа' }));
     await waitFor(() => expect(screen.getByText('Экран входа')).toBeInTheDocument());
     expect(googleCalls()).toHaveLength(1);
+  });
+
+  it('401 от сервера, во вкладке попытка Daychi — кнопка ведёт на её экран, без отмены', async () => {
+    const user = userEvent.setup();
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockApiByPath({
+      '/auth/me': new ApiError('Войдите', 401, 'unauthorized'),
+      '/auth/google': new ApiError(
+        'Не получилось войти через Google.',
+        401,
+        'unauthorized',
+      ),
+    });
+    renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
+
+    expect(
+      await screen.findByText('Не получилось войти через Google.'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'На страницу входа' }));
+
+    expect(
+      await screen.findByText(`Вход в Daychi ?attempt=${NATIVE_ATTEMPT_ID}`),
+    ).toBeInTheDocument();
+    expect(redirectSpy).not.toHaveBeenCalled();
   });
 
   it('409 (адрес уже привязан к почте) — текст с сервера, кнопка «На страницу входа»', async () => {
