@@ -13,7 +13,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Types, type Model } from 'mongoose';
 import {
-  ANSWER_VIDEO_PART_INVALID_MESSAGE,
   EXAM_VIDEO_LIMITS,
   EXAM_VIDEO_NOT_FOUND_MESSAGE,
   EXAM_VIDEO_TOO_LARGE_MESSAGE,
@@ -22,17 +21,10 @@ import {
   type StartExamVideoInput,
   type VideoUploadDto,
 } from '@xuanxue/shared';
-import {
-  ConflictError,
-  InvalidInputError,
-  NotAvailableError,
-  NotFoundError,
-} from '../common/errors';
+import { InvalidInputError, NotAvailableError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { FileStoreService } from '../storage/file-store.service';
-import { assertAllPartsReceived } from '../video-uploads/video-upload-assemble';
-import { parseVideoPoster, setPosterIfAbsent } from '../video-uploads/video-poster';
-import { markVideoReady } from '../video-uploads/video-upload-ready';
+import { StaffVideoUploads } from '../video-uploads/staff-video-uploads';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { toExamVideoDto, type RawLeanExamVideo } from './exam-video.mapper';
 import { ExamVideoRecord } from './exam-video.schema';
@@ -42,12 +34,17 @@ import { ExamVideoRecord } from './exam-video.schema';
 const EXAM_VIDEO_KEY_PREFIX = 'exam-videos';
 
 @Injectable()
-export class ExamVideoUploadsService {
+export class ExamVideoUploadsService extends StaffVideoUploads<
+  ExamVideoRecord,
+  RawLeanExamVideo
+> {
   constructor(
-    @InjectModel(ExamVideoRecord.name) private readonly model: Model<ExamVideoRecord>,
+    @InjectModel(ExamVideoRecord.name) protected readonly model: Model<ExamVideoRecord>,
     private readonly fileStore: FileStoreService,
-    private readonly uploads: VideoUploadsService,
-  ) {}
+    protected readonly uploads: VideoUploadsService,
+  ) {
+    super();
+  }
 
   async start(
     userId: string,
@@ -79,47 +76,18 @@ export class ExamVideoUploadsService {
     });
   }
 
-  async uploadPart(
-    id: string,
-    userId: string,
-    partNumber: number,
-    body: unknown,
-    now: DateTime,
-  ): Promise<VideoUploadDto> {
-    const doc = await this.loadOwn(id, userId);
-    return this.uploads.uploadPart(this.model, { doc, partNumber, body, now });
-  }
-
   async complete(
     id: string,
     userId: string,
     now: DateTime,
     posterBase64?: string,
   ): Promise<ExamVideoDto> {
-    const doc = await this.loadOwn(id, userId);
-    // Неверный кадр — 400 до сборки в R2: видео остаётся незавершённым, и его
-    // завершает повтор без кадра (ADR-0165).
-    const poster = parseVideoPoster(posterBase64);
-    // Готовое видео на повторе отдаёт тот же ответ: ответ первого вызова мог
-    // потеряться по дороге (F47, ADR-0165). Кадр, которого у него ещё нет, ставится.
-    if (doc.status !== 'uploading') {
-      await setPosterIfAbsent(this.model, id, poster);
-      return toExamVideoDto(doc);
-    }
-    if (!doc.uploadId) throw new ConflictError(ANSWER_VIDEO_PART_INVALID_MESSAGE);
-    assertAllPartsReceived(doc);
-    await this.uploads.assemble(this.model, doc, doc.uploadId, now);
-    // Из двух параллельных `complete` переход делает один; ответ оба строят из
-    // одной записи.
-    await markVideoReady(this.model, doc._id, { now, poster });
-    const ready = await this.model.findById(doc._id).lean<RawLeanExamVideo | null>();
-    if (!ready) throw new Error('ExamVideoUploadsService.complete: запись пропала');
-    return toExamVideoDto(ready);
+    return toExamVideoDto(await this.completeOwn(id, userId, now, posterBase64));
   }
 
   /** Своя загрузка или 404: чужая и несуществующая отвечают одинаково
    * (SECURITY §3). */
-  private async loadOwn(id: string, userId: string): Promise<RawLeanExamVideo> {
+  protected async loadOwn(id: string, userId: string): Promise<RawLeanExamVideo> {
     assertObjectId(id, EXAM_VIDEO_NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanExamVideo | null>();
     if (!doc || doc.createdBy?.toString() !== userId) {
