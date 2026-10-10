@@ -165,6 +165,17 @@ describe('NativeAuthorizationsService (Mongo)', () => {
       expect(await service.findPending('f'.repeat(24), BINDING, T0)).toBeNull();
     });
 
+    it('номер попытки не ObjectId — findPending отвечает null без запроса', async () => {
+      const id = await begin();
+
+      expect(await service.findPending(`${id}x`, BINDING, T0)).toBeNull();
+      expect(await service.findPending(id, BINDING, T0)).toEqual({
+        issuer: ISSUER,
+        redirectUri: NATIVE_REDIRECT_URI,
+        state: 's'.repeat(43),
+      });
+    });
+
     it('два одновременных завершения — не больше одного кода', async () => {
       const userId = await person();
 

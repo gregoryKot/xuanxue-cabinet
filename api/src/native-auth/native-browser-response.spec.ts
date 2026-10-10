@@ -3,6 +3,7 @@ import { ThrottlerException } from '@nestjs/throttler';
 import {
   NativeBrowserPageFilter,
   nativeBrowserPageHtml,
+  redirectTo,
   sendNativeBrowserOutcome,
   type NativeBrowserResponseLike,
 } from './native-browser-response';
@@ -81,6 +82,13 @@ describe('локальная страница входа Daychi', () => {
     expect(plain.headers['Set-Cookie']).toBeUndefined();
     expect(plain.headers['Cache-Control']).toBe('no-store');
     expect(withCookie.headers['Set-Cookie']).toBe('native_authz=v');
+  });
+
+  it('redirectTo — переход без cookie', () => {
+    expect(redirectTo('/login/native?attempt=a')).toEqual({
+      kind: 'redirect',
+      location: '/login/native?attempt=a',
+    });
   });
 });
 
