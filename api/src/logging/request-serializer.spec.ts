@@ -55,6 +55,28 @@ describe('redactQueryValues — вход через Google (ADR-0145)', () => {
   });
 });
 
+// Workshop #7, ревью 2026-10-11: обработчик раскодирует имя параметра, и
+// `%73tate=` для него тот же `state` — значение оставалось в req.url.
+describe('redactQueryValues — закодированное имя параметра', () => {
+  const secret = 'e'.repeat(43);
+
+  it.each([
+    ['%73tate', 'state'],
+    ['%63ode_challenge', 'code_challenge'],
+    ['code%5Fchallenge', 'code_challenge'],
+    ['%6a%6f%69%6e', 'join'],
+    ['%63ode', 'code'],
+  ])('%s редактируется как %s, имя в строке остаётся как пришло', (encoded, name) => {
+    const url = `/x?${encoded}=${secret}&y=1`;
+    expect(redactQueryValues(url, [name])).toBe(`/x?${encoded}=${REDACTED_VALUE}&y=1`);
+  });
+
+  it('имя, которое раскодируется в другое, не редактируется', () => {
+    const url = `/x?%73tates=${secret}&st%61te_=${secret}`;
+    expect(redactQueryValues(url, ['state'])).toBe(url);
+  });
+});
+
 describe('redactRequestSerializer', () => {
   function buildIncomingMessage(url: string): IncomingMessage {
     const req = new IncomingMessage(new Socket());

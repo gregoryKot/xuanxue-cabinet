@@ -3,11 +3,19 @@ import type { AddressInfo } from 'net';
 import pino from 'pino';
 import { pinoHttp } from 'pino-http';
 import {
+  NATIVE_CHALLENGE_METHOD,
+  NATIVE_CLIENT_ID,
+  NATIVE_REDIRECT_URI,
+  NATIVE_RESPONSE_TYPE,
+  NATIVE_SCOPE,
+} from '@xuanxue/shared';
+import { parseAuthorizeQuery } from '../native-auth/native-browser-query';
+import {
   buildPinoHttpOptions,
   renameReservedLogKeys,
   requestLogLevel,
 } from './logging.module';
-import { redactRequestSerializer } from './request-serializer';
+import { REDACTED_VALUE, redactRequestSerializer } from './request-serializer';
 
 describe('buildPinoHttpOptions', () => {
   it('development: включает pino-pretty', () => {
@@ -139,7 +147,15 @@ describe('строка «request completed» в production', () => {
     await new Promise<void>((resolve) => running.close(() => resolve()));
   });
 
-  async function requestLine(statusCode: number, withError = false): Promise<string> {
+  const DEFAULT_PATH = `/api/anything?attempt=${SECRET_QUERY}&code_challenge=${SECRET_QUERY}`;
+
+  async function requestLine(
+    statusCode: number,
+    {
+      withError = false,
+      path = DEFAULT_PATH,
+    }: { withError?: boolean; path?: string } = {},
+  ): Promise<string> {
     const lines: string[] = [];
     const logger = pinoHttp(buildPinoHttpOptions('production', 'info'), {
       write: (line: string) => lines.push(line),
@@ -166,9 +182,9 @@ describe('строка «request completed» в production', () => {
     });
     await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as AddressInfo;
-    const query = `attempt=${SECRET_QUERY}&code_challenge=${SECRET_QUERY}`;
-    const response = await fetch(`http://127.0.0.1:${port}/api/anything?${query}`, {
+    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
       method: 'POST',
+      redirect: 'manual',
       headers: {
         cookie: `session=${SECRET_COOKIE}`,
         authorization: `Bearer ${SECRET_AUTH}`,
@@ -217,9 +233,37 @@ describe('строка «request completed» в production', () => {
   });
 
   it('ошибка на res.err: сериализуется как Error, без сырого req', async () => {
-    const line = await requestLine(200, true);
+    const line = await requestLine(200, { withError: true });
     const parsed = JSON.parse(line) as { err: { message: string } };
     expect(parsed.err.message).toBe('boom');
+    expectNoLeak(line);
+  });
+
+  // Workshop #7, ревью 2026-10-11: разбор запроса принимает имя параметра в
+  // процентной кодировке, а редакция url сравнивала сырое имя — state и
+  // code_challenge оставались в req.url.
+  it('вход Daychi с закодированными именами: запрос принят, state и challenge в строке нет', async () => {
+    const state = 'S'.repeat(43);
+    const challenge = 'C'.repeat(43);
+    const known = new URLSearchParams({
+      response_type: NATIVE_RESPONSE_TYPE,
+      client_id: NATIVE_CLIENT_ID,
+      redirect_uri: NATIVE_REDIRECT_URI,
+      scope: NATIVE_SCOPE,
+      code_challenge_method: NATIVE_CHALLENGE_METHOD,
+    });
+    const path = `/auth/native/authorize?${known.toString()}&%73tate=${state}&%63ode_challenge=${challenge}`;
+    expect(parseAuthorizeQuery(path)).toMatchObject({
+      kind: 'valid',
+      request: { state, codeChallenge: challenge },
+    });
+
+    const line = await requestLine(302, { path });
+
+    expect(line).not.toContain(state);
+    expect(line).not.toContain(challenge);
+    expect(line).toContain(`%73tate=${REDACTED_VALUE}`);
+    expect(line).toContain(`%63ode_challenge=${REDACTED_VALUE}`);
     expectNoLeak(line);
   });
 });
