@@ -7,7 +7,8 @@
 import type { DateTime } from 'luxon';
 import type { VideoAccess } from '../common/video-redirect';
 import { VIEW_VIDEO, signedVideoUrl, type VideoUrlOptions } from '../common/video-link';
-import type { FileStoreService } from '../storage/file-store.service';
+import type { FileStoreService, ObjectStream } from '../storage/file-store.service';
+import { parseVideoRange } from './video-bytes';
 import { readPoster } from './video-poster';
 
 /** Что нужно от документа видео, чтобы подписать ссылку и отдать кадр. */
@@ -47,5 +48,20 @@ export abstract class SignedVideoService<
   /** Кадр-превью — те же права, что у видео (ADR-0165). */
   async loadPoster(id: string, user: U): Promise<Buffer | null> {
     return readPoster(await this.loadAccessibleDoc(id, user, '+poster'));
+  }
+
+  /** Байты объекта потоком с `Range` (ADR-0182) — те же права, что у видео. Тип
+   * отдаём тот, что записан у видео, а не тот, что у объекта в R2: первый
+   * определён по сигнатуре байтов (SECURITY §4). */
+  async openBytes(
+    id: string,
+    user: U,
+    now: DateTime,
+    rangeHeader: string | undefined,
+  ): Promise<ObjectStream> {
+    const range = parseVideoRange(rangeHeader);
+    const doc = await this.loadAccessibleDoc(id, user);
+    const stream = await this.fileStore.getStream(doc.key, now, range);
+    return { ...stream, contentType: doc.contentType ?? stream.contentType };
   }
 }

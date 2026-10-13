@@ -37,7 +37,11 @@ describe('ExamVideoStatsService', () => {
   });
 
   it('пустая коллекция — честный ноль, не пропущенная строка агрегации', async () => {
-    await expect(service.getSummary()).resolves.toEqual({ count: 0, totalBytes: 0 });
+    await expect(service.getSummary()).resolves.toEqual({
+      count: 0,
+      totalBytes: 0,
+      withoutPosterCount: 0,
+    });
   });
 
   // ADR-0165: недогруженное видео никто ещё не смотрел — в число не входит.
@@ -48,6 +52,7 @@ describe('ExamVideoStatsService', () => {
     await expect(service.getSummary()).resolves.toEqual({
       count: 1,
       totalBytes: 1_000_000,
+      withoutPosterCount: 1,
     });
   });
 
@@ -58,7 +63,11 @@ describe('ExamVideoStatsService', () => {
       sizeBytes: 700,
     });
 
-    await expect(service.getSummary()).resolves.toEqual({ count: 1, totalBytes: 700 });
+    await expect(service.getSummary()).resolves.toEqual({
+      count: 1,
+      totalBytes: 700,
+      withoutPosterCount: 1,
+    });
   });
 
   it('несколько видео — count и totalBytes суммируются', async () => {
@@ -68,6 +77,22 @@ describe('ExamVideoStatsService', () => {
     await expect(service.getSummary()).resolves.toEqual({
       count: 2,
       totalBytes: 3_500_000,
+      withoutPosterCount: 2,
+    });
+  });
+
+  // ADR-0182: число для кнопки «Снять кадры» — готовые видео без кадра.
+  it('withoutPosterCount: видео с кадром, и недогруженное без кадра, не считаются', async () => {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 1]);
+    await videoModel.create({ ...seedDoc(1_000), poster: jpeg });
+    await videoModel.create(seedDoc(2_000));
+    await videoModel.create(seedDoc(3_000));
+    await videoModel.create({ ...seedDoc(9_000), status: 'uploading' });
+
+    await expect(service.getSummary()).resolves.toEqual({
+      count: 3,
+      totalBytes: 6_000,
+      withoutPosterCount: 2,
     });
   });
 });
