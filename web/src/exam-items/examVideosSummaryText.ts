@@ -10,10 +10,14 @@ import { formatFileSize } from '../lib/formatFileSize';
 /**
  * `null` — пустая база или сбой загрузки, нечего показывать (CLAUDE.md
  * «Продуктовая фича = число в своём разделе»: честное отсутствие, не
- * «0 видео»). Форма «Видео к вопросам: N» не склоняется по числу — pluralRu
+ * «0 видео»). Число без кадра-превью (ADR-0182) дописывается, только когда оно
+ * больше нуля: у кого кадр есть везде, лишний «без кадра: 0» — шум. Форма «Видео к вопросам: N» не склоняется по числу — pluralRu
  * не нужен, тот же приём, что у formatExamImagesSummary.
  */
 export function formatExamVideosSummary(stats: ExamVideoStatsDto | null): string | null {
   if (!stats || stats.count === 0) return null;
-  return `Видео к вопросам: ${stats.count} — ${formatFileSize(stats.totalBytes)}`;
+  const base = `Видео к вопросам: ${stats.count} — ${formatFileSize(stats.totalBytes)}`;
+  return stats.withoutPosterCount > 0
+    ? `${base}, без кадра: ${stats.withoutPosterCount}`
+    : base;
 }

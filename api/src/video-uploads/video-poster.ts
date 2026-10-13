@@ -48,3 +48,19 @@ export async function setPosterIfAbsent<T extends VideoUploadRecord>(
 export function readPoster(doc: { poster?: unknown }): Buffer | null {
   return doc.poster ? binaryToBuffer(doc.poster) : null;
 }
+
+/** Готовые видео без кадра, старые первыми (ADR-0182): браузер штата снимает кадры
+ * пачкой и спрашивает следующую, пока список не опустеет. Кадр с `select: false`
+ * (video-upload.schema.ts) в выдачу не попадает, но `$exists` по нему работает.
+ * `ready` — фильтр готовности своего вида видео (у каждого он свой документ). */
+export function findVideosWithoutPoster<T extends VideoUploadRecord, Doc>(
+  model: Model<T>,
+  ready: Record<string, unknown>,
+  limit: number,
+): Promise<Doc[]> {
+  return model
+    .find({ ...ready, poster: { $exists: false } })
+    .sort({ createdAt: 1, _id: 1 })
+    .limit(limit)
+    .lean<Doc[]>();
+}

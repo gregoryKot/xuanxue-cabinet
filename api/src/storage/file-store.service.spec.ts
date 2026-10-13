@@ -136,6 +136,60 @@ describe('FileStoreService с ключами R2', () => {
     );
   });
 
+  // ADR-0182: Range входит в подпись, иначе R2 ответил бы 403; статус и заголовки
+  // R2 доходят до вызывающего, тело — поток, не буфер.
+  it('getStream передаёт Range в подписанные заголовки и отдаёт статус и заголовки R2', async () => {
+    const res = new Response('12345678', {
+      status: 206,
+      headers: {
+        'content-type': 'video/mp4',
+        'content-length': '8',
+        'content-range': 'bytes 4-11/64',
+      },
+    });
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(res);
+
+    const stream = await service().getStream(KEY, NOW, 'bytes=4-11');
+
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(url).toBe(OBJECT_URL);
+    expect(init?.method).toBe('GET');
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    const headers = init?.headers as Record<string, string>;
+    expect(headers.range).toBe('bytes=4-11');
+    expect(headers.authorization).toMatch(/SignedHeaders=[^,]*\brange\b/);
+    expect(stream).toMatchObject({
+      status: 206,
+      contentType: 'video/mp4',
+      contentLength: '8',
+      contentRange: 'bytes 4-11/64',
+    });
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream.body) chunks.push(chunk as Buffer);
+    expect(Buffer.concat(chunks).toString()).toBe('12345678');
+  });
+
+  it('getStream без Range: заголовка range нет, ответ 200', async () => {
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('abc', { status: 200 }));
+
+    const stream = await service().getStream(KEY, NOW);
+
+    const headers = (fetchSpy.mock.calls[0]?.[1]?.headers ?? {}) as Record<
+      string,
+      string
+    >;
+    expect(headers).not.toHaveProperty('range');
+    expect(stream.status).toBe(200);
+    expect(stream.contentRange).toBeUndefined();
+  });
+
+  it('getStream: R2 ответил ошибкой — NotAvailableError', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(response(false, 403));
+    await expect(service().getStream(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
   it('get: файла нет (404) — NotAvailableError, не пустые байты', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(response(false, 404));
     await expect(service().get(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);

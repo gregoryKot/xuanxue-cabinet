@@ -9,6 +9,14 @@ export function examVideoSrc(videoId: string): string {
   return `/api/exam-videos/${videoId}`;
 }
 
+/** Адрес байтов видео вопроса со своего домена, с `Range` (ADR-0182): декодер
+ * в браузере штата открывает его сам, как плеер — `examVideoSrc`, а не через
+ * `apiFetch`. Нужен снимку кадра для старых видео: `examVideoSrc` отвечает
+ * 302 на R2, и кадр из чужого домена на холст не рисуется. */
+export function examVideoBytesSrc(videoId: string): string {
+  return `/api/exam-videos/${videoId}/bytes`;
+}
+
 /** Адрес видео-ответа ученика (ADR-0137), тем же приёмом — `<video src>`,
  * сервер отвечает 302 на подписанную ссылку R2. Запросы самой загрузки
  * (старт, части, complete, stats) идут по карте маршрутов

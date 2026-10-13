@@ -11,17 +11,28 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import type { ExamVideoContentType } from '@xuanxue/shared';
+import {
+  VIDEOS_WITHOUT_POSTER_BATCH,
+  type ExamVideoContentType,
+  type ExamVideoDto,
+} from '@xuanxue/shared';
 import { SingleFlight } from '../common/single-flight';
 import { encryptRecord } from '../utils/encryption';
 import { FileStoreService } from '../storage/file-store.service';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import type { UserLean } from '../users/users.service';
 import { SignedVideoService } from '../video-uploads/signed-video.service';
+import {
+  findVideosWithoutPoster,
+  parseVideoPoster,
+  setPosterIfAbsent,
+} from '../video-uploads/video-poster';
 import { assertExamVideosReady, loadAccessibleExamVideo } from './exam-video-access';
 import {
+  EXAM_VIDEO_READY_FILTER,
   decryptExamVideo,
   readyContentType,
+  toExamVideoDto,
   type RawLeanExamVideo,
 } from './exam-video.mapper';
 import { EXAM_VIDEO_ENCRYPT_SCHEMA, ExamVideoRecord } from './exam-video.schema';
@@ -62,6 +73,26 @@ export class ExamVideosService extends SignedVideoService<UserLean, RawLeanExamV
   ): Promise<RawLeanExamVideo> {
     const { model, attemptModel } = this;
     return loadAccessibleExamVideo({ model, attemptModel }, id, user, fields);
+  }
+
+  /** Готовые видео без кадра-превью, пачкой (ADR-0182). Только для штата: роль
+   * проверяет контроллер, список не зависит от пользователя. */
+  async listWithoutPoster(): Promise<ExamVideoDto[]> {
+    const docs = await findVideosWithoutPoster<ExamVideoRecord, RawLeanExamVideo>(
+      this.model,
+      EXAM_VIDEO_READY_FILTER,
+      VIDEOS_WITHOUT_POSTER_BATCH,
+    );
+    return docs.map(toExamVideoDto);
+  }
+
+  /** Кадр, снятый браузером штата из байтов (ADR-0182). Права и готовность — как у
+   * любого чтения видео (чужому и не готовому 404); неверный кадр — 400. Первый
+   * записанный кадр не перетирается, повтор идемпотентен. */
+  async setPoster(id: string, user: UserLean, base64: string): Promise<ExamVideoDto> {
+    const doc = await this.loadAccessibleDoc(id, user);
+    await setPosterIfAbsent(this.model, id, parseVideoPoster(base64));
+    return toExamVideoDto(doc);
   }
 
   /** Бот скачивает байты сам и шлёт их в Telegram, не редиректом на подписанную

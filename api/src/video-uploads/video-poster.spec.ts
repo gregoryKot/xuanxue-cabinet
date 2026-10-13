@@ -12,7 +12,12 @@ import {
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import { parseVideoPoster, readPoster, setPosterIfAbsent } from './video-poster';
+import {
+  findVideosWithoutPoster,
+  parseVideoPoster,
+  readPoster,
+  setPosterIfAbsent,
+} from './video-poster';
 import { VideoUploadRecord } from './video-upload.schema';
 
 const JPEG_HEAD = [0xff, 0xd8, 0xff, 0xe0];
@@ -99,6 +104,7 @@ describe('кадр-превью в записи (настоящая Mongo)', () 
       key: 'test-clips/k',
       sizeBytes: 10,
       fingerprint: 'f',
+      status: 'ready',
       ...(poster ? { poster } : {}),
     });
     return doc._id.toString();
@@ -168,6 +174,55 @@ describe('кадр-превью в записи (настоящая Mongo)', () 
 
       const doc = await model.findById(id, '+poster').lean();
       expect(doc && readPoster(doc)).toBeNull();
+    });
+  });
+
+  // ADR-0182: пачка для браузера штата, который снимает кадры по одному.
+  describe('findVideosWithoutPoster', () => {
+    const READY = { status: { $ne: 'uploading' } };
+    type Row = { _id: Types.ObjectId };
+    const find = (limit: number): Promise<Row[]> =>
+      findVideosWithoutPoster<PosterClipRecord, Row>(model, READY, limit);
+
+    it('видео с кадром не попадает, без кадра — попадает', async () => {
+      await seed(jpeg());
+      const bare = await seed();
+
+      const found = await find(10);
+
+      expect(found.map((row) => row._id.toString())).toEqual([bare]);
+    });
+
+    it('видео, которое ещё грузится, не попадает', async () => {
+      await model.create({
+        ownerId: new Types.ObjectId(),
+        key: 'test-clips/u',
+        sizeBytes: 10,
+        fingerprint: 'u',
+        status: 'uploading',
+      });
+
+      await expect(find(10)).resolves.toEqual([]);
+    });
+
+    it('старые первыми, лимит соблюдается, кадр в выдачу не уходит', async () => {
+      const first = await seed();
+      const second = await seed();
+      await seed();
+
+      const found = await find(2);
+
+      expect(found.map((row) => row._id.toString())).toEqual([first, second]);
+      expect(found[0]).not.toHaveProperty('poster');
+    });
+
+    it('после setPosterIfAbsent видео уходит из списка (read-after-write)', async () => {
+      const id = await seed();
+      expect(await find(10)).toHaveLength(1);
+
+      await setPosterIfAbsent(model, id, jpeg());
+
+      expect(await find(10)).toHaveLength(0);
     });
   });
 });

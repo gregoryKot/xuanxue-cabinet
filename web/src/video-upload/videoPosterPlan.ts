@@ -19,6 +19,12 @@ export const POSTER_JPEG_QUALITIES = [0.8, 0.5] as const;
  * с начала загрузки, то есть кадр обычно готов задолго до `complete`. */
 export const POSTER_TIMEOUT_MS = 5000;
 
+/** Потолок снимка из адреса (ADR-0182): байты идут по сети кусками через
+ * кабинет, индекс несжатого ролика с телефона — мегабайты, и пяти секунд при
+ * загрузке тут мало. Загрузку этот срок не держит: прогон идёт по кнопке, одно
+ * видео за другим. */
+export const POSTER_FROM_URL_TIMEOUT_MS = 30_000;
+
 export interface PosterSize {
   width: number;
   height: number;
@@ -47,3 +53,7 @@ export function posterSeekTime(durationSeconds: number | null | undefined): numb
   }
   return Math.min(POSTER_SEEK_SECONDS, durationSeconds / 2);
 }
+
+/** Откуда снимать кадр: файл, который сейчас грузится, или адрес со своего
+ * домена (ADR-0182: кадр для старых видео снимается из `/api/exam-videos/:id/bytes`). */
+export type PosterSource = Blob | string;

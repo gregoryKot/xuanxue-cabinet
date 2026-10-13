@@ -12,7 +12,14 @@ import { ExamVideoRecord } from './exam-video.schema';
 interface ExamVideoStatsAggregation {
   count: number;
   totalBytes: number;
+  withoutPosterCount: number;
 }
+
+// `$type` отсутствующего поля — 'missing' (а не null): так считаются старые видео
+// без кадра, ради которых раздел показывает кнопку «Снять кадры» (ADR-0182).
+const WITHOUT_POSTER = {
+  $sum: { $cond: [{ $eq: [{ $type: '$poster' }, 'missing'] }, 1, 0] },
+};
 
 @Injectable()
 export class ExamVideoStatsService {
@@ -23,12 +30,23 @@ export class ExamVideoStatsService {
   async getSummary(): Promise<ExamVideoStatsDto> {
     const pipeline: PipelineStage[] = [
       { $match: EXAM_VIDEO_READY_FILTER },
-      { $group: { _id: null, count: { $sum: 1 }, totalBytes: { $sum: '$sizeBytes' } } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalBytes: { $sum: '$sizeBytes' },
+          withoutPosterCount: WITHOUT_POSTER,
+        },
+      },
     ];
     const results = await this.model.aggregate<ExamVideoStatsAggregation>(pipeline);
     const totals = results[0];
     return totals
-      ? { count: totals.count, totalBytes: totals.totalBytes }
-      : { count: 0, totalBytes: 0 };
+      ? {
+          count: totals.count,
+          totalBytes: totals.totalBytes,
+          withoutPosterCount: totals.withoutPosterCount,
+        }
+      : { count: 0, totalBytes: 0, withoutPosterCount: 0 };
   }
 }

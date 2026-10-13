@@ -3,7 +3,7 @@
 // WebCodecs для Mediabunny (старый Safari), и там, где свой декодер умеет то,
 // чего нет у библиотеки. Любое событие `error` или отмена — выход без кадра;
 // адрес объекта и элемент освобождаются в любом случае.
-import { posterSeekTime, posterSize } from './videoPosterPlan';
+import { posterSeekTime, posterSize, type PosterSource } from './videoPosterPlan';
 import type { PosterCanvas } from './posterEncode';
 
 /** Ждёт событие `eventName` у цели; `error` цели или отмена сигнала — отказ. */
@@ -40,18 +40,24 @@ function waitForEvent(
   });
 }
 
-/** Есть ли чем снимать запасным путём: адрес из Blob нужен элементу, а в
- * окружении без него (и без `document`) пробовать нечего. */
-export function canCaptureFromVideoElement(): boolean {
-  return typeof document !== 'undefined' && typeof URL.createObjectURL === 'function';
+/** Есть ли чем снимать запасным путём: Blob нужен адрес объекта, а в окружении
+ * без него (и без `document`) пробовать нечего. Адрес со своего домена
+ * (ADR-0182) элементу годится как есть — нужен только `document`. */
+export function canCaptureFromVideoElement(source: PosterSource): boolean {
+  return (
+    typeof document !== 'undefined' &&
+    (typeof source === 'string' || typeof URL.createObjectURL === 'function')
+  );
 }
 
 /** Холст с кадром или `null`, если снять не вышло (нет размеров, нет 2D). */
 export async function posterFromVideoElement(
-  blob: Blob,
+  source: PosterSource,
   signal: AbortSignal,
 ): Promise<PosterCanvas | null> {
-  const url = URL.createObjectURL(blob);
+  // Свой адрес освобождать нечем: объекта в памяти страницы за ним нет.
+  const objectUrl = typeof source === 'string' ? null : URL.createObjectURL(source);
+  const url = objectUrl ?? (source as string);
   const video = document.createElement('video');
   try {
     video.muted = true;
@@ -71,7 +77,7 @@ export async function posterFromVideoElement(
     context.drawImage(video, 0, 0, size.width, size.height);
     return canvas;
   } finally {
-    URL.revokeObjectURL(url);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
     // Снять источник и перечитать элемент — иначе браузер держит декодер.
     video.removeAttribute('src');
     video.load();

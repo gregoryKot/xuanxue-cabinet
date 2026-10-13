@@ -14,12 +14,22 @@ resetApiFetchBetweenTests();
 
 describe('useExamVideoStats', () => {
   it('запрашивает /exam-videos/stats-summary', async () => {
-    mockApiByPath({ '/exam-videos/stats-summary': { count: 2, totalBytes: 90_000_000 } });
+    mockApiByPath({
+      '/exam-videos/stats-summary': {
+        count: 2,
+        totalBytes: 90_000_000,
+        withoutPosterCount: 0,
+      },
+    });
 
     const { result } = renderHook(() => useExamVideoStats());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.stats).toEqual({ count: 2, totalBytes: 90_000_000 });
+    expect(result.current.stats).toEqual({
+      count: 2,
+      totalBytes: 90_000_000,
+      withoutPosterCount: 0,
+    });
   });
 
   it('ApiError — текст сервера в error, stats остаётся null', async () => {

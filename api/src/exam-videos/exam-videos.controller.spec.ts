@@ -1,7 +1,9 @@
 // Test.createTestingModule с фейком сервиса — тот же образец, что
 // exam-images.controller.spec.ts. Роли/CSRF/тело/формат проверяет e2e
 // (exam-videos.e2e-spec.ts) на настоящем гварде и настоящем парсере тела.
+import { StreamableFile } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Readable } from 'node:stream';
 import { DateTime } from 'luxon';
 import type { ExamVideoDto, ExamVideoStatsDto, VideoUploadDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
@@ -77,12 +79,60 @@ describe('ExamVideosController', () => {
   });
 
   it('getStatsSummary() отдаёт то, что вернул сервис статистики', async () => {
-    const stats: ExamVideoStatsDto = { count: 2, totalBytes: 4000 };
+    const stats: ExamVideoStatsDto = {
+      count: 2,
+      totalBytes: 4000,
+      withoutPosterCount: 1,
+    };
     const getSummary = jest.fn().mockResolvedValue(stats);
     const controller = await buildController({}, { getSummary });
 
     await expect(controller.getStatsSummary()).resolves.toEqual(stats);
     expect(getSummary).toHaveBeenCalledWith();
+  });
+
+  // ADR-0182: контроллер только передаёт аргументы, права и разбор Range — у сервиса.
+  it('listWithoutPoster() и setPoster() отдают то, что вернул сервис', async () => {
+    const listWithoutPoster = jest.fn().mockResolvedValue([VIDEO_DTO]);
+    const setPoster = jest.fn().mockResolvedValue(VIDEO_DTO);
+    const controller = await buildController({ listWithoutPoster, setPoster });
+
+    await expect(controller.listWithoutPoster()).resolves.toEqual([VIDEO_DTO]);
+    await expect(controller.setPoster('v1', { poster: 'AAAA' }, USER)).resolves.toEqual(
+      VIDEO_DTO,
+    );
+    expect(setPoster).toHaveBeenCalledWith('v1', USER, 'AAAA');
+  });
+
+  it('bytes() ставит статус и заголовки R2 на ответ и отдаёт поток', async () => {
+    const openBytes = jest.fn().mockResolvedValue({
+      status: 206,
+      contentType: 'video/mp4',
+      contentLength: '8',
+      contentRange: 'bytes 4-11/64',
+      body: Readable.from([Buffer.from('12345678')]),
+    });
+    const controller = await buildController({ openBytes });
+    const headers: Record<string, string> = {};
+    let statusCode: number | undefined;
+    const res = {
+      setHeader: (name: string, value: string) => (headers[name] = value),
+      status: (code: number) => {
+        statusCode = code;
+      },
+    };
+
+    const file = await controller.bytes('v1', 'bytes=4-11', USER, res);
+
+    expect(file).toBeInstanceOf(StreamableFile);
+    expect(openBytes).toHaveBeenCalledWith(
+      'v1',
+      USER,
+      expect.any(DateTime),
+      'bytes=4-11',
+    );
+    expect(statusCode).toBe(206);
+    expect(headers['Content-Range']).toBe('bytes 4-11/64');
   });
 
   it('get() с download=1 просит у сервиса ссылку на скачивание', async () => {
