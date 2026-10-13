@@ -5,7 +5,12 @@
 // JWT_SECRET гарантирован env.validation.ts). SESSION_PROFILE — имя и атрибуты
 // cookie по PUBLIC_URL (ADR-0183).
 import { randomBytes } from 'crypto';
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  RequestMethod,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -33,6 +38,7 @@ import {
   sessionCookieProfile,
   type SessionCookieProfile,
 } from './session-cookie';
+import { SessionCheckController, setNoStoreMiddleware } from './session-check.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLinkController } from './telegram-link.controller';
@@ -65,6 +71,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     EmailLinkController,
     EmailCodeController,
     GoogleAuthController,
+    SessionCheckController,
   ],
   providers: [
     AuthService,
@@ -113,4 +120,12 @@ import { TelegramLinkController } from './telegram-link.controller';
   // браузерной части входа Daychi (ADR-0181) — тем же правилом, что у AuthGuard.
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  // no-store до гвардов: отказы 401/403/429 пишет фильтр, минуя контроллер
+  // (session-check.controller.ts).
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(setNoStoreMiddleware)
+      .forRoutes({ path: 'auth/session', method: RequestMethod.GET });
+  }
+}

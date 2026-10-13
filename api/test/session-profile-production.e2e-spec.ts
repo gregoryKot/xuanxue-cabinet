@@ -58,6 +58,20 @@ describe('PUBLIC_URL=https://xuanxue.su (e2e)', () => {
     expect(cookies[1]).toMatch(/^session=.+; Domain=xuanxue\.su; Secure$/);
   });
 
+  it('проверка сессии для Daychi: продление — одно поле, без уборки host-only', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Читатель wiki',
+      roles: [],
+      issuedAt: DateTime.utc().minus({ days: SESSION_RENEW_AFTER_DAYS + 1 }),
+    });
+    const res = await request(server()).get('/api/auth/session').set('Cookie', cookie);
+    expect(res.status).toBe(204);
+    const cookies = setCookies(res);
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).toMatch(/^session=.+; Domain=xuanxue\.su; Secure$/);
+    expect(cookies).not.toContain(LEGACY_EXPIRATION);
+  });
+
   it('две cookie session — 401 в любом порядке, даже если обе валидны', async () => {
     const first = await createUserWithSession(testApp.app, { name: 'Первая', roles: [] });
     const second = await createUserWithSession(testApp.app, {

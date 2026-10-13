@@ -9,7 +9,8 @@
 //   (b) @Public() → пропускает без сессии;
 //   (c) cookie → AuthService.verifyCookieHeader → UsersService.findById →
 //       blocked → actingUser (режим ученика, ADR-0163) → @Roles;
-//   (d) rolling-перевыпуск cookie, если токену больше SESSION_RENEW_AFTER_DAYS.
+//   (d) rolling-перевыпуск cookie, если токену больше SESSION_RENEW_AFTER_DAYS;
+//       с @RenewActiveCookieOnly() — одно поле, действующая cookie профиля.
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
@@ -23,7 +24,12 @@ import {
 import { actingUser } from '../users/student-mode';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
+import {
+  IS_PUBLIC_KEY,
+  RENEW_ACTIVE_COOKIE_ONLY_KEY,
+  ROLES_KEY,
+  SKIP_CSRF_KEY,
+} from './auth.decorators';
 import { hasCsrfHeader } from './csrf';
 import { shouldRenew } from './session-renewal';
 
@@ -78,10 +84,20 @@ export class AuthGuard implements CanActivate {
 
     request.user = acting;
     if (shouldRenew(payload, now)) {
-      const { cookies } = this.authService.issueSession(user.id, now);
-      response.setHeader('Set-Cookie', cookies);
+      response.setHeader('Set-Cookie', this.renewalCookies(context, user.id, now));
     }
     return true;
+  }
+
+  private renewalCookies(
+    context: ExecutionContext,
+    userId: string,
+    now: DateTime,
+  ): string[] {
+    if (this.metadata<boolean>(context, RENEW_ACTIVE_COOKIE_ONLY_KEY)) {
+      return [this.authService.activeSessionCookie(userId, now)];
+    }
+    return this.authService.issueSession(userId, now).cookies;
   }
 
   private metadata<T>(context: ExecutionContext, key: string): T | undefined {
