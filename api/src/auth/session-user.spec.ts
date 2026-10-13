@@ -15,8 +15,8 @@ const USER: UserLean = {
   studentMode: false,
 };
 
-function fakeAuth(verify: AuthService['verifySession']): AuthService {
-  return { verifySession: verify } as unknown as AuthService;
+function fakeAuth(verify: AuthService['verifyCookieHeader']): AuthService {
+  return { verifyCookieHeader: verify } as unknown as AuthService;
 }
 
 function fakeUsers(findById: UsersService['findById']): UsersService {
@@ -24,10 +24,8 @@ function fakeUsers(findById: UsersService['findById']): UsersService {
 }
 
 describe('findSessionUser', () => {
-  it('cookie отсутствует — null, verifySession не зовётся', async () => {
-    const auth = fakeAuth(() => {
-      throw new Error('не должен был вызваться');
-    });
+  it('cookie отсутствует — null, пользователь не запрашивается', async () => {
+    const auth = fakeAuth(() => null);
     const users = fakeUsers(() => Promise.reject(new Error('не должен был вызваться')));
 
     await expect(findSessionUser(undefined, auth, users, NOW)).resolves.toBeNull();

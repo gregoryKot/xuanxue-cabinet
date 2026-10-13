@@ -22,7 +22,8 @@ const SIGNATURE_MESSAGE =
 
 export interface TelegramLoginResult {
   user: UserLean;
-  cookie: string;
+  /** Поля `Set-Cookie` сессии — AuthService.issueSession. */
+  cookies: string[];
 }
 
 @Injectable()
@@ -61,8 +62,8 @@ export class TelegramAuthService {
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
     await this.usersService.touchLogin(user.id, now);
-    const { cookie } = this.authService.issueSession(user.id, now);
-    return { user, cookie };
+    const { cookies } = this.authService.issueSession(user.id, now);
+    return { user, cookies };
   }
 }
 

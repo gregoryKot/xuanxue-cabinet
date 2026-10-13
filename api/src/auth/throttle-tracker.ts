@@ -4,14 +4,13 @@
 // 120 запросов в минуту на всех: в нагрузочном тесте аудита 2026-10-01 десять
 // человек получали 429 на автосохранении ответов уже на 65-й секунде, а
 // восемь — на картинках вариантов. Неверифицированное (нет cookie, битая
-// подпись, протухший токен) по-прежнему считается по IP — это защита входов
-// и публичных маршрутов от перебора, её не ослабляем. Подпись cookie
-// проверяется тем же verifySession, что и в AuthGuard: иначе подделанная
-// cookie давала бы свой бакет мимо лимита по IP.
+// подпись, протухший токен, две одноимённые cookie) по-прежнему считается по
+// IP — это защита входов и публичных маршрутов от перебора, её не ослабляем.
+// Сессию проверяет тот же AuthService.verifyCookieHeader, что и AuthGuard:
+// иначе подделанная cookie давала бы свой бакет мимо лимита по IP.
 import type { DateTime } from 'luxon';
 import { asSingleHeader } from '../common/http-headers';
-import { readCookie, SESSION_COOKIE } from './session-cookie';
-import { verifySession } from './session-token';
+import type { SessionVerifier } from './auth.service';
 
 /** Часть запроса Express, которая нужна ключу: IP (после `trust proxy` —
  * из `x-forwarded-for`) и заголовок Cookie. */
@@ -22,11 +21,10 @@ export interface ThrottleRequestLike {
 
 export function throttleTracker(
   req: ThrottleRequestLike,
-  secret: string,
+  sessions: SessionVerifier,
   now: DateTime,
 ): string {
-  const token = readCookie(asSingleHeader(req.headers?.cookie), SESSION_COOKIE);
-  const payload = token ? verifySession(token, secret, now) : null;
+  const payload = sessions.verifyCookieHeader(asSingleHeader(req.headers?.cookie), now);
   if (payload) return `user:${payload.sub}`;
   return `ip:${req.ip ?? 'unknown'}`;
 }

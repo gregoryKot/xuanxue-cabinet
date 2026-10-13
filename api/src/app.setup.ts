@@ -12,7 +12,7 @@ import {
   EXAM_IMAGE_LIMITS,
   MATERIAL_FILE_LIMITS,
 } from '@xuanxue/shared';
-import { SESSION_SECRET } from './auth/session-token';
+import { AuthService } from './auth/auth.service';
 import { CSP_DIRECTIVES } from './security/csp';
 import { makeAppVersionHeader } from './common/app-version-header';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
@@ -66,14 +66,14 @@ export function configureApp(app: NestExpressApplication): void {
   // лимит ниже никогда не применяется.
   app.useBodyParser('json', { limit: '1mb' });
 
-  // Секрет сессии — из DI, один раз здесь (не в самих предикатах: они
-  // чистые функции без Nest-контекста), и замыкается на оба предиката ниже
+  // Проверка сессии — из DI, один раз здесь (не в самих предикатах: они
+  // чистые функции без Nest-контекста), и замыкается на предикаты ниже
   // (SECURITY §4, ADR-0083, мера 1). app.get() безопасен до app.init():
   // NestExpressApplication резолвит уже созданный граф провайдеров.
-  const sessionSecret = app.get<string>(SESSION_SECRET);
-  const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
-  const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
-  const isVideoPart = makeIsVideoPart(sessionSecret, VIDEO_PART_PATH_PATTERNS);
+  const sessions = app.get(AuthService);
+  const isRawImageUpload = makeIsRawImageUpload(sessions);
+  const isMaterialFileUpload = makeIsMaterialFileUpload(sessions);
+  const isVideoPart = makeIsVideoPart(sessions, VIDEO_PART_PATH_PATTERNS);
 
   // Мера 2 (SECURITY §4, ADR-0083) — потолок на число сырых загрузок
   // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло бы в

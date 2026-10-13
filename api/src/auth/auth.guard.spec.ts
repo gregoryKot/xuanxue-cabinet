@@ -4,17 +4,14 @@ import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
-import { fakeConfig, fakeResponse } from '../test-support/http-fakes';
+import { fakeResponse } from '../test-support/http-fakes';
 import type { UserLean } from '../users/users.service';
 import { UsersService } from '../users/users.service';
 import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import {
-  asSingleHeader,
-  type RequestLike,
-  type ResponseLike,
-} from '../common/http-headers';
+import type { RequestLike, ResponseLike } from '../common/http-headers';
+import { sessionCookieProfile } from './session-cookie';
 import { signSession, verifySession } from './session-token';
 
 const SECRET = 'a'.repeat(32);
@@ -53,10 +50,14 @@ function fakeUsersService(user: UserLean | null): UsersService {
 function buildGuard(
   reflector: Reflector,
   usersService: UsersService,
-  nodeEnv = 'development',
+  publicUrl = 'http://localhost:3000',
 ): AuthGuard {
-  const authService = new AuthService(SECRET, fakeConfig(nodeEnv));
+  const authService = new AuthService(SECRET, sessionCookieProfile(publicUrl));
   return new AuthGuard(reflector, usersService, authService);
+}
+
+function setCookies(res: ReturnType<typeof fakeResponse>): string[] {
+  return [res.headers['Set-Cookie'] ?? []].flat();
 }
 
 function activeUser(overrides: Partial<UserLean> = {}): UserLean {
@@ -279,7 +280,7 @@ describe('AuthGuard — rolling-перевыпуск', () => {
     );
     const guard = buildGuard(reflector, fakeUsersService(activeUser()));
     await guard.canActivate(context);
-    const setCookie = asSingleHeader(res.headers['Set-Cookie']);
+    const [setCookie] = setCookies(res);
     expect(setCookie).not.toContain('Max-Age=0');
     const newToken = (setCookie?.split(';')[0] ?? '').split('=')[1] ?? '';
     expect(verifySession(newToken, SECRET, NOW)?.sub).toBe('u1');
@@ -293,8 +294,14 @@ describe('AuthGuard — rolling-перевыпуск', () => {
       { headers: { cookie: `session=${token}` } },
       res,
     );
-    const guard = buildGuard(reflector, fakeUsersService(activeUser()), 'production');
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser()),
+      'https://xuanxue.su',
+    );
     await guard.canActivate(context);
-    expect(res.headers['Set-Cookie']).toContain('Secure');
+    const cookies = setCookies(res);
+    expect(cookies.length).toBeGreaterThan(0);
+    for (const cookie of cookies) expect(cookie).toContain('Secure');
   });
 });

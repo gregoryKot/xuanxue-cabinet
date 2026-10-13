@@ -40,7 +40,7 @@ import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { NativeAuthModule } from './native-auth/native-auth.module';
-import { SESSION_SECRET } from './auth/session-token';
+import { AuthService } from './auth/auth.service';
 import { throttleTracker, type ThrottleRequestLike } from './auth/throttle-tracker';
 import { SeedModule } from './seed/seed.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -77,16 +77,16 @@ import { staticAssetsOptions } from './static/static-cache-control';
       }),
     }),
     // Бакет троттлера (правило CLAUDE.md №4, ADR-0164): вошедший — по своей
-    // сессии, неверифицированный — по IP. Секрет сессии — тот же
-    // SESSION_SECRET, что у AuthGuard (экспорт AuthModule), второй фабрики
-    // нет. Гейт — api/test/throttle-session.e2e-spec.ts.
+    // сессии, неверифицированный — по IP. Сессию читает тот же AuthService,
+    // что у AuthGuard (экспорт AuthModule), второго разбора cookie нет.
+    // Гейт — api/test/throttle-session.e2e-spec.ts.
     ThrottlerModule.forRootAsync({
       imports: [AuthModule],
-      inject: [SESSION_SECRET],
-      useFactory: (secret: string) => ({
+      inject: [AuthService],
+      useFactory: (sessions: AuthService) => ({
         throttlers: [{ ttl: 60_000, limit: 120 }],
         getTracker: (req: ThrottleRequestLike) =>
-          throttleTracker(req, secret, DateTime.utc()),
+          throttleTracker(req, sessions, DateTime.utc()),
       }),
     }),
     DatabaseModule,

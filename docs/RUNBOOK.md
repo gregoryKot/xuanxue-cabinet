@@ -137,7 +137,9 @@ Railway не переключает трафик, старый инстанс п
      через flattening. `A`-записи не подходят: у Railway нет статического IP.
 3. Ждать статуса «Verified» в Railway (обычно минуты, по TTL — до суток). Сертификат
    Let's Encrypt Railway выпускает и продлевает сам, ничего настраивать не нужно.
-4. Railway → Variables: `PUBLIC_URL=https://xuanxue.su`. Перезапуск: приложение само
+4. Railway → Variables: `PUBLIC_URL=https://xuanxue.su` — по нему же cookie сессии
+   `session` встаёт на `Domain=xuanxue.su`, общую с `wiki.xuanxue.su` (ADR-0183); с
+   другим адресом вход в wiki не сработает. Перезапуск: приложение само
    переставит вебхук бота на новый адрес (`setWebhook` при старте, см. 6.2).
 
 Проверка:
@@ -273,7 +275,9 @@ Docker-образе. Делать для этого ничего не нужно
      `xuanxue_staging_bot`), затем `/setdomain` → `staging.xuanxue.su`, иначе
      вход через Telegram на стейджинге не работает;
    - `BOOTSTRAP_ADMIN_TELEGRAM_ID` — свой Telegram ID, чтобы стать админом;
-   - `PUBLIC_URL=https://staging.xuanxue.su`;
+   - `PUBLIC_URL=https://staging.xuanxue.su` — по нему же своя cookie
+     `session_staging` на `Domain=staging.xuanxue.su` (ADR-0183): cookie прода
+     `session` с `Domain=xuanxue.su` браузер присылает и сюда, стейджинг её не читает;
    - `HEARTBEAT_PING_URL`, `RESEND_API_KEY`, `MAIL_FROM` — пусто;
    - R2 — пусто (загрузка файлов выключена) или отдельный бакет, не продовый;
    - VAPID — свою пару (`node scripts/generate-vapid-keys.mjs`) или пусто.

@@ -5,7 +5,8 @@
 // ветки по отдельности (нет cookie/чужая подпись/протухший/валидный), здесь —
 // только что предикат её действительно зовёт последним условием.
 import { DateTime } from 'luxon';
-import { SESSION_COOKIE } from '../auth/session-cookie';
+import { AuthService } from '../auth/auth.service';
+import { SESSION_COOKIE, sessionCookieProfile } from '../auth/session-cookie';
 import { SESSION_MAX_AGE_DAYS, signSession } from '../auth/session-token';
 import { makeIsMaterialFileUpload } from './material-file-body';
 
@@ -35,7 +36,9 @@ function req(overrides: {
 }
 
 describe('makeIsMaterialFileUpload', () => {
-  const isMaterialFileUpload = makeIsMaterialFileUpload(SECRET);
+  const isMaterialFileUpload = makeIsMaterialFileUpload(
+    new AuthService(SECRET, sessionCookieProfile('http://localhost:3000')),
+  );
 
   it('POST на /api/materials/<id>/file с application/pdf и валидной сессией — true', () => {
     expect(isMaterialFileUpload(req({}))).toBe(true);

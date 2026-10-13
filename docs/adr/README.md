@@ -217,3 +217,4 @@
 | [0180](0180-recording-one-upload-many-platforms.md)              | Запись занятия: один файл на сайт, кабинет раскладывает по площадкам; свой Bot API server для Telegram    |
 | [0181](0181-native-account-session.md)                           | Вход нативного Daychi: код и PKCE через браузер, случайный bearer с хешем в базе, отзыв по доступу        |
 | [0182](0182-poster-backfill-by-staff-browser.md)                 | Кадр-превью старым видео снимает браузер штата из байтов через кабинет (`…/bytes`, `PUT …/poster`)        |
+| [0183](0183-session-cookie-profiles.md)                          | Профиль cookie сессии по `PUBLIC_URL`: общая с wiki, свой стейджинг, две одноимённые — отказ              |

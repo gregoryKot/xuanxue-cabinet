@@ -2,7 +2,8 @@
 // комментарий в auth.guard.ts про порядок относительно ThrottlerGuard из
 // AppModule). SESSION_SECRET — единственный провайдер секрета: JWT_SECRET из
 // ConfigService, если задан, иначе временный секрет на процесс (в production
-// JWT_SECRET гарантирован env.validation.ts).
+// JWT_SECRET гарантирован env.validation.ts). SESSION_PROFILE — имя и атрибуты
+// cookie по PUBLIC_URL (ADR-0183).
 import { randomBytes } from 'crypto';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +28,11 @@ import { GoogleAuthController } from './google-auth.controller';
 import { GoogleAuthService } from './google-auth.service';
 import { GoogleTokenClient } from './google-token-client';
 import { JoinController } from './join.controller';
+import {
+  SESSION_PROFILE,
+  sessionCookieProfile,
+  type SessionCookieProfile,
+} from './session-cookie';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLinkController } from './telegram-link.controller';
@@ -95,11 +101,16 @@ import { TelegramLinkController } from './telegram-link.controller';
         return randomBytes(32).toString('hex');
       },
     },
+    {
+      provide: SESSION_PROFILE,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): SessionCookieProfile =>
+        sessionCookieProfile(config.get<string>('PUBLIC_URL')),
+    },
   ],
-  // SESSION_SECRET — ключу бакета троттлера (app.module.ts, ADR-0164): та же
-  // подпись cookie, что у AuthGuard, вторую фабрику секрета не заводим.
-  // AuthService — браузерной части входа Daychi (ADR-0181): сессию она читает
-  // тем же findSessionUser, что вход через Google.
-  exports: [SESSION_SECRET, AuthService],
+  // AuthService — единственный читатель сессии: ключу бакета троттлера
+  // (app.module.ts, ADR-0164), предикатам сырых загрузок (app.setup.ts) и
+  // браузерной части входа Daychi (ADR-0181) — тем же правилом, что у AuthGuard.
+  exports: [AuthService],
 })
 export class AuthModule {}

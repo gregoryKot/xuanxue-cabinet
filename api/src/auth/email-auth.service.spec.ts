@@ -115,7 +115,7 @@ function fakeUsersService(onTouch?: (id: string) => void): UsersService {
 
 function fakeAuthService(): AuthService {
   return {
-    issueSession: () => ({ token: 't', cookie: 'session=tok' }),
+    issueSession: () => ({ token: 't', cookies: ['session=tok'] }),
   } as unknown as AuthService;
 }
 
@@ -339,7 +339,7 @@ describe('EmailAuthService.verify', () => {
     expect(received).toEqual({ email: BASE_USER.email, inviteCode: 'c'.repeat(32) });
     expect(touchedId).toBe(BASE_USER.id);
     expect(result.user).toEqual(BASE_USER);
-    expect(result.cookie).toBe('session=tok');
+    expect(result.cookies).toEqual(['session=tok']);
   });
 
   it('LoginIdentityService бросил ForbiddenError (нет ссылки-приглашения) — пробрасывается, touchLogin не вызывается', async () => {
@@ -402,7 +402,7 @@ describe('EmailAuthService.verifyCode', () => {
 
     expect(received).toEqual({ email: 'ученик@example.com', code: '482913' });
     expect(touchedId).toBe(BASE_USER.id);
-    expect(result.cookie).toBe('session=tok');
+    expect(result.cookies).toEqual(['session=tok']);
   });
 
   it('заблокированный пользователь — ForbiddenError, сессия не выпускается', async () => {

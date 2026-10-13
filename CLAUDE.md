@@ -547,11 +547,27 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 Workshop revision `e209d27239391be3af2be71b898c79f453851c01`
 
-Existing boundary: Cabinet backend ↔ Cabinet frontend, implemented in `api/`, `web/` and
-shared contracts in `shared/`. Target boundaries, integration unverified: Cabinet backend ↔
-Daychi clients; Cabinet backend ↔ Daychi backend. See
-[current source evidence](https://github.com/dveyarangi/xuanxue-workshop/blob/HEAD/docs/current-system.md#cabinet)
-and [target contracts](https://github.com/dveyarangi/xuanxue-workshop/blob/HEAD/docs/boundaries.md#target-connections).
+Existing boundary: Cabinet backend ↔ Cabinet frontend, with local entry points
+`api/`, `web/` and `shared/`. Cabinet owns accounts and current account restrictions.
+Daychi retains its content backend; Knowledge supplies Daychi's editorial/import
+inputs. Current scope/evidence: [Workshop current system](https://github.com/dveyarangi/xuanxue-workshop/blob/25def59e25fc847764cc43de8d963bf62a16512e/docs/current-system.md).
+
+Accepted target boundaries, joint integration not established: Cabinet backend ↔
+Daychi clients for schedule/account capabilities; Daychi backend ↔ Cabinet backend
+for authoritative access checks. [Target contracts](https://github.com/dveyarangi/xuanxue-workshop/blob/25def59e25fc847764cc43de8d963bf62a16512e/docs/boundaries.md#target-connections)
+and [native account-session profile](https://github.com/dveyarangi/xuanxue-workshop/blob/3c98d4a5201710f8f777183dd7b61caefe47e2d5/docs/contracts/native-account-session.md) own
+their respective scopes; web-wiki work does not change native bearer/private access.
+
+Accepted web-wiki target: Cabinet and wiki share Cabinet's browser session.
+Cabinet owns issuance/current-account validation, browser entry/return and logout;
+Daychi owns protected web delivery and per-request validation through Cabinet.
+All and only valid Cabinet-authenticated web readers receive the same content,
+without additional wiki eligibility or persisted wiki reader credentials/accounts.
+[Web-wiki session contract](https://github.com/dveyarangi/xuanxue-workshop/blob/25def59e25fc847764cc43de8d963bf62a16512e/docs/contracts/web-wiki-session.md) owns this boundary.
+The contract's environment profiles fix matching production/staging origins and
+independent cookie/authority/lifecycle behavior.
+Implementation, coordinated anonymous-access cutover and deployed joint proof
+remain separate evidence from accepting the target.
 
 Use the [/collaborate skill](.claude/skills/collaborate/SKILL.md) at the start of every session,
 before work affecting any boundary described above, and whenever coordinating across

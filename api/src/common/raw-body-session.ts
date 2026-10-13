@@ -4,9 +4,8 @@
 // ThrottlerGuard и AuthGuard — они express-middleware, а не Nest-гварды, и
 // не успевают отказать неавторизованному запросу раньше, чем парсер
 // буферизует тело целиком (до MATERIAL_FILE_LIMITS.maxBytes = 30 МБ).
-// verifySession — синхронная HMAC-проверка без обращения к БД
-// (auth/session-token.ts), readCookie — синхронный разбор заголовка
-// `Cookie:` (auth/session-cookie.ts): предикат может проверить наличие
+// verifyCookieHeader — синхронный разбор `Cookie:` и HMAC-проверка без
+// обращения к БД (auth/auth.service.ts): предикат может проверить наличие
 // пригодной сессии сам, тем же кодом, что и гвард.
 //
 // ЭТО НЕ АВТОРИЗАЦИЯ. Функция отвечает только «есть ли подписанная,
@@ -16,8 +15,7 @@
 // загрузка положена (виден сразу как баг), а не тихая дыра — разрешить
 // доступ она не может, только отказать в буферизации.
 import type { DateTime } from 'luxon';
-import { readCookie, SESSION_COOKIE } from '../auth/session-cookie';
-import { verifySession } from '../auth/session-token';
+import type { SessionVerifier } from '../auth/auth.service';
 import { asSingleHeader } from './http-headers';
 import type { IncomingRequestLike } from './raw-body-route';
 
@@ -26,10 +24,8 @@ import type { IncomingRequestLike } from './raw-body-route';
  * запроса, тем же приёмом, что AuthGuard.canActivate. */
 export function hasSignedSession(
   req: IncomingRequestLike,
-  secret: string,
+  sessions: SessionVerifier,
   now: DateTime,
 ): boolean {
-  const token = readCookie(asSingleHeader(req.headers.cookie), SESSION_COOKIE);
-  if (!token) return false;
-  return verifySession(token, secret, now) !== null;
+  return sessions.verifyCookieHeader(asSingleHeader(req.headers.cookie), now) !== null;
 }

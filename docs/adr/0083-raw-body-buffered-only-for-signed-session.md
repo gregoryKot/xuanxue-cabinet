@@ -18,8 +18,8 @@
 
 Две независимые меры, обе нужны.
 
-**Мера 1.** Предикат сам проверяет подписанную сессию — `verifySession`/`readCookie`
-синхронны, в БД не ходят (`common/raw-body-session.ts`, `hasSignedSession`), последним
+**Мера 1.** Предикат сам проверяет подписанную сессию — `AuthService.verifyCookieHeader`
+синхронен, в БД не ходит (`common/raw-body-session.ts`, `hasSignedSession`), последним
 условием, после дешёвых проверок метода/пути/типа. Без пригодной сессии сырой парсер
 не включается, запрос получает 401 от `AuthGuard` как обычно. Это не авторизация: роль
 и `blocked` по-прежнему проверяет только гвард из БД — предикат может лишь отказать в
@@ -39,9 +39,8 @@
 
 ## Последствия
 
-Предикаты `isMaterialFileUpload`/`isRawImageUpload` стали фабриками
-(`makeIsMaterialFileUpload(secret)`/`makeIsRawImageUpload(secret)`), секрет — из DI
-(`SESSION_SECRET`), один раз в `app.setup.ts`.
+Предикаты — фабрики (`makeIsMaterialFileUpload(sessions)`/`makeIsRawImageUpload(sessions)`),
+проверка сессии — `AuthService` из DI, один раз в `app.setup.ts`.
 
 Гейт самой меры 1 — юнит на `hasSignedSession` и на оба предиката (нет cookie, чужая
 подпись, протухший токен → `false`): именно `false` предиката означает, что тело не

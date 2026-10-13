@@ -1,11 +1,17 @@
 // Сессия (ADR-0012) — единственное место, где секрет уходит в signSession/
-// verifySession. AuthGuard берёт токен и cookie только отсюда (issueSession,
-// verifySession), а не читает SESSION_SECRET напрямую — одна точка ротации.
+// verifySession, а профиль окружения (ADR-0183) — в имя и атрибуты cookie.
+// AuthGuard, троттлер, предикаты сырых загрузок и findSessionUser читают
+// сессию только отсюда (verifyCookieHeader), а не разбирают cookie сами —
+// одна точка ротации секрета и одно правило «ровно одна cookie своего имени».
 import { Injectable, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import type { NodeEnv } from '../config/env.validation';
-import { buildSessionCookie, clearSessionCookie } from './session-cookie';
+import {
+  browserLogoutCookies,
+  browserSessionCookies,
+  readSessionToken,
+  SESSION_PROFILE,
+  type SessionCookieProfile,
+} from './session-cookie';
 import {
   SESSION_MAX_AGE_SEC,
   SESSION_SECRET,
@@ -18,37 +24,37 @@ import {
 // файла, наружу берут поля, а не тип целиком (knip: неиспользуемый экспорт).
 interface IssuedSession {
   token: string;
-  cookie: string;
+  /** Поля `Set-Cookie` целиком — `res.setHeader('Set-Cookie', cookies)`. */
+  cookies: string[];
 }
+
+/** Чтение сессии без выпуска — всё, что нужно троттлеру и предикатам сырых
+ * загрузок: чистые функции получают его параметром, а не секрет и имя cookie. */
+export type SessionVerifier = Pick<AuthService, 'verifyCookieHeader'>;
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(SESSION_SECRET) private readonly secret: string,
-    private readonly config: ConfigService,
+    @Inject(SESSION_PROFILE) private readonly profile: SessionCookieProfile,
   ) {}
 
-  /** Пока без прод-вызывающего кода (вход через Telegram добавит
-   * /auth/telegram) — сюда же ляжет и Google/email-вход, если появятся
-   * (ADR-0005). */
   issueSession(userId: string, now: DateTime): IssuedSession {
     const token = signSession({ userId, issuedAt: now }, this.secret);
-    const cookie = buildSessionCookie(token, {
-      secure: this.isSecure(),
-      maxAgeSec: SESSION_MAX_AGE_SEC,
-    });
-    return { token, cookie };
+    return {
+      token,
+      cookies: browserSessionCookies(token, this.profile, SESSION_MAX_AGE_SEC),
+    };
   }
 
-  verifySession(token: string, now: DateTime): SessionPayload | null {
-    return verifySessionToken(token, this.secret, now);
+  /** Сессия из заголовка `Cookie:` — `null`, если cookie профиля нет, их
+   * больше одной или токен не прошёл подпись/срок. */
+  verifyCookieHeader(header: string | undefined, now: DateTime): SessionPayload | null {
+    const token = readSessionToken(header, this.profile);
+    return token ? verifySessionToken(token, this.secret, now) : null;
   }
 
-  logoutCookie(): string {
-    return clearSessionCookie();
-  }
-
-  private isSecure(): boolean {
-    return this.config.get<NodeEnv>('NODE_ENV') === 'production';
+  logoutCookies(): string[] {
+    return browserLogoutCookies(this.profile);
   }
 }
