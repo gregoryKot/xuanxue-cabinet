@@ -16,6 +16,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative, dirname } from 'path';
 import { maskLiterals } from './check-card-list-gap.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const CONTROL_TAG_RE = /<(input|textarea|select)\b/g;
 // `font:` — шорткод, задаёт кегль. `fontFamily` зума не касается и не ловится:
@@ -295,4 +296,4 @@ function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (isMainModule(import.meta.url)) main();

@@ -10,6 +10,7 @@ import {
   previousReleaseTag,
   summaryMessage,
 } from './release-candidate.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 function runGit(args) {
   const result = spawnSync('git', args, { encoding: 'utf8' });
@@ -99,7 +100,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(`❌ release-ops: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;

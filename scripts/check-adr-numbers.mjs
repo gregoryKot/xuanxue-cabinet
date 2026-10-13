@@ -17,6 +17,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { collectCrossBranchAdrData, reportCrossBranch } from './adr-claims.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 /** `0075-lesson-tags-and-tag-screen.md` → `{ number, slug }`; не то имя — null. */
 export function parseAdrFileName(name) {
@@ -137,7 +138,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

@@ -22,6 +22,7 @@
 // дерева — отдельно, в main(), как в check-route-collisions.mjs.
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
+import { isMainModule } from './is-main-module.mjs';
 
 // Общий проход по строке для maskLiterals и maskComments — оба затирают
 // комментарии одинаково, разница только в том, трогать ли содержимое строк,
@@ -256,7 +257,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

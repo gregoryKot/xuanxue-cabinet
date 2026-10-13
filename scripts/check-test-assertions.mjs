@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { stripLiterals } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const SUFFIXES = ['.e2e-spec.ts', '.spec.ts', '.test.tsx', '.test.ts'];
 const SCAN_DIRS = ['api/src', 'api/test', 'web/src', 'shared/src'];
@@ -133,6 +134,6 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт — не при импорте из теста.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

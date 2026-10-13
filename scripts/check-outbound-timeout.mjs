@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { stripLiterals } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // Тесты и тестовая инфраструктура не ходят в сеть в продакшене.
@@ -130,7 +131,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт — не при импорте из теста
-// (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

@@ -10,6 +10,7 @@
 // токен нигде не печатается — redactToken вычищает его из любого текста
 // перед выводом (сетевые ошибки node иногда несут URL целиком).
 import process from 'node:process';
+import { isMainModule } from './is-main-module.mjs';
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -103,7 +104,7 @@ async function main() {
   console.error(`❌ Telegram не принял сообщение: ${lastFailure}`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error(

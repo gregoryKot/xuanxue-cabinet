@@ -12,6 +12,7 @@ import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { parseControllerPrefixes, extractRoutes } from './check-route-collisions.mjs';
 import { stripComments } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 // Общий "40" — числа отказа все начинаются с него: 401, 403, 404.
 const DENIAL_PATTERN =
@@ -119,7 +120,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте
-// из теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// из теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

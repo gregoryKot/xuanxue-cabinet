@@ -18,6 +18,7 @@
 import { spawnSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { isMainModule } from './is-main-module.mjs';
 
 const OURS = '<'.repeat(7);
 const THEIRS = '>'.repeat(7);
@@ -94,6 +95,6 @@ function main() {
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
 // теста.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

@@ -21,6 +21,7 @@
 //
 // Ядро ниже — чистые функции без сети (тесты — measure-ttfb.test.mjs), CLI
 // внизу подключает их к реальному fetch.
+import { isMainModule } from './is-main-module.mjs';
 
 export const DEFAULT_TARGETS = ['https://staging.xuanxue.su', 'https://xuanxue.su'];
 // Троттлинг сервера — 120 запросов в минуту на IP; /api/health вне него.
@@ -242,7 +243,7 @@ async function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(`❌ measure-ttfb: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;

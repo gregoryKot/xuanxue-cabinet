@@ -27,6 +27,7 @@ import {
   findStrayMarks,
   findForbiddenMarks,
 } from './text-accents-scan.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'scripts', 'text-accents-baseline.json');
@@ -187,7 +188,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }
