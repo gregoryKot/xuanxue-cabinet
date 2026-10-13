@@ -100,13 +100,13 @@ export class AuthController {
     const body = await parseTelegramLoginBody(rawBody);
     // req.body, не body: подпись Telegram считается по сырому телу целиком
     // (см. комментарий у RequestLike.body в common/http-headers.ts).
-    const { user, cookie } = await this.telegramAuthService.login(
+    const { user, cookies } = await this.telegramAuthService.login(
       body,
       req.body ?? {},
       DateTime.utc(),
       inviteCode,
     );
-    res.setHeader('Set-Cookie', cookie);
+    res.setHeader('Set-Cookie', cookies);
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
@@ -131,12 +131,12 @@ export class AuthController {
     @Body() body: VerifyEmailLoginDto,
     @Res({ passthrough: true }) res: ResponseLike,
   ): Promise<MeDto> {
-    const { user, cookie } = await this.emailAuthService.verify(
+    const { user, cookies } = await this.emailAuthService.verify(
       body.token,
       DateTime.utc(),
       body.inviteCode,
     );
-    res.setHeader('Set-Cookie', cookie);
+    res.setHeader('Set-Cookie', cookies);
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
@@ -145,6 +145,6 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: ResponseLike): void {
-    res.setHeader('Set-Cookie', this.authService.logoutCookie());
+    res.setHeader('Set-Cookie', this.authService.logoutCookies());
   }
 }

@@ -8,6 +8,7 @@
 // Один предикат на все виды видео (ADR-0165): новый вид добавляет шаблон пути
 // в VIDEO_PART_PATH_PATTERNS, а не второй предикат.
 import { DateTime } from 'luxon';
+import type { SessionVerifier } from '../auth/auth.service';
 import { hasSignedSession } from '../common/raw-body-session';
 import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
@@ -21,10 +22,10 @@ export const VIDEO_PART_PATH_PATTERNS: readonly RegExp[] = [
   /^\/api\/lesson-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
 ];
 
-/** Фабрика — секрет сессии из DI замыкается один раз в app.setup.ts, тем же
+/** Фабрика — проверка сессии из DI замыкается один раз в app.setup.ts, тем же
  * приёмом, что makeIsMaterialFileUpload. */
 export function makeIsVideoPart(
-  secret: string,
+  sessions: SessionVerifier,
   pathPatterns: readonly RegExp[],
 ): (req: IncomingRequestLike) => boolean {
   return (req: IncomingRequestLike): boolean => {
@@ -32,6 +33,6 @@ export function makeIsVideoPart(
     const path = routePath(req.url);
     if (!pathPatterns.some((pattern) => pattern.test(path))) return false;
     if (mediaType(req.headers['content-type']) !== CONTENT_TYPE) return false;
-    return hasSignedSession(req, secret, DateTime.utc());
+    return hasSignedSession(req, sessions, DateTime.utc());
   };
 }

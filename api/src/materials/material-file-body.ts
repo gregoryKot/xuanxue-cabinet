@@ -17,6 +17,7 @@
 // метод/путь/тип отсекают мусор дешевле, чем HMAC.
 import { DateTime } from 'luxon';
 import { MATERIAL_FILE_UPLOAD_CONTENT_TYPES } from '@xuanxue/shared';
+import type { SessionVerifier } from '../auth/auth.service';
 import { hasSignedSession } from '../common/raw-body-session';
 import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
@@ -24,11 +25,11 @@ import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-bo
  * здесь: иначе предикат включал бы сырой парсер на любой мусор в пути. */
 const UPLOAD_PATH_RE = /^\/api\/materials\/[0-9a-fA-F]{24}\/file$/;
 
-/** Фабрика вместо голой функции: секрет сессии достаётся из DI один раз в
- * app.setup.ts (`app.get(SESSION_SECRET)`) и замыкается на предикат — сам
+/** Фабрика вместо голой функции: проверка сессии достаётся из DI один раз в
+ * app.setup.ts (`app.get(AuthService)`) и замыкается на предикат — сам
  * предикат зовётся на каждый запрос и в БД не ходит. */
 export function makeIsMaterialFileUpload(
-  secret: string,
+  sessions: SessionVerifier,
 ): (req: IncomingRequestLike) => boolean {
   return (req: IncomingRequestLike): boolean => {
     if ((req.method ?? '').toUpperCase() !== 'POST') return false;
@@ -36,6 +37,6 @@ export function makeIsMaterialFileUpload(
     const type = mediaType(req.headers['content-type']);
     if (!(MATERIAL_FILE_UPLOAD_CONTENT_TYPES as readonly string[]).includes(type))
       return false;
-    return hasSignedSession(req, secret, DateTime.utc());
+    return hasSignedSession(req, sessions, DateTime.utc());
   };
 }

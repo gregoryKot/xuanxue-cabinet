@@ -12,6 +12,7 @@ const VALID_PROD: Record<string, unknown> = {
   BOT_TOKEN: `123456789:${'x'.repeat(30)}`,
   TELEGRAM_WEBHOOK_SECRET: 'a1B2_c3-D4',
   LOG_LEVEL: 'info',
+  DEPLOY_PROFILE: 'production',
 };
 
 describe('validateEnv', () => {
@@ -56,6 +57,38 @@ describe('validateEnv', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _drop, ...rest } = VALID_PROD;
     expect(() => validateEnv(rest)).toThrow(
       /TELEGRAM_WEBHOOK_SECRET обязателен в production/,
+    );
+  });
+
+  // ADR-0183: прод и стейджинг оба с NODE_ENV=production, профиль cookie
+  // различает их только явной настройкой.
+  it('production без DEPLOY_PROFILE, с пустым или с local падает', () => {
+    const { DEPLOY_PROFILE: _drop, ...rest } = VALID_PROD;
+    for (const env of [
+      rest,
+      { ...rest, DEPLOY_PROFILE: '' },
+      { ...rest, DEPLOY_PROFILE: 'local' },
+    ]) {
+      expect(() => validateEnv(env)).toThrow(/DEPLOY_PROFILE обязателен в production/);
+    }
+  });
+
+  it('production со staging проходит', () => {
+    expect(validateEnv({ ...VALID_PROD, DEPLOY_PROFILE: 'staging' }).DEPLOY_PROFILE).toBe(
+      'staging',
+    );
+  });
+
+  it('неизвестный DEPLOY_PROFILE падает в любом окружении', () => {
+    expect(() =>
+      validateEnv({ ...VALID_PROD, NODE_ENV: 'development', DEPLOY_PROFILE: 'prod' }),
+    ).toThrow(/DEPLOY_PROFILE должен быть одним из/);
+  });
+
+  it('вне production без DEPLOY_PROFILE — local', () => {
+    const { DEPLOY_PROFILE: _drop, ...rest } = VALID_PROD;
+    expect(validateEnv({ ...rest, NODE_ENV: 'development' }).DEPLOY_PROFILE).toBe(
+      'local',
     );
   });
 

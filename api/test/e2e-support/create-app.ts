@@ -48,6 +48,10 @@ function setTestEnv(mongoUri: string): void {
   // (CLAUDE.md «Детерминизм»: тест не должен зависеть от того, есть ли эта
   // переменная в окружении, где запущен CI).
   delete process.env.RAILWAY_GIT_COMMIT_SHA;
+  // Профиль cookie (ADR-0183) по умолчанию `local` — `session` без домена, как
+  // подписывает createUserWithSession. session-profile-*.e2e-spec.ts ставят свой
+  // через envOverrides; без сброса он пережил бы файл в том же воркере jest.
+  delete process.env.DEPLOY_PROFILE;
 }
 
 /**

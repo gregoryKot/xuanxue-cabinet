@@ -1,11 +1,13 @@
 // Чистая логика без Mongo/DI/HTTP (CLAUDE.md «Тесты») — тот же образец, что
 // material-file-body.spec.ts.
 import { DateTime } from 'luxon';
-import { SESSION_COOKIE } from '../auth/session-cookie';
+import { AuthService } from '../auth/auth.service';
+import { SESSION_COOKIE, sessionCookieProfile } from '../auth/session-cookie';
 import { signSession } from '../auth/session-token';
 import { makeIsVideoPart, VIDEO_PART_PATH_PATTERNS } from './video-upload-part-body';
 
 const SECRET = 'a'.repeat(32);
+const SESSIONS = new AuthService(SECRET, sessionCookieProfile('local'));
 const VALID_PATH = '/api/answer-videos/507f1f77bcf86cd799439011/parts/1';
 
 function validCookie(secret = SECRET): string {
@@ -30,7 +32,7 @@ function req(overrides: {
 }
 
 describe('makeIsVideoPart', () => {
-  const isAnswerVideoPart = makeIsVideoPart(SECRET, VIDEO_PART_PATH_PATTERNS);
+  const isAnswerVideoPart = makeIsVideoPart(SESSIONS, VIDEO_PART_PATH_PATTERNS);
 
   it('PUT на /api/answer-videos/:id/parts/:n с octet-stream и валидной сессией — true', () => {
     expect(isAnswerVideoPart(req({}))).toBe(true);
@@ -106,7 +108,7 @@ describe('makeIsVideoPart', () => {
 
   // ADR-0165: новый вид видео добавляет шаблон пути, а не второй предикат.
   it('предикат берёт пути из переданного списка: чужой путь не включает парсер', () => {
-    const other = makeIsVideoPart(SECRET, [
+    const other = makeIsVideoPart(SESSIONS, [
       /^\/api\/lesson-videos\/[0-9a-f]{24}\/parts\/[0-9]{1,4}$/,
     ]);
 

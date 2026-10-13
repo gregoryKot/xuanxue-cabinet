@@ -45,7 +45,7 @@ export function buildGoogleOAuthCookie(
 }
 
 /** Max-Age=0 гасит cookie независимо от Secure — тот же приём, что
- * clearSessionCookie() (session-cookie.ts). Ставится ПЕРЕД любым кодом,
+ * browserLogoutCookies() (session-cookie.ts). Ставится ПЕРЕД любым кодом,
  * который может бросить (GoogleAuthController): заявка одноразовая, второй
  * попытке нечего в ней искать, даже если первая упала на середине. */
 export function clearGoogleOAuthCookie(): string {

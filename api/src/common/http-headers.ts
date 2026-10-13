@@ -19,10 +19,10 @@ export interface RequestLike {
 }
 
 export interface ResponseLike {
-  // Замена заголовка, не append. Значение — обычно один Set-Cookie (сессия
-  // или её очистка); массив нужен только там, где один ответ ставит две
-  // cookie разом (POST /auth/google — очистка google_oauth + новая сессия,
-  // GoogleAuthController) — Node пишет каждый элемент отдельным заголовком.
+  // Замена заголовка, не append. Массив — когда один ответ ставит несколько
+  // cookie разом (сессия и уборка прежней host-only `session`, ADR-0183;
+  // очистка google_oauth + новая сессия у POST /auth/google) — Node пишет
+  // каждый элемент отдельным заголовком.
   setHeader(name: string, value: string | string[]): unknown;
 }
 

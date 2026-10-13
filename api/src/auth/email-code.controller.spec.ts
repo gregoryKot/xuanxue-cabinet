@@ -23,7 +23,7 @@ const USER: UserLean = {
   studentMode: false,
 };
 
-const COOKIE = 'session=token; HttpOnly; Path=/';
+const COOKIES = ['session=; Max-Age=0', 'session=token; HttpOnly; Path=/'];
 
 interface VerifyCall {
   email: string;
@@ -34,10 +34,13 @@ interface VerifyCall {
 /** Заголовки, которые контроллер поставил ответу, — чтобы проверить сам
  * Set-Cookie, а не только тело (фейк `ResponseLike`, тот же приём, что в
  * auth.controller.spec.ts). */
-function fakeResponse(): { res: ResponseLike; headers: Record<string, string> } {
-  const headers: Record<string, string> = {};
+function fakeResponse(): {
+  res: ResponseLike;
+  headers: Record<string, string | string[]>;
+} {
+  const headers: Record<string, string | string[]> = {};
   const res: ResponseLike = {
-    setHeader: (name: string, value: string) => {
+    setHeader: (name: string, value: string | string[]) => {
       headers[name] = value;
     },
   };
@@ -62,9 +65,10 @@ async function buildController(): Promise<{
             inviteCode?: string,
           ) => {
             verifyCalls.push({ email, code, inviteCode });
-            return Promise.resolve({ user: USER, cookie: COOKIE });
+            return Promise.resolve({ user: USER, cookies: COOKIES });
           },
-        },
+          // Без satisfies смена результата verifyCode не ломала tsc, а только этот тест.
+        } satisfies Pick<EmailAuthService, 'verifyCode'>,
       },
       {
         provide: PersonalChats,
@@ -111,7 +115,7 @@ describe('EmailCodeController.verifyEmailCode', () => {
       res,
     );
 
-    expect(headers['Set-Cookie']).toBe(COOKIE);
+    expect(headers['Set-Cookie']).toEqual(COOKIES);
     expect(result).toEqual<MeDto>({
       id: USER.id,
       name: USER.name,

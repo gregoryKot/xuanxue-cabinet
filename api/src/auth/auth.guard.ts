@@ -7,7 +7,7 @@
 //   (a) мутирующий метод без @SkipCsrf() → требует x-requested-with, для
 //       всех, включая @Public();
 //   (b) @Public() → пропускает без сессии;
-//   (c) cookie → AuthService.verifySession → UsersService.findById →
+//   (c) cookie → AuthService.verifyCookieHeader → UsersService.findById →
 //       blocked → actingUser (режим ученика, ADR-0163) → @Roles;
 //   (d) rolling-перевыпуск cookie, если токену больше SESSION_RENEW_AFTER_DAYS.
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
@@ -25,7 +25,6 @@ import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
 import { hasCsrfHeader } from './csrf';
-import { readCookie, SESSION_COOKIE } from './session-cookie';
 import { shouldRenew } from './session-renewal';
 
 const CSRF_MESSAGE = 'Страница устарела. Обновите её и попробуйте ещё раз.';
@@ -54,8 +53,10 @@ export class AuthGuard implements CanActivate {
     if (this.metadata<boolean>(context, IS_PUBLIC_KEY)) return true;
 
     const now = DateTime.utc();
-    const token = readCookie(asSingleHeader(request.headers.cookie), SESSION_COOKIE);
-    const payload = token ? this.authService.verifySession(token, now) : null;
+    const payload = this.authService.verifyCookieHeader(
+      asSingleHeader(request.headers.cookie),
+      now,
+    );
     if (!payload) throw new UnauthorizedError(SESSION_MESSAGE);
 
     const user = await this.usersService.findById(payload.sub);
@@ -77,8 +78,8 @@ export class AuthGuard implements CanActivate {
 
     request.user = acting;
     if (shouldRenew(payload, now)) {
-      const { cookie } = this.authService.issueSession(user.id, now);
-      response.setHeader('Set-Cookie', cookie);
+      const { cookies } = this.authService.issueSession(user.id, now);
+      response.setHeader('Set-Cookie', cookies);
     }
     return true;
   }

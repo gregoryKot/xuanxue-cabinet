@@ -1,42 +1,76 @@
 import { DateTime } from 'luxon';
-import { fakeConfig } from '../test-support/http-fakes';
 import { AuthService } from './auth.service';
+import { sessionCookieProfile } from './session-cookie';
 
 const SECRET = 'a'.repeat(32);
 const NOW = DateTime.fromISO('2026-09-05T12:00:00Z');
 
+function service(
+  profile: 'production' | 'staging' | 'local' = 'local',
+  secret = SECRET,
+): AuthService {
+  return new AuthService(secret, sessionCookieProfile(profile));
+}
+
 describe('AuthService.issueSession', () => {
   it('токен проверяется тем же секретом и содержит userId', () => {
-    const service = new AuthService(SECRET, fakeConfig('development'));
-    const { token } = service.issueSession('u1', NOW);
-    expect(service.verifySession(token, NOW)).toMatchObject({ sub: 'u1' });
+    const auth = service();
+    const { token } = auth.issueSession('u1', NOW);
+    expect(auth.verifyCookieHeader(`session=${token}`, NOW)).toMatchObject({ sub: 'u1' });
   });
 
-  it('в development cookie без Secure', () => {
-    const service = new AuthService(SECRET, fakeConfig('development'));
-    const { cookie } = service.issueSession('u1', NOW);
-    expect(cookie).not.toContain('Secure');
+  it('локально — одно поле без Secure', () => {
+    const { cookies } = service('local').issueSession('u1', NOW);
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).not.toContain('Secure');
   });
 
-  it('в production cookie с Secure', () => {
-    const service = new AuthService(SECRET, fakeConfig('production'));
-    const { cookie } = service.issueSession('u1', NOW);
-    expect(cookie).toContain('Secure');
+  it('в проде — уборка host-only session и общая cookie с Secure', () => {
+    const { token, cookies } = service('production').issueSession('u1', NOW);
+    expect(cookies).toHaveLength(2);
+    expect(cookies[0]).toMatch(/^session=; .*Max-Age=0/);
+    expect(cookies[1]).toMatch(
+      new RegExp(`^session=${token}; .*Domain=xuanxue\\.su; Secure$`),
+    );
   });
 });
 
-describe('AuthService.verifySession', () => {
+describe('AuthService.verifyCookieHeader', () => {
   it('чужой секрет — null', () => {
-    const service = new AuthService(SECRET, fakeConfig('development'));
-    const other = new AuthService('b'.repeat(32), fakeConfig('development'));
-    const { token } = other.issueSession('u1', NOW);
-    expect(service.verifySession(token, NOW)).toBeNull();
+    const { token } = service('local', 'b'.repeat(32)).issueSession('u1', NOW);
+    expect(service().verifyCookieHeader(`session=${token}`, NOW)).toBeNull();
+  });
+
+  it('две cookie session — null, даже если обе подписаны верно', () => {
+    const auth = service('production');
+    const { token } = auth.issueSession('u1', NOW);
+    expect(auth.verifyCookieHeader(`session=${token}; session=${token}`, NOW)).toBeNull();
+  });
+
+  it('стейджинг читает только session_staging', () => {
+    const auth = service('staging');
+    const { token } = auth.issueSession('u1', NOW);
+    expect(auth.verifyCookieHeader(`session=${token}`, NOW)).toBeNull();
+    expect(auth.verifyCookieHeader(`session_staging=${token}`, NOW)).toMatchObject({
+      sub: 'u1',
+    });
+  });
+
+  it('токен другого окружения под своим именем не проходит подпись', () => {
+    const { token } = service('production', 'p'.repeat(32)).issueSession('u1', NOW);
+    const staging = service('staging', 's'.repeat(32));
+    expect(staging.verifyCookieHeader(`session_staging=${token}`, NOW)).toBeNull();
+  });
+
+  it('без заголовка — null', () => {
+    expect(service().verifyCookieHeader(undefined, NOW)).toBeNull();
   });
 });
 
-describe('AuthService.logoutCookie', () => {
-  it('очищает cookie с Max-Age=0', () => {
-    const service = new AuthService(SECRET, fakeConfig('production'));
-    expect(service.logoutCookie()).toContain('Max-Age=0');
+describe('AuthService.logoutCookies', () => {
+  it('гасит cookie с Max-Age=0', () => {
+    for (const cookie of service('production').logoutCookies()) {
+      expect(cookie).toContain('Max-Age=0');
+    }
   });
 });

@@ -60,9 +60,10 @@ export type GoogleAuthStartResult =
 
 export interface GoogleLoginResult {
   user: UserLean;
-  /** Новая cookie сессии — только для входа. Привязка (`intent=link`) её не
-   * выпускает: пользователь и так вошёл, тем самым токеном (ADR-0059). */
-  cookie?: string;
+  /** Поля `Set-Cookie` новой сессии — только для входа. Привязка
+   * (`intent=link`) её не выпускает: пользователь и так вошёл, тем самым
+   * токеном (ADR-0059). */
+  cookies?: string[];
 }
 
 const VERIFIER_BYTES = 32;
@@ -152,8 +153,8 @@ export class GoogleAuthService {
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
     await this.usersService.touchLogin(user.id, now);
-    const { cookie } = this.authService.issueSession(user.id, now);
-    return { user, cookie };
+    const { cookies } = this.authService.issueSession(user.id, now);
+    return { user, cookies };
   }
 
   /** `intent=link`: сверяем сессию САМОГО этого запроса (не тело — тело не
