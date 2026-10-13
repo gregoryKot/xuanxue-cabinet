@@ -1,12 +1,15 @@
 // Обвязка для native-browser-flow.service.spec.ts и native-browser-flow.resume.spec.ts:
-// поток без HTTP и без Mongo, попытки — заглушка, сессия есть, если в запросе
-// cookie `session`. Ответ сверяется разбором Location: набор параметров callback
+// поток без HTTP и без Mongo, попытки — заглушка, сессию читает настоящий
+// AuthService: фейк с `as unknown` пережил бы смену его контракта молча.
+// Ответ сверяется разбором Location: набор параметров callback
 // (code/state/iss или error/state/iss) — контракт профиля Workshop 3c98d4a.
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import { NATIVE_REDIRECT_URI, type NativeCallbackErrorCode } from '@xuanxue/shared';
-import type { AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { sessionCookieProfile } from '../auth/session-cookie';
+import { signSession } from '../auth/session-token';
 import type { UserLean, UsersService } from '../users/users.service';
 import type {
   NativeAuthorizationsService,
@@ -20,7 +23,7 @@ import { sha256Hex } from './native-secrets';
 
 const BINDING = 'b'.repeat(43);
 const CODE = 'k'.repeat(43);
-const SESSION_TOKEN = 'session-token';
+const SESSION_SECRET = 'n'.repeat(32);
 const ISSUER = 'https://staging.xuanxue.su';
 
 export const NOW = DateTime.fromISO('2026-10-10T12:00:00Z', { zone: 'utc' });
@@ -29,7 +32,7 @@ export const HASH = sha256Hex(BINDING);
 export const ATTEMPT = 'a'.repeat(24);
 export const TARGET = { issuer: ISSUER, redirectUri: NATIVE_REDIRECT_URI, state: STATE };
 export const BAD_REQUEST = { kind: 'page', status: 400 };
-export const SESSION = `session=${SESSION_TOKEN}`;
+export const SESSION = `session=${signSession({ userId: 'u1', issuedAt: NOW }, SESSION_SECRET)}`;
 export const BOUND = `${NATIVE_AUTHZ_COOKIE}=${BINDING}`;
 export const WITH_CODE = {
   callback: NATIVE_REDIRECT_URI,
@@ -69,12 +72,12 @@ export function buildFlow(
       ),
     ),
   };
-  const authService = { verifySession: jest.fn().mockReturnValue({ sub: user.id }) };
+  const authService = new AuthService(SESSION_SECRET, sessionCookieProfile(undefined));
   const usersService = { findById: jest.fn().mockResolvedValue(user) };
   const config = { get: jest.fn().mockReturnValue(options.publicUrl ?? ISSUER) };
   const flow = new NativeBrowserFlowService(
     authorizations as unknown as NativeAuthorizationsService,
-    authService as unknown as AuthService,
+    authService,
     usersService as unknown as UsersService,
     config as unknown as ConfigService,
   );
