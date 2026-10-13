@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
 import { AuthService } from './auth.service';
 import { sessionCookieProfile } from './session-cookie';
+import { SESSION_MAX_AGE_SEC } from './session-token';
 
 const SECRET = 'a'.repeat(32);
 const NOW = DateTime.fromISO('2026-09-05T12:00:00Z');
@@ -39,6 +40,37 @@ describe('AuthService.issueSession', () => {
       new RegExp(`^session=${token}; .*Domain=xuanxue\\.su; Secure$`),
     );
   });
+});
+
+describe('AuthService.activeSessionCookie', () => {
+  const EXPECTED = {
+    production: { name: 'session', domain: 'Domain=xuanxue.su', secure: true },
+    staging: {
+      name: 'session_staging',
+      domain: 'Domain=staging.xuanxue.su',
+      secure: true,
+    },
+    local: { name: 'session', domain: null, secure: false },
+  } as const;
+
+  it.each(Object.keys(EXPECTED) as (keyof typeof EXPECTED)[])(
+    '%s — одно поле с именем профиля, проверяемый токен, без уборки host-only',
+    (profile) => {
+      const auth = service(profile);
+      const field = auth.activeSessionCookie('u1', NOW);
+      const expected = EXPECTED[profile];
+      const [pair = '', ...attrs] = field.split('; ');
+
+      expect(field).not.toContain('Max-Age=0');
+      expect(attrs).toContain(`Max-Age=${SESSION_MAX_AGE_SEC}`);
+      expect(pair.startsWith(`${expected.name}=`)).toBe(true);
+      expect(attrs.includes('Secure')).toBe(expected.secure);
+      expect(attrs.find((attr) => attr.startsWith('Domain='))).toBe(
+        expected.domain ?? undefined,
+      );
+      expect(auth.verifyCookieHeader(pair, NOW)).toMatchObject({ sub: 'u1' });
+    },
+  );
 });
 
 describe('AuthService.verifyCookieHeader', () => {

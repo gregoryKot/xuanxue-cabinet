@@ -35,6 +35,15 @@ Workshop [web-wiki-session](https://github.com/dveyarangi/xuanxue-workshop/blob/
 получают `AuthService`, а не секрет — правило одно на все пути. Прежняя host-only `session`
 прода читается как обычная: у неё то же имя, и вход заново не нужен.
 
+**Проверка для Daychi.** `GET /api/auth/session` (`auth/session-check.controller.ts`) — бэкенд
+Daychi присылает одну cookie читателя. Решает обычный `AuthGuard`: 204 без тела, 401, 403, 429 —
+второй копии правил нет, профиль аккаунта наружу не уходит. `Cache-Control: no-store` ставит
+middleware маршрута до гвардов: отказы пишет глобальный фильтр, мимо контроллера. Продление на
+этом маршруте помечено `@RenewActiveCookieOnly()` и отдаёт одно поле — действующую cookie через
+`AuthService.activeSessionCookie`: Daychi передаёт браузеру только её, а уборка host-only
+принадлежит ответам кабинета браузеру. Бакет троттлера — по сессии, как везде (ADR-0164), так
+что читатели за одним бэкендом Daychi не делят лимит.
+
 ## Альтернативы
 
 - Отдельная env-переменная профиля: адрес уже однозначно называет окружение, а лишняя
@@ -54,4 +63,5 @@ Workshop [web-wiki-session](https://github.com/dveyarangi/xuanxue-workshop/blob/
   попадает (`logging/redact-paths.ts`).
 - Гейты: `session-cookie.spec.ts` (выбор по адресу, поля, строгое чтение),
   `auth.service.spec.ts`, e2e `session-profile-production` и `session-profile-staging` на
-  настоящем `AppModule` — вход, продление, выход, повтор, чужая cookie.
+  настоящем `AppModule` — вход, продление, выход, повтор, чужая cookie; e2e
+  `session-check` — ответы проверки, `no-store` на отказах, продление одним полем.

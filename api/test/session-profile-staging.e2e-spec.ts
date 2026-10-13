@@ -4,6 +4,8 @@
 // `session` не читается, не считается повтором и не стирается — гаснет только
 // прежняя host-only `session` стейджинга, полем без Domain.
 import request from 'supertest';
+import { DateTime } from 'luxon';
+import { SESSION_RENEW_AFTER_DAYS } from '../src/auth/session-renewal';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { createUserWithSession } from './e2e-support/session';
 import {
@@ -30,8 +32,12 @@ describe('PUBLIC_URL=https://staging.xuanxue.su (e2e)', () => {
     return testApp.app.getHttpServer();
   }
 
-  async function stagingCookie(name: string): Promise<string> {
-    const { cookie } = await createUserWithSession(testApp.app, { name, roles: [] });
+  async function stagingCookie(name: string, issuedAt?: DateTime): Promise<string> {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name,
+      roles: [],
+      issuedAt,
+    });
     return cookie.replace(/^session=/, 'session_staging=');
   }
 
@@ -53,6 +59,31 @@ describe('PUBLIC_URL=https://staging.xuanxue.su (e2e)', () => {
     });
     const res = await request(server()).get('/api/auth/me').set('Cookie', cookie);
     expect(res.status).toBe(401);
+  });
+
+  it('проверка сессии для Daychi: продление session_staging — одно поле, без уборки host-only', async () => {
+    const own = await stagingCookie(
+      'Читатель wiki',
+      DateTime.utc().minus({ days: SESSION_RENEW_AFTER_DAYS + 1 }),
+    );
+    const res = await request(server()).get('/api/auth/session').set('Cookie', own);
+    expect(res.status).toBe(204);
+    const cookies = setCookies(res);
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).toMatch(
+      /^session_staging=.+; Domain=staging\.xuanxue\.su; Secure$/,
+    );
+  });
+
+  it('проверка сессии для Daychi: только cookie прода session — 401 с no-store', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Прод',
+      roles: [],
+    });
+    const res = await request(server()).get('/api/auth/session').set('Cookie', cookie);
+    expect(res.status).toBe(401);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(setCookies(res)).toEqual([]);
   });
 
   it('session_staging рядом с двумя cookie session — читается своя', async () => {

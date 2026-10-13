@@ -8,6 +8,7 @@ import type { DateTime } from 'luxon';
 import {
   browserLogoutCookies,
   browserSessionCookies,
+  buildSessionCookie,
   readSessionToken,
   SESSION_PROFILE,
   type SessionCookieProfile,
@@ -45,6 +46,13 @@ export class AuthService {
       token,
       cookies: browserSessionCookies(token, this.profile, SESSION_MAX_AGE_SEC),
     };
+  }
+
+  /** Одно поле `Set-Cookie` свежей сессии — только действующая cookie профиля,
+   * без уборки прежней host-only `session` (маршрут проверки для бэкенда Daychi). */
+  activeSessionCookie(userId: string, now: DateTime): string {
+    const token = signSession({ userId, issuedAt: now }, this.secret);
+    return buildSessionCookie(token, this.profile, SESSION_MAX_AGE_SEC);
   }
 
   /** Сессия из заголовка `Cookie:` — `null`, если cookie профиля нет, их
