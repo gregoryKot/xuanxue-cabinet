@@ -60,9 +60,8 @@ export type GoogleAuthStartResult =
 
 export interface GoogleLoginResult {
   user: UserLean;
-  /** Поля `Set-Cookie` новой сессии — только для входа. Привязка
-   * (`intent=link`) её не выпускает: пользователь и так вошёл, тем самым
-   * токеном (ADR-0059). */
+  /** Поля `Set-Cookie` новой сессии — только для входа. Привязка (`intent=link`)
+   * её не выпускает: пользователь и так вошёл, тем самым токеном (ADR-0059). */
   cookies?: string[];
 }
 
