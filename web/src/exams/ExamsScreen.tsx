@@ -141,7 +141,7 @@ export default function ExamsScreen() {
 
       <ExamVideoPosterBackfillCard
         withoutPosterCount={videoStats.stats?.withoutPosterCount ?? null}
-        onFinished={() => void videoStats.reload()}
+        onFinished={videoStats.reload}
       />
     </section>
   );

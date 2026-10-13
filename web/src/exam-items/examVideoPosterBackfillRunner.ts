@@ -82,8 +82,9 @@ export async function runPosterBackfill(
     if (pending.length === 0) return finish(null);
     total ??= pending.length;
 
+    // Отмена проверяется после каждого шага, который её ждал (снимок, запись):
+    // между шагами она прийти не может, прогресс отдаётся синхронно.
     for (const { id } of pending) {
-      if (signal.aborted) return finish(null, true);
       handled.add(id);
       const poster = await capture(id, signal);
       if (signal.aborted) return finish(null, true);

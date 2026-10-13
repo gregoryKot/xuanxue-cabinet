@@ -44,8 +44,10 @@ function waitForEvent(
  * без него (и без `document`) пробовать нечего. Адрес со своего домена
  * (ADR-0182) элементу годится как есть — нужен только `document`. */
 export function canCaptureFromVideoElement(source: PosterSource): boolean {
-  if (typeof document === 'undefined') return false;
-  return typeof source === 'string' || typeof URL.createObjectURL === 'function';
+  return (
+    typeof document !== 'undefined' &&
+    (typeof source === 'string' || typeof URL.createObjectURL === 'function')
+  );
 }
 
 /** Холст с кадром или `null`, если снять не вышло (нет размеров, нет 2D). */

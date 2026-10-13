@@ -14,8 +14,8 @@ import { useExamVideoPosterBackfill } from './useExamVideoPosterBackfill';
 interface ExamVideoPosterBackfillCardProps {
   /** `withoutPosterCount` сводки; `null` — ещё грузится или сбой загрузки. */
   withoutPosterCount: number | null;
-  /** Прогон кончился: экран перечитывает сводку. */
-  onFinished: () => void;
+  /** Прогон кончился: экран перечитывает сводку (`reload` хука сводки как есть). */
+  onFinished: () => void | Promise<void>;
 }
 
 const cardStyle: CSSProperties = {

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/http';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -65,6 +66,22 @@ describe('ExamVideoPosterBackfillCard — прогон', () => {
     expect(onFinished).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', BUTTON)).not.toBeInTheDocument();
     expect(screen.queryByText(/чёрную плитку/)).not.toBeInTheDocument();
+  });
+
+  it('прогон оборвался отказом в доступе — текст ошибки, кнопка остаётся', async () => {
+    const user = userEvent.setup();
+    vi.mocked(captureVideoPoster).mockResolvedValue('AQID');
+    mockApiByPath({
+      '/exam-videos/without-poster': [{ id: 'a' }],
+      '/exam-videos/a/poster': new ApiError('Нет прав', 403, 'forbidden'),
+    });
+    renderCard(1);
+
+    await user.click(screen.getByRole('button', BUTTON));
+
+    const error = await screen.findByText(/Войдите заново/);
+    expect(error.closest('p')).toHaveStyle({ color: 'var(--danger)' });
+    expect(screen.getByRole('button', BUTTON)).toBeInTheDocument();
   });
 
   it('часть не вышла — итог с причиной, кнопка остаётся для новой попытки', async () => {

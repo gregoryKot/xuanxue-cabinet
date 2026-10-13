@@ -21,7 +21,7 @@ const IDLE_STATE: PosterBackfillView = {
 export interface UseExamVideoPosterBackfillOptions {
   /** Прогон кончился (в том числе остановкой): экран перечитывает сводку, чтобы
    * число «без кадра» стало настоящим. Отмена при уходе с экрана не зовёт. */
-  onFinished: () => void;
+  onFinished: () => void | Promise<void>;
   /** Подмена в тестах: настоящий снимок ждёт декодера и до срока держит тест. */
   capture?: typeof captureVideoPoster;
 }
@@ -84,7 +84,7 @@ export function useExamVideoPosterBackfill({
         isRunning.current = false;
         if (cancelled) return;
         setState({ phase: 'done', done, failed, total: finalTotal, error });
-        onFinishedRef.current();
+        void onFinishedRef.current();
       });
     },
     [capture],

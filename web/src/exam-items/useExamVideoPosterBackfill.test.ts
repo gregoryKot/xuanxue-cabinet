@@ -115,9 +115,13 @@ describe('useExamVideoPosterBackfill', () => {
   it('экран закрыли посреди прогона — запросы оборваны, onFinished не зовётся', async () => {
     mockApiByPath({ '/exam-videos/without-poster': VIDEOS });
     let capturedSignal: AbortSignal | undefined;
+    // Снимок, как настоящий captureVideoPoster, по отмене отдаёт null, не бросает:
+    // прогон после этого обязан выйти молча, не трогая состояние снятого экрана.
     const capture = vi.fn((_src: string, options?: { signal?: AbortSignal }) => {
       capturedSignal = options?.signal;
-      return new Promise<string | null>(() => {});
+      return new Promise<string | null>((resolve) => {
+        options?.signal?.addEventListener('abort', () => resolve(null), { once: true });
+      });
     });
     const { result, unmount, onFinished } = setup(capture);
 
@@ -126,6 +130,8 @@ describe('useExamVideoPosterBackfill', () => {
     unmount();
 
     expect(capturedSignal?.aborted).toBe(true);
+    await act(() => Promise.resolve());
     expect(onFinished).not.toHaveBeenCalled();
+    expect(capture).toHaveBeenCalledTimes(1);
   });
 });

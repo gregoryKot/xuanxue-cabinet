@@ -194,6 +194,39 @@ describe('runPosterBackfill — остановка', () => {
     expect(progress).toEqual([]);
   });
 
+  it('отмена пришла, пока снимался кадр, — cancelled, кадр не пишем', async () => {
+    const controller = new AbortController();
+    // Настоящий captureVideoPoster по отмене отдаёт null, а не бросает.
+    const capture = vi.fn(() => {
+      controller.abort();
+      return Promise.resolve<string | null>(null);
+    });
+    const { params, run } = setup({
+      signal: controller.signal,
+      capture,
+      listWithoutPoster: batches(ids('a')),
+    });
+
+    expect(await run()).toMatchObject({ cancelled: true, failed: 0, error: null });
+    expect(params.savePoster).not.toHaveBeenCalled();
+  });
+
+  it('отмена пришла во время записи кадра — cancelled, не «не вышло»', async () => {
+    const controller = new AbortController();
+    const savePoster = vi.fn(() => {
+      controller.abort();
+      return Promise.reject(new DOMException('aborted', 'AbortError'));
+    });
+    const { progress, run } = setup({
+      signal: controller.signal,
+      savePoster,
+      listWithoutPoster: batches(ids('a')),
+    });
+
+    expect(await run()).toMatchObject({ cancelled: true, done: 0, failed: 0 });
+    expect(progress).toEqual([]);
+  });
+
   it('отмена во время запроса списка — cancelled без ошибки', async () => {
     const controller = new AbortController();
     const { run } = setup({
