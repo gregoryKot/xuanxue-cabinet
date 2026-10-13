@@ -7,7 +7,7 @@ import { signSession } from '../auth/session-token';
 import { makeIsVideoPart, VIDEO_PART_PATH_PATTERNS } from './video-upload-part-body';
 
 const SECRET = 'a'.repeat(32);
-const SESSIONS = new AuthService(SECRET, sessionCookieProfile('local'));
+const SESSIONS = new AuthService(SECRET, sessionCookieProfile('http://localhost:3000'));
 const VALID_PATH = '/api/answer-videos/507f1f77bcf86cd799439011/parts/1';
 
 function validCookie(secret = SECRET): string {

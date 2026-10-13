@@ -6,7 +6,7 @@ import { throttleTracker } from './throttle-tracker';
 
 const SECRET = 'a'.repeat(32);
 const OTHER_SECRET = 'b'.repeat(32);
-const SESSIONS = new AuthService(SECRET, sessionCookieProfile('local'));
+const SESSIONS = new AuthService(SECRET, sessionCookieProfile('http://localhost:3000'));
 const NOW = DateTime.utc(2026, 10, 1, 12, 0, 0);
 
 function cookieFor(userId: string, secret = SECRET, issuedAt = NOW): string {

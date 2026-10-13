@@ -10,7 +10,7 @@ import type { IncomingRequestLike } from './raw-body-route';
 
 const SECRET = 'a'.repeat(32);
 const OTHER_SECRET = 'b'.repeat(32);
-const SESSIONS = new AuthService(SECRET, sessionCookieProfile('local'));
+const SESSIONS = new AuthService(SECRET, sessionCookieProfile('http://localhost:3000'));
 const NOW = DateTime.fromISO('2026-09-05T12:00:00Z', { setZone: true });
 
 function reqWithCookie(cookie: string | string[] | undefined): IncomingRequestLike {

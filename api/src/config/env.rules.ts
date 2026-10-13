@@ -5,9 +5,6 @@
 // scripts/check-env-example.mjs регэкспом по полям класса — переносить
 // схему сюда нельзя, переменные перестанут попадать в сверку.
 export const NODE_ENVS = ['development', 'test', 'production'] as const;
-// Профиль окружения для cookie сессии и адресов wiki (ADR-0183): прод и стейджинг
-// оба идут с NODE_ENV=production, различить их может только явная настройка.
-export const DEPLOY_PROFILES = ['production', 'staging', 'local'] as const;
 // 'silent' — только для тестов: e2e не должны засыпать вывод логами запросов.
 export const LOG_LEVELS = [
   'fatal',
@@ -52,8 +49,6 @@ export const POSTHOG_KEY_RE = /^phc_[A-Za-z0-9]+$/;
 
 export const NODE_ENV_MESSAGE =
   'NODE_ENV должен быть одним из: development, test, production';
-export const DEPLOY_PROFILE_MESSAGE =
-  'DEPLOY_PROFILE должен быть одним из: production, staging, local';
 export const PORT_MESSAGE = 'PORT должен быть числом от 1 до 65535';
 export const MONGODB_URI_MESSAGE =
   'MONGODB_URI должен начинаться с mongodb:// или mongodb+srv://';

@@ -16,8 +16,6 @@ import {
   BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE,
   BOT_TOKEN_MESSAGE,
   BOT_TOKEN_RE,
-  DEPLOY_PROFILE_MESSAGE,
-  DEPLOY_PROFILES,
   ENCRYPTION_KEY_MESSAGE,
   ENCRYPTION_KEY_OLD_MESSAGE,
   GIT_SHA_RE,
@@ -64,15 +62,10 @@ import {
 
 export type NodeEnv = (typeof NODE_ENVS)[number];
 export type LogLevel = (typeof LOG_LEVELS)[number];
-export type DeployProfile = (typeof DEPLOY_PROFILES)[number];
 
 export class EnvSchema {
   @IsIn(NODE_ENVS, { message: NODE_ENV_MESSAGE })
   NODE_ENV: NodeEnv = 'development';
-
-  // В production обязателен и не `local` (env.production-required.ts, ADR-0183).
-  @IsIn(DEPLOY_PROFILES, { message: DEPLOY_PROFILE_MESSAGE })
-  DEPLOY_PROFILE: DeployProfile = 'local';
 
   @Type(() => Number)
   @Min(1, { message: PORT_MESSAGE })

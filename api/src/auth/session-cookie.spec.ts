@@ -11,12 +11,44 @@ import {
   sessionCookieProfile,
 } from './session-cookie';
 
-const PRODUCTION = sessionCookieProfile('production');
-const STAGING = sessionCookieProfile('staging');
-const LOCAL = sessionCookieProfile('local');
+const PRODUCTION = sessionCookieProfile('https://xuanxue.su');
+const STAGING = sessionCookieProfile('https://staging.xuanxue.su');
+const LOCAL = sessionCookieProfile('http://localhost:3000');
 
 const LEGACY_EXPIRATION_SECURE =
   'session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure';
+
+describe('sessionCookieProfile', () => {
+  it('профиль — по origin PUBLIC_URL: путь адреса его не меняет', () => {
+    expect(sessionCookieProfile('https://xuanxue.su/cabinet')).toEqual(PRODUCTION);
+    expect(PRODUCTION.domain).toBe('xuanxue.su');
+    expect(STAGING).toMatchObject({
+      name: 'session_staging',
+      domain: 'staging.xuanxue.su',
+    });
+  });
+
+  it('другой адрес — host-only session без уборки, Secure только на https', () => {
+    for (const url of [undefined, 'http://localhost:3000', 'http://xuanxue.su']) {
+      expect(sessionCookieProfile(url)).toEqual({
+        name: SESSION_COOKIE,
+        domain: null,
+        secure: false,
+        expiresLegacyHostCookie: false,
+      });
+    }
+    expect(sessionCookieProfile('https://cabinet-pr-1.up.railway.app')).toMatchObject({
+      domain: null,
+      secure: true,
+      expiresLegacyHostCookie: false,
+    });
+  });
+
+  it('поддомен и www прода — не общий профиль', () => {
+    expect(sessionCookieProfile('https://www.xuanxue.su').domain).toBeNull();
+    expect(sessionCookieProfile('https://wiki.xuanxue.su').domain).toBeNull();
+  });
+});
 
 describe('buildSessionCookie', () => {
   it('прод: общая cookie session на Domain=xuanxue.su с Secure', () => {

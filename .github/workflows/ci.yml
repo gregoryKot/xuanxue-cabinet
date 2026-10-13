@@ -393,10 +393,8 @@ jobs:
           # как production, поэтому без них он не стартует. Значения
           # заведомо нерабочие (не настоящий токен бота), нужны только для
           # прохождения формата (BOT_TOKEN_RE / TELEGRAM_WEBHOOK_SECRET_RE).
-          # DEPLOY_PROFILE в production тоже обязателен (ADR-0183).
           docker run -d --name xuanxue --network host \
             -e NODE_ENV=production \
-            -e DEPLOY_PROFILE=production \
             -e PORT=3000 \
             -e MONGODB_URI=mongodb://127.0.0.1:27017/ci \
             -e ENCRYPTION_KEY="$ENC_KEY" \

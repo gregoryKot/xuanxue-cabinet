@@ -54,9 +54,11 @@ function cookieHeader(payload: Record<string, unknown>, extra?: string): string 
  * без мока, той же функцией, что и продовый AuthGuard. */
 function realSessionCookie(userId: string): string {
   const token = signSession({ userId, issuedAt: NOW }, SESSION_SECRET);
-  return buildSessionCookie(token, sessionCookieProfile('local'), 3600).split(
-    ';',
-  )[0] as string;
+  return buildSessionCookie(
+    token,
+    sessionCookieProfile('http://localhost:3000'),
+    3600,
+  ).split(';')[0] as string;
 }
 
 const USER: UserLean = {
@@ -88,7 +90,10 @@ function build(options: BuildOptions = {}) {
   // verifyCookieHeader настоящий (не фейк) — findSessionUser реально подписывает
   // и проверяет payload через session-token.ts, тест не должен угадывать
   // формат payload сам; issueSession — фейк, только для входа.
-  const realAuthService = new AuthService(SESSION_SECRET, sessionCookieProfile('local'));
+  const realAuthService = new AuthService(
+    SESSION_SECRET,
+    sessionCookieProfile('http://localhost:3000'),
+  );
   const authService = {
     issueSession:
       options.issueSession ?? (() => ({ token: 't', cookies: ['session=tok'] })),

@@ -8,7 +8,6 @@
 // спеке env.validation.spec.ts.
 export const EMPTY_AS_ABSENT_KEYS = [
   'NODE_ENV',
-  'DEPLOY_PROFILE',
   'PORT',
   'LOG_LEVEL',
   'ENCRYPTION_KEY',

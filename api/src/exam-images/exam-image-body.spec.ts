@@ -33,7 +33,7 @@ function req(overrides: {
 
 describe('makeIsRawImageUpload', () => {
   const isRawImageUpload = makeIsRawImageUpload(
-    new AuthService(SECRET, sessionCookieProfile('local')),
+    new AuthService(SECRET, sessionCookieProfile('http://localhost:3000')),
   );
 
   it('POST на /api/exam-images с image/jpeg и валидной сессией — true', () => {

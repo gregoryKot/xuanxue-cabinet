@@ -3,7 +3,7 @@
 // AppModule). SESSION_SECRET — единственный провайдер секрета: JWT_SECRET из
 // ConfigService, если задан, иначе временный секрет на процесс (в production
 // JWT_SECRET гарантирован env.validation.ts). SESSION_PROFILE — имя и атрибуты
-// cookie по DEPLOY_PROFILE (ADR-0183).
+// cookie по PUBLIC_URL (ADR-0183).
 import { randomBytes } from 'crypto';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,7 +28,6 @@ import { GoogleAuthController } from './google-auth.controller';
 import { GoogleAuthService } from './google-auth.service';
 import { GoogleTokenClient } from './google-token-client';
 import { JoinController } from './join.controller';
-import type { DeployProfile } from '../config/env.validation';
 import {
   SESSION_PROFILE,
   sessionCookieProfile,
@@ -106,7 +105,7 @@ import { TelegramLinkController } from './telegram-link.controller';
       provide: SESSION_PROFILE,
       inject: [ConfigService],
       useFactory: (config: ConfigService): SessionCookieProfile =>
-        sessionCookieProfile(config.getOrThrow<DeployProfile>('DEPLOY_PROFILE')),
+        sessionCookieProfile(config.get<string>('PUBLIC_URL')),
     },
   ],
   // AuthService — единственный читатель сессии: ключу бакета троттлера

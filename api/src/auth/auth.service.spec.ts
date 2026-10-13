@@ -5,11 +5,17 @@ import { sessionCookieProfile } from './session-cookie';
 const SECRET = 'a'.repeat(32);
 const NOW = DateTime.fromISO('2026-09-05T12:00:00Z');
 
+const PUBLIC_URLS = {
+  production: 'https://xuanxue.su',
+  staging: 'https://staging.xuanxue.su',
+  local: 'http://localhost:3000',
+} as const;
+
 function service(
-  profile: 'production' | 'staging' | 'local' = 'local',
+  profile: keyof typeof PUBLIC_URLS = 'local',
   secret = SECRET,
 ): AuthService {
-  return new AuthService(secret, sessionCookieProfile(profile));
+  return new AuthService(secret, sessionCookieProfile(PUBLIC_URLS[profile]));
 }
 
 describe('AuthService.issueSession', () => {

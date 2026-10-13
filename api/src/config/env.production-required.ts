@@ -8,7 +8,6 @@
 // Тип параметра объявлен структурно, а не импортом `EnvSchema`: обратный
 // импорт из env.validation.ts замкнул бы цикл (eslint `import-x/no-cycle`).
 interface ProductionRequiredEnv {
-  DEPLOY_PROFILE: string;
   ENCRYPTION_KEY?: string;
   JWT_SECRET?: string;
   PUBLIC_URL?: string;
@@ -30,18 +29,10 @@ const REQUIRED_IN_PRODUCTION = [
   'TELEGRAM_WEBHOOK_SECRET',
 ] as const satisfies readonly (keyof ProductionRequiredEnv)[];
 
-// Прод и стейджинг оба идут с NODE_ENV=production, а `local` — значение по
-// умолчанию: без явного профиля cookie сессии ушла бы без Secure и без общего
-// домена wiki (ADR-0183).
-const DEPLOY_PROFILE_LOCAL_MESSAGE =
-  'DEPLOY_PROFILE обязателен в production: production или staging';
-
 /** Сообщения о незаполненных переменных, обязательных в production —
  * пустой массив, если всё на месте. */
 export function productionRequiredMessages(env: ProductionRequiredEnv): string[] {
-  const missing = REQUIRED_IN_PRODUCTION.filter((key) => !env[key]).map(
+  return REQUIRED_IN_PRODUCTION.filter((key) => !env[key]).map(
     (key) => `${key} обязателен в production`,
   );
-  if (env.DEPLOY_PROFILE === 'local') missing.push(DEPLOY_PROFILE_LOCAL_MESSAGE);
-  return missing;
 }

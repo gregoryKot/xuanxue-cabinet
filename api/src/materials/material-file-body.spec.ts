@@ -37,7 +37,7 @@ function req(overrides: {
 
 describe('makeIsMaterialFileUpload', () => {
   const isMaterialFileUpload = makeIsMaterialFileUpload(
-    new AuthService(SECRET, sessionCookieProfile('local')),
+    new AuthService(SECRET, sessionCookieProfile('http://localhost:3000')),
   );
 
   it('POST на /api/materials/<id>/file с application/pdf и валидной сессией — true', () => {

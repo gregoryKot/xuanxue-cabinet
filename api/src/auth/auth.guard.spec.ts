@@ -4,7 +4,6 @@ import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
-import type { DeployProfile } from '../config/env.validation';
 import { fakeResponse } from '../test-support/http-fakes';
 import type { UserLean } from '../users/users.service';
 import { UsersService } from '../users/users.service';
@@ -51,9 +50,9 @@ function fakeUsersService(user: UserLean | null): UsersService {
 function buildGuard(
   reflector: Reflector,
   usersService: UsersService,
-  profile: DeployProfile = 'local',
+  publicUrl = 'http://localhost:3000',
 ): AuthGuard {
-  const authService = new AuthService(SECRET, sessionCookieProfile(profile));
+  const authService = new AuthService(SECRET, sessionCookieProfile(publicUrl));
   return new AuthGuard(reflector, usersService, authService);
 }
 
@@ -295,7 +294,11 @@ describe('AuthGuard — rolling-перевыпуск', () => {
       { headers: { cookie: `session=${token}` } },
       res,
     );
-    const guard = buildGuard(reflector, fakeUsersService(activeUser()), 'production');
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser()),
+      'https://xuanxue.su',
+    );
     await guard.canActivate(context);
     const cookies = setCookies(res);
     expect(cookies.length).toBeGreaterThan(0);

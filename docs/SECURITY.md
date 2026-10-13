@@ -52,9 +52,9 @@ HTTP-запросы, подделывает тело, заголовки, cookie
   до сравнения — сам `timingSafeEqual` иначе бросает исключение).
 - Сессия — HMAC-JWT вручную на встроенном `crypto`, без сторонних библиотек
   (ADR-0012). Cookie `HttpOnly`, `SameSite=Lax`, `Path=/`; имя, домен и `Secure`
-  задаёт `DEPLOY_PROFILE` (ADR-0183): прод — `session` на `Domain=xuanxue.su`, общая с
+  задаёт `PUBLIC_URL` (ADR-0183): прод — `session` на `Domain=xuanxue.su`, общая с
   `wiki.xuanxue.su`; стейджинг — `session_staging` на `Domain=staging.xuanxue.su`;
-  локально — host-only `session` без `Secure`. Читается только cookie своего имени и
+  любой другой адрес — host-only `session`, `Secure` только на https. Читается только cookie своего имени и
   только если она одна: две одноимённые — 401, cookie другого окружения не считается.
   Вход, продление и выход в проде и на стейджинге отдельным полем `Set-Cookie` гасят
   прежнюю host-only `session` (без `Domain`), чтобы рядом не осталось второй сессии.

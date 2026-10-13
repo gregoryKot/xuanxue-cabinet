@@ -16,11 +16,11 @@ import {
   setCookies,
 } from './e2e-support/session-profile-fixtures';
 
-describe('DEPLOY_PROFILE=production (e2e)', () => {
+describe('PUBLIC_URL=https://xuanxue.su (e2e)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
-    testApp = await createTestApp(undefined, { DEPLOY_PROFILE: 'production' });
+    testApp = await createTestApp(undefined, { PUBLIC_URL: 'https://xuanxue.su' });
   }, 60_000);
 
   afterAll(async () => {

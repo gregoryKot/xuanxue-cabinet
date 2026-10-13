@@ -13,11 +13,13 @@ import {
   setCookies,
 } from './e2e-support/session-profile-fixtures';
 
-describe('DEPLOY_PROFILE=staging (e2e)', () => {
+describe('PUBLIC_URL=https://staging.xuanxue.su (e2e)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
-    testApp = await createTestApp(undefined, { DEPLOY_PROFILE: 'staging' });
+    testApp = await createTestApp(undefined, {
+      PUBLIC_URL: 'https://staging.xuanxue.su',
+    });
   }, 60_000);
 
   afterAll(async () => {

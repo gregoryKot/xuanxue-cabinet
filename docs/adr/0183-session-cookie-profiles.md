@@ -1,4 +1,4 @@
-# 0183. Профили cookie сессии: общая с wiki, свой стейджинг, повтор — отказ
+# 0183. Профиль cookie сессии по PUBLIC_URL: общая с wiki, свой стейджинг, повтор — отказ
 
 Дата: 2026-10-13. Статус: принято.
 
@@ -14,16 +14,14 @@ Workshop [web-wiki-session](https://github.com/dveyarangi/xuanxue-workshop/blob/
 
 ## Решение
 
-**Профиль — env `DEPLOY_PROFILE`:** `production`, `staging`, `local` (по умолчанию). Значения
-зашиты таблицей в `auth/session-cookie.ts`, ровно по контракту:
+**Профиль — по origin `PUBLIC_URL`.** Таблица зашита в `auth/session-cookie.ts`, значения — ровно
+по контракту:
 
-| Профиль      | Имя               | Domain               | Secure | Гасит host-only `session` |
-| ------------ | ----------------- | -------------------- | ------ | ------------------------- |
-| `production` | `session`         | `xuanxue.su`         | да     | да                        |
-| `staging`    | `session_staging` | `staging.xuanxue.su` | да     | да                        |
-| `local`      | `session`         | —                    | нет    | нет                       |
-
-В `NODE_ENV=production` профиль обязателен и не `local` — валидатор env не даёт подняться.
+| Origin `PUBLIC_URL`          | Имя               | Domain               | Secure       | Гасит host-only `session` |
+| ---------------------------- | ----------------- | -------------------- | ------------ | ------------------------- |
+| `https://xuanxue.su`         | `session`         | `xuanxue.su`         | да           | да                        |
+| `https://staging.xuanxue.su` | `session_staging` | `staging.xuanxue.su` | да           | да                        |
+| любой другой                 | `session`         | —                    | только https | нет                       |
 
 **Выпуск.** Вход (Telegram, email-ссылка и код, Google), rolling-продление в гварде и выход
 отдают поля `Set-Cookie` массивом: сначала `session=; Path=/; Max-Age=0` без `Domain` — гасит
@@ -39,21 +37,21 @@ Workshop [web-wiki-session](https://github.com/dveyarangi/xuanxue-workshop/blob/
 
 ## Альтернативы
 
-- Брать профиль из `PUBLIC_URL`: правка адреса молча меняла бы cookie.
-- Три env (имя, домен, адрес wiki): значения фиксирует контракт, три переменные — три места
-  ошибиться.
+- Отдельная env-переменная профиля: адрес уже однозначно называет окружение, а лишняя
+  переменная — ещё один шаг в Railway, который можно забыть при выкате.
 - Выбирать среди повторов ту, что прошла подпись: контракт запрещает выбор, а двух валидных
   сессий разных людей подпись не различит.
-- Перенести стейджинг на отдельный домен: контракт оставляет `staging.xuanxue.su`.
 
 ## Последствия
 
-- Выкат: до мержа — `DEPLOY_PROFILE=staging` в Railway стейджинга, до релиза — `production` в
-  проде (RUNBOOK §2.1, §2.4). На стейджинге все входят заново: имя cookie сменилось.
+- Выкат без настройки Railway: `PUBLIC_URL` прода и стейджинга уже нужные (RUNBOOK §2.1,
+  §2.4). На стейджинге все входят заново: имя cookie сменилось.
+- `PUBLIC_URL` с другим адресом (`www.`, служебный `*.up.railway.app`) молча даёт host-only
+  cookie: кабинет работает, wiki сессию не видит.
 - Повтор возможен, если старый инстанс при деплое или после отката выдаст host-only cookie
   рядом с общей. Человек получает 401, вход гасит host-only — повтор уходит сам.
 - Cookie прода на стейджинге не читается, не продлевается и не стирается; в логи cookie не
-  попадает целиком (`logging/redact-paths.ts`).
-- Гейты: `session-cookie.spec.ts` (таблица, поля, строгое чтение), `auth.service.spec.ts`,
-  `env.validate.spec.ts`, e2e `session-profile-production` и `session-profile-staging` на
+  попадает (`logging/redact-paths.ts`).
+- Гейты: `session-cookie.spec.ts` (выбор по адресу, поля, строгое чтение),
+  `auth.service.spec.ts`, e2e `session-profile-production` и `session-profile-staging` на
   настоящем `AppModule` — вход, продление, выход, повтор, чужая cookie.

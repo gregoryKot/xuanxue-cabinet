@@ -3,21 +3,22 @@
 // оправдана. Имя, домен и уборка прежней cookie — по профилю окружения
 // (ADR-0183, контракт Workshop web-wiki-session): прод делит сессию с
 // wiki.xuanxue.su, стейджинг — с wiki.staging.xuanxue.su, и cookie одного
-// окружения другое не читает, не продлевает и не стирает.
-import type { DeployProfile } from '../config/env.validation';
+// окружения другое не читает, не продлевает и не стирает. Профиль узнаётся
+// по PUBLIC_URL: прод и стейджинг оба идут с NODE_ENV=production, а адрес у
+// каждого свой.
 
 /** Имя host-only cookie, которую кабинет выдавал до общих профилей; оно же —
  * действующее имя прода и локальной разработки. */
 export const SESSION_COOKIE = 'session';
 
-/** Токен DI-провайдера профиля — фабрика в auth.module.ts, из DEPLOY_PROFILE. */
+/** Токен DI-провайдера профиля — фабрика в auth.module.ts, из PUBLIC_URL. */
 export const SESSION_PROFILE = 'SESSION_PROFILE';
 
 export interface SessionCookieProfile {
   name: string;
   /** `null` — host-only: cookie видит только адрес, который её выдал. */
   domain: string | null;
-  /** Без Secure локальный http://localhost не получил бы cookie вовсе. */
+  /** Secure браузер не вернёт на http://localhost — там cookie без него. */
   secure: boolean;
   /** Ответы входа, продления и выхода стирают прежнюю host-only `session`,
    * чтобы рядом с общей cookie не осталось второй сессии. У `local` её нет:
@@ -25,29 +26,36 @@ export interface SessionCookieProfile {
   expiresLegacyHostCookie: boolean;
 }
 
-const PROFILES: Record<DeployProfile, SessionCookieProfile> = {
-  production: {
+/** Origin кабинета → профиль. Значения фиксирует контракт web-wiki-session. */
+const SHARED_PROFILES: Record<string, SessionCookieProfile> = {
+  'https://xuanxue.su': {
     name: SESSION_COOKIE,
     domain: 'xuanxue.su',
     secure: true,
     expiresLegacyHostCookie: true,
   },
-  staging: {
+  'https://staging.xuanxue.su': {
     name: 'session_staging',
     domain: 'staging.xuanxue.su',
     secure: true,
     expiresLegacyHostCookie: true,
   },
-  local: {
-    name: SESSION_COOKIE,
-    domain: null,
-    secure: false,
-    expiresLegacyHostCookie: false,
-  },
 };
 
-export function sessionCookieProfile(profile: DeployProfile): SessionCookieProfile {
-  return PROFILES[profile];
+/** Профиль по PUBLIC_URL. Любой другой адрес (localhost, Docker-смок CI) —
+ * host-only `session` без общего домена и без уборки, Secure — только на https. */
+export function sessionCookieProfile(
+  publicUrl: string | undefined,
+): SessionCookieProfile {
+  const url = publicUrl ? new URL(publicUrl) : null;
+  const shared = url ? SHARED_PROFILES[url.origin] : undefined;
+  if (shared) return shared;
+  return {
+    name: SESSION_COOKIE,
+    domain: null,
+    secure: url?.protocol === 'https:',
+    expiresLegacyHostCookie: false,
+  };
 }
 
 function buildCookie(
