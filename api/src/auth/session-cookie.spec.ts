@@ -35,6 +35,7 @@ describe('sessionCookieProfile', () => {
         domain: null,
         secure: false,
         expiresLegacyHostCookie: false,
+        wikiOrigin: null,
       });
     }
     expect(sessionCookieProfile('https://cabinet-pr-1.up.railway.app')).toMatchObject({
@@ -47,6 +48,14 @@ describe('sessionCookieProfile', () => {
   it('поддомен и www прода — не общий профиль', () => {
     expect(sessionCookieProfile('https://www.xuanxue.su').domain).toBeNull();
     expect(sessionCookieProfile('https://wiki.xuanxue.su').domain).toBeNull();
+  });
+
+  it('wiki своего окружения: у прода и стейджинга разная, у остальных нет', () => {
+    expect(PRODUCTION.wikiOrigin).toBe('https://wiki.xuanxue.su');
+    expect(STAGING.wikiOrigin).toBe('https://wiki.staging.xuanxue.su');
+    expect(LOCAL.wikiOrigin).toBeNull();
+    expect(sessionCookieProfile('https://www.xuanxue.su').wikiOrigin).toBeNull();
+    expect(sessionCookieProfile('https://wiki.xuanxue.su').wikiOrigin).toBeNull();
   });
 });
 

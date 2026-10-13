@@ -40,6 +40,7 @@ import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { NativeAuthModule } from './native-auth/native-auth.module';
+import { WikiEntryModule } from './wiki-entry/wiki-entry.module';
 import { AuthService } from './auth/auth.service';
 import { throttleTracker, type ThrottleRequestLike } from './auth/throttle-tracker';
 import { SeedModule } from './seed/seed.module';
@@ -134,6 +135,8 @@ import { staticAssetsOptions } from './static/static-cache-control';
     // Нативный Daychi (ADR-0181): bearer вместо cookie, свои маршруты под
     // /api/auth/native, @Public() для AuthGuard.
     NativeAuthModule,
+    // Вход из wiki (ADR-0183): GET /wiki от корня сайта, @Public() для AuthGuard.
+    WikiEntryModule,
     TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     // Заголовки кеша (хэшированные ассеты — на год, index.html/sw.js —
