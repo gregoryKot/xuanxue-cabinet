@@ -5,7 +5,11 @@
 // для `<video src>` — в карту не входит.
 import type { ExamVideoDto, ExamVideoStatsDto, StartExamVideoInput } from './exam-videos';
 import type { RawBody } from './raw-body';
-import type { CompleteVideoUploadInput, VideoUploadDto } from './video-uploads';
+import type {
+  CompleteVideoUploadInput,
+  SetVideoPosterInput,
+  VideoUploadDto,
+} from './video-uploads';
 
 export interface ExamVideosRoutes {
   'GET /exam-videos/stats-summary': {
@@ -28,6 +32,22 @@ export interface ExamVideosRoutes {
     body: CompleteVideoUploadInput;
     response: ExamVideoDto;
   };
+  /** Готовые видео без кадра-превью, не больше VIDEOS_WITHOUT_POSTER_BATCH за
+   * раз (ADR-0182); штат. Байты видео для снимка — `GET /exam-videos/:id/bytes`,
+   * его открывает декодер в браузере сам, как `GET /exam-videos/:id` плеер, —
+   * в карту не входит. */
+  'GET /exam-videos/without-poster': {
+    query: undefined;
+    body: undefined;
+    response: ExamVideoDto[];
+  };
+  /** Кадр-превью для видео, у которого его нет (ADR-0182); штат. Повтор и
+   * второй кадр на то же видео — не ошибка: первый записанный остаётся. */
+  'PUT /exam-videos/:id/poster': {
+    query: undefined;
+    body: SetVideoPosterInput;
+    response: ExamVideoDto;
+  };
 }
 
 export const EXAM_VIDEOS_ROUTE_KEYS: Record<keyof ExamVideosRoutes, true> = {
@@ -35,4 +55,6 @@ export const EXAM_VIDEOS_ROUTE_KEYS: Record<keyof ExamVideosRoutes, true> = {
   'POST /exam-videos/uploads': true,
   'PUT /exam-videos/:id/parts/:n': true,
   'POST /exam-videos/:id/complete': true,
+  'GET /exam-videos/without-poster': true,
+  'PUT /exam-videos/:id/poster': true,
 };

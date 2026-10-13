@@ -18,6 +18,20 @@ export interface CompleteVideoUploadInput {
   poster?: string;
 }
 
+/** Тело `PUT …/:id/poster` (ADR-0182): кадр-превью для видео, загруженного до
+ * того, как браузер стал снимать его при загрузке (ADR-0165). Снимает его
+ * браузер штата из байтов через `GET …/:id/bytes`; первый записанный кадр не
+ * перетирается. */
+export interface SetVideoPosterInput {
+  /** JPEG кадра в base64, без префикса `data:`. */
+  poster: string;
+}
+
+/** Сколько видео без кадра отдаёт `GET …/without-poster` за раз (ADR-0182):
+ * браузер снимает кадры пачкой и спрашивает следующую, пока список не опустеет
+ * (CLAUDE.md «API»: список всегда с лимитом). */
+export const VIDEOS_WITHOUT_POSTER_BATCH = 50;
+
 const BYTES_IN_KB = 1024;
 const BYTES_PER_BASE64_GROUP = 3;
 const CHARS_PER_BASE64_GROUP = 4;

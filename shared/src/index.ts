@@ -307,12 +307,17 @@ export type {
   VideoDownloadQuery,
   StartExamVideoInput,
 } from './exam-videos';
-export type { CompleteVideoUploadInput, VideoUploadDto } from './video-uploads';
+export type {
+  CompleteVideoUploadInput,
+  SetVideoPosterInput,
+  VideoUploadDto,
+} from './video-uploads';
 export {
   VIDEO_POSTER_LIMITS,
   VIDEO_POSTER_NOT_JPEG_MESSAGE,
   VIDEO_POSTER_TOO_LARGE_MESSAGE,
   VIDEO_POSTER_NOT_FOUND_MESSAGE,
+  VIDEOS_WITHOUT_POSTER_BATCH,
 } from './video-uploads';
 export {
   EXAM_VIDEO_CONTENT_TYPES,

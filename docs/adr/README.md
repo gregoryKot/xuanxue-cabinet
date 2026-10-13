@@ -216,3 +216,4 @@
 | [0179](0179-home-tiles-visibility.md)                            | «Главная»: ближайшее занятие первым; личный выбор, какие плитки показывать (`PUT /me/home-tiles`)         |
 | [0180](0180-recording-one-upload-many-platforms.md)              | Запись занятия: один файл на сайт, кабинет раскладывает по площадкам; свой Bot API server для Telegram    |
 | [0181](0181-native-account-session.md)                           | Вход нативного Daychi: код и PKCE через браузер, случайный bearer с хешем в базе, отзыв по доступу        |
+| [0182](0182-poster-backfill-by-staff-browser.md)                 | Кадр-превью старым видео снимает браузер штата из байтов через кабинет (`…/bytes`, `PUT …/poster`)        |
