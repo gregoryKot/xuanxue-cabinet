@@ -11,7 +11,7 @@
 import istanbulLibCoverage from 'istanbul-lib-coverage';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
-import { pathToFileURL } from 'url';
+import { isMainModule } from './is-main-module.mjs';
 
 const { createCoverageMap } = istanbulLibCoverage;
 
@@ -82,6 +82,6 @@ function main() {
   );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   main();
 }

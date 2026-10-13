@@ -14,6 +14,7 @@
 //
 // Запуск: node scripts/generate-vapid-keys.mjs
 import { generateKeyPairSync } from 'crypto';
+import { isMainModule } from './is-main-module.mjs';
 
 const CURVE = 'prime256v1';
 const UNCOMPRESSED_POINT_PREFIX = Buffer.from([0x04]);
@@ -56,7 +57,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт — не при импорте из теста
-// (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

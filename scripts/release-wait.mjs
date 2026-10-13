@@ -6,6 +6,7 @@
 // раскатка зависла, вместо того чтобы workflow молча посчитал выкат успешным
 // сразу после git push.
 import { targetReachedProblem, DEFAULT_PROD_HEALTH_URL } from './release-candidate.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const POLL_INTERVAL_MS = 20_000;
 const MAX_WAIT_MS = 15 * 60 * 1000;
@@ -71,7 +72,7 @@ export async function runWait() {
   process.exitCode = 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   runWait().catch((err) => {
     console.error(`❌ release-wait: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;

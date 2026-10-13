@@ -20,6 +20,7 @@
 import { appendFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import process from 'node:process';
+import { isMainModule } from './is-main-module.mjs';
 
 /** Четыре секрета GitHub Actions, которые вместе описывают бакет для бэкапов.
  * Не переменные приложения — в `.env.example` и в валидатор env не входят. */
@@ -142,7 +143,7 @@ function main() {
   process.exitCode = 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   try {
     main();
   } catch (err) {

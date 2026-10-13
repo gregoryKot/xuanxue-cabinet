@@ -6,6 +6,7 @@
 // CLI внизу подключает их к реальному git, GitHub REST и /api/health
 // (.github/workflows/release.yml).
 import { healthProblems } from './check-prod-health.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 export const DEFAULT_SOAK_HOURS = 2;
 export const DEFAULT_STAGING_HEALTH_URL = 'https://staging.xuanxue.su/api/health';
@@ -162,7 +163,7 @@ async function main() {
   await mod[exportName]();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(
       `❌ release-candidate: ${err instanceof Error ? err.message : String(err)}`,

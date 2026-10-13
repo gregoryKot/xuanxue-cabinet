@@ -10,6 +10,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { stripComments } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const TARGET_DIR = join(ROOT, 'api', 'src', 'telegram');
@@ -65,6 +66,6 @@ function main() {
   console.log(`✓ «обновите страницу» в текстах бота не найдено (${files} файлов)`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

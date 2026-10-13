@@ -6,6 +6,7 @@
 // check-prod-health.test.mjs), CLI внизу файла подключает их к реальному
 // fetch и печатает алерт для человека/notify-telegram.mjs.
 import { spawnSync } from 'node:child_process';
+import { isMainModule } from './is-main-module.mjs';
 
 export const DEFAULT_HEALTH_URL = 'https://xuanxue.su/api/health';
 const DEFAULT_MIN_AGE_MIN = 30;
@@ -242,7 +243,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error(
       `❌ check-prod-health: ${err instanceof Error ? err.message : String(err)}`,

@@ -1,0 +1,4 @@
+# LF в рабочей копии на любой ОС, как в репозитории и в CI. Без этого git на Windows
+# (core.autocrlf=true) отдаёт CRLF: prettier --check краснеет на всём репозитории, а
+# тесты scripts/, режущие ci.yml и backup.yml по \n, падают только локально.
+* text=auto eol=lf

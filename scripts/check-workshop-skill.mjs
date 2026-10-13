@@ -16,6 +16,7 @@
 import { spawnSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { isMainModule } from './is-main-module.mjs';
 
 const SKILL_DIR = '.claude/skills/collaborate';
 const SKILL_PATH = `${SKILL_DIR}/SKILL.md`;
@@ -119,6 +120,6 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из теста.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

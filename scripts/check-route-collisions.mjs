@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { stripComments } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROUTE_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'All'];
 
@@ -115,7 +116,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }
