@@ -3,20 +3,22 @@
 // api/src, web/src, shared/src, счётчик сравнивается с бейслайном. Рост
 // роняет CI; снижение — обнови бейслайн:
 //   node scripts/check-jscpd-ratchet.mjs --update
+// jscpd запускается через packageBinCommand, строки `npx jscpd` в скрипте нет —
+// knip не видит использования, поэтому пакет перечислен в ignoreDependencies knip.json.
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { packageBinCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'scripts', 'jscpd-baseline.json');
 const UPDATE = process.argv.includes('--update');
 
 const out = mkdtempSync(join(tmpdir(), 'jscpd-'));
-const res = spawnSync(
-  'npx',
+const { command, args } = packageBinCommand(
+  'jscpd',
   [
-    'jscpd',
     'api/src',
     'web/src',
     'shared/src',
@@ -29,14 +31,21 @@ const res = spawnSync(
     '--ignore',
     '**/*.spec.ts,**/*.test.ts,**/*.test.tsx,**/dist/**',
   ],
-  { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  { cwd: ROOT },
 );
+const res = spawnSync(command, args, {
+  cwd: ROOT,
+  encoding: 'utf8',
+  maxBuffer: 64 * 1024 * 1024,
+});
 
 let report;
 try {
   report = JSON.parse(readFileSync(join(out, 'jscpd-report.json'), 'utf8'));
 } catch {
-  console.error('❌ jscpd не отработал:\n' + (res.stderr || res.stdout).slice(0, 2000));
+  // При сбое запуска (spawn error) stdout и stderr пусты — причина лежит в `res.error`.
+  const reason = res.error ? res.error.message : (res.stderr ?? '') || (res.stdout ?? '');
+  console.error('❌ jscpd не отработал:\n' + reason.slice(0, 2000));
   process.exit(1);
 } finally {
   rmSync(out, { recursive: true, force: true });

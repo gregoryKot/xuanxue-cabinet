@@ -23,10 +23,10 @@
 // Разбор вынесен в чистые функции без fs (findMutatingWriteLines,
 // findWriteThenReloadFindings, diffAgainstAllowlist) —
 // check-write-then-reload.test.mjs гоняет их на строках-фикстурах, а не на
-// сегодняшнем состоянии web/src (тот же приём, что в check-adr-numbers.mjs и
-// check-route-collisions.mjs — см. их шапки).
+// сегодняшнем состоянии web/src (тот же приём — в шапке check-adr-numbers.mjs).
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -145,7 +145,7 @@ function* walk(dir) {
 function collectCounts() {
   const counts = {};
   for (const file of walk(WEB_SRC)) {
-    const fileLabel = relative(ROOT, file);
+    const fileLabel = repoPath(ROOT, file);
     const src = readFileSync(file, 'utf8');
     const n = findWriteThenReloadFindings(fileLabel, src).length;
     if (n > 0) counts[fileLabel] = n;
