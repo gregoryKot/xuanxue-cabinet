@@ -1,8 +1,9 @@
 // Сессия (ADR-0012) — единственное место, где секрет уходит в signSession/
 // verifySession, а профиль окружения (ADR-0183) — в имя и атрибуты cookie.
-// AuthGuard, троттлер, предикаты сырых загрузок и findSessionUser читают
-// сессию только отсюда (verifyCookieHeader), а не разбирают cookie сами —
-// одна точка ротации секрета и одно правило «ровно одна cookie своего имени».
+// AuthGuard, троттлер, предикаты сырых загрузок, findSessionUser и вход из wiki
+// читают сессию только отсюда (readSession, verifyCookieHeader), а не разбирают
+// cookie сами — одна точка ротации секрета и одно правило «ровно одна cookie
+// своего имени».
 import { Injectable, Inject } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import {
@@ -13,6 +14,7 @@ import {
   SESSION_PROFILE,
   type SessionCookieProfile,
 } from './session-cookie';
+import { shouldRenew } from './session-renewal';
 import {
   SESSION_MAX_AGE_SEC,
   SESSION_SECRET,
@@ -27,6 +29,13 @@ interface IssuedSession {
   token: string;
   /** Поля `Set-Cookie` целиком — `res.setHeader('Set-Cookie', cookies)`. */
   cookies: string[];
+}
+
+/** Токен вместе с проверенной нагрузкой: вход из wiki отдаёт браузеру тот же
+ * токен, а не выпускает новый. */
+interface VerifiedSession {
+  token: string;
+  payload: SessionPayload;
 }
 
 /** Чтение сессии без выпуска — всё, что нужно троттлеру и предикатам сырых
@@ -55,11 +64,32 @@ export class AuthService {
     return buildSessionCookie(token, this.profile, SESSION_MAX_AGE_SEC);
   }
 
-  /** Сессия из заголовка `Cookie:` — `null`, если cookie профиля нет, их
-   * больше одной или токен не прошёл подпись/срок. */
-  verifyCookieHeader(header: string | undefined, now: DateTime): SessionPayload | null {
+  /** Токен и нагрузка из заголовка `Cookie:` — `null`, если cookie профиля нет,
+   * их больше одной или токен не прошёл подпись/срок. */
+  readSession(header: string | undefined, now: DateTime): VerifiedSession | null {
     const token = readSessionToken(header, this.profile);
-    return token ? verifySessionToken(token, this.secret, now) : null;
+    if (!token) return null;
+    const payload = verifySessionToken(token, this.secret, now);
+    return payload ? { token, payload } : null;
+  }
+
+  verifyCookieHeader(header: string | undefined, now: DateTime): SessionPayload | null {
+    return this.readSession(header, now)?.payload ?? null;
+  }
+
+  /** Поля `Set-Cookie` для переноса действующей сессии на общую cookie профиля.
+   * Тот же токен и его остаток срока: вход из wiki не начинает новые 90 дней.
+   * Токен старше порога rolling-продления заменяется свежим, как в гварде. */
+  sharedSessionCookies(session: VerifiedSession, now: DateTime): string[] {
+    const { token, payload } = session;
+    if (shouldRenew(payload, now)) return this.issueSession(payload.sub, now).cookies;
+    const remainingSec = payload.exp - Math.floor(now.toSeconds());
+    return browserSessionCookies(token, this.profile, remainingSec);
+  }
+
+  /** Origin wiki этого окружения, `null` — wiki нет (локальный профиль). */
+  wikiOrigin(): string | null {
+    return this.profile.wikiOrigin;
   }
 
   logoutCookies(): string[] {

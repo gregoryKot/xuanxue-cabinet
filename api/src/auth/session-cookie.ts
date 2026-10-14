@@ -1,14 +1,12 @@
 // Cookie сессии руками, без cookie-parser (ADR-0012): формат простой
 // (`name=value; Attr; Attr`), внешняя зависимость ради разбора `Cookie:` не
-// оправдана. Имя, домен и уборка прежней cookie — по профилю окружения
-// (ADR-0183, контракт Workshop web-wiki-session): прод делит сессию с
-// wiki.xuanxue.su, стейджинг — с wiki.staging.xuanxue.su, и cookie одного
-// окружения другое не читает, не продлевает и не стирает. Профиль узнаётся
-// по PUBLIC_URL: прод и стейджинг оба идут с NODE_ENV=production, а адрес у
-// каждого свой.
+// оправдана. Имя, домен, уборка прежней cookie и адрес wiki — по профилю
+// окружения (ADR-0183, контракт Workshop web-wiki-session): прод делит сессию
+// с wiki.xuanxue.su, стейджинг — с wiki.staging.xuanxue.su, и cookie одного
+// окружения другое не читает, не продлевает и не стирает. Профиль — по
+// PUBLIC_URL: прод и стейджинг оба идут с NODE_ENV=production, адрес разный.
 
-/** Имя host-only cookie, которую кабинет выдавал до общих профилей; оно же —
- * действующее имя прода и локальной разработки. */
+/** Имя host-only cookie до общих профилей; оно же — имя прода и локальной разработки. */
 export const SESSION_COOKIE = 'session';
 
 /** Токен DI-провайдера профиля — фабрика в auth.module.ts, из PUBLIC_URL. */
@@ -20,10 +18,12 @@ export interface SessionCookieProfile {
   domain: string | null;
   /** Secure браузер не вернёт на http://localhost — там cookie без него. */
   secure: boolean;
-  /** Ответы входа, продления и выхода стирают прежнюю host-only `session`,
-   * чтобы рядом с общей cookie не осталось второй сессии. У `local` её нет:
-   * там действующая cookie и есть host-only `session`. */
+  /** Вход, продление и выход стирают прежнюю host-only `session`, чтобы рядом
+   * с общей не осталось второй сессии. У `local` её нет: она и есть действующая. */
   expiresLegacyHostCookie: boolean;
+  /** Origin wiki этого окружения — единственный адрес, куда `/wiki` возвращает
+   * браузер; `null` — wiki у окружения нет, маршрут отвечает 404. */
+  wikiOrigin: string | null;
 }
 
 /** Origin кабинета → профиль. Значения фиксирует контракт web-wiki-session. */
@@ -33,12 +33,14 @@ const SHARED_PROFILES: Record<string, SessionCookieProfile> = {
     domain: 'xuanxue.su',
     secure: true,
     expiresLegacyHostCookie: true,
+    wikiOrigin: 'https://wiki.xuanxue.su',
   },
   'https://staging.xuanxue.su': {
     name: 'session_staging',
     domain: 'staging.xuanxue.su',
     secure: true,
     expiresLegacyHostCookie: true,
+    wikiOrigin: 'https://wiki.staging.xuanxue.su',
   },
 };
 
@@ -55,6 +57,7 @@ export function sessionCookieProfile(
     domain: null,
     secure: url?.protocol === 'https:',
     expiresLegacyHostCookie: false,
+    wikiOrigin: null,
   };
 }
 
@@ -88,8 +91,7 @@ export function buildSessionCookie(
   return buildCookie(profile.name, token, { ...profile, maxAgeSec });
 }
 
-/** Max-Age=0 без Domain стирает только host-only cookie этого адреса: общая
- * cookie прода с Domain=xuanxue.su на стейджинге остаётся нетронутой. */
+/** Max-Age=0 без Domain стирает лишь host-only cookie этого адреса: общая cookie прода цела. */
 function legacyHostExpiration(profile: SessionCookieProfile): string[] {
   if (!profile.expiresLegacyHostCookie) return [];
   return [
@@ -101,9 +103,8 @@ function legacyHostExpiration(profile: SessionCookieProfile): string[] {
   ];
 }
 
-/** Поля `Set-Cookie` браузерного ответа кабинета, который выдаёт сессию (вход,
- * продление): уборка прежней host-only cookie и действующая — отдельными
- * полями, массивом для `setHeader`. */
+/** Поля `Set-Cookie` ответа, который выдаёт сессию: уборка прежней host-only
+ * cookie и действующая — отдельными полями, массивом для `setHeader`. */
 export function browserSessionCookies(
   token: string,
   profile: SessionCookieProfile,
@@ -138,9 +139,8 @@ export function readCookie(header: string | undefined, name: string): string | u
 }
 
 /** Токен сессии профиля — только если cookie его имени ровно одна. Две
- * одноимённые cookie (host-only и общая) — отказ, а не выбор первой или
- * последней: по заголовку `Cookie:` не видно, какая из них свежее. Cookie
- * другого окружения не считается. */
+ * одноимённые (host-only и общая) — отказ, а не выбор: по заголовку `Cookie:`
+ * не видно, какая свежее. Cookie другого окружения не считается. */
 export function readSessionToken(
   header: string | undefined,
   profile: SessionCookieProfile,
