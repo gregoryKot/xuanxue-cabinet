@@ -156,6 +156,7 @@ export {
   EMAIL_LOGIN_QUOTA_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
 } from './auth';
+export { WIKI_ENTRY_PATH, WIKI_RETURN_TO_PARAM } from './wiki-entry';
 export type { UpdateMyProfileInput } from './person-name';
 export {
   NEW_PERSON_NAME,

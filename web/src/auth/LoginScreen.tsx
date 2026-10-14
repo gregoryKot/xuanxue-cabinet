@@ -6,7 +6,8 @@
 // JoinScreen.tsx, ADR-0030). Уже вошедшего уводит на сохранённый адрес или
 // домашний экран, не показывая эту форму (аудит L2 — раньше жёстко на
 // /schedule, мимо экрана, с которого человек пришёл).
-import { Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
 import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -15,7 +16,8 @@ import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
-import { postLoginPath } from './returnTo';
+import { adoptLoginReturnTo, hasPendingWikiReturn, postLoginPath } from './returnTo';
+import { useSessionRecheckOnReturn } from './useSessionRecheckOnReturn';
 
 // Единственное место, где кабинет вообще упоминает ссылку-приглашение
 // (ADR-0030) до входа: и Telegram, и почта всё равно упрутся в неё дальше
@@ -34,6 +36,16 @@ export default function LoginScreen() {
   useDocumentTitle(PAGE_TITLE);
   const { status: authStatus } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
+  const { search } = useLocation();
+
+  // Возврат из wiki (ADR-0183) принимается в первом же рендере, до проверки
+  // сессии ниже: уже вошедшего надо вести дальше по этому адресу, а не на
+  // главную. Начальное значение состояния, не эффект: эффект сработал бы
+  // после `<Navigate>`, который читает postLoginPath() на этом же рендере.
+  useState(() => adoptLoginReturnTo(search));
+  // Вход по ссылке из письма завершается в другой вкладке — wiki ждёт
+  // человека здесь, пока эта вкладка не увидит сессию.
+  useSessionRecheckOnReturn(authStatus === 'guest' && hasPendingWikiReturn());
 
   // hasSession, не authStatus === 'ok' (ревью PR #150): заблокированного тоже
   // уводит с формы входа — здесь ему нечего делать, а RequireAuth дальше

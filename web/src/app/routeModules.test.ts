@@ -206,9 +206,7 @@ describe('matchRoute', () => {
 describe('ROUTE_MODULES', () => {
   it('экраны входа не греются в фоне — вошедшему они не нужны', () => {
     const notWarmed = routes.filter((route) => !route.warm).map((route) => route.path);
-    // «/dev/errors» — тоже не греется, но по другой причине (комментарий в
-    // routeModules.ts): чужая роль сюда не заходит вовсе, прогревать чанк
-    // для каждого штата незачем.
+    // «/dev/errors» не греется по другой причине (routeModules.ts): чужая роль там не бывает.
     expect(notWarmed.sort()).toEqual([
       '/accessibility',
       '/dev/errors',
@@ -218,8 +216,10 @@ describe('ROUTE_MODULES', () => {
       '/login/email',
       '/login/google',
       '/login/native',
+      '/logout',
       '/privacy',
       '/welcome',
+      '/wiki',
     ]);
   });
 
