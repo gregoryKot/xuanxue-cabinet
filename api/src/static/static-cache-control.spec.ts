@@ -64,6 +64,7 @@ describe('staticAssetsOptions', () => {
     expect(staticAssetsOptions(ROOT).exclude).toEqual([
       '/api/{*splat}',
       '/auth/native/authorize',
+      '/wiki',
     ]);
     expect(staticAssetsOptions(ROOT).rootPath).toBe(ROOT);
   });
