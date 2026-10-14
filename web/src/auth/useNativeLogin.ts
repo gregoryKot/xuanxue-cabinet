@@ -17,6 +17,7 @@ import {
   saveNativeAttempt,
 } from './nativeAttempt';
 import { redirectCurrentTab } from './telegramAuthRedirect';
+import { useSessionRecheckOnReturn } from './useSessionRecheckOnReturn';
 
 /** invalid — в адресе нет годного номера; leaving — вкладка уже уходит на
  * `continue`; login — гость, показываем способы входа. */
@@ -69,7 +70,7 @@ export function useNativeLogin(): UseNativeLoginResult {
   const [searchParams] = useSearchParams();
   const attemptParam = searchParams.get(NATIVE_ATTEMPT_PARAM);
   const attemptId = isNativeAttemptId(attemptParam) ? attemptParam : null;
-  const { status, refresh } = useAuth();
+  const { status } = useAuth();
   const sessionActive = hasSession(status);
   const [cancelled, setCancelled] = useState(false);
   const { leave, hasLeft } = useLeaveNativeAttempt();
@@ -84,21 +85,8 @@ export function useNativeLogin(): UseNativeLoginResult {
     if (sessionActive) leave(attemptId, false);
   }, [attemptId, sessionActive, leave, hasLeft]);
 
-  // Вход по ссылке из письма завершается в другой вкладке: эта узнаёт о
-  // сессии, только перечитав /auth/me, когда человек к ней вернётся.
-  const watchSession = attemptId !== null && !sessionActive && status !== 'loading';
-  useEffect(() => {
-    if (!watchSession) return;
-    function handleReturn(): void {
-      if (document.visibilityState === 'visible') void refresh();
-    }
-    window.addEventListener('focus', handleReturn);
-    document.addEventListener('visibilitychange', handleReturn);
-    return () => {
-      window.removeEventListener('focus', handleReturn);
-      document.removeEventListener('visibilitychange', handleReturn);
-    };
-  }, [watchSession, refresh]);
+  // Вход по ссылке из письма завершается в другой вкладке.
+  useSessionRecheckOnReturn(attemptId !== null && !sessionActive && status !== 'loading');
 
   const returnToApp = useCallback(() => {
     if (attemptId === null) return;

@@ -25,6 +25,8 @@ const PrivacyScreen = lazyRoute(ROUTE_MODULES.privacy.load);
 const AccessibilityScreen = lazyRoute(ROUTE_MODULES.accessibility.load);
 const WelcomeScreen = lazyRoute(ROUTE_MODULES.welcome.load);
 const EmailConfirmScreen = lazyRoute(ROUTE_MODULES.emailConfirm.load);
+const WikiResumeScreen = lazyRoute(ROUTE_MODULES.wikiResume.load);
+const LogoutScreen = lazyRoute(ROUTE_MODULES.logout.load);
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -85,6 +87,11 @@ export default function App() {
               path={ROUTE_MODULES.emailConfirm.path}
               element={<EmailConfirmScreen />}
             />
+            {/* Общая сессия с wiki (ADR-0183) — публичные маршруты: мост к
+                серверному входу из wiki и страница выхода, открытая и гостю, и
+                вошедшему без редиректов. */}
+            <Route path={ROUTE_MODULES.wikiResume.path} element={<WikiResumeScreen />} />
+            <Route path={ROUTE_MODULES.logout.path} element={<LogoutScreen />} />
             <Route element={<RequireAuth />}>
               {/* Внутри RequireAuth (без сессии спрашивать имя не у кого), но
                   снаружи AppShell (ADR-0044): оболочка кабинета вокруг этого

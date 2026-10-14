@@ -59,6 +59,7 @@ import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { EVENT_ROUTE_MODULES } from './eventRouteModules';
 import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
+import { WIKI_SESSION_ROUTE_MODULES } from './wikiSessionRouteModules';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -147,15 +148,13 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
-  // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
-  // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.
+  // как login/join: сессии не требует и не выдаёт (EmailConfirmScreen.tsx).
   emailConfirm: {
     path: '/email/confirm',
     load: () => import('../auth/EmailConfirmScreen'),
     warm: false,
   },
-  // Экран первого входа (ADR-0044) — как login/emailLogin/join, вошедшему,
-  // который уже назвался, чанк не нужен, греть в фоне нечего.
+  // Экран первого входа (ADR-0044) — как login/join: назвавшемуся чанк не нужен.
   welcome: {
     path: '/welcome',
     load: () => import('../welcome/WelcomeScreen'),
@@ -391,9 +390,10 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
   },
-  // Экраны ученика («Доска», «Задания», «Занятия») и страница события школы.
+  // Экраны ученика, страница события школы и экраны сессии, общей с wiki.
   ...STUDENT_ROUTE_MODULES,
   ...EVENT_ROUTE_MODULES,
+  ...WIKI_SESSION_ROUTE_MODULES,
   attempt: {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),
