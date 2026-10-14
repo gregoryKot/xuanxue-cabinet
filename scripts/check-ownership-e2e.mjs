@@ -9,7 +9,8 @@
 // Разбор вынесен в чистые функции без обращения к fs — check-ownership-e2e.
 // test.mjs гоняет их на строках-фикстурах, не на реальном дереве.
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { parseControllerPrefixes, extractRoutes } from './check-route-collisions.mjs';
 import { stripComments } from './source-text.mjs';
 import { isMainModule } from './is-main-module.mjs';
@@ -89,13 +90,13 @@ function main() {
   }
 
   const controllers = [...walk(SRC)].map((file) => ({
-    fileLabel: relative(ROOT, file),
+    fileLabel: repoPath(ROOT, file),
     src: readFileSync(file, 'utf8'),
   }));
   const specs = readdirSync(TEST)
     .filter((name) => name.endsWith('.e2e-spec.ts'))
     .map((name) => ({
-      fileLabel: relative(ROOT, join(TEST, name)),
+      fileLabel: repoPath(ROOT, join(TEST, name)),
       src: readFileSync(join(TEST, name), 'utf8'),
     }));
 

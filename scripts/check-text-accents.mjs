@@ -16,10 +16,10 @@
 //  2. Жёсткая ошибка (не храповик): маркер `**` в тексте api/src или
 //     shared/src. Эти строки уходят в Telegram простым текстом — маркер
 //     показался бы ученику звёздочками на экране. Акценты — только в web/.
-//  3. Жёсткая ошибка: непарный маркер в единице из web/src — нечётное число
-//     вхождений `**`: половина маркера осталась бы на экране звёздочками.
+//  3. Жёсткая ошибка: непарный маркер (нечётное число `**`) в единице из web/src.
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import {
   FLAT_PARAGRAPH_MIN_LENGTH,
   collectTextUnits,
@@ -74,7 +74,7 @@ function main() {
   const allUnits = [];
   for (const { dir, source } of SCAN_ROOTS) {
     for (const file of walk(join(ROOT, dir))) {
-      const fileLabel = relative(ROOT, file);
+      const fileLabel = repoPath(ROOT, file);
       const src = readFileSync(file, 'utf8');
       for (const unit of collectTextUnits(fileLabel, src)) {
         allUnits.push({ ...unit, source });

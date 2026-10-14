@@ -8,30 +8,32 @@
 // сводку: в CI это склейка шардов (merge-coverage.mjs), шард видит часть набора.
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, sep } from 'path';
+import { repoPath } from './repo-path.mjs';
+import { packageBinCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const API_ROOT = join(ROOT, 'api');
 const BASELINE_PATH = join(ROOT, 'scripts', 'coverage-baseline.json');
 const UPDATE = process.argv.includes('--update');
-// Пути в склеенной сводке абсолютные с того же раннера — relPath ниже их узнаёт.
+// Пути в сводке — абсолютные, с `\` на Windows; relPath ниже приводит их к `src/…`.
 const SUMMARY_ARG = process.argv.find((a) => a.startsWith('--summary='));
 const SUMMARY_PATH = SUMMARY_ARG
   ? SUMMARY_ARG.slice('--summary='.length)
   : join(API_ROOT, 'coverage', 'coverage-summary.json');
 
 const EPSILON = 0.1;
-// Дефолтная критичная зона для жёсткого пола — используется только при
-// первом --update, когда бейслайна ещё нет. Дальше список зон живёт в самом
-// бейслайне (scripts/coverage-baseline.json → floors).
+// Критичная зона жёсткого пола для первого --update, когда бейслайна ещё нет;
+// дальше список зон живёт в самом бейслайне (scripts/coverage-baseline.json → floors).
 const DEFAULT_FLOOR_DIRS = ['src/utils'];
 
 if (!SUMMARY_ARG) {
-  const jestArgs = ['jest', '--coverage', '--silent', '--coverageReporters=json-summary'];
+  const jestArgs = ['--coverage', '--silent', '--coverageReporters=json-summary'];
   if (process.env.JEST_CACHE_DIR) {
     jestArgs.push(`--cacheDirectory=${process.env.JEST_CACHE_DIR}`);
   }
-  const res = spawnSync('npx', jestArgs, {
+  const { command, args } = packageBinCommand('jest', jestArgs, { cwd: API_ROOT });
+  const res = spawnSync(command, args, {
     cwd: API_ROOT,
     encoding: 'utf8',
     maxBuffer: 512 * 1024 * 1024,
@@ -61,9 +63,7 @@ try {
 }
 
 function relPath(absPath) {
-  return absPath.startsWith(API_ROOT + '/')
-    ? absPath.slice(API_ROOT.length + 1)
-    : absPath;
+  return absPath.startsWith(API_ROOT + sep) ? repoPath(API_ROOT, absPath) : absPath;
 }
 
 function dirLinesPct(prefix) {

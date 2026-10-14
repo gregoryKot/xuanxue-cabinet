@@ -16,12 +16,12 @@
 // снизу, а не промежуток. Бейслайна нет — гейт абсолютный, как
 // check-route-collisions.mjs и check-name-collisions.mjs.
 //
-// Разбор — чистые функции без обращения к fs (maskLiterals, findListLiterals,
-// findGaplessLists), гоняются на строках-фикстурах в
-// check-card-list-gap.test.mjs, а не на сегодняшнем дереве web/src. Обход
-// дерева — отдельно, в main(), как в check-route-collisions.mjs.
+// Разбор — чистые функции без fs (maskLiterals, findListLiterals, findGaplessLists),
+// гоняются на фикстурах в check-card-list-gap.test.mjs, а не на дереве web/src.
+// Обход дерева — отдельно, в main(), как в check-route-collisions.mjs.
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { isMainModule } from './is-main-module.mjs';
 
 // Общий проход по строке для maskLiterals и maskComments — оба затирают
@@ -231,7 +231,7 @@ function main() {
   let totalLists = 0;
   const offenders = [];
   for (const file of walk(SRC)) {
-    const fileLabel = relative(ROOT, file);
+    const fileLabel = repoPath(ROOT, file);
     const src = readFileSync(file, 'utf8');
     totalLists += findListLiterals(src).length;
     offenders.push(...findGaplessLists(fileLabel, src));

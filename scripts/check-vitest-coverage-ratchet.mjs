@@ -14,6 +14,7 @@
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { packageBinCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'scripts', 'vitest-coverage-baseline.json');
@@ -41,15 +42,16 @@ const SUMMARY_PATH = SUMMARY_ARG
   : join(WORKSPACE_ROOT, 'coverage', 'coverage-summary.json');
 
 if (!SUMMARY_ARG) {
-  const res = spawnSync(
-    'npx',
-    ['vitest', 'run', '--coverage', '--coverage.reporter=json-summary'],
-    {
-      cwd: WORKSPACE_ROOT,
-      encoding: 'utf8',
-      maxBuffer: 512 * 1024 * 1024,
-    },
+  const { command, args } = packageBinCommand(
+    'vitest',
+    ['run', '--coverage', '--coverage.reporter=json-summary'],
+    { cwd: WORKSPACE_ROOT },
   );
+  const res = spawnSync(command, args, {
+    cwd: WORKSPACE_ROOT,
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024 * 1024,
+  });
   if (res.stdout) process.stdout.write(res.stdout);
   if (res.stderr) process.stderr.write(res.stderr);
 

@@ -7,7 +7,8 @@
 // findCollisions) без обращения к fs — check-route-collisions.test.mjs гоняет
 // их на строках-фикстурах, не на реальном дереве api/src.
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripComments } from './source-text.mjs';
 import { isMainModule } from './is-main-module.mjs';
 
@@ -95,7 +96,7 @@ function main() {
 
   const entries = [];
   for (const file of walk(SRC)) {
-    entries.push({ fileLabel: relative(ROOT, file), src: readFileSync(file, 'utf8') });
+    entries.push({ fileLabel: repoPath(ROOT, file), src: readFileSync(file, 'utf8') });
   }
 
   const { routes, collisions } = findCollisions(entries);

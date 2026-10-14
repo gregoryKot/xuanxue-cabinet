@@ -5,6 +5,8 @@
 // ловить состояние окружения, а не логику раннера.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { CHECK_STEPS, describeExit, resolveStepCommand, runSteps } from './check.mjs';
 
 test('describeExit: успешный шаг → null', () => {
@@ -94,8 +96,8 @@ test('resolveStepCommand: npm-шаг с npm_execpath → node + npm-cli перв
   });
 });
 
-test('resolveStepCommand: npm-шаг без npm_execpath → без изменений', () => {
-  assert.deepEqual(resolveStepCommand(npmStep, {}), {
+test('resolveStepCommand: npm-шаг без npm_execpath и без npm рядом с node → голый npm', () => {
+  assert.deepEqual(resolveStepCommand(npmStep, {}, join(tmpdir(), 'no-node-here')), {
     command: 'npm',
     args: ['run', 'lint'],
   });

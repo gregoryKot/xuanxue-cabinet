@@ -6,12 +6,16 @@
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { packageBinCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'scripts', 'eslint-baseline.json');
 const UPDATE = process.argv.includes('--update');
 
-const res = spawnSync('npx', ['eslint', '.', '--format', 'json'], {
+const { command, args } = packageBinCommand('eslint', ['.', '--format', 'json'], {
+  cwd: ROOT,
+});
+const res = spawnSync(command, args, {
   cwd: ROOT,
   encoding: 'utf8',
   maxBuffer: 512 * 1024 * 1024,
@@ -22,7 +26,8 @@ let report;
 try {
   report = JSON.parse(res.stdout);
 } catch {
-  console.error('❌ eslint не отработал:\n' + (res.stderr || res.stdout).slice(0, 2000));
+  const reason = res.error ? res.error.message : (res.stderr ?? '') || (res.stdout ?? '');
+  console.error('❌ eslint не отработал:\n' + reason.slice(0, 2000));
   process.exit(1);
 }
 

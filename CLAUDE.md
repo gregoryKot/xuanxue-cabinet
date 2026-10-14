@@ -146,7 +146,9 @@ JSX и стили — нет.
 Каждый пойманный на проде баг → регрессионный тест с комментарием-ссылкой на инцидент.
 Гейты: coverage-храповик api (`scripts/check-coverage-ratchet.mjs`) и coverage-храповик
 vitest для web и shared (`scripts/check-vitest-coverage-ratchet.mjs`) — оба могут только
-расти.
+расти. Храповик api считает только unit-тесты: код, покрытый одним e2e, роняет его. Перед
+пушем `npm run coverage:changed` проверяет, что изменённые строки `api/src` покрыты
+unit-тестами.
 
 ### 3. Новый эндпоинт = DTO с class-validator + e2e на владение
 

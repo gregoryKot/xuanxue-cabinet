@@ -8,7 +8,8 @@
 // Сканирует литералы по очищенному от комментариев тексту
 // (scripts/source-text.mjs, он же у других гейтов).
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripComments } from './source-text.mjs';
 import { isMainModule } from './is-main-module.mjs';
 
@@ -50,7 +51,7 @@ function main() {
   for (const file of walk(TARGET_DIR)) {
     files += 1;
     for (const found of findPageWordLiterals(readFileSync(file, 'utf8'))) {
-      findings.push({ file: relative(ROOT, file), ...found });
+      findings.push({ file: repoPath(ROOT, file), ...found });
     }
   }
   if (findings.length > 0) {

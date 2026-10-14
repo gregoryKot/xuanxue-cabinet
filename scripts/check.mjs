@@ -20,6 +20,7 @@
 import { spawnSync } from 'child_process';
 import { join } from 'path';
 import { isMainModule } from './is-main-module.mjs';
+import { npmCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const SYDNEY_TZ = 'Australia/Sydney';
@@ -86,14 +87,12 @@ export function describeExit({ status, signal, error }) {
  * Что реально запускать для шага. На Windows `npm` — это `npm.cmd`, а Node
  * без shell отказывается его спавнить (ENOENT); включать shell нельзя: путь
  * `process.execPath` вроде `C:\Program Files\nodejs\node.exe` с пробелом он
- * разрежет. Поэтому npm-шаг идёт через сам node и `npm_execpath` (npm-cli.js,
- * его выставляет `npm run`); без `npm_execpath` — шаг как есть.
+ * разрежет. Поэтому npm-шаг идёт через сам node и npm-cli.js (`npmCommand`:
+ * `npm_execpath` от `npm run`, иначе npm рядом с node); не-npm шаг — как есть.
  */
-export function resolveStepCommand(step, env = process.env) {
-  if (step.command !== 'npm' || !env.npm_execpath) {
-    return { command: step.command, args: step.args };
-  }
-  return { command: process.execPath, args: [env.npm_execpath, ...step.args] };
+export function resolveStepCommand(step, env = process.env, nodeDir) {
+  if (step.command !== 'npm') return { command: step.command, args: step.args };
+  return npmCommand(step.args, env, nodeDir);
 }
 
 /**
