@@ -3,9 +3,9 @@
 // под главное действие экрана — кнопку Telegram (docs/adr/0043). Клик сразу
 // уводит вкладку (googleAuthRedirect.ts) — сервер отвечает результатом уже на
 // странице `/login/google` (GoogleLoginCallbackScreen.tsx), не здесь.
-import { useState } from 'react';
 import { Button } from '../components/Button';
 import { redirectToGoogleAuth } from './googleAuthRedirect';
+import { useLeavePending } from './useLeavePending';
 
 interface GoogleLoginButtonProps {
   /** Код ссылки-приглашения (ADR-0030/0036) — JoinScreen.tsx передаёт код
@@ -14,13 +14,13 @@ interface GoogleLoginButtonProps {
 }
 
 export function GoogleLoginButton({ inviteCode }: GoogleLoginButtonProps) {
-  // pending держит кнопку занятой до самого перехода вкладки — тот же приём,
-  // что у кнопки Telegram (TelegramLoginSection.tsx): без него двойной клик
-  // на медленной сети уводил бы вкладку дважды подряд.
-  const [pending, setPending] = useState(false);
+  // Занята до самого перехода вкладки — тот же хук, что у кнопки Telegram
+  // (TelegramLoginSection.tsx): без него двойной клик на медленной сети уводил
+  // бы вкладку дважды; возврат «Назад» снимает занятость (useLeavePending.ts).
+  const [pending, markLeaving] = useLeavePending();
 
   function handleClick(): void {
-    setPending(true);
+    markLeaving();
     redirectToGoogleAuth(inviteCode);
   }
 

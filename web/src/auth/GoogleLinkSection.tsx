@@ -10,13 +10,13 @@
 // отличие от Telegram (TelegramLinkButton.tsx, useTelegramLinkCode.ts) —
 // сервер решает «вход это или привязка» уже на возврате, по своей cookie
 // состояния (GoogleLoginCallbackScreen.tsx).
-import { useState } from 'react';
 import type { MeDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { useAuthConfig } from './useAuthConfig';
 import { redirectToGoogleLink } from './googleAuthRedirect';
+import { useLeavePending } from './useLeavePending';
 
 // ≥80 знаков — акцент по правилу (docs/VOICE.md, ADR-0124): факт, ради
 // которого блок вообще существует.
@@ -32,7 +32,8 @@ interface GoogleLinkSectionProps {
 }
 
 export function GoogleLinkSection({ me }: GoogleLinkSectionProps) {
-  const [pending, setPending] = useState(false);
+  // Занята до ухода вкладки; возврат «Назад» снимает (useLeavePending.ts).
+  const [pending, markLeaving] = useLeavePending();
   const { config, status: configStatus } = useAuthConfig();
 
   // Привязанному Google предлагать нечего: «привязан» теперь говорит сводка
@@ -43,7 +44,7 @@ export function GoogleLinkSection({ me }: GoogleLinkSectionProps) {
   if (configStatus !== 'ok' || !config?.googleLoginEnabled) return null;
 
   function handleClick(): void {
-    setPending(true);
+    markLeaving();
     redirectToGoogleLink();
   }
 
