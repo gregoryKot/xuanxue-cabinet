@@ -1,7 +1,7 @@
 // Клик уводит вкладку (redirectToGoogleAuth) — замокан, как в
 // telegramAuthRedirect у LoginScreen.test.tsx: настоящий window.location.assign
 // увёл бы jsdom со страницы.
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as GoogleAuthRedirectModule from './googleAuthRedirect';
@@ -38,6 +38,22 @@ describe('GoogleLoginButton', () => {
     expect(redirectSpy).toHaveBeenCalledWith(undefined);
     expect(redirectSpy).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(button).toBeDisabled());
+  });
+
+  it('вернулись «Назад» из кеша браузера — кнопка снова свободна (снимок 2026-10-18)', async () => {
+    const user = userEvent.setup();
+    render(<GoogleLoginButton />);
+    const button = screen.getByRole('button', { name: 'Войти через Google' });
+    await user.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+
+    const pageShow = new Event('pageshow') as Event & { persisted: boolean };
+    Object.defineProperty(pageShow, 'persisted', { value: true });
+    act(() => {
+      window.dispatchEvent(pageShow);
+    });
+
+    await waitFor(() => expect(button).toBeEnabled());
   });
 
   it('клик с кодом приглашения передаёт его в редирект', async () => {
