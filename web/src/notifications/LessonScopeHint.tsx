@@ -1,32 +1,32 @@
-// Подсказка в ленте «выберите свои занятия» (ADR-0162, п. 5): пока человек
-// ничего не отмечал, ему приходят напоминания обо ВСЕХ занятиях школы — по
-// стартовому расписанию шестнадцать в неделю. Лента — то место, где он
-// спрашивает «почему мне это пишут», поэтому ответ и выход стоят здесь, над
-// самой лентой, а не только в «Настройках уведомлений». Главное действие —
-// «Выбрать занятия» (ведёт в настройки), второе — «Оставить все»: одно нажатие
-// записывает «все» как осознанный выбор, и подсказка больше не возвращается.
+// Подсказка в ленте «отметьте свои занятия» (ADR-0185): пока у ученика не выбрано
+// ни одного занятия, напоминаний о занятиях ему не приходит вовсе. Лента — то
+// место, где он ждёт сообщения, поэтому причина и выход стоят над самой лентой,
+// а не только в «Настройках уведомлений». Действие одно — «Выбрать занятия»
+// (ведёт в настройки): выбор делается там, где виден весь список.
 //
-// Карточка необязательная, поэтому ничего не рисует, пока нет ответа, и
-// молчит при сбое загрузки: баннер ошибки ленты не должен говорить про
-// второстепенные данные. Скелетона нет — на месте карточки не пустота, а сама
-// лента. Данные — useLessonScope.ts (один запрос на экран, у штата его нет:
-// вида про занятие у него нет). «Оставить все» перерисовывает карточку из
-// ответа `PUT` (ADR-0087), второго `GET` нет.
+// Карточка необязательная, поэтому ничего не рисует, пока нет ответа, и молчит
+// при сбое загрузки: баннер ошибки ленты не должен говорить про второстепенные
+// данные. Скелетона нет — на месте карточки не пустота, а сама лента. Читает
+// снимок напоминаний (useReminderSync.ts держит его на экране настроек) и
+// ничего не пишет. У штата карточки нет и запросов за ней нет: вида про занятие
+// у него нет (hasLessonSettings).
 import type { CSSProperties } from 'react';
+import { apiRoute } from '../api/apiRoute';
+import { useAuth } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { RichText } from '../components/RichText';
-import { dangerNoteStyle } from '../components/screenLayout';
-import { TextLinkButton } from '../components/TextLinkButton';
+import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { cardStyle, metaStyle } from '../student/studentExamCardStyles';
-import { scopeWithMode } from './lessonScopeEdit';
-import { lessonScopeHintHeadline, weeklyLessonCount } from './lessonScopeHintText';
+import { hasLessonSettings, isReminderHintDue } from './lessonReminderVisibility';
 import { NOTIFICATION_SETTINGS_PATH } from './notificationPaths';
-import { useLessonScope } from './useLessonScope';
+import { parseReminderSnapshot } from './reminderSyncState';
+import { useNotificationPrefs } from './useNotificationPrefs';
 
 const REGION_LABEL = 'О каких занятиях напоминать';
-const EXPLANATION = 'Отметьте свои — и лишнего не будет.';
+const HEADLINE = 'Напоминаний о занятиях **не будет**, пока вы не отметите свои';
+const EXPLANATION = 'Отметьте занятия, о которых хотите знать, — напомним перед началом.';
 const CHOOSE_LABEL = 'Выбрать занятия';
-const KEEP_ALL_LABEL = 'Оставить все';
+const LOAD_ERROR_MESSAGE = 'Не удалось загрузить выбор занятий. Попробуйте ещё раз.';
 
 const hintCardStyle: CSSProperties = { ...cardStyle, gap: 8 };
 const headlineStyle: CSSProperties = {
@@ -39,41 +39,33 @@ const headlineStyle: CSSProperties = {
 // metaStyle (#55584e, а не --ink-soft): на --panel-warm --ink-soft держит
 // только ~4.06:1, ниже AA 4.5 (studentExamCardStyles.ts).
 const explanationStyle: CSSProperties = { ...metaStyle, margin: 0 };
-const actionsStyle: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  gap: '4px 20px',
-  marginTop: 4,
-};
+const actionsStyle: CSSProperties = { marginTop: 4 };
 
-export function LessonScopeHint() {
-  const { scope, classes, scopeChosen, saving, saveError, save } = useLessonScope();
-  // Нет данных (загрузка, сбой, штат) или человек уже выбирал — карточки нет.
-  if (scope === null || scopeChosen !== false) return null;
-  const weeklyCount = weeklyLessonCount(classes);
-  if (weeklyCount === 0) return null;
+function ReminderHintCard() {
+  const { me } = useAuth();
+  const { kinds, enabled } = useNotificationPrefs(me);
+  const { data } = useAbortableFetch(
+    (signal) => apiRoute('GET /me/notifications/lessons/sync', { signal }),
+    LOAD_ERROR_MESSAGE,
+  );
+  const snapshot = parseReminderSnapshot(data);
+  if (!isReminderHintDue({ kinds, enabled, snapshot })) return null;
 
   return (
     <aside aria-label={REGION_LABEL} style={hintCardStyle}>
       <p style={headlineStyle}>
-        <RichText text={lessonScopeHintHeadline(weeklyCount)} />
+        <RichText text={HEADLINE} />
       </p>
       <p style={explanationStyle}>{EXPLANATION}</p>
       <div style={actionsStyle}>
         <ButtonLink to={NOTIFICATION_SETTINGS_PATH}>{CHOOSE_LABEL}</ButtonLink>
-        <TextLinkButton
-          disabled={saving}
-          onClick={() => void save(scopeWithMode(scope, classes, 'all'))}
-        >
-          {KEEP_ALL_LABEL}
-        </TextLinkButton>
       </div>
-      {saveError && (
-        <p role="alert" style={dangerNoteStyle}>
-          {saveError}
-        </p>
-      )}
     </aside>
   );
+}
+
+export function LessonScopeHint() {
+  const { me } = useAuth();
+  // Отдельный компонент под условием: хуки данных нельзя звать у штата.
+  return hasLessonSettings(me) ? <ReminderHintCard /> : null;
 }

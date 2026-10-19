@@ -532,14 +532,11 @@ export { availableNotifications } from './notification-availability';
 export type {
   LessonScope,
   LessonScopeClassDto,
-  LessonReminderDto,
   LessonScopeMode,
   MyLessonNotificationsDto,
-  UpdateLessonReminderInput,
   UpdateLessonScopeInput,
 } from './lesson-notifications';
 export {
-  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_CLASS_IDS_MAX,
   LESSON_SCOPE_MODES,
   LESSON_SCOPED_KINDS,

@@ -253,7 +253,7 @@ describe('PaymentReminderSection на экране «Школа»', () => {
       '/settings': makeSettings(),
       '/notifications/lesson-prefs-stats': {
         activeStudents: 0,
-        chosenClasses: 0,
+        withReminders: 0,
         ownReminder: 0,
       },
     });

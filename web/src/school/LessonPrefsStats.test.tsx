@@ -1,4 +1,4 @@
-// Строка «сколько учеников выбрали своё» (ADR-0162, п. 5): загрузка, число,
+// Строка «сколько учеников отметили занятия» (ADR-0185): загрузка, число,
 // пустая база, сбой. Сеть — `mockApiByPath` по пути запроса, не очередь `…Once`
 // (check-once-mock-ratchet).
 import { render, screen } from '@testing-library/react';
@@ -47,12 +47,12 @@ describe('LessonPrefsStats', () => {
     const { container } = render(<LessonPrefsStats />);
 
     expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
-    expect(screen.queryByText(/выбрали/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/отметили/)).not.toBeInTheDocument();
   });
 
   it('показывает число: факты выделены, маркеров ** на экране нет', async () => {
     mockApiByPath({
-      [STATS_PATH]: { activeStudents: 40, chosenClasses: 5, ownReminder: 3 },
+      [STATS_PATH]: { activeStudents: 40, withReminders: 5, ownReminder: 3 },
     });
 
     const { container } = render(<LessonPrefsStats />);
@@ -60,14 +60,14 @@ describe('LessonPrefsStats', () => {
     expect(await screen.findByText('5 из 40')).toBeInTheDocument();
     expect(container.querySelector('strong')).toHaveTextContent('5 из 40');
     expect(container).toHaveTextContent(
-      'Свои занятия выбрали 5 из 40 учеников, своё время напоминания — 3.',
+      'Занятия для напоминаний отметили 5 из 40 учеников, своё время напоминания — 3.',
     );
     expect(container).not.toHaveTextContent('**');
   });
 
   it('пустая база — честная фраза вместо «0 из 0»', async () => {
     mockApiByPath({
-      [STATS_PATH]: { activeStudents: 0, chosenClasses: 0, ownReminder: 0 },
+      [STATS_PATH]: { activeStudents: 0, withReminders: 0, ownReminder: 0 },
     });
 
     render(<LessonPrefsStats />);
@@ -89,7 +89,7 @@ describe('LessonPrefsStats', () => {
 describe('LessonReminderField — число под школьным напоминанием', () => {
   it('строка стоит в разделе «Напоминание о занятии», после поля «За сколько минут напомнить»', async () => {
     mockApiByPath({
-      [STATS_PATH]: { activeStudents: 12, chosenClasses: 2, ownReminder: 0 },
+      [STATS_PATH]: { activeStudents: 12, withReminders: 2, ownReminder: 0 },
     });
 
     render(<LessonReminderField settings={SETTINGS} update={vi.fn()} />);

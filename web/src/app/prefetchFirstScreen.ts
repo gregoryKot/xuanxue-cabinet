@@ -12,10 +12,7 @@ import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
 import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
 import { MY_PAYMENTS_PATH } from '../api/paymentsApiPaths';
 import { apiFetch } from '../api/http';
-import {
-  MY_LESSON_NOTIFICATIONS_PATH,
-  REMINDER_SYNC_PATH,
-} from '../api/lessonScopePaths';
+import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
 import { putPrefetched } from '../api/prefetchCache';
 import { hiddenTilePaths } from '../board/hiddenTilePaths';
 import { isPaymentContactVisible } from '../student/myPaymentsVisibility';
@@ -43,9 +40,8 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   const skipsExams = route === ROUTE_MODULES.notifications && isTeacher(me);
   // То же с занятиями на «Настройках уведомлений» и в ленте: у человека без вида
   // про занятие нет ни блока «О каких занятиях», ни поля «За сколько
-  // напомнить», ни подсказки «выберите свои занятия», и ни за снимком
-  // напоминаний (useReminderSync.ts, ADR-0185), ни за занятиями ленты
-  // (useLessonScope.ts, ADR-0162) экран не пойдёт.
+  // напомнить», ни подсказки «отметьте свои занятия», и за снимком напоминаний
+  // (useReminderSync.ts и LessonScopeHint.tsx, ADR-0185) экран не пойдёт.
   const isLessonScopeRoute =
     route === ROUTE_MODULES.notificationSettings || route === ROUTE_MODULES.notifications;
   const skipsLessonScope =
@@ -71,7 +67,7 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
       : []),
     ...(skipsStaffBoard ? [SETTINGS_PATH, GRADING_QUEUE_PATH, SCHOOL_EVENTS_PATH] : []),
     ...(skipsPayments ? [MY_PAYMENTS_PATH] : []),
-    ...(skipsLessonScope ? [MY_LESSON_NOTIFICATIONS_PATH, REMINDER_SYNC_PATH] : []),
+    ...(skipsLessonScope ? [REMINDER_SYNC_PATH] : []),
   ]);
   const needed = paths.filter((path) => !skipped.has(path));
 

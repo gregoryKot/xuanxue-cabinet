@@ -51,10 +51,7 @@ import {
   attemptPath,
   attemptReviewPath,
 } from '../api/gradingPaths';
-import {
-  MY_LESSON_NOTIFICATIONS_PATH,
-  REMINDER_SYNC_PATH,
-} from '../api/lessonScopePaths';
+import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
 import { paymentsListPath } from '../api/paymentsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
@@ -378,11 +375,7 @@ export const ROUTE_MODULES = {
     path: '/notifications',
     load: () => import('../notifications/NotificationsScreen'),
     warm: true,
-    prefetch: () => [
-      NOTIFICATIONS_FEED_PATH,
-      MY_EXAMS_PATH,
-      MY_LESSON_NOTIFICATIONS_PATH,
-    ],
+    prefetch: () => [NOTIFICATIONS_FEED_PATH, MY_EXAMS_PATH, REMINDER_SYNC_PATH],
   },
   // Подэкран ленты (ADR-0162): вход с «Профиля» и из ленты, открыт любой роли.
   // Снимок напоминаний греется только тому, у кого есть вид про занятие, —

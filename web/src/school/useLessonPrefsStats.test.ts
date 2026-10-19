@@ -20,7 +20,7 @@ const STATS_PATH = '/notifications/lesson-prefs-stats';
 
 describe('useLessonPrefsStats', () => {
   it('грузит три числа одним запросом', async () => {
-    const stats = { activeStudents: 40, chosenClasses: 5, ownReminder: 3 };
+    const stats = { activeStudents: 40, withReminders: 5, ownReminder: 3 };
     mockApiByPath({ [STATS_PATH]: stats });
 
     const { result } = renderHook(() => useLessonPrefsStats());
@@ -48,7 +48,7 @@ describe('useLessonPrefsStats', () => {
 
     await waitFor(() =>
       expect(result.current.error).toBe(
-        'Не удалось загрузить, сколько учеников выбрали своё. Обновите страницу.',
+        'Не удалось загрузить, сколько учеников отметили занятия. Обновите страницу.',
       ),
     );
   });

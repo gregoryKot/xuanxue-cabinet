@@ -4,8 +4,6 @@
 // кэша prefetchCache.ts должен совпасть с тем, что соберёт `apiRoute` (PLAN §17.1).
 import { apiRoutePath } from './apiRoute';
 
-/** «О каких занятиях напоминать» в ленте — useLessonScope.ts (ADR-0162). */
-export const MY_LESSON_NOTIFICATIONS_PATH = apiRoutePath('GET /me/notifications/lessons');
-
-/** Снимок настроек напоминаний на экране настроек — useReminderSync.ts (ADR-0185). */
+/** Снимок настроек напоминаний: экран настроек (useReminderSync.ts) и подсказка
+ * в ленте (LessonScopeHint.tsx), ADR-0185. */
 export const REMINDER_SYNC_PATH = apiRoutePath('GET /me/notifications/lessons/sync');

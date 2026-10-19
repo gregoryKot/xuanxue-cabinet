@@ -7,9 +7,10 @@
 // уведомления подхватывается всеми молча, без миграции старых документов.
 // Срок хранения — пока жив аккаунт: `DELETE /users/:id` удаляет документ
 // целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4). Кроме переключателей
-// здесь же выбор «о каких занятиях» (`lessonScopeMode`, `lessonClassIds`,
-// ADR-0162), своё «за сколько напомнить о занятии» (`lessonReminderMinutes`,
-// ADR-0162) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
+// здесь же выбор «о каких занятиях» для отмен, записей и материалов
+// (`lessonScopeMode`, `lessonClassIds`, ADR-0162), выбор для напоминаний
+// «Занятие скоро» и своё «за сколько» (`reminderClassIds`, `reminderLessonIds`,
+// `lessonReminderMinutes`, ADR-0185) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
   LESSON_SCOPE_MODES,
@@ -59,7 +60,8 @@ export class NotificationPrefsRecord {
   })
   paymentReminderDay?: number;
 
-  // О каких занятиях напоминать (ADR-0162). Два верхнеуровневых поля, а не
+  // О каких занятиях сообщать об отмене, записи и новом материале (ADR-0162).
+  // Напоминания «Занятие скоро» от него не зависят (reminderClassIds ниже). Два верхнеуровневых поля, а не
   // вложенный объект: политика шифрования читает только верхний уровень
   // (field-policy.ts). Нет `lessonScopeMode` — `all`: ученик ничего не
   // выбирал, документ ему не нужен.
@@ -73,7 +75,7 @@ export class NotificationPrefsRecord {
   @Prop({ type: [String], default: undefined })
   lessonClassIds?: string[];
 
-  // Своё «за сколько минут напомнить о занятии» (ADR-0162). Нет поля — «как в
+  // Своё «за сколько минут напомнить о занятии» (ADR-0185). Нет поля — «как в
   // школе» (`settings.lessonReminderMinutes`): человек ничего не выбирал или
   // снял выбор. Отдельное поле, как `paymentReminderDay`: число не влезает в
   // overrides. Значения — только из короткого списка (`0` — в момент начала);
