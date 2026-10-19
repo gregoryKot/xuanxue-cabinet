@@ -13,6 +13,7 @@ import type { UserLean } from '../users/users.service';
 import { NativeAccountController } from './native-account.controller';
 import type { NativeGrantsService } from './native-grants.service';
 import type { NativeRequestLike } from './native-http';
+import { NativeMeLimiter } from './native-me-limiter';
 import { NativeRevokeDto } from './native-revoke.dto';
 
 const TOKEN = 'A'.repeat(43);
@@ -40,19 +41,24 @@ const RENEWED: NativeTokenResponse = {
 function build(): {
   controller: NativeAccountController;
   grants: Record<'authenticate' | 'sessionView' | 'renew' | 'revoke', jest.Mock>;
+  limiter: NativeMeLimiter;
 } {
   const grants = {
-    authenticate: jest.fn().mockResolvedValue({ user: USER, credential: {}, grant: {} }),
+    authenticate: jest
+      .fn()
+      .mockResolvedValue({ user: USER, credential: {}, grant: { _id: 'g1' } }),
     sessionView: jest.fn().mockReturnValue(SESSION),
     renew: jest.fn().mockResolvedValue(RENEWED),
     revoke: jest.fn().mockResolvedValue(undefined),
   };
   const personalChats = { hasActiveChatFor: jest.fn().mockResolvedValue(true) };
+  const limiter = new NativeMeLimiter();
   const controller = new NativeAccountController(
     grants as unknown as NativeGrantsService,
     personalChats as unknown as PersonalChats,
+    limiter,
   );
-  return { controller, grants };
+  return { controller, grants, limiter };
 }
 
 function bearerRequest(rest: Partial<NativeRequestLike> = {}): NativeRequestLike {
@@ -89,6 +95,19 @@ describe('NativeAccountController', () => {
       'invalid_request',
     );
     expect(grants.authenticate).not.toHaveBeenCalled();
+  });
+
+  it('me идёт через бюджет: IP запроса и проверка bearer — в limiter.admit', async () => {
+    const { controller, limiter } = build();
+    const admit = jest.spyOn(limiter, 'admit');
+
+    await controller.me(bearerRequest({ query: {}, ip: '10.0.0.9' }));
+
+    expect(admit).toHaveBeenCalledWith(
+      '10.0.0.9',
+      expect.anything(),
+      expect.any(Function),
+    );
   });
 
   it('renew: пустой JSON — ответ сервиса как есть', async () => {

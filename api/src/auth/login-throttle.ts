@@ -14,6 +14,7 @@ export const EMAIL_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 // Вход через Google (ADR-0145) — тот же профиль, обе ветки (start и сам вход).
 export const GOOGLE_LOGIN_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
 // Нативный Daychi (ADR-0181): bearer проверяется в базе, до трекера он не
-// верифицирован, поэтому бакет — по IP (правило CLAUDE.md №4). Запросы редкие
-// (чтение при запуске, продление раз в неделю), лимит — от перебора токенов.
+// верифицирован, поэтому бакет — по IP (правило CLAUDE.md №4). Держит renew и
+// revoke: запросы редкие, лимит — от перебора токенов. У `me` свой бюджет по
+// гранту (ADR-0184).
 export const NATIVE_AUTH_THROTTLE = { default: { limit: 60, ttl: 60_000 } };

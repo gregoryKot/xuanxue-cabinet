@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { NATIVE_ERROR_CODES, type NativeErrorCode } from '@xuanxue/shared';
-import { NativeAuthError, NATIVE_ERROR_STATUS } from './native-auth-error';
+import {
+  NativeAuthError,
+  NativeRateLimitedError,
+  NATIVE_ERROR_STATUS,
+} from './native-auth-error';
 import { NativeErrorFilter } from './native-error.filter';
 import type { NativeResponseLike } from './native-response';
 
@@ -121,6 +125,14 @@ describe('NativeErrorFilter', () => {
     it('без заголовка от троттлера — окно в 60 секунд', () => {
       expect(run(new ThrottlerException()).headers.get('retry-after')).toBe(60);
     });
+  });
+
+  it('429 бюджета me — Retry-After из отказа, а не из окна', () => {
+    const res = run(new NativeRateLimitedError(7));
+
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toEqual({ error: 'rate_limited' });
+    expect(res.headers.get('retry-after')).toBe(7);
   });
 
   describe('база недоступна', () => {
