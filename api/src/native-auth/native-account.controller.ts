@@ -6,7 +6,8 @@
 // (bearer или сам отзываемый токен), а не cookie. Заголовок x-requested-with —
 // защита браузерных форм, нативный клиент его не шлёт и по профилю не обязан;
 // cookie сессии им не нужна и ничего не подменяет, AuthGuard bearer не читает.
-// Троттлинг — по IP: bearer проверяется в базе, до трекера не верифицирован.
+// Троттлинг renew/revoke — по IP: bearer проверяется в базе, до трекера не
+// верифицирован. У `me` свой бюджет после проверки bearer (native-me-limiter.ts).
 import {
   Body,
   Controller,
@@ -18,7 +19,7 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import {
   NATIVE_CLIENT_ID,
@@ -32,6 +33,7 @@ import { PersonalChats } from '../telegram/personal-chats';
 import { NativeAuthError } from './native-auth-error';
 import { NativeErrorFilter } from './native-error.filter';
 import { NativeGrantsService } from './native-grants.service';
+import { NativeMeLimiter } from './native-me-limiter';
 import {
   assertEmptyJsonObject,
   assertFormRequest,
@@ -52,13 +54,19 @@ export class NativeAccountController {
   constructor(
     private readonly grants: NativeGrantsService,
     private readonly personalChats: PersonalChats,
+    private readonly limiter: NativeMeLimiter,
   ) {}
 
+  // Мимо ThrottlerGuard: и общий, и нативный лимит считают по IP до проверки
+  // bearer, а за одним IP Daychi — все его читатели.
+  @SkipThrottle()
   @Get('me')
   async me(@Req() req: NativeRequestLike): Promise<NativeAccountResponse> {
-    assertNoRequestInput(req);
     const now = DateTime.utc();
-    const { user, credential } = await this.grants.authenticate(bearerTokenOf(req), now);
+    const { user, credential } = await this.limiter.admit(req.ip, now, () => {
+      assertNoRequestInput(req);
+      return this.grants.authenticate(bearerTokenOf(req), now);
+    });
     return {
       // Тот же маппер, что у GET /auth/me: совпадение с вебом (N01) держится
       // одной функцией, а не копией.

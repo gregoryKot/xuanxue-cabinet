@@ -24,3 +24,12 @@ export class NativeAuthError extends Error {
     this.name = 'NativeAuthError';
   }
 }
+
+/** Отказ бюджета `me` (native-me-limiter.ts) со сроком: `Retry-After` из него
+ * ставит native-error.filter.ts. */
+export class NativeRateLimitedError extends NativeAuthError {
+  constructor(readonly retryAfterSec: number) {
+    super('rate_limited');
+    this.name = 'NativeRateLimitedError';
+  }
+}

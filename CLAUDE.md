@@ -549,32 +549,29 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 Workshop revision `e209d27239391be3af2be71b898c79f453851c01`
 
-Existing boundary: Cabinet backend ↔ Cabinet frontend, with local entry points
-`api/`, `web/` and `shared/`. Cabinet owns accounts and current account restrictions.
-Daychi retains its content backend; Knowledge supplies Daychi's editorial/import
-inputs. Current scope/evidence: [Workshop current system](https://github.com/dveyarangi/xuanxue-workshop/blob/d689c24af9e848cae8db81e4cc5701f9cb7a610c/docs/current-system.md).
+Existing boundary: Cabinet backend ↔ Cabinet frontend, with entry points api/, web/
+and shared/. Cabinet owns accounts, native grants and current account restrictions.
+Daychi retains its content backend; Knowledge owns editorial/import preparation.
+Accepted schedule/native-account targets and evidence remain in the
+[target contracts](https://github.com/dveyarangi/xuanxue-workshop/blob/a07f08747aa7d97e4d3496e87e1d8319db413698/docs/boundaries.md#target-connections) and
+[native account profile](https://github.com/dveyarangi/xuanxue-workshop/blob/a07f08747aa7d97e4d3496e87e1d8319db413698/docs/contracts/native-account-session.md); joint results
+remain distinct from source implementation. Native sign-in/lifecycle scope is unchanged.
 
-Accepted target boundaries, joint integration not established: Cabinet backend ↔
-Daychi clients for schedule/account capabilities; Daychi backend ↔ Cabinet backend
-for authoritative access checks. [Target contracts](https://github.com/dveyarangi/xuanxue-workshop/blob/d689c24af9e848cae8db81e4cc5701f9cb7a610c/docs/boundaries.md#target-connections)
-and [native account-session profile](https://github.com/dveyarangi/xuanxue-workshop/blob/3c98d4a5201710f8f777183dd7b61caefe47e2d5/docs/contracts/native-account-session.md) own
-their respective scopes; web-wiki work does not change native bearer/private access.
+Accepted native content connection: Daychi backend forwards the presented native
+bearer to Cabinet GET /api/auth/native/me before each protected native content read.
+Cabinet remains the current session/account authority; validated GET me capacity
+is isolated per grant rather than shared by Daychi's server IP. Daychi adds no
+reader membership, account replica or positive authorization cache. The
+[native content contract](https://github.com/dveyarangi/xuanxue-workshop/blob/a07f08747aa7d97e4d3496e87e1d8319db413698/docs/contracts/native-content-session.md) owns exact wire,
+failure, capacity, compatibility and common cases; implementation/joint proof remain work.
 
-Accepted web-wiki target: Cabinet and wiki share Cabinet's browser session.
-Cabinet owns issuance/current-account validation, browser entry/return and logout;
-Daychi owns protected web delivery and per-request validation through Cabinet.
-All and only valid Cabinet-authenticated web readers receive the same content,
-without additional wiki eligibility or persisted wiki reader credentials/accounts.
-[Web-wiki session contract](https://github.com/dveyarangi/xuanxue-workshop/blob/d689c24af9e848cae8db81e4cc5701f9cb7a610c/docs/contracts/web-wiki-session.md) owns this boundary.
-Daychi's homepage may expose only the contract's separate limited public graph
-overview without a Cabinet session. Existing reader APIs remain protected;
-entering the reader reuses a valid session or signs in with original-page return.
-Daychi owns preview data/projection and exposure controls. This exception changes
-no Cabinet wire, account authority, native/private or editorial/import scope.
-The contract's environment profiles fix matching production/staging origins and
-independent cookie/authority/lifecycle behavior.
-Implementation, coordinated anonymous-access cutover and deployed joint proof
-remain separate evidence from accepting the target.
+Accepted browser-wiki target remains separate: shared Cabinet cookie, per-reader
+current validation, fixed matching production/staging authority, browser entry,
+return, renewal and logout. Daychi owns protected browser delivery and the accepted
+limited public homepage graph projection. The
+[web-wiki contract](https://github.com/dveyarangi/xuanxue-workshop/blob/a07f08747aa7d97e4d3496e87e1d8319db413698/docs/contracts/web-wiki-session.md) owns this scope; native bearer
+checks do not bypass its cookie policy. Existing native/owner/import/Zoom consumers
+and independently coordinated cutovers retain their existing authority.
 
 Use the [/collaborate skill](.claude/skills/collaborate/SKILL.md) at the start of every session,
 before work affecting any boundary described above, and whenever coordinating across

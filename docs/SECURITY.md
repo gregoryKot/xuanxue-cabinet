@@ -568,6 +568,12 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   сессии, неверифицированный — по IP (ADR-0164, `api/src/auth/throttle-tracker.ts`);
   `trust proxy` включён — реальный IP из `x-forwarded-for` от Railway. Гейт:
   `api/test/throttle-session.e2e-spec.ts`.
+- `GET /api/auth/native/me` вне глобального троттлера: бэкенд Daychi проверяет через него
+  каждого читателя со своего одного IP. Сначала проверяется bearer, потом считается
+  бюджет — **60 успешных проверок** в скользящую минуту на грант, общий у прежнего и
+  продлённого ключа; отказ проверки считается по IP и бюджет гранта не тратит, 429 — с
+  `Retry-After` до выхода старейшей проверки из окна (ADR-0184,
+  `api/src/native-auth/native-me-limiter.ts`). Гейт: `api/test/native-me-budget.e2e-spec.ts`.
 - CORS не открывается: фронт и API на одном origin `https://xuanxue.su` (ADR-0009).
   Ссылки наружу строятся от `PUBLIC_URL`, не от заголовка `Host`.
 - `media-src` — `'self'` и маска `https://*.r2.cloudflarestorage.com` (ADR-0133): `<video>`

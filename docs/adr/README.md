@@ -218,3 +218,4 @@
 | [0181](0181-native-account-session.md)                           | Вход нативного Daychi: код и PKCE через браузер, случайный bearer с хешем в базе, отзыв по доступу        |
 | [0182](0182-poster-backfill-by-staff-browser.md)                 | Кадр-превью старым видео снимает браузер штата из байтов через кабинет (`…/bytes`, `PUT …/poster`)        |
 | [0183](0183-session-cookie-profiles.md)                          | Профиль cookie сессии по `PUBLIC_URL`: общая с wiki, свой стейджинг, две одноимённые — отказ              |
+| [0184](0184-native-me-budget-per-grant.md)                       | Бюджет `GET /api/auth/native/me` — 60 проверок в скользящую минуту на грант, невалидный трафик по IP      |

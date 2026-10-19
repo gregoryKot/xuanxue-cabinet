@@ -29,6 +29,8 @@ export interface NativeRequestLike {
   rawHeaders: string[];
   query?: Record<string, unknown>;
   body?: unknown;
+  /** После `trust proxy` — адрес из `x-forwarded-for` (app.setup.ts). */
+  ip?: string;
 }
 
 function isUtf8(contentType: string | string[] | undefined): boolean {

@@ -16,8 +16,12 @@ import { ThrottlerException } from '@nestjs/throttler';
 import type { NativeErrorCode } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
 import { requestIdOf, type RequestLike } from '../common/request-info';
-import { NativeAuthError } from './native-auth-error';
-import { sendNativeError, type NativeResponseLike } from './native-response';
+import { NativeAuthError, NativeRateLimitedError } from './native-auth-error';
+import {
+  RETRY_AFTER_HEADER,
+  sendNativeError,
+  type NativeResponseLike,
+} from './native-response';
 
 // По имени, а не instanceof: драйвер и Mongoose бросают разные классы с одним
 // смыслом («базы нет»), и оба отличаются от ошибки данных, которая — наш сбой.
@@ -69,10 +73,15 @@ export class NativeErrorFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
+    const res = http.getResponse<NativeResponseLike>();
     const code = nativeErrorCodeOf(exception);
     if (code === 'server_error') {
       logNativeFailure(this.logger, http.getRequest<RequestLike>(), exception);
     }
-    sendNativeError(http.getResponse<NativeResponseLike>(), code);
+    // ThrottlerGuard ставит Retry-After сам; бюджет `me` знает срок точнее.
+    if (exception instanceof NativeRateLimitedError) {
+      res.setHeader(RETRY_AFTER_HEADER, exception.retryAfterSec);
+    }
+    sendNativeError(res, code);
   }
 }

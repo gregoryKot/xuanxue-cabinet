@@ -24,6 +24,7 @@ import {
 } from './native-credential.schema';
 import { NativeGrantRecord, NativeGrantSchema } from './native-grant.schema';
 import { NativeGrantsService } from './native-grants.service';
+import { NativeMeLimiter } from './native-me-limiter';
 
 @Module({
   imports: [
@@ -41,6 +42,11 @@ import { NativeGrantsService } from './native-grants.service';
     NativeAuthorizeController,
     NativeAuthorizationController,
   ],
-  providers: [NativeGrantsService, NativeAuthorizationsService, NativeBrowserFlowService],
+  providers: [
+    NativeGrantsService,
+    NativeAuthorizationsService,
+    NativeBrowserFlowService,
+    NativeMeLimiter,
+  ],
 })
 export class NativeAuthModule {}
