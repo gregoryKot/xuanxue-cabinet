@@ -5,7 +5,8 @@
 // `/me/notifications/lessons`, ADR-0162), число для штата к нему
 // (LessonPrefsStatsService, `/notifications/lesson-prefs-stats`) и получатели
 // шагов тика о занятии (LessonRecipientsService); снимок настроек напоминаний для
-// браузера и Daychi (ReminderSyncService, /me/notifications/lessons/sync, ADR-0185).
+// браузера и Daychi и его изменение (ReminderSyncService, ReminderSyncWriteService,
+// /me/notifications/lessons/sync, ADR-0185).
 // NotificationRecord регистрируется здесь и экспортируется через
 // MongooseModule — ExamsModule, который уже импортирует этот модуль ради
 // NotificationPrefsService, собирает им же InAppExamNotifier
@@ -20,6 +21,7 @@ import {
 import { MongooseModule } from '@nestjs/mongoose';
 import { setNoStoreMiddleware } from '../auth/session-check.controller';
 import { ClassesModule } from '../classes/classes.module';
+import { LessonModelModule } from '../lessons/lesson-model.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UserModelModule } from '../users/user-model.module';
 import { InboxController } from './inbox.controller';
@@ -39,6 +41,7 @@ import { NotificationPrefsService } from './notification-prefs.service';
 import { NotificationRecord, NotificationSchema } from './notification.schema';
 import { ReminderSyncController } from './reminder-sync.controller';
 import { ReminderSyncService } from './reminder-sync.service';
+import { ReminderSyncWriteService } from './reminder-sync-write.service';
 
 @Module({
   imports: [
@@ -49,6 +52,9 @@ import { ReminderSyncService } from './reminder-sync.service';
     // Модель ClassRecord — список занятий для выбора «о каких» (ADR-0162).
     // Цикла нет: ClassesModule про уведомления не знает.
     ClassesModule,
+    // Модель LessonRecord — проверка, что добавляемое занятие есть (ADR-0185).
+    // Цикла нет: LessonModelModule только регистрирует модель.
+    LessonModelModule,
     // Школьное «за сколько минут» рядом с личным (SettingsService.get()).
     // Цикла нет: SettingsModule про уведомления не знает.
     SettingsModule,
@@ -69,6 +75,7 @@ import { ReminderSyncService } from './reminder-sync.service';
     LessonRecipientsService,
     LessonNotificationsService,
     ReminderSyncService,
+    ReminderSyncWriteService,
     LessonPrefsStatsService,
     InboxService,
   ],
@@ -80,10 +87,15 @@ import { ReminderSyncService } from './reminder-sync.service';
 export class NotificationsModule implements NestModule {
   // no-store до гвардов: отказы 401/403/429 пишет фильтр, минуя контроллер, а
   // кэшированный снимок или отказ решали бы за приложение по прошлому состоянию
-  // (reminder-sync.controller.ts, тот же приём, что у GET /auth/session).
+  // (reminder-sync.controller.ts, тот же приём, что у GET /auth/session). Отказ
+  // парсера тела PATCH (413) идёт мимо этого middleware — его заголовок ставит
+  // сам парсер (reminder-sync-body.ts).
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(setNoStoreMiddleware)
-      .forRoutes({ path: 'me/notifications/lessons/sync', method: RequestMethod.GET });
+      .forRoutes(
+        { path: 'me/notifications/lessons/sync', method: RequestMethod.GET },
+        { path: 'me/notifications/lessons/sync', method: RequestMethod.PATCH },
+      );
   }
 }

@@ -8,7 +8,8 @@
 // что GET, по той же причине, что PATCH. `/notifications/lesson-prefs-stats` —
 // число для штата: сколько учеников этим воспользовались (ADR-0162, п. 5).
 // `/me/notifications/lessons/sync` — снимок настроек напоминаний целиком для
-// браузера и для приложения Daychi (ADR-0185).
+// браузера и для приложения Daychi (ADR-0185); PATCH к нему меняет указанные ключи
+// и отдаёт новый снимок целиком.
 import type {
   MyLessonNotificationsDto,
   UpdateLessonReminderInput,
@@ -22,7 +23,7 @@ import type {
   SubscribePushInput,
   UnsubscribePushInput,
 } from './push';
-import type { ReminderSyncSnapshot } from './reminder-sync';
+import type { ReminderSyncPatch, ReminderSyncSnapshot } from './reminder-sync';
 
 export interface NotificationsRoutes {
   'GET /me/notifications': {
@@ -43,6 +44,11 @@ export interface NotificationsRoutes {
   'GET /me/notifications/lessons/sync': {
     query: undefined;
     body: undefined;
+    response: ReminderSyncSnapshot;
+  };
+  'PATCH /me/notifications/lessons/sync': {
+    query: undefined;
+    body: ReminderSyncPatch;
     response: ReminderSyncSnapshot;
   };
   'PUT /me/notifications/lessons/scope': {
@@ -82,6 +88,7 @@ export const NOTIFICATIONS_ROUTE_KEYS: Record<keyof NotificationsRoutes, true> =
   'PATCH /me/notifications': true,
   'GET /me/notifications/lessons': true,
   'GET /me/notifications/lessons/sync': true,
+  'PATCH /me/notifications/lessons/sync': true,
   'PUT /me/notifications/lessons/scope': true,
   'PUT /me/notifications/lessons/reminder-minutes': true,
   'GET /notifications/lesson-prefs-stats': true,

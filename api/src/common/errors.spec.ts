@@ -4,7 +4,9 @@ import {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  SelectionLimitError,
   UnauthorizedError,
+  UnsupportedMediaTypeError,
 } from './errors';
 
 describe('доменные ошибки', () => {
@@ -15,6 +17,8 @@ describe('доменные ошибки', () => {
     [InvalidInputError, 400, 'invalid_input'],
     [UnauthorizedError, 401, 'unauthorized'],
     [AmbiguousCredentialsError, 400, 'ambiguous_credentials'],
+    [SelectionLimitError, 409, 'selection_limit'],
+    [UnsupportedMediaTypeError, 415, 'unsupported_media_type'],
   ] as const)('%p: статус %i, код %s', (ErrorClass, status, code) => {
     const err = new ErrorClass('текст для пользователя');
     expect(err.status).toBe(status);

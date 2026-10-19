@@ -111,13 +111,25 @@ export class LessonScopeService {
   /** Записать своё «за сколько минут»; `null` — вернуться к «как в школе»
    * (`$unset`, а не 0: ноль означал бы «напомнить за 0 минут»). Сброс документ
    * не заводит: сбрасывать нечего там, где ничего не выбирали. Идемпотентна —
-   * то же значение второй раз даёт тот же документ. */
+   * то же значение второй раз даёт тот же документ.
+   *
+   * Поле входит в снимок синхронизации, поэтому настоящее изменение двигает
+   * `reminderRevision` (ADR-0185): иначе условная запись PATCH, прочитавшая
+   * состояние до этой записи, вернула бы старые минуты. Фильтр по значению —
+   * чтобы повтор того же значения ревизию не двигал. */
   async setReminderMinutes(userId: string, minutes: number | null): Promise<void> {
+    const bump = { $inc: { reminderRevision: 1 } };
     if (minutes === null) {
-      await this.model.updateOne({ userId }, { $unset: { lessonReminderMinutes: 1 } });
+      await this.model.updateOne(
+        { userId, lessonReminderMinutes: { $exists: true } },
+        { $unset: { lessonReminderMinutes: 1 }, ...bump },
+      );
       return;
     }
     await ensurePrefsDoc(this.model, userId);
-    await this.model.updateOne({ userId }, { $set: { lessonReminderMinutes: minutes } });
+    await this.model.updateOne(
+      { userId, lessonReminderMinutes: { $ne: minutes } },
+      { $set: { lessonReminderMinutes: minutes }, ...bump },
+    );
   }
 }
