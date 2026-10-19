@@ -14,7 +14,10 @@ import {
 import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import {
+  MY_LESSON_NOTIFICATIONS_PATH,
+  REMINDER_SYNC_PATH,
+} from '../api/lessonScopePaths';
 import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
 import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
@@ -202,17 +205,17 @@ describe('firstScreenPaths', () => {
     expect(firstScreenPaths('/profile', makeMe({ roles: [] }))).toEqual([]);
   });
 
-  it('ученик на /notifications/settings — греются виды уведомлений и занятия для выбора', () => {
+  it('ученик на /notifications/settings — греются виды уведомлений и снимок напоминаний', () => {
     expect(firstScreenPaths('/notifications/settings', makeMe({ roles: [] }))).toEqual([
       '/me/notifications',
-      MY_LESSON_NOTIFICATIONS_PATH,
+      REMINDER_SYNC_PATH,
     ]);
   });
 
   // Блок «О каких занятиях» у штата не рисуется (у него нет вида про занятие,
-  // ADR-0162) — промис за занятиями остался бы в prefetchCache, забрать его
+  // ADR-0162) — промис за снимком остался бы в prefetchCache, забрать его
   // было бы некому.
-  it('штат на /notifications/settings — греются только виды уведомлений, без занятий', () => {
+  it('штат на /notifications/settings — греются только виды уведомлений, без снимка напоминаний', () => {
     for (const role of ['teacher', 'assistant', 'admin', 'accountant'] as const) {
       expect(
         firstScreenPaths('/notifications/settings', makeMe({ roles: [role] })),

@@ -1,13 +1,8 @@
-// Правка выбора «о каких занятиях» (lessonScopeEdit.ts): из текущего выбора и
-// клика получается тело PUT. Чистая логика, без React и сети.
+// Правка фильтра «о каких занятиях» (lessonScopeEdit.ts): из текущего выбора
+// получается тело PUT для подсказки в ленте. Чистая логика, без React и сети.
 import { describe, expect, it } from 'vitest';
 import type { LessonScopeClassDto } from '@xuanxue/shared';
-import {
-  hasNoTicks,
-  scopeWithMode,
-  scopeWithTick,
-  tickedClassIds,
-} from './lessonScopeEdit';
+import { scopeWithMode, tickedClassIds } from './lessonScopeEdit';
 
 const makeClass = (id: string): LessonScopeClassDto => ({
   id,
@@ -49,55 +44,5 @@ describe('scopeWithMode', () => {
     expect(
       scopeWithMode({ mode: 'all', classIds: ['c1', 'gone'] }, CLASSES, 'selected'),
     ).toEqual({ mode: 'selected', classIds: ['c1'] });
-  });
-});
-
-describe('scopeWithTick', () => {
-  it('новая галочка встаёт в порядок списка', () => {
-    expect(
-      scopeWithTick({ mode: 'selected', classIds: ['c3'] }, CLASSES, 'c1', true),
-    ).toEqual({ mode: 'selected', classIds: ['c1', 'c3'] });
-  });
-
-  it('снятая галочка уходит, остальные остаются', () => {
-    expect(
-      scopeWithTick({ mode: 'selected', classIds: ['c1', 'c2'] }, CLASSES, 'c1', false),
-    ).toEqual({ mode: 'selected', classIds: ['c2'] });
-  });
-
-  it('вторая такая же галочка ничего не дублирует', () => {
-    expect(
-      scopeWithTick({ mode: 'selected', classIds: ['c1'] }, CLASSES, 'c1', true),
-    ).toEqual({ mode: 'selected', classIds: ['c1'] });
-  });
-
-  it('устаревший id в выборе в тело не попадает', () => {
-    expect(
-      scopeWithTick({ mode: 'selected', classIds: ['gone'] }, CLASSES, 'c2', true),
-    ).toEqual({ mode: 'selected', classIds: ['c2'] });
-  });
-
-  it('режим выбора не меняется', () => {
-    expect(scopeWithTick({ mode: 'all', classIds: [] }, CLASSES, 'c1', true).mode).toBe(
-      'all',
-    );
-  });
-});
-
-describe('hasNoTicks', () => {
-  it('«выбранные» без галочек — ни о каких', () => {
-    expect(hasNoTicks({ mode: 'selected', classIds: [] }, CLASSES)).toBe(true);
-  });
-
-  it('«выбранные» только с устаревшим id — тоже ни о каких: его занятия в списке нет', () => {
-    expect(hasNoTicks({ mode: 'selected', classIds: ['gone'] }, CLASSES)).toBe(true);
-  });
-
-  it('«выбранные» с галочкой — есть о чём напоминать', () => {
-    expect(hasNoTicks({ mode: 'selected', classIds: ['c2'] }, CLASSES)).toBe(false);
-  });
-
-  it('«все» — пустой список галочек ничего не значит', () => {
-    expect(hasNoTicks({ mode: 'all', classIds: [] }, CLASSES)).toBe(false);
   });
 });

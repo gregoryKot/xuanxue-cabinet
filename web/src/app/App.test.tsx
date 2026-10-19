@@ -686,7 +686,16 @@ describe('App', () => {
       homeHiddenTiles: [],
     };
     mockRoute(student, {
-      '/me/notifications/lessons': { scope: { mode: 'all', classIds: [] }, classes: [] },
+      '/me/notifications/lessons/sync': {
+        version: 1,
+        accountId: 's1',
+        revision: '0',
+        classIds: [],
+        lessonIds: [],
+        leadMinutes: null,
+        schoolMinutes: 60,
+        classes: [],
+      },
       '/me/notifications': { enabled: [] },
       '/push/public-key': { publicKey: null },
     });
@@ -698,6 +707,8 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
     expect(await screen.findByText('О каких занятиях')).toBeInTheDocument();
+    // Блок рисует снимок напоминаний из `GET …/lessons/sync`.
+    expect(await screen.findByText('В расписании пока нет занятий.')).toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
