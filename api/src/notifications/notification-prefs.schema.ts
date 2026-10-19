@@ -76,7 +76,7 @@ export class NotificationPrefsRecord {
   // Своё «за сколько минут напомнить о занятии» (ADR-0162). Нет поля — «как в
   // школе» (`settings.lessonReminderMinutes`): человек ничего не выбирал или
   // снял выбор. Отдельное поле, как `paymentReminderDay`: число не влезает в
-  // overrides. Значения — только из короткого списка (`0` — «не напоминать»);
+  // overrides. Значения — только из короткого списка (`0` — в момент начала);
   // `enum` ловит запись через `create`/`save`, а запись через API держат DTO и
   // разбор тела записи (updateOne валидаторы схемы не запускает).
   @Prop({ type: Number, enum: REMINDER_SYNC_LEAD_CHOICES })
