@@ -13,7 +13,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { AuthProvider } from './AuthProvider';
+import { AuthProvider, useAuth } from './AuthProvider';
 import LoginScreen from './LoginScreen';
 import { hasPendingWikiReturn } from './returnTo';
 
@@ -42,10 +42,15 @@ function LocationProbe() {
   return <p data-testid="location">{`${pathname}${search}`}</p>;
 }
 
+function AuthStatusProbe() {
+  return <span data-testid="auth-status">{useAuth().status}</span>;
+}
+
 function renderScreen(search: string) {
   return render(
     <MemoryRouter initialEntries={[`/login${search}`]}>
       <AuthProvider>
+        <AuthStatusProbe />
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
           <Route path="*" element={<LocationProbe />} />
@@ -83,12 +88,23 @@ describe('LoginScreen — возврат из wiki', () => {
   });
 });
 
+/** Гость, на экране которого возврат к вкладке уже слушается. Ни кнопки
+ * входа, ни ушедшего /auth/me мало: /auth/config уходит раньше и кнопка бывает
+ * на экране при статусе 'loading', а useSessionRecheckOnReturn подписывается
+ * только после ответа /auth/me (красный CI на main, 5838fa5, 2026-10-17). */
+async function renderGuestScreen(search: string) {
+  mockSession(GUEST);
+  renderScreen(search);
+  await screen.findByRole('button', { name: 'Войти через Telegram' });
+  await waitFor(() =>
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('guest'),
+  );
+}
+
 describe('LoginScreen — вход завершился в другой вкладке', () => {
   it('гость с возвратом в wiki: фокус перечитывает сессию и ведёт на wiki', async () => {
-    mockSession(GUEST);
-    renderScreen(WIKI_SEARCH);
-    await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await waitFor(() => expect(meCalls()).toBe(1));
+    await renderGuestScreen(WIKI_SEARCH);
+    expect(meCalls()).toBe(1);
 
     mockSession(makeMe());
     act(() => {
@@ -100,10 +116,8 @@ describe('LoginScreen — вход завершился в другой вкла
   });
 
   it('гость без возврата в wiki: фокус сессию не перечитывает', async () => {
-    mockSession(GUEST);
-    renderScreen('');
-    await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await waitFor(() => expect(meCalls()).toBe(1));
+    await renderGuestScreen('');
+    expect(meCalls()).toBe(1);
 
     act(() => {
       window.dispatchEvent(new Event('focus'));
