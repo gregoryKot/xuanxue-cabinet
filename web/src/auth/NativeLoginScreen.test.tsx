@@ -186,11 +186,24 @@ describe('NativeLoginScreen — в адресе нет годного номер
   );
 });
 
+/** Экран гостя, на котором возврат к вкладке уже слушается. Кнопки входа
+ * ждать мало: /auth/config уходит раньше /auth/me, кнопка бывает на экране
+ * при статусе 'loading', а useSessionRecheckOnReturn подписывается только
+ * после ответа /auth/me — фокус в этот промежуток терялся (красный CI на main,
+ * 5838fa5, 2026-10-17). */
+async function renderGuestScreen() {
+  mockMe(GUEST);
+  const view = renderScreen(`?attempt=${ATTEMPT_ID}`);
+  await screen.findByRole('button', { name: 'Войти через Telegram' });
+  await waitFor(() =>
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('guest'),
+  );
+  return view;
+}
+
 describe('NativeLoginScreen — вход завершился в другой вкладке', () => {
   it('фокус после входа по письму — перечитывает сессию и продолжает свою попытку', async () => {
-    mockMe(GUEST);
-    renderScreen(`?attempt=${ATTEMPT_ID}`);
-    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    await renderGuestScreen();
 
     mockMe(makeMe());
     act(() => {
@@ -202,9 +215,7 @@ describe('NativeLoginScreen — вход завершился в другой в
   });
 
   it('visibilitychange: скрытая вкладка не перечитывает, видимая — продолжает', async () => {
-    mockMe(GUEST);
-    renderScreen(`?attempt=${ATTEMPT_ID}`);
-    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    await renderGuestScreen();
     mockMe(makeMe());
     const callsBefore = meCalls();
 
@@ -230,9 +241,7 @@ describe('NativeLoginScreen — вход завершился в другой в
   });
 
   it('после ухода с экрана фокус больше не перечитывает сессию', async () => {
-    mockMe(GUEST);
-    const { unmount } = renderScreen(`?attempt=${ATTEMPT_ID}`);
-    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    const { unmount } = await renderGuestScreen();
     unmount();
     const callsBefore = meCalls();
 
