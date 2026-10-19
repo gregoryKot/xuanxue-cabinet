@@ -245,6 +245,40 @@ describe('LessonCancelNoticeService.announce (ADR-0162)', () => {
 
       expect(push.sendToUser).not.toHaveBeenCalled();
     });
+
+    // ADR-0185: выбор напоминаний («Занятие скоро») отмену не трогает, а выбор
+    // «о каких занятиях» по-прежнему решает, о чём писать при отмене.
+    it('выбор напоминаний отмену не меняет: решает только «о каких занятиях»', async () => {
+      const inScope = await student('Ваня');
+      const outOfScope = await student('Маша');
+      const thisClass = await createClass({ title: 'Цигун для глаз' });
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await cancelledLesson(thisClass._id);
+      const scopes = new LessonScopeService(prefsModel);
+      await scopes.set(inScope, {
+        mode: 'selected',
+        classIds: [thisClass._id.toString()],
+      });
+      await scopes.set(outOfScope, {
+        mode: 'selected',
+        classIds: [otherClass._id.toString()],
+      });
+      // Напоминания выбраны наоборот: этот класс — у того, кому отмена не нужна.
+      await prefsModel.updateOne(
+        { userId: inScope },
+        { $set: { reminderClassIds: [otherClass._id.toString()] } },
+      );
+      await prefsModel.updateOne(
+        { userId: outOfScope },
+        { $set: { reminderClassIds: [thisClass._id.toString()] } },
+      );
+      const { service } = build();
+
+      expect(await service.announce(NOW)).toEqual({ notified: 1 });
+
+      expect(await rowsOf(inScope)).toHaveLength(1);
+      expect(await rowsOf(outOfScope)).toEqual([]);
+    });
   });
 
   describe('какие занятия объявляются', () => {

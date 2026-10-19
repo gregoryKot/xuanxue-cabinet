@@ -13,13 +13,20 @@ import { ensurePrefsDoc } from './ensure-prefs-doc';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
 
 type LeanScope = Pick<NotificationPrefsRecord, 'lessonScopeMode' | 'lessonClassIds'>;
-type LeanLessonPrefs = LeanScope & Pick<NotificationPrefsRecord, 'lessonReminderMinutes'>;
+type LeanLessonPrefs = LeanScope &
+  Pick<
+    NotificationPrefsRecord,
+    'lessonReminderMinutes' | 'reminderClassIds' | 'reminderLessonIds'
+  >;
 
-/** Всё, что тик напоминания знает о человеке: о каких занятиях и за сколько.
- * `reminderMinutes` нет — «как в школе». */
+/** Всё, что шаги тика знают о человеке: `scope` — для отмены, записи и материалов
+ * (ADR-0162), `reminder*Ids` — для «Занятие скоро» (ADR-0185), друг на друга они не
+ * влияют. Нет документа или поля — пустые множества; `reminderMinutes` нет — «как в школе». */
 export interface LessonPrefs {
   scope: LessonScope;
   reminderMinutes?: number;
+  reminderClassIds: ReadonlySet<string>;
+  reminderLessonIds: ReadonlySet<string>;
 }
 
 /** Выбор человека и то, делал ли он его сам: «все» по умолчанию и «все»,
@@ -41,12 +48,14 @@ function toScope(doc: LeanScope | null | undefined): LessonScope {
 }
 
 function toLessonPrefs(doc: LeanLessonPrefs | undefined): LessonPrefs {
-  const prefs: LessonPrefs = { scope: toScope(doc) };
-  // Ключ не заводим пустым: «как в школе» — это отсутствие значения.
-  if (doc?.lessonReminderMinutes !== undefined) {
-    prefs.reminderMinutes = doc.lessonReminderMinutes;
-  }
-  return prefs;
+  const minutes = doc?.lessonReminderMinutes;
+  return {
+    scope: toScope(doc),
+    reminderClassIds: new Set(doc?.reminderClassIds),
+    reminderLessonIds: new Set(doc?.reminderLessonIds),
+    // Ключ не заводим пустым: «как в школе» — это отсутствие значения.
+    ...(minutes !== undefined && { reminderMinutes: minutes }),
+  };
 }
 
 @Injectable()
@@ -74,10 +83,9 @@ export class LessonScopeService {
     return doc?.lessonReminderMinutes;
   }
 
-  /** Выбор «о каких» и «за сколько» целой пачки людей одним запросом — тик
-   * напоминания о занятии не читает настройки по одному ученику в цикле.
-   * Каждый входной id есть в результате: у тех, у кого документа нет, — `all` и
-   * «как в школе». */
+  /** Выбор «о каких», «за сколько» и напоминаний целой пачки людей одним запросом —
+   * шаги тика не читают настройки по одному в цикле. Каждый входной id есть в
+   * результате: нет документа — `all`, «как в школе», пустые выборы напоминаний. */
   async getManyLessonPrefs(
     userIds: readonly string[],
   ): Promise<Map<string, LessonPrefs>> {
@@ -85,7 +93,14 @@ export class LessonScopeService {
     const docs = await this.model
       .find(
         { userId: { $in: [...userIds] } },
-        { userId: 1, lessonScopeMode: 1, lessonClassIds: 1, lessonReminderMinutes: 1 },
+        {
+          userId: 1,
+          lessonScopeMode: 1,
+          lessonClassIds: 1,
+          lessonReminderMinutes: 1,
+          reminderClassIds: 1,
+          reminderLessonIds: 1,
+        },
       )
       .lean<(LeanLessonPrefs & { userId: string })[]>();
     const byUserId = new Map(docs.map((doc) => [doc.userId, doc]));

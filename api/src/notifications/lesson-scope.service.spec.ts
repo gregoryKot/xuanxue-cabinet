@@ -7,6 +7,12 @@ import { NotificationPrefsRecord } from './notification-prefs.schema';
 import { LessonScopeService } from './lesson-scope.service';
 import { NotificationPrefsService } from './notification-prefs.service';
 
+// У человека без выбора напоминаний оба множества пусты (ADR-0185).
+const NO_REMINDERS = {
+  reminderClassIds: new Set<string>(),
+  reminderLessonIds: new Set<string>(),
+};
+
 describe('LessonScopeService', () => {
   let memory: MemoryMongo;
   let model: Model<NotificationPrefsRecord>;
@@ -148,9 +154,9 @@ describe('LessonScopeService', () => {
 
       expect(result).toEqual(
         new Map([
-          ['u1', { scope: { mode: 'selected', classIds: ['c1'] } }],
-          ['u2', { scope: { mode: 'all', classIds: [] } }],
-          ['u3', { scope: { mode: 'all', classIds: [] } }],
+          ['u1', { scope: { mode: 'selected', classIds: ['c1'] }, ...NO_REMINDERS }],
+          ['u2', { scope: { mode: 'all', classIds: [] }, ...NO_REMINDERS }],
+          ['u3', { scope: { mode: 'all', classIds: [] }, ...NO_REMINDERS }],
         ]),
       );
     });
@@ -165,12 +171,50 @@ describe('LessonScopeService', () => {
       expect(result.get('u1')).toEqual({
         scope: { mode: 'selected', classIds: ['c1'] },
         reminderMinutes: 120,
+        ...NO_REMINDERS,
       });
       expect(result.get('u2')).toEqual({
         scope: { mode: 'all', classIds: [] },
         reminderMinutes: 15,
+        ...NO_REMINDERS,
       });
-      expect(result.get('u3')).toEqual({ scope: { mode: 'all', classIds: [] } });
+      expect(result.get('u3')).toEqual({
+        scope: { mode: 'all', classIds: [] },
+        ...NO_REMINDERS,
+      });
+    });
+
+    // ADR-0185: выбор напоминаний приезжает тем же запросом, что и выбор «о каких».
+    it('выбор напоминаний — множествами; нет документа или поля — пустые множества', async () => {
+      await model.create({
+        userId: 'u1',
+        reminderClassIds: ['c1', 'c2'],
+        reminderLessonIds: ['l1'],
+      });
+      await model.create({ userId: 'u2', reminderClassIds: ['c3'] });
+      await new NotificationPrefsService(model).set('u3', 'exam_result', false);
+
+      const result = await service.getManyLessonPrefs(['u1', 'u2', 'u3', 'u4']);
+
+      expect(result.get('u1')?.reminderClassIds).toEqual(new Set(['c1', 'c2']));
+      expect(result.get('u1')?.reminderLessonIds).toEqual(new Set(['l1']));
+      expect(result.get('u2')?.reminderClassIds).toEqual(new Set(['c3']));
+      expect(result.get('u2')?.reminderLessonIds).toEqual(new Set());
+      expect(result.get('u3')).toMatchObject(NO_REMINDERS);
+      expect(result.get('u4')).toMatchObject(NO_REMINDERS);
+    });
+
+    it('выбор напоминаний и выбор «о каких» не смешиваются: каждый в своём поле', async () => {
+      await service.set('u1', { mode: 'selected', classIds: ['scope-class'] });
+      await model.updateOne(
+        { userId: 'u1' },
+        { $set: { reminderClassIds: ['rem-class'] } },
+      );
+
+      const prefs = (await service.getManyLessonPrefs(['u1'])).get('u1');
+
+      expect(prefs?.scope).toEqual({ mode: 'selected', classIds: ['scope-class'] });
+      expect(prefs?.reminderClassIds).toEqual(new Set(['rem-class']));
     });
 
     it('чужих людей в результате нет', async () => {

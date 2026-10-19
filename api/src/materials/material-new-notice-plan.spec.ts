@@ -13,9 +13,20 @@ const QIGONG: PlanMaterial = {
   audience: new Set(['c-qigong']),
 };
 
-const ALL: LessonPrefs = { scope: { mode: 'all', classIds: [] } };
-const ONLY_TAICHI: LessonPrefs = { scope: { mode: 'selected', classIds: ['c-taichi'] } };
-const ONLY_QIGONG: LessonPrefs = { scope: { mode: 'selected', classIds: ['c-qigong'] } };
+// Выбор напоминаний на «Новый материал» не влияет (ADR-0185): у всех пустой.
+const NO_REMINDERS = {
+  reminderClassIds: new Set<string>(),
+  reminderLessonIds: new Set<string>(),
+};
+const ALL: LessonPrefs = { scope: { mode: 'all', classIds: [] }, ...NO_REMINDERS };
+const ONLY_TAICHI: LessonPrefs = {
+  scope: { mode: 'selected', classIds: ['c-taichi'] },
+  ...NO_REMINDERS,
+};
+const ONLY_QIGONG: LessonPrefs = {
+  scope: { mode: 'selected', classIds: ['c-qigong'] },
+  ...NO_REMINDERS,
+};
 
 function plan(input: Partial<Parameters<typeof planMaterialNotices>[0]> = {}) {
   return planMaterialNotices({
