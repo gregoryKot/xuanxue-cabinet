@@ -237,10 +237,7 @@ function toVerifying(state: ReminderSyncState): ReminderSyncState {
   return { ...state, phase: 'verifying', readError: null, refusal: null };
 }
 
-type EventOf<T extends ReminderSyncEvent['type']> = Extract<
-  ReminderSyncEvent,
-  { type: T }
->;
+type EventOf<T> = Extract<ReminderSyncEvent, { type: T }>;
 
 function applySave(
   state: ReminderSyncState,
@@ -255,11 +252,8 @@ function applySave(
   const failure = classifyWriteFailure(event.error);
   if (failure.kind === 'uncertain') return toVerifying(state);
   if (failure.kind === 'unauthorized') return { ...state, phase: 'idle' };
-  return {
-    ...state,
-    phase: 'idle',
-    refusal: { kind: event.kind, message: failure.message },
-  };
+  const refusal = { kind: event.kind, message: failure.message };
+  return { ...state, phase: 'idle', refusal };
 }
 
 function applyRead(
