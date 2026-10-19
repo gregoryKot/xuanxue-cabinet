@@ -13,6 +13,7 @@ import type { Connection, Model, Types } from 'mongoose';
 import type { SettingsDto } from '@xuanxue/shared';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { writeOwnReminderMinutes } from '../test-support/own-reminder-minutes';
 import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
@@ -286,7 +287,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       const cls = await createClass();
       await scheduleAt(cls._id, 90);
       await choose(chooser, { classes: [cls._id] });
-      await new LessonScopeService(prefsModel).setReminderMinutes(early, 120);
+      await writeOwnReminderMinutes(prefsModel, early, 120);
       const find = jest.spyOn(lessonModel, 'find');
       const { service } = build();
 
@@ -459,7 +460,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
         const id = await newStudent();
         const cls = await createClass();
         await choose(id, { classes: [cls._id] });
-        await new LessonScopeService(prefsModel).setReminderMinutes(id, 0);
+        await writeOwnReminderMinutes(prefsModel, id, 0);
         return { id, cls };
       }
 
@@ -595,9 +596,8 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     // часа, на деле час: с выбором «за 60» пора, с выбором «за 30» ещё нет.
     const sixty = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
     const thirty = await userModel.create({ name: 'Маша', roles: [], status: 'active' });
-    const scopes = new LessonScopeService(prefsModel);
-    await scopes.setReminderMinutes(sixty._id.toString(), 60);
-    await scopes.setReminderMinutes(thirty._id.toString(), 30);
+    await writeOwnReminderMinutes(prefsModel, sixty._id.toString(), 60);
+    await writeOwnReminderMinutes(prefsModel, thirty._id.toString(), 30);
     const cls = await createChosenClass();
     const now = DateTime.fromISO('2026-03-27T01:30:00', { zone: 'Asia/Jerusalem' });
     await lessonModel.create({
@@ -634,7 +634,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       const user = await userModel.create({ name, roles: [], status: 'active' });
       const id = user._id.toString();
       if (minutes !== undefined) {
-        await new LessonScopeService(prefsModel).setReminderMinutes(id, minutes);
+        await writeOwnReminderMinutes(prefsModel, id, minutes);
       }
       return id;
     }
@@ -682,13 +682,12 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('снял свой выбор (вернулся к школьным 60) — напоминание приходит уже за школьный час', async () => {
       const id = await student('Ваня', 15);
-      const scopes = new LessonScopeService(prefsModel);
       const cls = await createChosenClass();
       await scheduleIn(45, cls._id);
       const { service } = build();
 
       expect(await service.remind(NOW)).toEqual({ reminded: 0 });
-      await scopes.setReminderMinutes(id, null);
+      await writeOwnReminderMinutes(prefsModel, id, null);
       expect(await service.remind(NOW)).toEqual({ reminded: 1 });
     });
 
@@ -713,7 +712,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       const { service, push } = build();
       expect(await service.remind(NOW)).toEqual({ reminded: 1 });
 
-      await new LessonScopeService(prefsModel).setReminderMinutes(id, 120);
+      await writeOwnReminderMinutes(prefsModel, id, 120);
 
       expect(await service.remind(NOW.plus({ minutes: 1 }))).toEqual({ reminded: 0 });
       expect(await rowsOf(id)).toHaveLength(1);

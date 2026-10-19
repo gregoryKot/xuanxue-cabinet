@@ -1,5 +1,5 @@
-// Число для школы к выбору «о каких занятиях» и «за сколько» (ADR-0162, п. 5):
-// сколько активных учеников этим меню воспользовались. Три числа одним
+// Число для школы к настройкам напоминаний (ADR-0185): у скольких активных
+// учеников есть выбор занятий для напоминаний и своё «за сколько». Три числа одним
 // запросом, а не список учеников и их настройки: «дай всё» запрещено (CLAUDE.md
 // «API»), да и штату нужно только «мало или много», а не кто именно.
 // Ученик — тот же, что у `listActiveStudents` (люди без единой роли и без
@@ -19,6 +19,13 @@ const PREFS_FIELD = 'prefs';
 /** 1, если условие верно, иначе 0 — слагаемое для `$sum` в `$group`. */
 function countIf(condition: Expression): { $sum: Expression } {
   return { $sum: { $cond: [condition, 1, 0] } };
+}
+
+/** Хоть одно занятие расписания или отдельное занятие выбрано для напоминаний.
+ * Нет документа или поля — пустой выбор, а не ошибка `$size` на отсутствующем. */
+function hasReminderChoice(prefs: (field: string) => string): Expression {
+  const size = (field: string) => ({ $size: { $ifNull: [prefs(field), []] } });
+  return { $gt: [{ $add: [size('reminderClassIds'), size('reminderLessonIds')] }, 0] };
 }
 
 @Injectable()
@@ -44,7 +51,13 @@ export class LessonPrefsStatsService {
           let: { id: { $toString: '$_id' } },
           pipeline: [
             { $match: { $expr: { $eq: ['$userId', '$$id'] } } },
-            { $project: { lessonScopeMode: 1, lessonReminderMinutes: 1 } },
+            {
+              $project: {
+                reminderClassIds: 1,
+                reminderLessonIds: 1,
+                lessonReminderMinutes: 1,
+              },
+            },
           ],
           as: PREFS_FIELD,
         },
@@ -56,7 +69,7 @@ export class LessonPrefsStatsService {
         $group: {
           _id: null,
           activeStudents: { $sum: 1 },
-          chosenClasses: countIf({ $eq: [prefs('lessonScopeMode'), 'selected'] }),
+          withReminders: countIf(hasReminderChoice(prefs)),
           ownReminder: countIf({ $isNumber: prefs('lessonReminderMinutes') }),
         },
       },
@@ -66,7 +79,7 @@ export class LessonPrefsStatsService {
     // ничего не возвращает.
     return {
       activeStudents: totals?.activeStudents ?? 0,
-      chosenClasses: totals?.chosenClasses ?? 0,
+      withReminders: totals?.withReminders ?? 0,
       ownReminder: totals?.ownReminder ?? 0,
     };
   }

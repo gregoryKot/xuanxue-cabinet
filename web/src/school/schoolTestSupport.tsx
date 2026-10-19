@@ -16,9 +16,9 @@ import SchoolScreen from './SchoolScreen';
 
 const STATS_PATH = '/notifications/lesson-prefs-stats';
 
-/** Строка «сколько учеников выбрали своё» (LessonPrefsStats.tsx) тянет свой
+/** Строка «сколько учеников отметили занятия» (LessonPrefsStats.tsx) тянет свой
  * запрос при открытии экрана; в тестах разделов она не предмет проверки. */
-const EMPTY_STATS = { activeStudents: 0, chosenClasses: 0, ownReminder: 0 };
+const EMPTY_STATS = { activeStudents: 0, withReminders: 0, ownReminder: 0 };
 
 export function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
   return {

@@ -19,6 +19,7 @@ import {
 } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import { useAuth } from '../auth/AuthProvider';
+import { hasLessonSettings } from './lessonReminderVisibility';
 import {
   canSave,
   initialReminderSyncState,
@@ -28,7 +29,6 @@ import {
   type ReminderRefusal,
   type ReminderSyncNotice,
 } from './reminderSyncState';
-import { hasLessonSettings } from './useLessonScope';
 
 export interface UseReminderSyncResult {
   /** Подтверждённый снимок; `null`, пока его нет. */

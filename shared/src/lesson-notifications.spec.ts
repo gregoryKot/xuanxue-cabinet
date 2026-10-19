@@ -4,7 +4,6 @@ import {
   effectiveReminderMinutes,
   hasLessonScopedKinds,
   isLessonInScope,
-  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_MODES,
   LESSON_SCOPED_KINDS,
 } from './lesson-notifications';
@@ -49,14 +48,7 @@ describe('effectiveReminderMinutes', () => {
   });
 
   it('школьное значение не обязано быть из списка: его задаёт учитель числом', () => {
-    expect(LESSON_REMINDER_CHOICES).not.toContain(45);
     expect(effectiveReminderMinutes(null, 45)).toBe(45);
-  });
-});
-
-describe('LESSON_REMINDER_CHOICES', () => {
-  it('четыре пункта по возрастанию: от «успеть подключиться» до «успеть доехать»', () => {
-    expect(LESSON_REMINDER_CHOICES).toEqual([15, 30, 60, 120]);
   });
 });
 
@@ -76,9 +68,10 @@ describe('hasLessonScopedKinds', () => {
     expect(hasLessonScopedKinds([])).toBe(false);
   });
 
-  // ADR-0162: отмену, запись и материал тик сверяет с выбором человека
-  // (isLessonInScope), поэтому они в списке видов, которые выбор фильтрует.
-  it('виды про занятие и материал подчиняются выбору, остальные виды — нет', () => {
+  // ADR-0162: отмену, запись и материал тик сверяет с фильтром «о каких занятиях»
+  // (isLessonInScope), «Занятие скоро» — с выбором напоминаний (ADR-0185); все четыре
+  // касаются занятия, и у человека с любым из них показывается выбор занятий.
+  it('виды про занятие и материал касаются занятий, остальные виды — нет', () => {
     expect(LESSON_SCOPED_KINDS).toEqual([
       'lesson_soon',
       'lesson_cancelled',

@@ -1,4 +1,4 @@
-// Число для школы к меню уведомлений (ADR-0162, п. 5) — три числа одним
+// Число для школы к меню уведомлений (ADR-0185) — три числа одним
 // запросом `GET /notifications/lesson-prefs-stats`. Только для штата: экран
 // «Шаблоны» штатный, а контроллер ещё и закрыт ролью. Строку из чисел собирает
 // formatLessonPrefsStats (lessonPrefsStatsText.ts).
@@ -7,7 +7,7 @@ import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE =
-  'Не удалось загрузить, сколько учеников выбрали своё. Обновите страницу.';
+  'Не удалось загрузить, сколько учеников отметили занятия. Обновите страницу.';
 
 export interface UseLessonPrefsStatsResult {
   stats: LessonPrefsStatsDto | null;

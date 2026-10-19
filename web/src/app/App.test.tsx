@@ -257,7 +257,7 @@ describe('App', () => {
       '/settings': SETTINGS,
       '/notifications/lesson-prefs-stats': {
         activeStudents: 0,
-        chosenClasses: 0,
+        withReminders: 0,
         ownReminder: 0,
       },
     });

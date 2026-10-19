@@ -11,9 +11,9 @@
 import { useAuth } from '../auth/AuthProvider';
 import { LoadableSection } from '../components/LoadableSection';
 import { SkeletonList } from '../components/Skeleton';
+import { hasLessonSettings } from './lessonReminderVisibility';
 import { LessonScopeClassList } from './LessonScopeClassList';
 import { ReminderSyncNotice } from './ReminderSyncNotice';
-import { hasLessonSettings } from './useLessonScope';
 import type { UseReminderSyncResult } from './useReminderSync';
 
 const HEADING = 'О каких занятиях';

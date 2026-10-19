@@ -4,6 +4,7 @@
 // спеки самих шагов: вид — параметр, и у разных видов получатели разные.
 import type { Connection, Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { writeOwnReminderMinutes } from '../test-support/own-reminder-minutes';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecipientsService } from './lesson-recipients.service';
 import { LessonScopeService } from './lesson-scope.service';
@@ -151,7 +152,7 @@ describe('LessonRecipientsService.findFor', () => {
     const picky = await person('Ваня');
     const plain = await person('Маша');
     await scopes.set(picky, { mode: 'selected', classIds: ['c1'] });
-    await scopes.setReminderMinutes(picky, 30);
+    await writeOwnReminderMinutes(prefsModel, picky, 30);
 
     const { prefs: lessonPrefs } = await service.findFor('lesson_soon');
 
