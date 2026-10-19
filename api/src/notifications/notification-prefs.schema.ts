@@ -12,9 +12,9 @@
 // ADR-0162) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
-  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_MODES,
   NOTIFICATION_KINDS,
+  REMINDER_SYNC_LEAD_CHOICES,
   SETTINGS_LIMITS,
 } from '@xuanxue/shared';
 import type { LessonScopeMode, NotificationKind } from '@xuanxue/shared';
@@ -76,10 +76,10 @@ export class NotificationPrefsRecord {
   // Своё «за сколько минут напомнить о занятии» (ADR-0162). Нет поля — «как в
   // школе» (`settings.lessonReminderMinutes`): человек ничего не выбирал или
   // снял выбор. Отдельное поле, как `paymentReminderDay`: число не влезает в
-  // overrides. Значения — только из короткого списка; `enum` ловит запись через
-  // `create`/`save`, а запись через API держит DTO (updateOne валидаторы схемы
-  // не запускает).
-  @Prop({ type: Number, enum: LESSON_REMINDER_CHOICES })
+  // overrides. Значения — только из короткого списка (`0` — «не напоминать»);
+  // `enum` ловит запись через `create`/`save`, а запись через API держат DTO и
+  // разбор тела записи (updateOne валидаторы схемы не запускает).
+  @Prop({ type: Number, enum: REMINDER_SYNC_LEAD_CHOICES })
   lessonReminderMinutes?: number;
 
   // Выбор для синхронизации напоминаний с приложением Daychi (ADR-0185): о каких
@@ -115,7 +115,7 @@ export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
     'id занятий расписания школы, не свободный текст и не персональные данные',
   ),
   lessonReminderMinutes: plain(
-    'число из короткого списка 15/30/60/120, не свободный текст и не персональные данные',
+    'число из короткого списка 0/15/30/60/120, не свободный текст и не персональные данные',
   ),
   reminderClassIds: plain(
     'id занятий расписания школы, не свободный текст и не персональные данные',

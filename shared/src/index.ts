@@ -548,8 +548,18 @@ export {
   isLessonInScope,
 } from './lesson-notifications';
 export type { LessonPrefsStatsDto } from './lesson-prefs-stats';
-export type { ReminderSyncSnapshot } from './reminder-sync';
-export { REMINDER_SYNC_VERSION } from './reminder-sync';
+export type {
+  ReminderChange,
+  ReminderLeadMinutes,
+  ReminderSyncPatch,
+  ReminderSyncSnapshot,
+} from './reminder-sync';
+export {
+  REMINDER_SYNC_LEAD_CHOICES,
+  REMINDER_SYNC_MAX_BODY_BYTES,
+  REMINDER_SYNC_MAX_CHANGES,
+  REMINDER_SYNC_VERSION,
+} from './reminder-sync';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
 export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {

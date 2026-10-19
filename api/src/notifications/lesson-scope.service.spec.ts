@@ -232,6 +232,22 @@ describe('LessonScopeService', () => {
       expect((await prefs.get('u1', [])).enabled).not.toContain('exam_result');
     });
 
+    // Минуты входят в снимок синхронизации: условная запись PATCH проверяет
+    // ревизию и иначе вернула бы минуты, прочитанные до этой записи (ADR-0185).
+    it('настоящее изменение двигает ревизию синхронизации, повтор того же — нет', async () => {
+      const revision = async () =>
+        (await model.findOne({ userId: 'u1' }).lean())?.reminderRevision;
+
+      await service.setReminderMinutes('u1', 30);
+      expect(await revision()).toBe(1);
+      await service.setReminderMinutes('u1', 30);
+      expect(await revision()).toBe(1);
+      await service.setReminderMinutes('u1', null);
+      expect(await revision()).toBe(2);
+      await service.setReminderMinutes('u1', null);
+      expect(await revision()).toBe(2);
+    });
+
     it('у двух людей выбор не пересекается', async () => {
       await service.setReminderMinutes('u1', 15);
       await service.setReminderMinutes('u2', 120);

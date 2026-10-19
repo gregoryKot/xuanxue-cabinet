@@ -19,7 +19,7 @@ import { SettingsService } from '../settings/settings.service';
 import { listLessonScopeClasses } from './lesson-scope-classes';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
 
-type StoredReminderPrefs = Pick<
+export type StoredReminderPrefs = Pick<
   NotificationPrefsRecord,
   'reminderClassIds' | 'reminderLessonIds' | 'reminderRevision' | 'lessonReminderMinutes'
 >;
@@ -37,7 +37,7 @@ function byCodeUnits(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
-function uniqueSorted(ids: readonly string[] | undefined): string[] {
+export function uniqueSorted(ids: readonly string[] | undefined): string[] {
   return [...new Set(ids ?? [])].sort(byCodeUnits);
 }
 
@@ -69,7 +69,7 @@ export class ReminderSyncService {
   /** Только свой аккаунт: `accountId` приходит из сессии или bearer, а не из
    * запроса. Документ читается одним запросом с проекцией на нужные поля. */
   async getSnapshot(accountId: string): Promise<ReminderSyncSnapshot> {
-    const [prefs, classes, school] = await Promise.all([
+    const [prefs, catalogue] = await Promise.all([
       this.prefsModel
         .findOne(
           { userId: accountId },
@@ -81,14 +81,33 @@ export class ReminderSyncService {
           },
         )
         .lean<StoredReminderPrefs | null>(),
-      listLessonScopeClasses(this.classModel),
-      this.settingsService.get(),
+      this.loadCatalogue(),
     ]);
+    return toReminderSyncSnapshot({ accountId, prefs, ...catalogue });
+  }
+
+  /** Снимок по уже известному состоянию человека: после записи оно взято из
+   * сохранённых значений, и перечитывать его вторым запросом нельзя — между
+   * ними могла встать чужая запись. Каталог и школьные минуты — свежие. */
+  async snapshotFor(
+    accountId: string,
+    prefs: StoredReminderPrefs | null,
+  ): Promise<ReminderSyncSnapshot> {
     return toReminderSyncSnapshot({
       accountId,
       prefs,
-      schoolMinutes: school.lessonReminderMinutes,
-      classes,
+      ...(await this.loadCatalogue()),
     });
+  }
+
+  private async loadCatalogue(): Promise<{
+    schoolMinutes: number;
+    classes: LessonScopeClassDto[];
+  }> {
+    const [classes, school] = await Promise.all([
+      listLessonScopeClasses(this.classModel),
+      this.settingsService.get(),
+    ]);
+    return { schoolMinutes: school.lessonReminderMinutes, classes };
   }
 }

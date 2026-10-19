@@ -23,6 +23,7 @@ import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
 import { configureNativeBodyParsing } from './native-auth/native-http';
+import { configureReminderSyncBody } from './notifications/reminder-sync-body';
 import {
   makeIsVideoPart,
   VIDEO_PART_PATH_PATTERNS,
@@ -64,6 +65,9 @@ export function configureApp(app: NestExpressApplication): void {
   // bodyParser отключён в NestFactory.create (см. main.ts/create-app.ts) —
   // иначе дефолтный парсер (лимит ~100kb) успевает отработать первым, и наш
   // лимит ниже никогда не применяется.
+  // Сырое тело записи напоминаний — ДО глобального json: прочитанное здесь тело
+  // он пропускает (reminder-sync-body.ts, ADR-0185).
+  configureReminderSyncBody(app);
   app.useBodyParser('json', { limit: '1mb' });
 
   // Проверка сессии — из DI, один раз здесь (не в самих предикатах: они
