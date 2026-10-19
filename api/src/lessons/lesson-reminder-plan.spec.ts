@@ -1,26 +1,51 @@
-// Чистая функция «кому и о каком занятии пора» (ADR-0162, п. 3), без Mongo и
-// без DI. «За сколько минут» у каждого своё; занятие «разобрано» не для всех
-// сразу, а для пары «человек × занятие».
-import { DateTime } from 'luxon';
+// Чистая функция «кому и о каком занятии пора» (ADR-0162, п. 3; ADR-0185), без
+// Mongo и без DI. Выбор напоминаний решает «о каких», «за сколько минут» — «когда»;
+// занятие «разобрано» не для всех сразу, а для пары «человек × занятие».
+import { DateTime, Duration } from 'luxon';
 import type { LessonScope } from '@xuanxue/shared';
 import type { LessonPrefs } from '../notifications/lesson-scope.service';
 import { lessonRowKey, type PlanLesson } from './lesson-notice-queries';
 import {
+  isReminderDue,
   maxLeadMinutes,
   planReminders,
+  withReminderChoices,
+  ZERO_LEAD_TOLERANCE_SECONDS,
   type ReminderPlanInput,
 } from './lesson-reminder-plan';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const ALL: LessonScope = { mode: 'all', classIds: [] };
 
-function lesson(id: string, minutesFromNow: number, classId = 'c1'): PlanLesson {
+function lessonIn(id: string, seconds: number, classId = 'c1'): PlanLesson {
   return {
     id,
     classId,
     title: `Занятие ${id}`,
-    startsAt: NOW.plus({ minutes: minutesFromNow }).toJSDate(),
+    startsAt: NOW.plus({ seconds }).toJSDate(),
   };
+}
+
+function lesson(id: string, minutesFromNow: number, classId = 'c1'): PlanLesson {
+  return lessonIn(id, minutesFromNow * 60, classId);
+}
+
+interface Choice {
+  classes?: string[];
+  lessons?: string[];
+  minutes?: number;
+  scope?: LessonScope;
+}
+
+/** Выбор человека: по умолчанию — напоминать о классе `c1`, «как в школе». */
+function chose({ classes = ['c1'], lessons = [], minutes, scope = ALL }: Choice = {}) {
+  const prefs: LessonPrefs = {
+    scope,
+    reminderClassIds: new Set(classes),
+    reminderLessonIds: new Set(lessons),
+  };
+  if (minutes !== undefined) prefs.reminderMinutes = minutes;
+  return prefs;
 }
 
 function plan(
@@ -28,7 +53,7 @@ function plan(
 ) {
   return planReminders({
     recipients: [{ id: 'u1' }],
-    prefs: new Map<string, LessonPrefs>(),
+    prefs: new Map([['u1', chose()]]),
     existing: new Set<string>(),
     schoolMinutes: 60,
     now: NOW,
@@ -38,14 +63,98 @@ function plan(
 
 function prefsOf(entries: Record<string, number | undefined>) {
   return new Map<string, LessonPrefs>(
-    Object.entries(entries).map(([id, reminderMinutes]) => [
-      id,
-      reminderMinutes === undefined ? { scope: ALL } : { scope: ALL, reminderMinutes },
-    ]),
+    Object.entries(entries).map(([id, minutes]) => [id, chose({ minutes })]),
   );
 }
 
 describe('planReminders', () => {
+  describe('о каких занятиях напоминать (ADR-0185)', () => {
+    it('выбрал класс — напоминает о занятии этого класса, о чужом классе нет', () => {
+      const result = plan({
+        lessons: [lesson('mine', 30, 'c1'), lesson('other', 30, 'c2')],
+      });
+
+      expect(result.map((r) => r.lessonId)).toEqual(['mine']);
+    });
+
+    it('выбрал отдельное занятие — напоминает о нём, о другом занятии того же класса нет', () => {
+      const prefs = new Map([['u1', chose({ classes: [], lessons: ['l1'] })]]);
+
+      const result = plan({ lessons: [lesson('l1', 30), lesson('l2', 30)], prefs });
+
+      expect(result.map((r) => r.lessonId)).toEqual(['l1']);
+    });
+
+    it('объединение: класс и отдельное занятие другого класса — оба, а занятие, выбранное дважды, одно', () => {
+      const prefs = new Map([['u1', chose({ classes: ['c1'], lessons: ['l1', 'x'] })]]);
+
+      const result = plan({
+        lessons: [lesson('l1', 30, 'c1'), lesson('x', 30, 'c2'), lesson('y', 30, 'c3')],
+        prefs,
+      });
+
+      expect(result.map((r) => r.lessonId)).toEqual(['l1', 'x']);
+    });
+
+    it('ни класса, ни занятия — ничего, даже если вид включён', () => {
+      const prefs = new Map([['u1', chose({ classes: [], lessons: [] })]]);
+
+      expect(plan({ lessons: [lesson('l1', 30)], prefs })).toEqual([]);
+    });
+
+    it('нет записи выбора — ничего: «обо всех» больше не умолчание', () => {
+      expect(plan({ lessons: [lesson('l1', 30)], prefs: new Map() })).toEqual([]);
+    });
+
+    it('старый режим «все» без выбора напоминаний — ничего', () => {
+      const prefs = new Map([['u1', chose({ classes: [], scope: ALL })]]);
+
+      expect(plan({ lessons: [lesson('l1', 30)], prefs })).toEqual([]);
+    });
+
+    it('старые «выбранные» не используются: класс из них не даёт напоминания, а его отсутствие не отнимает', () => {
+      const prefs = new Map([
+        [
+          'u1',
+          chose({
+            classes: ['c1'],
+            scope: { mode: 'selected', classIds: ['c2'] },
+          }),
+        ],
+        [
+          'u2',
+          chose({
+            classes: [],
+            scope: { mode: 'selected', classIds: ['c1'] },
+          }),
+        ],
+      ]);
+
+      const result = plan({
+        lessons: [lesson('l1', 30, 'c1')],
+        recipients: [{ id: 'u1' }, { id: 'u2' }],
+        prefs,
+      });
+
+      expect(result.map((r) => r.userId)).toEqual(['u1']);
+    });
+
+    it('выбор одного человека не даёт напоминания другому', () => {
+      const prefs = new Map([
+        ['picked', chose({ classes: ['c1'] })],
+        ['other', chose({ classes: ['c2'] })],
+      ]);
+
+      const result = plan({
+        lessons: [lesson('l1', 30, 'c1')],
+        recipients: [{ id: 'picked' }, { id: 'other' }],
+        prefs,
+      });
+
+      expect(result.map((r) => r.userId)).toEqual(['picked']);
+    });
+  });
+
   describe('у каждого своё «за сколько»', () => {
     const recipients = [{ id: 'early' }, { id: 'late' }];
     const prefs = prefsOf({ early: 120, late: 15 });
@@ -62,10 +171,11 @@ describe('planReminders', () => {
       expect(result.map((r) => r.userId)).toEqual(['early', 'late']);
     });
 
-    it('не выбравший берёт школьное значение: при 45 минутах школы пора за 45, не за 60', () => {
+    it('не выбравший «за сколько» берёт школьное значение: при 45 минутах школы пора за 45, не за 60', () => {
       const result = plan({
         lessons: [lesson('l1', 50), lesson('l2', 45)],
         recipients: [{ id: 'plain' }],
+        prefs: prefsOf({ plain: undefined }),
         schoolMinutes: 45,
       });
 
@@ -74,7 +184,7 @@ describe('planReminders', () => {
       ]);
     });
 
-    it('свой выбор важнее школьного и в большую, и в меньшую сторону', () => {
+    it('своё 120 важнее школьного 30, а школьное 45 не сдвигает личное 120', () => {
       const result = plan({
         lessons: [lesson('l1', 90)],
         recipients,
@@ -84,9 +194,19 @@ describe('planReminders', () => {
 
       expect(result.map((r) => r.userId)).toEqual(['early']);
     });
+
+    it('своё «за сколько» — ноль: школьное не подставляется, о занятии за час не напоминает', () => {
+      const result = plan({
+        lessons: [lesson('l1', 30)],
+        prefs: prefsOf({ u1: 0 }),
+        schoolMinutes: 60,
+      });
+
+      expect(result).toEqual([]);
+    });
   });
 
-  describe('границы окна', () => {
+  describe('границы окна: положительное «за сколько»', () => {
     it('ровно за `lead` минут — уже пора (включительно)', () => {
       expect(plan({ lessons: [lesson('l1', 60)] })).toHaveLength(1);
     });
@@ -99,50 +219,78 @@ describe('planReminders', () => {
       expect(plan({ lessons: [lesson('l1', 0)] })).toEqual([]);
     });
 
-    it('занятие уже началось — не напоминаем', () => {
-      expect(plan({ lessons: [lesson('l1', -5)] })).toEqual([]);
+    it('занятие уже началось — не напоминаем, и допуск нулевого «за сколько» тут ни при чём', () => {
+      expect(plan({ lessons: [lessonIn('l1', -30)] })).toEqual([]);
     });
 
     it('доли минуты считаются: за 60 минут и секунду — ещё рано', () => {
-      const late: PlanLesson = {
-        ...lesson('l1', 60),
-        startsAt: NOW.plus({ minutes: 60, seconds: 1 }).toJSDate(),
-      };
-
-      expect(plan({ lessons: [late] })).toEqual([]);
+      expect(plan({ lessons: [lessonIn('l1', 3601)] })).toEqual([]);
     });
   });
 
-  describe('о каких занятиях', () => {
-    it('«выбранные» без этого занятия — пропуск, «все» и «выбранные с ним» — пора', () => {
-      const prefs = new Map<string, LessonPrefs>([
-        ['all', { scope: ALL }],
-        ['has', { scope: { mode: 'selected', classIds: ['c1'] } }],
-        ['other', { scope: { mode: 'selected', classIds: ['c2'] } }],
-        ['none', { scope: { mode: 'selected', classIds: [] } }],
+  // ADR-0185: ноль — напомнить в момент начала, на первом тике из
+  // [startsAt, startsAt + 60 секунд]; до начала и позже допуска — никогда.
+  describe('границы окна: нулевое «за сколько»', () => {
+    const zero = new Map([['u1', chose({ minutes: 0 })]]);
+
+    function zeroPlan(secondsFromNow: number) {
+      return plan({ lessons: [lessonIn('l1', secondsFromNow)], prefs: zero });
+    }
+
+    it('за секунду до начала — рано', () => {
+      expect(zeroPlan(1)).toEqual([]);
+    });
+
+    it('ровно в начало — пора', () => {
+      expect(zeroPlan(0)).toHaveLength(1);
+    });
+
+    it('через секунду после начала — пора', () => {
+      expect(zeroPlan(-1)).toHaveLength(1);
+    });
+
+    it('ровно через 60 секунд после начала — ещё пора (включительно)', () => {
+      expect(zeroPlan(-ZERO_LEAD_TOLERANCE_SECONDS)).toHaveLength(1);
+    });
+
+    it('через 61 секунду после начала — поздно, пропущенное окно не догоняется', () => {
+      expect(zeroPlan(-ZERO_LEAD_TOLERANCE_SECONDS - 1)).toEqual([]);
+    });
+
+    it('за минуту до начала — рано: ноль не сдвигает напоминание раньше начала', () => {
+      expect(zeroPlan(60)).toEqual([]);
+    });
+
+    it('ноль одного человека не двигает положительное «за сколько» другого', () => {
+      const prefs = new Map([
+        ['zero', chose({ minutes: 0 })],
+        ['sixty', chose({ minutes: 60 })],
       ]);
 
       const result = plan({
-        lessons: [lesson('l1', 30)],
-        recipients: [{ id: 'all' }, { id: 'has' }, { id: 'other' }, { id: 'none' }],
+        lessons: [lessonIn('l1', 1800)],
+        recipients: [{ id: 'zero' }, { id: 'sixty' }],
         prefs,
       });
 
-      expect(result.map((r) => r.userId)).toEqual(['all', 'has']);
-    });
-
-    it('у человека нет записи выбора — обо всех занятиях, как до ADR-0162', () => {
-      expect(plan({ lessons: [lesson('l1', 30, 'any')] })).toHaveLength(1);
+      expect(result.map((r) => r.userId)).toEqual(['sixty']);
     });
   });
 
   describe('уже напомнили', () => {
+    const recipients = [{ id: 'u1' }, { id: 'u2' }];
+    const prefs = new Map([
+      ['u1', chose()],
+      ['u2', chose()],
+    ]);
+
     it('пара с готовой строкой пропускается, соседняя пара — нет', () => {
       const existing = new Set([lessonRowKey('u1', 'l1')]);
 
       const result = plan({
         lessons: [lesson('l1', 30), lesson('l2', 30)],
-        recipients: [{ id: 'u1' }, { id: 'u2' }],
+        recipients,
+        prefs,
         existing,
       });
 
@@ -234,6 +382,92 @@ describe('planReminders', () => {
         plan({ lessons, recipients, prefs, now: inUtc }),
       );
     });
+
+    // Занятие сразу после перехода: ровно `lead` настоящих минут до начала, а не
+    // стенных. Спринг: 03:10 IDT = 00:10Z; «за 30» — 23:40Z (на стене 01:40 IST,
+    // а до стенных 03:10 — 90 минут). Осень: 01:10 IST (второй проход) = 23:10Z;
+    // «за 60» — 22:10Z (на стене 01:10 IDT, до стенных 01:10 — ноль минут).
+    describe.each([
+      {
+        name: 'весенний прыжок',
+        startsAtUtc: '2026-03-27T00:10:00Z',
+        lead: 30,
+        dueUtc: '2026-03-26T23:40:00Z',
+      },
+      {
+        name: 'осенний возврат',
+        startsAtUtc: '2026-10-24T23:10:00Z',
+        lead: 60,
+        dueUtc: '2026-10-24T22:10:00Z',
+      },
+      {
+        name: 'весенний прыжок, ноль',
+        startsAtUtc: '2026-03-27T00:10:00Z',
+        lead: 0,
+        dueUtc: '2026-03-27T00:10:00Z',
+      },
+      {
+        name: 'осенний возврат, ноль',
+        startsAtUtc: '2026-10-24T23:10:00Z',
+        lead: 0,
+        dueUtc: '2026-10-24T23:10:00Z',
+      },
+    ])('занятие сразу после перехода — $name', ({ startsAtUtc, lead, dueUtc }) => {
+      const startsAt = new Date(startsAtUtc);
+      const dueAt = DateTime.fromISO(dueUtc, { zone: 'utc' });
+      const lessons = [{ id: 'l1', classId: 'c1', title: 'Ночное', startsAt }];
+      const leadPrefs = new Map([['u1', chose({ minutes: lead })]]);
+      const at = (now: DateTime) =>
+        plan({ lessons, prefs: leadPrefs, now: now.setZone('Asia/Jerusalem') });
+
+      it('ровно за `lead` настоящих минут — пора', () => {
+        expect(at(dueAt)).toHaveLength(1);
+      });
+
+      it('на секунду раньше — ещё рано', () => {
+        expect(at(dueAt.minus({ seconds: 1 }))).toEqual([]);
+      });
+    });
+  });
+});
+
+describe('isReminderDue', () => {
+  const until = (seconds: number) => Duration.fromObject({ seconds });
+
+  it('положительное «за сколько»: (0, lead] минут до начала', () => {
+    expect(isReminderDue(until(1), 15)).toBe(true);
+    expect(isReminderDue(until(15 * 60), 15)).toBe(true);
+    expect(isReminderDue(until(15 * 60 + 1), 15)).toBe(false);
+    expect(isReminderDue(until(0), 15)).toBe(false);
+    expect(isReminderDue(until(-1), 15)).toBe(false);
+  });
+
+  it('ноль: [начало, начало + допуск], до начала и позже допуска — нет', () => {
+    expect(isReminderDue(until(1), 0)).toBe(false);
+    expect(isReminderDue(until(0), 0)).toBe(true);
+    expect(isReminderDue(until(-ZERO_LEAD_TOLERANCE_SECONDS), 0)).toBe(true);
+    expect(isReminderDue(until(-ZERO_LEAD_TOLERANCE_SECONDS - 1), 0)).toBe(false);
+  });
+
+  it('допуск нуля — одна минута, как у тика планировщика', () => {
+    expect(ZERO_LEAD_TOLERANCE_SECONDS).toBe(60);
+  });
+});
+
+describe('withReminderChoices', () => {
+  it('оставляет только тех, у кого есть класс или занятие; без записи — выпадает', () => {
+    const prefs = new Map<string, LessonPrefs>([
+      ['byClass', chose({ classes: ['c1'] })],
+      ['byLesson', chose({ classes: [], lessons: ['l1'] })],
+      ['empty', chose({ classes: [] })],
+    ]);
+
+    const result = withReminderChoices(
+      [{ id: 'byClass' }, { id: 'byLesson' }, { id: 'empty' }, { id: 'noDoc' }],
+      prefs,
+    );
+
+    expect(result.map((r) => r.id)).toEqual(['byClass', 'byLesson']);
   });
 });
 
@@ -248,6 +482,10 @@ describe('maxLeadMinutes', () => {
 
   it('у всех школьное — окно школьное', () => {
     expect(maxLeadMinutes([{ id: 'x' }, { id: 'y' }], new Map(), 45)).toBe(45);
+  });
+
+  it('все выбрали ноль — окно нулевое, школьное в него не попадает', () => {
+    expect(maxLeadMinutes([{ id: 'a' }], prefsOf({ a: 0 }), 60)).toBe(0);
   });
 
   it('получателей нет — ноль, окно пустое', () => {

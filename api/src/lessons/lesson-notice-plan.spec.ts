@@ -14,7 +14,17 @@ function lesson(id: string, classId = 'c1'): PlanLesson {
 }
 
 function prefsOf(entries: Record<string, LessonScope>): Map<string, LessonPrefs> {
-  return new Map(Object.entries(entries).map(([id, scope]) => [id, { scope }]));
+  // Выбор напоминаний на отмену и запись не влияет (ADR-0185): у всех пустой.
+  return new Map(
+    Object.entries(entries).map(([id, scope]) => [
+      id,
+      {
+        scope,
+        reminderClassIds: new Set<string>(),
+        reminderLessonIds: new Set<string>(),
+      },
+    ]),
+  );
 }
 
 describe('planLessonNotices', () => {

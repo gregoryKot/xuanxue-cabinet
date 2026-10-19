@@ -4,7 +4,9 @@
 // у каждого человека своё «за сколько минут», окно занятий — по самому
 // раннему; read-after-write строки ленты и переключатель уведомления через
 // настоящий NotificationPrefsService (не мок — иначе не поймать, что дефолт
-// ученика включён без единого переключения руками, ADR-0135).
+// ученика включён без единого переключения руками, ADR-0135). О каких занятиях
+// напоминать — решает только выбор напоминаний (ADR-0185): без него не
+// напоминает никому, выбор «о каких занятиях» (ADR-0162) на него не влияет.
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model, Types } from 'mongoose';
@@ -112,9 +114,49 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     return { service, push };
   }
 
-  it('дефолт ученика включён без переключения (ADR-0135) — занятие в окне пишет ленту и шлёт push', async () => {
+  /** Выбор напоминаний человека — так же, как его записывает синхронизация
+   * (ADR-0185): классы и отдельные занятия строками. */
+  function choose(
+    userId: string,
+    {
+      classes = [],
+      lessons = [],
+    }: { classes?: Types.ObjectId[]; lessons?: Types.ObjectId[] },
+  ) {
+    return prefsModel.updateOne(
+      { userId },
+      {
+        $set: {
+          reminderClassIds: classes.map(String),
+          reminderLessonIds: lessons.map(String),
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  /** Класс, о котором напоминать выбрали все уже заведённые люди: для тестов
+   * про «за сколько», окно и доставку, где выбор занятий не предмет проверки.
+   * Людей заводят до класса. */
+  async function createChosenClass(overrides: Partial<ClassRecord> = {}) {
+    const cls = await createClass(overrides);
+    const users = await userModel.find({}, { _id: 1 }).lean();
+    await Promise.all(
+      users.map(({ _id }) =>
+        prefsModel.updateOne(
+          { userId: _id.toString() },
+          { $addToSet: { reminderClassIds: cls._id.toString() } },
+          { upsert: true },
+        ),
+      ),
+    );
+    return cls;
+  }
+
+  it('дефолт ученика включён без переключения (ADR-0135) — занятие выбранного класса в окне пишет ленту и шлёт push', async () => {
     const student = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
     const cls = await createClass();
+    await choose(student._id.toString(), { classes: [cls._id] });
     const lesson = await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.plus({ minutes: 30 }).toJSDate(),
@@ -134,133 +176,362 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     expect(row?.lessonId).toBe(lesson._id.toString());
   });
 
-  // ADR-0162: человек сам выбирает, о каких занятиях ему напоминать.
-  describe('выбор «о каких занятиях» (ADR-0162)', () => {
-    async function scheduleLesson(classId: Types.ObjectId) {
+  // ADR-0185: «Занятие скоро» идёт по выбору напоминаний — классы и отдельные
+  // занятия. Выбор «о каких занятиях» (ADR-0162) на него не влияет.
+  describe('выбор напоминаний (ADR-0185)', () => {
+    async function scheduleAt(classId: Types.ObjectId, minutes = 30) {
       return lessonModel.create({
         classId,
-        startsAt: NOW.plus({ minutes: 30 }).toJSDate(),
+        startsAt: NOW.plus({ minutes }).toJSDate(),
         durationMin: 60,
         topic: 'цигун',
         status: 'scheduled',
       });
     }
 
+    async function newStudent(name = 'Ваня'): Promise<string> {
+      const user = await userModel.create({ name, roles: [], status: 'active' });
+      return user._id.toString();
+    }
+
     function inboxRowsOf(userId: string) {
       return notificationModel.find({ userId, kind: 'lesson_soon' }).lean();
     }
 
-    it('выбрал другое занятие — по этому ни ленты, ни push, а второй ученик без выбора получает', async () => {
-      const picky = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
-      const plain = await userModel.create({ name: 'Маша', roles: [], status: 'active' });
-      const thisClass = await createClass({ title: 'Цигун для глаз' });
-      const otherClass = await createClass({ title: 'Тайцзи' });
-      await scheduleLesson(thisClass._id);
-      await new LessonScopeService(prefsModel).set(picky._id.toString(), {
-        mode: 'selected',
-        classIds: [otherClass._id.toString()],
-      });
+    it('выбранный класс: напоминание приходит один раз, второй тик дубля не даёт', async () => {
+      const id = await newStudent();
+      const cls = await createClass();
+      await choose(id, { classes: [cls._id] });
+      await scheduleAt(cls._id);
       const { service, push } = build();
 
       expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+      expect(await service.remind(NOW.plus({ minutes: 1 }))).toEqual({ reminded: 0 });
 
-      expect(await inboxRowsOf(picky._id.toString())).toEqual([]);
-      expect(await inboxRowsOf(plain._id.toString())).toHaveLength(1);
+      expect(await inboxRowsOf(id)).toHaveLength(1);
       expect(push.sendToUser).toHaveBeenCalledTimes(1);
-      expect(push.sendToUser).toHaveBeenCalledWith(plain._id.toString(), NOW);
     });
 
-    it('выбрал именно это занятие — напоминание приходит', async () => {
-      const student = await userModel.create({
-        name: 'Ваня',
-        roles: [],
-        status: 'active',
-      });
-      const thisClass = await createClass();
-      const otherClass = await createClass({ title: 'Тайцзи' });
-      await scheduleLesson(thisClass._id);
-      await new LessonScopeService(prefsModel).set(student._id.toString(), {
-        mode: 'selected',
-        classIds: [otherClass._id.toString(), thisClass._id.toString()],
-      });
-      const { service, push } = build();
-
-      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
-
-      expect(await inboxRowsOf(student._id.toString())).toHaveLength(1);
-      expect(push.sendToUser).toHaveBeenCalledWith(student._id.toString(), NOW);
-    });
-
-    it('режим «все» со старыми галочками — напоминание приходит о любом занятии', async () => {
-      const student = await userModel.create({
-        name: 'Ваня',
-        roles: [],
-        status: 'active',
-      });
-      const thisClass = await createClass();
-      const otherClass = await createClass({ title: 'Тайцзи' });
-      await scheduleLesson(thisClass._id);
-      await new LessonScopeService(prefsModel).set(student._id.toString(), {
-        mode: 'all',
-        classIds: [otherClass._id.toString()],
-      });
+    it('выбранное отдельное занятие: о нём приходит, о другом занятии того же класса нет', async () => {
+      const id = await newStudent();
+      const cls = await createClass();
+      const chosen = await scheduleAt(cls._id);
+      await scheduleAt(cls._id, 40);
+      await choose(id, { lessons: [chosen._id] });
       const { service } = build();
 
       expect(await service.remind(NOW)).toEqual({ reminded: 1 });
 
-      expect(await inboxRowsOf(student._id.toString())).toHaveLength(1);
+      const rows = await inboxRowsOf(id);
+      expect(rows.map((r) => r.lessonId)).toEqual([chosen._id.toString()]);
     });
 
-    it('«выбранные» без единой галочки — ни о каких', async () => {
-      const student = await userModel.create({
-        name: 'Ваня',
-        roles: [],
-        status: 'active',
-      });
+    it('класс и его занятие выбраны сразу — одно напоминание, а не два', async () => {
+      const id = await newStudent();
       const cls = await createClass();
-      await scheduleLesson(cls._id);
-      await new LessonScopeService(prefsModel).set(student._id.toString(), {
-        mode: 'selected',
-        classIds: [],
-      });
+      const lesson = await scheduleAt(cls._id);
+      await choose(id, { classes: [cls._id], lessons: [lesson._id] });
       const { service, push } = build();
 
-      await service.remind(NOW);
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
 
-      expect(await inboxRowsOf(student._id.toString())).toEqual([]);
+      expect(await inboxRowsOf(id)).toHaveLength(1);
+      expect(push.sendToUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('выбор объединяется: класс и занятие другого класса — оба, третье занятие нет', async () => {
+      const id = await newStudent();
+      const first = await createClass();
+      const second = await createClass({ title: 'Тайцзи' });
+      const third = await createClass({ title: 'Бэйфан' });
+      await scheduleAt(first._id);
+      const single = await scheduleAt(second._id);
+      await scheduleAt(third._id);
+      await choose(id, { classes: [first._id], lessons: [single._id] });
+      const { service } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 2 });
+    });
+
+    it('нет документа настроек — напоминаний нет: «обо всех» больше не умолчание', async () => {
+      const id = await newStudent();
+      const cls = await createClass();
+      await scheduleAt(cls._id);
+      const { service, push } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+
+      expect(await inboxRowsOf(id)).toEqual([]);
       expect(push.sendToUser).not.toHaveBeenCalled();
     });
 
-    it('выбор одного ученика не влияет на второго: у каждого свой список', async () => {
-      const first = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
-      const second = await userModel.create({
-        name: 'Маша',
-        roles: [],
-        status: 'active',
-      });
-      const thisClass = await createClass();
-      const otherClass = await createClass({ title: 'Тайцзи' });
-      await scheduleLesson(thisClass._id);
-      const scopes = new LessonScopeService(prefsModel);
-      await scopes.set(first._id.toString(), {
-        mode: 'selected',
-        classIds: [thisClass._id.toString()],
-      });
-      await scopes.set(second._id.toString(), {
-        mode: 'selected',
-        classIds: [otherClass._id.toString()],
-      });
+    it('ни у кого нет выбора — занятия из базы не читаются вовсе', async () => {
+      await newStudent();
+      const cls = await createClass();
+      await scheduleAt(cls._id);
+      const find = jest.spyOn(lessonModel, 'find');
       const { service } = build();
 
-      await service.remind(NOW);
+      try {
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        expect(find).not.toHaveBeenCalled();
+      } finally {
+        find.mockRestore();
+      }
+    });
 
-      expect(await inboxRowsOf(first._id.toString())).toHaveLength(1);
-      expect(await inboxRowsOf(second._id.toString())).toEqual([]);
+    it('окно занятий строится только по людям с выбором: «за 120» без выбора его не расширяет', async () => {
+      const chooser = await newStudent('Ваня');
+      const early = await newStudent('Маша');
+      const cls = await createClass();
+      await scheduleAt(cls._id, 90);
+      await choose(chooser, { classes: [cls._id] });
+      await new LessonScopeService(prefsModel).setReminderMinutes(early, 120);
+      const find = jest.spyOn(lessonModel, 'find');
+      const { service } = build();
+
+      try {
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        const filter = find.mock.calls[0]?.[0] as unknown as {
+          startsAt: { $lte: Date };
+        };
+        expect(filter.startsAt.$lte).toEqual(NOW.plus({ minutes: 60 }).toJSDate());
+      } finally {
+        find.mockRestore();
+      }
+      expect(await inboxRowsOf(early)).toEqual([]);
+    });
+
+    it('выбор опустошён (пустые списки) — напоминаний нет', async () => {
+      const id = await newStudent();
+      const cls = await createClass();
+      await scheduleAt(cls._id);
+      await choose(id, {});
+      const { service } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+      expect(await inboxRowsOf(id)).toEqual([]);
+    });
+
+    it('у каждого свой выбор: выбравший другой класс не получает, выбравший этот получает', async () => {
+      const picky = await newStudent('Ваня');
+      const plain = await newStudent('Маша');
+      const thisClass = await createClass();
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await scheduleAt(thisClass._id);
+      await choose(picky, { classes: [otherClass._id] });
+      await choose(plain, { classes: [thisClass._id] });
+      const { service, push } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+      expect(await inboxRowsOf(picky)).toEqual([]);
+      expect(await inboxRowsOf(plain)).toHaveLength(1);
+      expect(push.sendToUser).toHaveBeenCalledWith(plain, NOW);
+    });
+
+    it('вид lesson_soon выключен — ни ленты, ни push, даже с выбором', async () => {
+      const id = await newStudent();
+      const cls = await createClass();
+      await scheduleAt(cls._id);
+      await choose(id, { classes: [cls._id] });
+      await new NotificationPrefsService(prefsModel).set(id, 'lesson_soon', false);
+      const { service, push } = build();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+      expect(push.sendToUser).not.toHaveBeenCalled();
+    });
+
+    // Выбор «о каких занятиях» — для отмены, записи и материалов (ADR-0162).
+    describe('старый выбор «о каких занятиях» напоминание не меняет', () => {
+      it('«все» без выбора напоминаний — напоминаний нет', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await scheduleAt(cls._id);
+        await new LessonScopeService(prefsModel).set(id, { mode: 'all', classIds: [] });
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        expect(await inboxRowsOf(id)).toEqual([]);
+      });
+
+      it('«выбранные» с этим классом, но без выбора напоминаний — напоминаний нет', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await scheduleAt(cls._id);
+        await new LessonScopeService(prefsModel).set(id, {
+          mode: 'selected',
+          classIds: [cls._id.toString()],
+        });
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        expect(await inboxRowsOf(id)).toEqual([]);
+      });
+
+      it('«выбранные» без этого класса, но с выбором напоминаний — напоминание приходит', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        const other = await createClass({ title: 'Тайцзи' });
+        await scheduleAt(cls._id);
+        await new LessonScopeService(prefsModel).set(id, {
+          mode: 'selected',
+          classIds: [other._id.toString()],
+        });
+        await choose(id, { classes: [cls._id] });
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+        expect(await inboxRowsOf(id)).toHaveLength(1);
+      });
+
+      it('«выбранные» без единой галочки, но с выбором напоминаний — напоминание приходит', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await scheduleAt(cls._id);
+        const scopes = new LessonScopeService(prefsModel);
+        await scopes.set(id, { mode: 'selected', classIds: [] });
+        await choose(id, { classes: [cls._id] });
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+      });
+    });
+
+    describe('отмена, перенос, восстановление', () => {
+      it('отменённое занятие не напоминает, восстановленное — напоминает (тот же _id)', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await choose(id, { classes: [cls._id] });
+        const lesson = await scheduleAt(cls._id);
+        await lessonModel.updateOne({ _id: lesson._id }, { status: 'cancelled' });
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+
+        await lessonModel.updateOne({ _id: lesson._id }, { status: 'scheduled' });
+        expect(await service.remind(NOW.plus({ minutes: 1 }))).toEqual({ reminded: 1 });
+        expect((await inboxRowsOf(id)).map((r) => r.lessonId)).toEqual([
+          lesson._id.toString(),
+        ]);
+      });
+
+      it('перенесённое занятие (тот же _id) напоминает по новому времени', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await choose(id, { lessons: [], classes: [cls._id] });
+        const lesson = await scheduleAt(cls._id, 300);
+        const { service } = build();
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+
+        const later = NOW.plus({ hours: 4 });
+        await lessonModel.updateOne(
+          { _id: lesson._id },
+          { startsAt: later.plus({ minutes: 30 }).toJSDate() },
+        );
+
+        expect(await service.remind(later)).toEqual({ reminded: 1 });
+      });
+
+      it('занятие, о котором уже напомнили, после переноса второй раз не напоминает', async () => {
+        const id = await newStudent();
+        const cls = await createClass();
+        await choose(id, { classes: [cls._id] });
+        const lesson = await scheduleAt(cls._id);
+        const { service } = build();
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+        const later = NOW.plus({ hours: 4 });
+        await lessonModel.updateOne(
+          { _id: lesson._id },
+          { startsAt: later.plus({ minutes: 30 }).toJSDate() },
+        );
+
+        expect(await service.remind(later)).toEqual({ reminded: 0 });
+        expect(await inboxRowsOf(id)).toHaveLength(1);
+      });
+    });
+
+    // ADR-0185: ноль — напомнить в момент начала, на первом тике из
+    // [startsAt, startsAt + 60 с]; не раньше начала и не позже допуска.
+    describe('нулевое «за сколько»', () => {
+      async function zeroStudent() {
+        const id = await newStudent();
+        const cls = await createClass();
+        await choose(id, { classes: [cls._id] });
+        await new LessonScopeService(prefsModel).setReminderMinutes(id, 0);
+        return { id, cls };
+      }
+
+      async function startingAt(classId: Types.ObjectId, seconds: number) {
+        return lessonModel.create({
+          classId,
+          startsAt: NOW.plus({ seconds }).toJSDate(),
+          durationMin: 60,
+          topic: 'цигун',
+          status: 'scheduled',
+        });
+      }
+
+      it('занятие началось только что — напоминает на этом тике, школьный час не подставляется', async () => {
+        const { id, cls } = await zeroStudent();
+        await startingAt(cls._id, 0);
+        const { service, push } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+        expect(await inboxRowsOf(id)).toHaveLength(1);
+        expect(push.sendToUser).toHaveBeenCalledWith(id, NOW);
+      });
+
+      it('за час до начала — тишина: ноль не равен школьным 60', async () => {
+        const { id, cls } = await zeroStudent();
+        await startingAt(cls._id, 3600);
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        expect(await inboxRowsOf(id)).toEqual([]);
+      });
+
+      it('за секунду до начала — рано, на тике ровно в начало — приходит', async () => {
+        const { cls } = await zeroStudent();
+        await startingAt(cls._id, 1);
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+        expect(await service.remind(NOW.plus({ seconds: 1 }))).toEqual({ reminded: 1 });
+      });
+
+      it('через 60 секунд после начала ещё приходит, через 61 — нет и не догоняется', async () => {
+        const { cls } = await zeroStudent();
+        await startingAt(cls._id, -60);
+        const late = await startingAt(cls._id, -61);
+        const { service, push } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+        const rows = await notificationModel.find({ kind: 'lesson_soon' }).lean();
+        expect(rows.map((r) => r.lessonId)).not.toContain(late._id.toString());
+        expect(push.sendToUser).toHaveBeenCalledTimes(1);
+      });
+
+      it('положительное «за сколько» другого ученика не двигается: он получает за свои 60 минут', async () => {
+        const { cls } = await zeroStudent();
+        const sixty = await newStudent('Маша');
+        await choose(sixty, { classes: [cls._id] });
+        await startingAt(cls._id, 1800);
+        const { service } = build();
+
+        expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+
+        expect(await inboxRowsOf(sixty)).toHaveLength(1);
+      });
     });
   });
 
   it('занятие вне окна (позже lessonReminderMinutes) — не напоминает', async () => {
-    const cls = await createClass();
+    await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
+    const cls = await createChosenClass();
     await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.plus({ minutes: 90 }).toJSDate(),
@@ -273,8 +544,9 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     expect(await service.remind(NOW)).toEqual({ reminded: 0 });
   });
 
-  it('занятие уже началось (startsAt <= now) — не напоминает', async () => {
-    const cls = await createClass();
+  it('занятие уже началось (startsAt <= now) — при положительном «за сколько» не напоминает', async () => {
+    await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
+    const cls = await createChosenClass();
     await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.toJSDate(),
@@ -287,30 +559,9 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     expect(await service.remind(NOW)).toEqual({ reminded: 0 });
   });
 
-  it('ученик выключил lesson_soon — не получает ни ленту, ни push', async () => {
-    const student = await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
-    await new NotificationPrefsService(prefsModel).set(
-      student._id.toString(),
-      'lesson_soon',
-      false,
-    );
-    const cls = await createClass();
-    await lessonModel.create({
-      classId: cls._id,
-      startsAt: NOW.plus({ minutes: 30 }).toJSDate(),
-      durationMin: 60,
-      topic: 'цигун',
-      status: 'scheduled',
-    });
-    const { service, push } = build();
-
-    expect(await service.remind(NOW)).toEqual({ reminded: 0 });
-    expect(push.sendToUser).not.toHaveBeenCalled();
-  });
-
   it('класс выключен — не напоминает', async () => {
     await userModel.create({ name: 'Ваня', roles: [], status: 'active' });
-    const cls = await createClass({ active: false });
+    const cls = await createChosenClass({ active: false });
     await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.plus({ minutes: 30 }).toJSDate(),
@@ -347,7 +598,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     const scopes = new LessonScopeService(prefsModel);
     await scopes.setReminderMinutes(sixty._id.toString(), 60);
     await scopes.setReminderMinutes(thirty._id.toString(), 30);
-    const cls = await createClass();
+    const cls = await createChosenClass();
     const now = DateTime.fromISO('2026-03-27T01:30:00', { zone: 'Asia/Jerusalem' });
     await lessonModel.create({
       classId: cls._id,
@@ -395,7 +646,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('за 60 минут пора только тому, кто выбрал 120; за 10 — и тому, кто выбрал 15, без второй строки первому', async () => {
       const early = await student('Ранний', 120);
       const late = await student('Поздний', 15);
-      const cls = await createClass();
+      const cls = await createChosenClass();
       const lesson = await scheduleIn(60, cls._id);
       const { service, push } = build();
 
@@ -419,7 +670,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('окно занятий берётся по самому раннему: за 90 минут школа (60) молчит, а выбравший 120 получает', async () => {
       const early = await student('Ранний', 120);
       const plain = await student('Обычный');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(90, cls._id);
       const { service } = build();
 
@@ -432,7 +683,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('снял свой выбор (вернулся к школьным 60) — напоминание приходит уже за школьный час', async () => {
       const id = await student('Ваня', 15);
       const scopes = new LessonScopeService(prefsModel);
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(45, cls._id);
       const { service } = build();
 
@@ -443,7 +694,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('второй тик не дублирует ни строки, ни push', async () => {
       const id = await student('Ваня');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(30, cls._id);
       const { service, push } = build();
 
@@ -457,7 +708,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('передумал 15 → 120 после напоминания — второй строки и второго push нет', async () => {
       const id = await student('Ваня', 15);
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(10, cls._id);
       const { service, push } = build();
       expect(await service.remind(NOW)).toEqual({ reminded: 1 });
@@ -472,7 +723,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('два remind() одновременно (два инстанса при деплое) — по одной строке и одному push на человека', async () => {
       const first = await student('Ваня');
       const second = await student('Маша');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(30, cls._id);
       const push = fakePush();
       const a = build(push).service;
@@ -488,7 +739,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('строка, которую написал прежний код (отметка была на занятии), блокирует новую — деплой не шлёт дубль', async () => {
       const id = await student('Ваня');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       const lesson = await scheduleIn(30, cls._id);
       await notificationModel.create({
         userId: id,
@@ -507,7 +758,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('прочитанная и убранная строка не воскресает: повторного напоминания нет', async () => {
       const id = await student('Ваня');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       const lesson = await scheduleIn(30, cls._id);
       const readAt = NOW.minus({ minutes: 20 }).toJSDate();
       const dismissedAt = NOW.minus({ minutes: 10 }).toJSDate();
@@ -531,7 +782,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('строка ленты несёт снимок названия и занятие; у одного занятия у двух людей — по своей строке', async () => {
       const first = await student('Ваня');
       const second = await student('Маша');
-      const cls = await createClass({ title: 'Тайцзи' });
+      const cls = await createChosenClass({ title: 'Тайцзи' });
       const lesson = await scheduleIn(30, cls._id);
       const { service } = build();
 
@@ -549,8 +800,8 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
 
     it('несколько занятий в окне — каждому человеку по строке на занятие', async () => {
       const id = await student('Ваня');
-      const cls = await createClass();
-      const other = await createClass({ title: 'Тайцзи' });
+      const cls = await createChosenClass();
+      const other = await createChosenClass({ title: 'Тайцзи' });
       await scheduleIn(20, cls._id);
       await scheduleIn(40, other._id);
       await scheduleIn(90, cls._id);
@@ -564,7 +815,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('сбой записи у одного человека не останавливает остальных: error в логе со стеком, остальные получили', async () => {
       const broken = await student('Сбойный');
       const fine = await student('Исправный');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(30, cls._id);
       const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation();
       const create = notificationModel.create.bind(notificationModel) as (
@@ -596,7 +847,7 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
     it('упавший push тоже не останавливает остальных, а строка остаётся (напомнить повторно нельзя)', async () => {
       const first = await student('Ваня');
       const second = await student('Маша');
-      const cls = await createClass();
+      const cls = await createChosenClass();
       await scheduleIn(30, cls._id);
       const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation();
       const push = fakePush();
