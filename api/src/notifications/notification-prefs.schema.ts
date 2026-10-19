@@ -81,6 +81,21 @@ export class NotificationPrefsRecord {
   // не запускает).
   @Prop({ type: Number, enum: LESSON_REMINDER_CHOICES })
   lessonReminderMinutes?: number;
+
+  // Выбор для синхронизации напоминаний с приложением Daychi (ADR-0185): о каких
+  // занятиях расписания и о каких отдельных занятиях. `default: undefined` по
+  // той же причине, что у `lessonClassIds` — пустой массив каждому документу
+  // настроек не нужен; нет поля — пусто.
+  @Prop({ type: [String], default: undefined })
+  reminderClassIds?: string[];
+
+  @Prop({ type: [String], default: undefined })
+  reminderLessonIds?: string[];
+
+  // Счётчик изменений выбора: клиент по нему отличает свежий снимок от
+  // устаревшего. Нет поля — 0, выбор ещё не менялся.
+  @Prop({ type: Number, min: 0 })
+  reminderRevision?: number;
 }
 
 export const NotificationPrefsSchema = SchemaFactory.createForClass(
@@ -101,5 +116,14 @@ export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
   ),
   lessonReminderMinutes: plain(
     'число из короткого списка 15/30/60/120, не свободный текст и не персональные данные',
+  ),
+  reminderClassIds: plain(
+    'id занятий расписания школы, не свободный текст и не персональные данные',
+  ),
+  reminderLessonIds: plain(
+    'id отдельных занятий школы, не свободный текст и не персональные данные',
+  ),
+  reminderRevision: plain(
+    'счётчик изменений выбора, не свободный текст и не персональные данные',
   ),
 };

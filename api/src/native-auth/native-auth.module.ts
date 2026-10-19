@@ -18,12 +18,7 @@ import { NativeAuthorizationController } from './native-authorization.controller
 import { NativeAuthorizationsService } from './native-authorizations.service';
 import { NativeAuthorizeController } from './native-authorize.controller';
 import { NativeBrowserFlowService } from './native-browser-flow.service';
-import {
-  NativeCredentialRecord,
-  NativeCredentialSchema,
-} from './native-credential.schema';
-import { NativeGrantRecord, NativeGrantSchema } from './native-grant.schema';
-import { NativeGrantsService } from './native-grants.service';
+import { NativeGrantsModule } from './native-grants.module';
 import { NativeMeLimiter } from './native-me-limiter';
 
 @Module({
@@ -31,9 +26,10 @@ import { NativeMeLimiter } from './native-me-limiter';
     AuthModule,
     UsersModule,
     TelegramModule,
+    // NativeGrantsService и модели доступов — в своём модуле: их читает и
+    // AuthGuard (native-grants.module.ts).
+    NativeGrantsModule,
     MongooseModule.forFeature([
-      { name: NativeGrantRecord.name, schema: NativeGrantSchema },
-      { name: NativeCredentialRecord.name, schema: NativeCredentialSchema },
       { name: NativeAuthorizationRecord.name, schema: NativeAuthorizationSchema },
     ]),
   ],
@@ -42,11 +38,6 @@ import { NativeMeLimiter } from './native-me-limiter';
     NativeAuthorizeController,
     NativeAuthorizationController,
   ],
-  providers: [
-    NativeGrantsService,
-    NativeAuthorizationsService,
-    NativeBrowserFlowService,
-    NativeMeLimiter,
-  ],
+  providers: [NativeAuthorizationsService, NativeBrowserFlowService, NativeMeLimiter],
 })
 export class NativeAuthModule {}

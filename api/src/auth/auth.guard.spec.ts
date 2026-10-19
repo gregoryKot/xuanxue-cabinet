@@ -5,8 +5,7 @@ import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
 import { fakeResponse } from '../test-support/http-fakes';
-import type { UserLean } from '../users/users.service';
-import { UsersService } from '../users/users.service';
+import { UsersService, type UserLean } from '../users/users.service';
 import {
   IS_PUBLIC_KEY,
   RENEW_ACTIVE_COOKIE_ONLY_KEY,
@@ -58,7 +57,8 @@ function buildGuard(
   publicUrl = 'http://localhost:3000',
 ): AuthGuard {
   const authService = new AuthService(SECRET, sessionCookieProfile(publicUrl));
-  return new AuthGuard(reflector, usersService, authService);
+  // Bearer в этом спеке не участвует — его ветки в auth.guard.bearer.spec.ts.
+  return new AuthGuard(reflector, usersService, authService, {} as never);
 }
 
 function setCookies(res: ReturnType<typeof fakeResponse>): string[] {

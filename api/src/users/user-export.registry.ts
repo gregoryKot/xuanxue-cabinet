@@ -25,6 +25,7 @@ import {
 } from '@xuanxue/shared';
 import { NATIVE_AUTH_EXPORT_SECTIONS } from '../native-auth/native-auth.export';
 import { toStudentBlock } from '../exams/exam-attempt.mapper';
+import { NOTIFICATION_PREFS_EXPORT_SECTIONS } from '../notifications/notification-prefs.export';
 import type { AttemptBlockRecord } from '../exams/exam-attempt.schema';
 import {
   USER_MODEL_NAME,
@@ -85,18 +86,6 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       'noTelegramAt',
       'studentModeAt',
       'homeHiddenTiles',
-    ],
-    omit: {},
-  },
-  NotificationPrefsRecord: {
-    title: 'Настройки уведомлений',
-    retention: ACCOUNT_RETENTION,
-    include: [
-      'overrides',
-      'paymentReminderDay',
-      'lessonScopeMode',
-      'lessonClassIds',
-      'lessonReminderMinutes',
     ],
     omit: {},
   },
@@ -239,6 +228,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
     omit: { tokenHash: SECRET_HASH },
   },
   ...NATIVE_AUTH_EXPORT_SECTIONS,
+  ...NOTIFICATION_PREFS_EXPORT_SECTIONS,
 };
 
 /** Ссылки на человека в данных школы — только число записей (что и где он

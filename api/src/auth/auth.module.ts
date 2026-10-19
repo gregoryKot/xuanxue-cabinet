@@ -16,6 +16,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Logger } from 'nestjs-pino';
 import { MailModule } from '../mail/mail.module';
+import { NativeGrantsModule } from '../native-auth/native-grants.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -60,6 +61,11 @@ import { TelegramLinkController } from './telegram-link.controller';
     StorageModule,
     TelegramModule,
     MailModule,
+    // NativeGrantsService — AuthGuard принимает bearer на маршрутах с
+    // @AllowNativeBearer() (ADR-0185). Нативный модуль импортирует AuthModule,
+    // поэтому сам сервис вынесен в NativeGrantsModule, который про AuthModule
+    // не знает, — цикла нет.
+    NativeGrantsModule,
     MongooseModule.forFeature([
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),

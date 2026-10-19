@@ -7,6 +7,8 @@
 // (ADR-0162): выбор, список активных занятий и своя минута; PUT отдаёт то же,
 // что GET, по той же причине, что PATCH. `/notifications/lesson-prefs-stats` —
 // число для штата: сколько учеников этим воспользовались (ADR-0162, п. 5).
+// `/me/notifications/lessons/sync` — снимок настроек напоминаний целиком для
+// браузера и для приложения Daychi (ADR-0185).
 import type {
   MyLessonNotificationsDto,
   UpdateLessonReminderInput,
@@ -20,6 +22,7 @@ import type {
   SubscribePushInput,
   UnsubscribePushInput,
 } from './push';
+import type { ReminderSyncSnapshot } from './reminder-sync';
 
 export interface NotificationsRoutes {
   'GET /me/notifications': {
@@ -36,6 +39,11 @@ export interface NotificationsRoutes {
     query: undefined;
     body: undefined;
     response: MyLessonNotificationsDto;
+  };
+  'GET /me/notifications/lessons/sync': {
+    query: undefined;
+    body: undefined;
+    response: ReminderSyncSnapshot;
   };
   'PUT /me/notifications/lessons/scope': {
     query: undefined;
@@ -73,6 +81,7 @@ export const NOTIFICATIONS_ROUTE_KEYS: Record<keyof NotificationsRoutes, true> =
   'GET /me/notifications': true,
   'PATCH /me/notifications': true,
   'GET /me/notifications/lessons': true,
+  'GET /me/notifications/lessons/sync': true,
   'PUT /me/notifications/lessons/scope': true,
   'PUT /me/notifications/lessons/reminder-minutes': true,
   'GET /notifications/lesson-prefs-stats': true,
