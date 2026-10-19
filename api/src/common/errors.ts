@@ -40,6 +40,13 @@ export class UnauthorizedError extends DomainError {
   readonly status = 401;
 }
 
+// Запрос несёт и сессию браузера, и bearer приложения (ADR-0185): это ошибка
+// клиента, а не отказ в доступе, поэтому 400 — ни 401 («войдите»), ни 403.
+export class AmbiguousCredentialsError extends DomainError {
+  readonly code = 'ambiguous_credentials';
+  readonly status = 400;
+}
+
 // Функция выключена конфигурацией (вход через Telegram без BOT_TOKEN) — не
 // вина клиента и не отказ в доступе: сервис сам не готов её обслужить,
 // 503, а не 403/500.

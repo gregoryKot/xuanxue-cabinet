@@ -8,6 +8,9 @@ import type { UserLean } from '../users/users.service';
 export interface RequestLike {
   method: string;
   headers: Record<string, string | string[] | undefined>;
+  // Имена и значения заголовков как пришли: Node при повторе `authorization`
+  // оставляет в `headers` один, а повтор bearer — отказ (native-http.ts).
+  rawHeaders?: string[];
   user?: UserLean;
   // Сырое тело запроса — ValidationPipe с `transform: true` строит из него
   // типизированный параметр @Body(), но само `req.body` не трогает

@@ -4,14 +4,21 @@
 // выбор «о каких занятиях» (LessonScopeService, LessonNotificationsController,
 // `/me/notifications/lessons`, ADR-0162), число для штата к нему
 // (LessonPrefsStatsService, `/notifications/lesson-prefs-stats`) и получатели
-// шагов тика о занятии (LessonRecipientsService).
+// шагов тика о занятии (LessonRecipientsService); снимок настроек напоминаний для
+// браузера и Daychi (ReminderSyncService, /me/notifications/lessons/sync, ADR-0185).
 // NotificationRecord регистрируется здесь и экспортируется через
 // MongooseModule — ExamsModule, который уже импортирует этот модуль ради
 // NotificationPrefsService, собирает им же InAppExamNotifier
 // (in-app-exam-notifier.ts, провайдер ExamsModule, не этого модуля — тот же
 // приём, что у TelegramExamNotifier, комментарий в exams.module.ts).
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  RequestMethod,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { setNoStoreMiddleware } from '../auth/session-check.controller';
 import { ClassesModule } from '../classes/classes.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UserModelModule } from '../users/user-model.module';
@@ -30,6 +37,8 @@ import {
 } from './notification-prefs.schema';
 import { NotificationPrefsService } from './notification-prefs.service';
 import { NotificationRecord, NotificationSchema } from './notification.schema';
+import { ReminderSyncController } from './reminder-sync.controller';
+import { ReminderSyncService } from './reminder-sync.service';
 
 @Module({
   imports: [
@@ -50,6 +59,7 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
   controllers: [
     NotificationPrefsController,
     LessonNotificationsController,
+    ReminderSyncController,
     LessonPrefsStatsController,
     InboxController,
   ],
@@ -58,6 +68,7 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
     LessonScopeService,
     LessonRecipientsService,
     LessonNotificationsService,
+    ReminderSyncService,
     LessonPrefsStatsService,
     InboxService,
   ],
@@ -66,4 +77,13 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
   // SchedulerModule): получатели и их выбор занятий одной выборкой на пачку.
   exports: [MongooseModule, NotificationPrefsService, LessonRecipientsService],
 })
-export class NotificationsModule {}
+export class NotificationsModule implements NestModule {
+  // no-store до гвардов: отказы 401/403/429 пишет фильтр, минуя контроллер, а
+  // кэшированный снимок или отказ решали бы за приложение по прошлому состоянию
+  // (reminder-sync.controller.ts, тот же приём, что у GET /auth/session).
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(setNoStoreMiddleware)
+      .forRoutes({ path: 'me/notifications/lessons/sync', method: RequestMethod.GET });
+  }
+}

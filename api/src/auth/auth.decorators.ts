@@ -28,6 +28,13 @@ export const RENEW_ACTIVE_COOKIE_ONLY_KEY = 'renewActiveCookieOnly';
 export const RenewActiveCookieOnly = (): ReturnType<typeof SetMetadata> =>
   SetMetadata(RENEW_ACTIVE_COOKIE_ONLY_KEY, true);
 
+export const ALLOW_NATIVE_BEARER_KEY = 'allowNativeBearer';
+/** Маршрут принимает вместо cookie сессии bearer приложения Daychi (ADR-0185).
+ * Без метки заголовок Authorization гвард не читает вовсе — ни один другой
+ * маршрут кабинета bearer не открывает (SECURITY §2). */
+export const AllowNativeBearer = (): ReturnType<typeof SetMetadata> =>
+  SetMetadata(ALLOW_NATIVE_BEARER_KEY, true);
+
 export const ROLES_KEY = 'roles';
 /** Маршрут виден только сессии хотя бы с одной из перечисленных ролей
  * (ADR-0010: данные школы — по роли, не по владельцу). Первый потребитель —
