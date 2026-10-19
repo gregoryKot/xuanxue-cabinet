@@ -19,7 +19,7 @@ import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { cardStyle, metaStyle } from '../student/studentExamCardStyles';
 import { hasLessonSettings, isReminderHintDue } from './lessonReminderVisibility';
 import { NOTIFICATION_SETTINGS_PATH } from './notificationPaths';
-import { parseReminderSnapshot } from './reminderSyncState';
+import { parseReminderSnapshot } from './reminderSnapshot';
 import { useNotificationPrefs } from './useNotificationPrefs';
 
 const REGION_LABEL = 'О каких занятиях напоминать';

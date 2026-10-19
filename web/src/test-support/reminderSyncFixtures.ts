@@ -31,8 +31,14 @@ export function makeClass(
   };
 }
 
-export const MORNING = makeClass('c1', 'Тайцзи для начинающих', 1, '10:00', 'утро');
-export const EVENING = makeClass('c2', 'Цигун', 3, '19:00');
+// id в форме, которую парсер снимка принимает: ObjectId строчным hex (контракт
+// reminder-sync). Короткие `c1` сервер не отдаёт, и парсер их отвергает.
+export const MORNING_ID = '65f000000000000000000001';
+export const EVENING_ID = '65f000000000000000000002';
+export const LESSON_ID = '65f0000000000000000000a1';
+
+export const MORNING = makeClass(MORNING_ID, 'Тайцзи для начинающих', 1, '10:00', 'утро');
+export const EVENING = makeClass(EVENING_ID, 'Цигун', 3, '19:00');
 
 export function makeSnapshot(
   overrides: Partial<ReminderSyncSnapshot> = {},

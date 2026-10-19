@@ -14,6 +14,7 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { makeMe } from '../test-support/meFixture';
 import {
+  EVENING_ID,
   announceConnection,
   deferred,
   makeSnapshot,
@@ -306,7 +307,7 @@ describe('LessonReminderField — запись', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'Цигун' }));
 
     await waitFor(() => expect(field).toBeDisabled());
-    pending.settle(makeSnapshot({ revision: '2', classIds: ['c2'] }));
+    pending.settle(makeSnapshot({ revision: '2', classIds: [EVENING_ID] }));
     await waitFor(() => expect(field).toBeEnabled());
   });
 

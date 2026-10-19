@@ -17,7 +17,10 @@ import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFe
 import { makeMe } from '../test-support/meFixture';
 import {
   EVENING,
+  EVENING_ID,
+  LESSON_ID,
   MORNING,
+  MORNING_ID,
   announceConnection,
   deferred,
   makeSnapshot,
@@ -36,6 +39,9 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+// Корректный ObjectId, которого нет в каталоге: занятие, ушедшее из расписания.
+const GONE_ID = '65f0000000000000000000ff';
 restoreConnectionBetweenTests();
 stubViewerTimeZone('Asia/Jerusalem');
 
@@ -96,7 +102,7 @@ describe('LessonScopeSection — кому показывается и как о�
 
 describe('LessonScopeSection — список занятий', () => {
   it('занятия из снимка: название, группа, дни и время; отмечены те, что в classIds', async () => {
-    serveScripted({ read: makeSnapshot({ classIds: ['c1'] }) });
+    serveScripted({ read: makeSnapshot({ classIds: [MORNING_ID] }) });
     renderSection();
 
     expect(await morning()).toBeChecked();
@@ -132,7 +138,7 @@ describe('LessonScopeSection — список занятий', () => {
   });
 
   it('отмечено хоть одно — строки нет', async () => {
-    serveScripted({ read: makeSnapshot({ classIds: ['c2'] }) });
+    serveScripted({ read: makeSnapshot({ classIds: [EVENING_ID] }) });
     renderSection();
 
     await evening();
@@ -140,7 +146,7 @@ describe('LessonScopeSection — список занятий', () => {
   });
 
   it('в выборе остался id занятия, которого в списке нет, — строка всё равно есть', async () => {
-    serveScripted({ read: makeSnapshot({ classIds: ['gone'] }) });
+    serveScripted({ read: makeSnapshot({ classIds: [GONE_ID] }) });
     renderSection();
 
     expect(await screen.findByText(NOTHING_TICKED)).toBeInTheDocument();
@@ -149,7 +155,7 @@ describe('LessonScopeSection — список занятий', () => {
   // Отдельные занятия из приложения дают напоминания без галочек в списке:
   // «не будет» было бы неправдой.
   it('есть отдельные занятия из приложения — строки «не будет» нет', async () => {
-    serveScripted({ read: makeSnapshot({ lessonIds: ['lesson-1'] }) });
+    serveScripted({ read: makeSnapshot({ lessonIds: [LESSON_ID] }) });
     renderSection();
 
     await morning();
@@ -177,14 +183,14 @@ describe('LessonScopeSection — пояс школы', () => {
 describe('LessonScopeSection — запись галочки', () => {
   it('галочка шлёт PATCH ровно с одним изменением class и берёт состояние из ответа', async () => {
     const user = userEvent.setup();
-    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c1'] }) });
+    const replies = serveScripted({ read: makeSnapshot({ classIds: [MORNING_ID] }) });
     renderSection();
     const box = await evening();
     // Сервер ответил не тем, что ушло (занятие переименовали, пока экран был
     // открыт): экран обязан показать ответ, а не собственное предположение.
     replies.write = makeSnapshot({
       revision: '2',
-      classIds: ['c1', 'c2'],
+      classIds: [MORNING_ID, EVENING_ID],
       classes: [MORNING, { ...EVENING, title: 'Цигун вечером' }],
     });
 
@@ -195,7 +201,10 @@ describe('LessonScopeSection — запись галочки', () => {
     expect(syncCalls('PATCH')[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'PATCH',
-        body: { version: 1, changes: [{ kind: 'class', id: 'c2', selected: true }] },
+        body: {
+          version: 1,
+          changes: [{ kind: 'class', id: EVENING_ID, selected: true }],
+        },
       }),
     );
     // Второго GET за тем же самым нет (ADR-0087).
@@ -204,21 +213,23 @@ describe('LessonScopeSection — запись галочки', () => {
 
   it('снятая галочка шлёт selected: false, остальные остаются', async () => {
     const user = userEvent.setup();
-    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c1', 'c2'] }) });
+    const replies = serveScripted({
+      read: makeSnapshot({ classIds: [MORNING_ID, EVENING_ID] }),
+    });
     renderSection();
     const box = await morning();
-    replies.write = makeSnapshot({ revision: '2', classIds: ['c2'] });
+    replies.write = makeSnapshot({ revision: '2', classIds: [EVENING_ID] });
 
     await user.click(box);
 
     await waitFor(() => expect(box).not.toBeChecked());
     expect(screen.getByRole('checkbox', { name: 'Цигун' })).toBeChecked();
-    expect(sentChanges()).toEqual([[{ kind: 'class', id: 'c1', selected: false }]]);
+    expect(sentChanges()).toEqual([[{ kind: 'class', id: MORNING_ID, selected: false }]]);
   });
 
   it('снята последняя галочка — после ответа появляется строка «напоминаний не будет»', async () => {
     const user = userEvent.setup();
-    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c2'] }) });
+    const replies = serveScripted({ read: makeSnapshot({ classIds: [EVENING_ID] }) });
     renderSection();
     const box = await evening();
     replies.write = makeSnapshot({ revision: '2', classIds: [] });
@@ -231,7 +242,10 @@ describe('LessonScopeSection — запись галочки', () => {
   it('пока PATCH в пути, все галочки выключены и положение не меняется; потом включаются с новым', async () => {
     const user = userEvent.setup();
     const pending = deferred();
-    serveScripted({ read: makeSnapshot({ classIds: ['c1'] }), write: pending.promise });
+    serveScripted({
+      read: makeSnapshot({ classIds: [MORNING_ID] }),
+      write: pending.promise,
+    });
     renderSection();
     const box = await evening();
 
@@ -242,7 +256,7 @@ describe('LessonScopeSection — запись галочки', () => {
     // Без оптимистичной отрисовки: галочка не встаёт, пока нет ответа.
     expect(box).not.toBeChecked();
 
-    pending.settle(makeSnapshot({ revision: '2', classIds: ['c1', 'c2'] }));
+    pending.settle(makeSnapshot({ revision: '2', classIds: [MORNING_ID, EVENING_ID] }));
 
     await waitFor(() =>
       expect(screen.getByRole('checkbox', { name: 'Цигун' })).toBeEnabled(),
@@ -294,7 +308,7 @@ describe('LessonScopeSection — отказ сервера', () => {
       expect(box).toBeEnabled();
       expect(syncCalls('GET')).toHaveLength(1);
 
-      replies.write = makeSnapshot({ revision: '2', classIds: ['c2'] });
+      replies.write = makeSnapshot({ revision: '2', classIds: [EVENING_ID] });
       await user.click(box);
 
       await waitFor(() => expect(box).toBeChecked());
@@ -322,13 +336,13 @@ describe('LessonScopeSection — неясный исход', () => {
     expect(box).toBeDisabled();
     expect(box).not.toBeChecked();
 
-    reading.settle(makeSnapshot({ revision: '2', classIds: ['c2'] }));
+    reading.settle(makeSnapshot({ revision: '2', classIds: [EVENING_ID] }));
 
     await waitFor(() => expect(box).toBeEnabled());
     expect(box).toBeChecked();
     expect(screen.queryByText(CHECKING)).not.toBeInTheDocument();
     expect(syncCalls('GET')).toHaveLength(2);
-    expect(sentChanges()).toEqual([[{ kind: 'class', id: 'c2', selected: true }]]);
+    expect(sentChanges()).toEqual([[{ kind: 'class', id: EVENING_ID, selected: true }]]);
   });
 
   it.each([
@@ -358,14 +372,18 @@ describe('LessonScopeSection — неясный исход', () => {
   it('ответ записи со старой ревизией и чужого аккаунта не применяются — вместо них чтение', async () => {
     const user = userEvent.setup();
     const replies = serveScripted({
-      read: makeSnapshot({ revision: '5', classIds: ['c1'] }),
+      read: makeSnapshot({ revision: '5', classIds: [MORNING_ID] }),
     });
     renderSection();
     const box = await evening();
 
     const stale = [
-      makeSnapshot({ revision: '4', classIds: ['c1', 'c2'] }),
-      makeSnapshot({ accountId: 'u2', revision: '9', classIds: ['c1', 'c2'] }),
+      makeSnapshot({ revision: '4', classIds: [MORNING_ID, EVENING_ID] }),
+      makeSnapshot({
+        accountId: 'u2',
+        revision: '9',
+        classIds: [MORNING_ID, EVENING_ID],
+      }),
     ];
     for (const [index, response] of stale.entries()) {
       replies.write = response;
@@ -397,7 +415,7 @@ describe('LessonScopeSection — неясный исход', () => {
     expect(box).toBeDisabled();
     expect(syncCalls('GET')).toHaveLength(2);
 
-    replies.read = makeSnapshot({ revision: '2', classIds: ['c2'] });
+    replies.read = makeSnapshot({ revision: '2', classIds: [EVENING_ID] });
     await user.click(retry);
 
     await waitFor(() => expect(box).toBeEnabled());

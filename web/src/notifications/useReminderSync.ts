@@ -10,7 +10,9 @@
 // Ответ записи — подтверждённый снимок, второго `GET` за ним нет (ADR-0087).
 // `GET` после записи уходит только при неясном исходе: сервер мог принять
 // запись, и единственный честный ответ на это — прочитать, а не отправить
-// снова. Ответ, пришедший после размонтирования, отбрасывается.
+// снова. Если сервер просил подождать (`Retry-After`), чтение уходит после
+// паузы, которую отсчитывает таймер хука. Ответ, пришедший после
+// размонтирования, отбрасывается.
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import {
   REMINDER_SYNC_VERSION,
@@ -29,6 +31,8 @@ import {
   type ReminderRefusal,
   type ReminderSyncNotice,
 } from './reminderSyncState';
+
+const MS_PER_SECOND = 1000;
 
 export interface UseReminderSyncResult {
   /** Подтверждённый снимок; `null`, пока его нет. */
@@ -76,6 +80,19 @@ export function useReminderSync(): UseReminderSyncResult {
   }, []);
 
   useEffect(() => () => saveAbort.current?.abort(), []);
+
+  // Пауза по `Retry-After`: автомат времени не знает, он только держит ничего не
+  // отправлять, пока хук не скажет, что срок вышел. Смена паузы или уход экрана
+  // гасит таймер — запоздавшее «срок вышел» снимало бы чужую, новую паузу.
+  const retryHoldSec = state.retryHoldSec;
+  useEffect(() => {
+    if (retryHoldSec === null) return;
+    const timer = setTimeout(
+      () => dispatch({ type: 'retryHoldElapsed' }),
+      retryHoldSec * MS_PER_SECOND,
+    );
+    return () => clearTimeout(timer);
+  }, [retryHoldSec]);
 
   const isReading = isRelevant && accountId !== null && needsRead(state);
   useEffect(() => {

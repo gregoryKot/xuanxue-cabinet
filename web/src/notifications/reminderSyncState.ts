@@ -16,25 +16,30 @@
 //                   ограждением — как неясный исход
 //   saveFailed      отказ (400/403/409/413/415) → idle с текстом сервера;
 //                   401 → idle без текста (вход за глобальным слушателем);
-//                   остальное, включая 429 → verifying
+//                   остальное, включая 429 → verifying; если сервер назвал
+//                   `Retry-After`, ещё и пауза (`retryHoldSec`)
 //   readSucceeded   loading|verifying → idle с ответом; не снимок или отсечён —
 //                   сбой чтения
-//   readFailed      loading|verifying: сбой чтения, ждём «ещё раз»
-//   readRetried     снимает сбой чтения, чтение уходит заново
+//   readFailed      loading|verifying: сбой чтения, ждём «ещё раз»; с
+//                   `Retry-After` — ещё и пауза
+//   readRetried     снимает сбой чтения, чтение уходит заново; пока пауза —
+//                   ничего
+//   retryHoldElapsed  время паузы вышло (его считает хук, редьюсер времени не
+//                   знает): пауза снимается
 //   connection      онлайн/офлайн; чтение после неясного исхода ждёт сети
+//
+// Пауза: сервер попросил подождать (`Retry-After` у 429, 503), и ни чтение, ни
+// «ещё раз», ни сохранение до конца паузы не уходят — иначе мы сами били бы в
+// тот лимит, о котором нас предупредили. Ответ с паузой не пропадает: исход
+// записи остаётся неясным, и после паузы идёт обычное одно чтение.
 //
 // Запись не повторяется нигде: у неясного исхода единственный выход — чтение.
 // Ограждение: снимок чужого аккаунта и снимок с ревизией ниже подтверждённой
 // игнорируются; равная ревизия принимается — каталог и школьное значение живут
-// отдельно от ревизии выбора.
-import {
-  REMINDER_SYNC_LEAD_CHOICES,
-  REMINDER_SYNC_VERSION,
-  type LessonScopeClassDto,
-  type ReminderChange,
-  type ReminderSyncSnapshot,
-} from '@xuanxue/shared';
+// отдельно от ревизии выбора. Что считается снимком — reminderSnapshot.ts.
+import type { ReminderChange, ReminderSyncSnapshot } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { parseReminderSnapshot } from './reminderSnapshot';
 
 export type ReminderSyncPhase = 'loading' | 'idle' | 'saving' | 'verifying';
 
@@ -56,6 +61,9 @@ export interface ReminderSyncState {
    * «ещё раз», новое не уходит — повторов по таймеру нет. */
   readError: string | null;
   refusal: ReminderRefusal | null;
+  /** Сколько секунд сервер просил не обращаться (`Retry-After`); `null` — нет
+   * просьбы. Снимает `retryHoldElapsed`, когда хук отсчитал это время. */
+  retryHoldSec: number | null;
 }
 
 export type ReminderSyncEvent =
@@ -65,16 +73,18 @@ export type ReminderSyncEvent =
   | { type: 'saveFailed'; error: unknown; kind: ReminderChangeKind }
   | { type: 'readSucceeded'; body: unknown; accountId: string }
   | { type: 'readFailed'; error: unknown }
-  | { type: 'readRetried' };
+  | { type: 'readRetried' }
+  | { type: 'retryHoldElapsed' };
 
 /** Статус над контролами, когда редактирование стоит. */
 export type ReminderSyncNotice =
-  'offline' | 'checking' | 'waitingForNetwork' | 'checkFailed';
+  'offline' | 'checking' | 'waitingForNetwork' | 'retryHold' | 'checkFailed';
 
 export const REMINDER_SYNC_NOTICE_TEXT: Record<ReminderSyncNotice, string> = {
   offline: 'Нет сети. Настройки напоминаний можно менять, когда она появится.',
   checking: 'Не знаем, сохранилось ли, — проверяем…',
   waitingForNetwork: 'Не знаем, сохранилось ли. Проверим, когда появится сеть.',
+  retryHold: 'Не знаем, сохранилось ли. Проверим чуть позже — сервер попросил подождать.',
   checkFailed: 'Не удалось проверить, сохранилось ли. Менять настройки пока нельзя.',
 };
 
@@ -84,10 +94,29 @@ export const REMINDER_SYNC_LOAD_ERROR =
 const UNAUTHORIZED_STATUS = 401;
 // Ответ с этими статусами значит «записи не было» (контракт, таблица отказов).
 const REFUSAL_STATUSES: readonly number[] = [400, 403, 409, 413, 415];
-const REVISION_PATTERN = /^(0|[1-9][0-9]*)$/;
+// Потолок паузы: `setTimeout` с задержкой больше ~24 суток срабатывает сразу, а
+// пауза в часы закрыла бы настройки на весь вечер. Час — с запасом больше любого
+// разумного `Retry-After` от лимитера.
+const RETRY_HOLD_MAX_SEC = 3600;
 
 export function initialReminderSyncState(online: boolean): ReminderSyncState {
-  return { phase: 'loading', snapshot: null, online, readError: null, refusal: null };
+  return {
+    phase: 'loading',
+    snapshot: null,
+    online,
+    readError: null,
+    refusal: null,
+    retryHoldSec: null,
+  };
+}
+
+/** Пауза по ошибке: секунды из `Retry-After`, если сервер их назвал и они больше
+ * нуля; иначе `null` — поведение прежнее. */
+function retryHoldFor(error: unknown): number | null {
+  if (!(error instanceof ApiError)) return null;
+  const seconds = error.retryAfterSec;
+  if (seconds === undefined || !(seconds > 0)) return null;
+  return Math.min(seconds, RETRY_HOLD_MAX_SEC);
 }
 
 /** Можно ли начать сохранение: одно за раз, только онлайн, только поверх
@@ -99,7 +128,7 @@ export function canSave(state: ReminderSyncState): boolean {
 /** Нужно ли сейчас читать снимок. Первое чтение идёт и без сети — оно покажет
  * сбой с кнопкой; чтение после неясного исхода ждёт сети. */
 export function needsRead(state: ReminderSyncState): boolean {
-  if (state.readError !== null) return false;
+  if (state.readError !== null || state.retryHoldSec !== null) return false;
   if (state.phase === 'loading') return true;
   return state.phase === 'verifying' && state.online;
 }
@@ -107,6 +136,7 @@ export function needsRead(state: ReminderSyncState): boolean {
 export function reminderSyncNotice(state: ReminderSyncState): ReminderSyncNotice | null {
   if (state.phase === 'verifying') {
     if (state.readError !== null) return 'checkFailed';
+    if (state.retryHoldSec !== null) return 'retryHold';
     return state.online ? 'checking' : 'waitingForNetwork';
   }
   return state.online || state.phase === 'loading' ? null : 'offline';
@@ -127,89 +157,6 @@ export function classifyWriteFailure(error: unknown): WriteFailure {
     }
   }
   return { kind: 'uncertain' };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
-// Без повторов и по возрастанию кодовых единиц — так сервер отдаёт множества;
-// иной порядок значит ответ не по контракту, а не «разные вкусы».
-function isCanonicalIds(value: unknown): value is string[] {
-  if (!Array.isArray(value)) return false;
-  let previous: string | null = null;
-  for (const id of value) {
-    if (typeof id !== 'string' || (previous !== null && previous >= id)) return false;
-    previous = id;
-  }
-  return true;
-}
-
-function isSlot(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    Number.isInteger(value.weekday) &&
-    typeof value.time === 'string' &&
-    Number.isInteger(value.durationMin)
-  );
-}
-
-function isCatalogueClass(value: unknown): value is LessonScopeClassDto {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.title === 'string' &&
-    typeof value.groupLabel === 'string' &&
-    typeof value.tz === 'string' &&
-    Array.isArray(value.slots) &&
-    value.slots.every(isSlot)
-  );
-}
-
-function isCatalogue(value: unknown): value is LessonScopeClassDto[] {
-  return (
-    Array.isArray(value) &&
-    value.every(isCatalogueClass) &&
-    isCanonicalIds(value.map((item: LessonScopeClassDto) => item.id))
-  );
-}
-
-function isLeadMinutes(value: unknown): value is ReminderSyncSnapshot['leadMinutes'] {
-  return value === null || REMINDER_SYNC_LEAD_CHOICES.some((choice) => choice === value);
-}
-
-/** Снимок из тела ответа или `null`: поля и типы по контракту, лишние поля
- * отбрасываются, пустой выбор остаётся пустым, а не «ошибкой». */
-export function parseReminderSnapshot(body: unknown): ReminderSyncSnapshot | null {
-  if (!isRecord(body) || body.version !== REMINDER_SYNC_VERSION) return null;
-  const {
-    accountId,
-    revision,
-    classIds,
-    lessonIds,
-    leadMinutes,
-    schoolMinutes,
-    classes,
-  } = body;
-  if (typeof accountId !== 'string' || accountId === '') return null;
-  if (typeof revision !== 'string' || !REVISION_PATTERN.test(revision)) return null;
-  if (!isCanonicalIds(classIds) || !isCanonicalIds(lessonIds)) return null;
-  if (!isLeadMinutes(leadMinutes) || !isPositiveInteger(schoolMinutes)) return null;
-  if (!isCatalogue(classes)) return null;
-  return {
-    version: REMINDER_SYNC_VERSION,
-    accountId,
-    revision,
-    classIds,
-    lessonIds,
-    leadMinutes,
-    schoolMinutes,
-    classes,
-  };
 }
 
 /** Снимок, которому можно верить поверх подтверждённого, или `null`. */
@@ -233,8 +180,11 @@ function readErrorFor(state: ReminderSyncState, error: unknown): string {
   return error instanceof ApiError ? error.message : REMINDER_SYNC_LOAD_ERROR;
 }
 
-function toVerifying(state: ReminderSyncState): ReminderSyncState {
-  return { ...state, phase: 'verifying', readError: null, refusal: null };
+function toVerifying(
+  state: ReminderSyncState,
+  retryHoldSec: number | null = null,
+): ReminderSyncState {
+  return { ...state, phase: 'verifying', readError: null, refusal: null, retryHoldSec };
 }
 
 type EventOf<T> = Extract<ReminderSyncEvent, { type: T }>;
@@ -250,7 +200,7 @@ function applySave(
     return { ...state, phase: 'idle', snapshot, refusal: null };
   }
   const failure = classifyWriteFailure(event.error);
-  if (failure.kind === 'uncertain') return toVerifying(state);
+  if (failure.kind === 'uncertain') return toVerifying(state, retryHoldFor(event.error));
   if (failure.kind === 'unauthorized') return { ...state, phase: 'idle' };
   const refusal = { kind: event.kind, message: failure.message };
   return { ...state, phase: 'idle', refusal };
@@ -262,11 +212,19 @@ function applyRead(
 ): ReminderSyncState {
   if (!awaitingRead(state)) return state;
   if (event.type === 'readFailed') {
-    return { ...state, readError: readErrorFor(state, event.error) };
+    const readError = readErrorFor(state, event.error);
+    return { ...state, readError, retryHoldSec: retryHoldFor(event.error) };
   }
   const snapshot = acceptSnapshot(state.snapshot, event.body, event.accountId);
   if (snapshot === null) return { ...state, readError: readErrorFor(state, null) };
-  return { ...state, phase: 'idle', snapshot, readError: null, refusal: null };
+  return {
+    ...state,
+    phase: 'idle',
+    snapshot,
+    readError: null,
+    refusal: null,
+    retryHoldSec: null,
+  };
 }
 
 export function reminderSyncReducer(
@@ -285,6 +243,10 @@ export function reminderSyncReducer(
     case 'readFailed':
       return applyRead(state, event);
     case 'readRetried':
-      return state.readError === null ? state : { ...state, readError: null };
+      return state.readError === null || state.retryHoldSec !== null
+        ? state
+        : { ...state, readError: null };
+    case 'retryHoldElapsed':
+      return state.retryHoldSec === null ? state : { ...state, retryHoldSec: null };
   }
 }

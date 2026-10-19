@@ -30,6 +30,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
+import { MORNING_ID } from '../test-support/reminderSyncFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { NotificationsProvider } from './NotificationsProvider';
 import NotificationsScreen from './NotificationsScreen';
@@ -118,13 +119,13 @@ const reminderSnapshot = (
   version: REMINDER_SYNC_VERSION,
   accountId: 'u1',
   revision: '1',
-  classIds: ['c1'],
+  classIds: [MORNING_ID],
   lessonIds: [],
   leadMinutes: null,
   schoolMinutes: 60,
   classes: [
     {
-      id: 'c1',
+      id: MORNING_ID,
       title: 'Цигун',
       groupLabel: '',
       tz: 'Asia/Jerusalem',
