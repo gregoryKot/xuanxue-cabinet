@@ -237,9 +237,14 @@ function toVerifying(state: ReminderSyncState): ReminderSyncState {
   return { ...state, phase: 'verifying', readError: null, refusal: null };
 }
 
+type EventOf<T extends ReminderSyncEvent['type']> = Extract<
+  ReminderSyncEvent,
+  { type: T }
+>;
+
 function applySave(
   state: ReminderSyncState,
-  event: ReminderSyncEvent,
+  event: EventOf<'saveSucceeded' | 'saveFailed'>,
 ): ReminderSyncState {
   if (state.phase !== 'saving') return state;
   if (event.type === 'saveSucceeded') {
@@ -247,7 +252,6 @@ function applySave(
     if (snapshot === null) return toVerifying(state);
     return { ...state, phase: 'idle', snapshot, refusal: null };
   }
-  if (event.type !== 'saveFailed') return state;
   const failure = classifyWriteFailure(event.error);
   if (failure.kind === 'uncertain') return toVerifying(state);
   if (failure.kind === 'unauthorized') return { ...state, phase: 'idle' };
@@ -260,13 +264,12 @@ function applySave(
 
 function applyRead(
   state: ReminderSyncState,
-  event: ReminderSyncEvent,
+  event: EventOf<'readSucceeded' | 'readFailed'>,
 ): ReminderSyncState {
   if (!awaitingRead(state)) return state;
   if (event.type === 'readFailed') {
     return { ...state, readError: readErrorFor(state, event.error) };
   }
-  if (event.type !== 'readSucceeded') return state;
   const snapshot = acceptSnapshot(state.snapshot, event.body, event.accountId);
   if (snapshot === null) return { ...state, readError: readErrorFor(state, null) };
   return { ...state, phase: 'idle', snapshot, readError: null, refusal: null };
