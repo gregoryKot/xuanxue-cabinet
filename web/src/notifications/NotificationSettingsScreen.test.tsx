@@ -1,16 +1,16 @@
 // Экран «Настройки уведомлений» (ADR-0162): три блока в порядке «на какое
-// устройство — о каких занятиях — что присылать». Проверки переключателей видов,
-// подсказки про бота и сбоя загрузки перенесены сюда из ProfileScreen.test.tsx,
-// где раздел жил до переезда (CLAUDE.md «Отказались от механики — удаляем с
-// концами»: покрытие осталось, поменялся адрес). Блок push здесь заменён
-// заглушкой — его состояния держит PushNotificationsSection.test.tsx; блок
-// «О каких занятиях» в подробностях — LessonScopeSection.test.tsx, а поле «За
-// сколько напомнить» под «Занятие скоро» — LessonReminderField.test.tsx.
+// устройство — о каких занятиях — что присылать». Здесь — состав экрана,
+// переключатели видов, подсказка про бота и сбой загрузки видов, а также то, что
+// снимок напоминаний (ADR-0185) читается одним `GET` на оба блока про занятия.
+// Блок push заменён заглушкой — его состояния держит
+// PushNotificationsSection.test.tsx; блок «О каких занятиях» в подробностях —
+// LessonScopeSection.test.tsx, а поле «За сколько напомнить» под «Занятие
+// скоро» — LessonReminderField.test.tsx.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { MeDto, MyLessonNotificationsDto } from '@xuanxue/shared';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -19,6 +19,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
+import { makeSnapshot, SYNC_PATH, syncCalls } from '../test-support/reminderSyncFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import NotificationSettingsScreen from './NotificationSettingsScreen';
 
@@ -35,7 +36,7 @@ resetApiFetchBetweenTests();
 stubViewerTimeZone('Asia/Jerusalem');
 
 const PREFS_PATH = '/me/notifications';
-const LESSONS_PATH = '/me/notifications/lessons';
+const OLD_LESSONS_PATH = '/me/notifications/lessons';
 
 const STUDENT: MeDto = {
   id: 'u1',
@@ -55,19 +56,12 @@ const STUDENT: MeDto = {
 };
 const TEACHER: MeDto = { ...STUDENT, id: 't1', roles: ['teacher'] };
 
-const LESSONS: MyLessonNotificationsDto = {
-  scope: { mode: 'all', classIds: [] },
-  scopeChosen: false,
-  classes: [],
-  reminder: { minutes: null, schoolMinutes: 60 },
-};
-
 function serve(me: MeDto, prefs: unknown = { enabled: [] }) {
   // Узкий путь раньше широкого: `mockApiByPath` берёт первое совпадение по
-  // префиксу, а `/me/notifications/lessons` начинается с `/me/notifications`.
+  // префиксу, а `/me/notifications/lessons/sync` начинается с `/me/notifications`.
   mockApiByPath({
     '/auth/me': me,
-    [LESSONS_PATH]: LESSONS,
+    [SYNC_PATH]: makeSnapshot({ accountId: me.id }),
     [PREFS_PATH]: prefs,
   });
 }
@@ -101,12 +95,24 @@ describe('NotificationSettingsScreen — шапка и состав', () => {
   it('ученик — три блока сверху вниз: push, «О каких занятиях», «Что присылать»', async () => {
     renderScreen(STUDENT);
 
-    await screen.findByRole('radio', { name: 'Обо всех занятиях школы' });
+    await screen.findByRole('checkbox', { name: 'Цигун' });
     await screen.findByRole('checkbox', { name: 'Результат экзамена' });
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent);
     expect(headings).toEqual(['Push-уведомления', 'О каких занятиях', 'Что присылать']);
+  });
+
+  // Выбора «обо всех / только о выбранных» на экране нет: напоминание зависит
+  // только от галочек (ADR-0185), а старый фильтр правится в ленте.
+  it('снимок напоминаний читается одним GET; режимов «обо всех» нет; старого GET занятий нет', async () => {
+    renderScreen(STUDENT, { enabled: ['lesson_soon'] });
+
+    await screen.findByLabelText('За сколько напомнить');
+    await screen.findByRole('checkbox', { name: 'Цигун' });
+    expect(syncCalls('GET')).toHaveLength(1);
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(OLD_LESSONS_PATH, expect.anything());
   });
 
   it('штат — блока «О каких занятиях» нет, остальные два на месте', async () => {
@@ -117,7 +123,7 @@ describe('NotificationSettingsScreen — шапка и состав', () => {
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent);
     expect(headings).toEqual(['Push-уведомления', 'Что присылать']);
-    expect(mockedApiFetch).not.toHaveBeenCalledWith(LESSONS_PATH, expect.anything());
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(SYNC_PATH, expect.anything());
   });
 });
 

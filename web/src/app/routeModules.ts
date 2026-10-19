@@ -51,7 +51,10 @@ import {
   attemptPath,
   attemptReviewPath,
 } from '../api/gradingPaths';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import {
+  MY_LESSON_NOTIFICATIONS_PATH,
+  REMINDER_SYNC_PATH,
+} from '../api/lessonScopePaths';
 import { paymentsListPath } from '../api/paymentsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
@@ -382,13 +385,13 @@ export const ROUTE_MODULES = {
     ],
   },
   // Подэкран ленты (ADR-0162): вход с «Профиля» и из ленты, открыт любой роли.
-  // Занятия (тут и в ленте) греются только тому, у кого есть вид про занятие, —
+  // Снимок напоминаний греется только тому, у кого есть вид про занятие, —
   // это решает prefetchFirstScreen.ts, таблица от роли не зависит.
   notificationSettings: {
     path: NOTIFICATION_SETTINGS_PATH,
     load: () => import('../notifications/NotificationSettingsScreen'),
     warm: true,
-    prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
+    prefetch: () => [NOTIFICATION_PREFS_PATH, REMINDER_SYNC_PATH],
   },
   // Экраны ученика, страница события школы и экраны сессии, общей с wiki.
   ...STUDENT_ROUTE_MODULES,

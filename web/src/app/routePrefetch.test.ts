@@ -28,7 +28,10 @@ import {
   GRADING_QUEUE_PATH,
   attemptPath,
 } from '../api/gradingPaths';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import {
+  MY_LESSON_NOTIFICATIONS_PATH,
+  REMINDER_SYNC_PATH,
+} from '../api/lessonScopePaths';
 import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
 import { MY_BOARD_PATH } from '../api/boardApiPaths';
 import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
@@ -117,10 +120,10 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/profile')).toEqual([]);
   });
 
-  it('/notifications/settings — виды уведомлений и список занятий для выбора', () => {
+  it('/notifications/settings — виды уведомлений и снимок настроек напоминаний', () => {
     expect(prefetchAt('/notifications/settings')).toEqual([
       NOTIFICATION_PREFS_PATH,
-      MY_LESSON_NOTIFICATIONS_PATH,
+      REMINDER_SYNC_PATH,
     ]);
   });
 

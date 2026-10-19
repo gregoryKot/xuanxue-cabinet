@@ -1,30 +1,34 @@
-// Блок «О каких занятиях» (LessonScopeSection.tsx, ADR-0162): выбор «обо всех» /
-// «только о выбранных» и галочки занятий. Запись — PUT с выбором целиком, экран
-// рисуется из его ответа (read-after-write без второго GET, ADR-0087). Данные
-// блок не грузит: их отдаёт экран (useLessonScope.ts), поэтому здесь — тонкая
-// обвязка, которая делает то же, что экран.
+// Блок «О каких занятиях» (LessonScopeSection.tsx, ADR-0185): галочки занятий
+// для напоминания «Занятие скоро». Каждая галочка — `PATCH` с одним изменением,
+// экран рисуется из его ответа; неясный исход проверяется одним чтением. Снимок
+// блок не грузит: его отдаёт экран (useReminderSync.ts), поэтому здесь тонкая
+// обвязка, которая делает то же, что экран. Правила автомата —
+// reminderSyncState.test.ts, сетевая часть — useReminderSync.test.tsx.
 // Пояс зрителя задан явно (CLAUDE.md «Детерминизм»): по умолчанию — пояс школы,
 // чтобы подпись пояса не зависела от машины, на которой идёт тест.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  LessonScopeClassDto,
-  MeDto,
-  MyLessonNotificationsDto,
-} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
+import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { makeMe } from '../test-support/meFixture';
 import {
-  mockApiByPath,
-  mockedApiFetch,
-  resetApiFetchBetweenTests,
-} from '../test-support/apiFetchMock';
+  EVENING,
+  MORNING,
+  announceConnection,
+  deferred,
+  makeSnapshot,
+  restoreConnectionBetweenTests,
+  sentChanges,
+  serveScripted,
+  syncCalls,
+} from '../test-support/reminderSyncFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { LessonScopeSection } from './LessonScopeSection';
-import { useLessonScope } from './useLessonScope';
+import { useReminderSync } from './useReminderSync';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -32,68 +36,16 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+restoreConnectionBetweenTests();
 stubViewerTimeZone('Asia/Jerusalem');
 
-const SCOPE_PATH = '/me/notifications/lessons/scope';
-const LESSONS_PATH = '/me/notifications/lessons';
-
-const STUDENT: MeDto = {
-  id: 'u1',
-  name: 'Мария Ли',
-  roles: [],
-  status: 'active',
-  telegramLinked: false,
-  botChatActive: false,
-  email: 'maria@example.com',
-  hasEmail: true,
-  noTelegram: false,
-  needsProfile: false,
-  googleLinked: false,
-  studentMode: false,
-  canUseStudentMode: false,
-  homeHiddenTiles: [],
-};
-
-const slot = (weekday: number, time: string) => ({ weekday, time, durationMin: 60 });
-
-const MORNING: LessonScopeClassDto = {
-  id: 'c1',
-  title: 'Тайцзи для начинающих',
-  groupLabel: 'утро',
-  tz: 'Asia/Jerusalem',
-  slots: [slot(1, '10:00'), slot(2, '10:00')],
-};
-const EVENING: LessonScopeClassDto = {
-  id: 'c2',
-  title: 'Цигун',
-  groupLabel: '',
-  tz: 'Asia/Jerusalem',
-  slots: [slot(3, '19:00')],
-};
-
-const lessons = (
-  mode: 'all' | 'selected',
-  classIds: string[],
-  classes: LessonScopeClassDto[] = [MORNING, EVENING],
-): MyLessonNotificationsDto => ({
-  scope: { mode, classIds },
-  scopeChosen: true,
-  classes,
-  reminder: { minutes: null, schoolMinutes: 60 },
-});
-
-function serve(me: MeDto, response: unknown, putResponse: unknown = response) {
-  // Узкий путь раньше широкого: `mockApiByPath` берёт первое совпадение по
-  // префиксу, а `/me/notifications/lessons/scope` начинается с `/…/lessons`.
-  mockApiByPath({
-    '/auth/me': me,
-    [SCOPE_PATH]: putResponse,
-    [LESSONS_PATH]: response,
-  });
-}
+const MORNING_NAME = 'Тайцзи для начинающих · утро';
+const NOTHING_TICKED = 'Ничего не отмечено — напоминаний о занятиях не будет.';
+const CHECKING = 'Не знаем, сохранилось ли, — проверяем…';
+const OFFLINE = 'Нет сети. Настройки напоминаний можно менять, когда она появится.';
 
 function SectionWithData() {
-  return <LessonScopeSection lessons={useLessonScope()} />;
+  return <LessonScopeSection sync={useReminderSync()} />;
 }
 
 function renderSection() {
@@ -106,33 +58,27 @@ function renderSection() {
   );
 }
 
-function putCalls() {
-  return mockedApiFetch.mock.calls.filter(([path]) => path === SCOPE_PATH);
-}
+const morning = () => screen.findByRole('checkbox', { name: MORNING_NAME });
+const evening = () => screen.findByRole('checkbox', { name: 'Цигун' });
 
-describe('LessonScopeSection — кому показывается', () => {
-  it('ученику — заголовок, объяснение с акцентом и оба режима; по умолчанию «обо всех»', async () => {
-    serve(STUDENT, lessons('all', []));
+describe('LessonScopeSection — кому показывается и как объясняет', () => {
+  it('ученику — заголовок и объяснение с акцентом про «Занятие скоро», без выбора «обо всех / только о выбранных»', async () => {
+    serveScripted();
     renderSection();
 
-    // Радио появляются после загрузки — до неё на месте блока скелетон.
-    expect(
-      await screen.findByRole('radio', { name: 'Обо всех занятиях школы' }),
-    ).toBeChecked();
+    await morning();
     expect(screen.getByRole('heading', { name: 'О каких занятиях' })).toBeVisible();
     expect(screen.getByText(/Отметьте занятия, на которые ходите/)).toHaveTextContent(
-      'Отметьте занятия, на которые ходите, — уведомления о занятиях будут приходить только о них.',
+      'Отметьте занятия, на которые ходите, — напоминание «Занятие скоро» придёт только о них. На отмены занятий отметки не влияют.',
     );
     expect(screen.getByText('только о них').tagName).toBe('STRONG');
-    expect(screen.getByRole('radio', { name: 'Только о выбранных' })).not.toBeChecked();
-    // Список занятий нужен только в режиме «выбранные».
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
   });
 
   it.each(['teacher', 'assistant', 'admin', 'accountant'] as const)(
-    'штат (%s) — блока нет и за занятиями никто не ходит',
+    'штат (%s) — блока нет и за снимком никто не ходит',
     async (role) => {
-      serve({ ...STUDENT, roles: [role] }, lessons('all', []));
+      serveScripted({ me: makeMe({ roles: [role] }) });
       renderSection();
 
       await waitFor(() =>
@@ -143,29 +89,26 @@ describe('LessonScopeSection — кому показывается', () => {
           screen.queryByRole('heading', { name: 'О каких занятиях' }),
         ).not.toBeInTheDocument(),
       );
-      expect(mockedApiFetch).not.toHaveBeenCalledWith(LESSONS_PATH, expect.anything());
+      expect(syncCalls('GET')).toHaveLength(0);
     },
   );
 });
 
 describe('LessonScopeSection — список занятий', () => {
-  it('«выбранные» — занятия из ответа: название, группа, дни и время, отмеченные стоят', async () => {
-    serve(STUDENT, lessons('selected', ['c1']));
+  it('занятия из снимка: название, группа, дни и время; отмечены те, что в classIds', async () => {
+    serveScripted({ read: makeSnapshot({ classIds: ['c1'] }) });
     renderSection();
 
-    const morning = await screen.findByRole('checkbox', {
-      name: 'Тайцзи для начинающих · утро',
-    });
-    expect(morning).toBeChecked();
+    expect(await morning()).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Цигун' })).not.toBeChecked();
-    expect(screen.getByText('пн, вт · 10:00')).toBeInTheDocument();
+    expect(screen.getByText('пн · 10:00')).toBeInTheDocument();
     expect(screen.getByText('ср · 19:00')).toBeInTheDocument();
     // Пояс школы совпал с поясом зрителя — подписывать нечего.
     expect(screen.queryByText(/по часам школы/)).not.toBeInTheDocument();
   });
 
   it('вёрстка списка — один общий список, строки не слипаются (ADR-0088)', async () => {
-    serve(STUDENT, lessons('selected', ['c1']));
+    serveScripted();
     renderSection();
 
     const list = (await screen.findAllByRole('list'))[0];
@@ -174,35 +117,43 @@ describe('LessonScopeSection — список занятий', () => {
   });
 
   it('в расписании нет занятий — честная строка вместо пустого списка', async () => {
-    serve(STUDENT, lessons('selected', [], []));
+    serveScripted({ read: makeSnapshot({ classes: [] }) });
     renderSection();
 
     expect(await screen.findByText('В расписании пока нет занятий.')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  it('«выбранные» без галочек — строка «ни о каких»', async () => {
-    serve(STUDENT, lessons('selected', []));
+  it('ничего не отмечено — строка «напоминаний не будет»', async () => {
+    serveScripted();
     renderSection();
 
-    expect(
-      await screen.findByText('Ничего не отмечено — уведомлений о занятиях не будет.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(NOTHING_TICKED)).toBeInTheDocument();
   });
 
-  it('есть хоть одна галочка — строки «ни о каких» нет', async () => {
-    serve(STUDENT, lessons('selected', ['c2']));
+  it('отмечено хоть одно — строки нет', async () => {
+    serveScripted({ read: makeSnapshot({ classIds: ['c2'] }) });
     renderSection();
 
-    await screen.findByRole('checkbox', { name: 'Цигун' });
-    expect(screen.queryByText(/Ничего не отмечено/)).not.toBeInTheDocument();
+    await evening();
+    expect(screen.queryByText(NOTHING_TICKED)).not.toBeInTheDocument();
   });
 
-  it('в выборе остался id удалённого занятия — строка «ни о каких» всё равно есть', async () => {
-    serve(STUDENT, lessons('selected', ['gone']));
+  it('в выборе остался id занятия, которого в списке нет, — строка всё равно есть', async () => {
+    serveScripted({ read: makeSnapshot({ classIds: ['gone'] }) });
     renderSection();
 
-    expect(await screen.findByText(/Ничего не отмечено/)).toBeInTheDocument();
+    expect(await screen.findByText(NOTHING_TICKED)).toBeInTheDocument();
+  });
+
+  // Отдельные занятия из приложения дают напоминания без галочек в списке:
+  // «не будет» было бы неправдой.
+  it('есть отдельные занятия из приложения — строки «не будет» нет', async () => {
+    serveScripted({ read: makeSnapshot({ lessonIds: ['lesson-1'] }) });
+    renderSection();
+
+    await morning();
+    expect(screen.queryByText(NOTHING_TICKED)).not.toBeInTheDocument();
   });
 });
 
@@ -212,163 +163,86 @@ describe('LessonScopeSection — пояс школы', () => {
   it('зритель в другом поясе — время остаётся школьным, пояс школы назван один раз над списком', async () => {
     // Правило повторяется каждую неделю и хранится в поясе школы; «Расписание»
     // штата показывает его так же. Пересчёта на часы зрителя нет.
-    serve(STUDENT, lessons('selected', []));
+    serveScripted();
     renderSection();
 
-    await screen.findByRole('checkbox', { name: 'Цигун' });
-    expect(screen.getByText('пн, вт · 10:00')).toBeInTheDocument();
+    await evening();
+    expect(screen.getByText('пн · 10:00')).toBeInTheDocument();
     expect(screen.getByText('ср · 19:00')).toBeInTheDocument();
     expect(screen.getAllByText(/Время — по часам школы/)).toHaveLength(1);
     expect(screen.getByText('Asia/Jerusalem').tagName).toBe('STRONG');
   });
 });
 
-describe('LessonScopeSection — запись выбора', () => {
-  it('«Только о выбранных» шлёт PUT с режимом и прежними галочками и берёт состояние из ответа', async () => {
+describe('LessonScopeSection — запись галочки', () => {
+  it('галочка шлёт PATCH ровно с одним изменением class и берёт состояние из ответа', async () => {
     const user = userEvent.setup();
-    serve(STUDENT, lessons('all', ['c1']), lessons('selected', ['c1']));
+    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c1'] }) });
     renderSection();
-
-    await user.click(await screen.findByRole('radio', { name: 'Только о выбранных' }));
-
-    await waitFor(() =>
-      expect(screen.getByRole('radio', { name: 'Только о выбранных' })).toBeChecked(),
-    );
-    expect(putCalls()).toHaveLength(1);
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({
-        method: 'PUT',
-        body: { mode: 'selected', classIds: ['c1'] },
-      }),
-    );
-    expect(
-      screen.getByRole('checkbox', { name: 'Тайцзи для начинающих · утро' }),
-    ).toBeChecked();
-    // Второго GET за тем же самым нет (ADR-0087).
-    const lessonGets = mockedApiFetch.mock.calls.filter(
-      ([path]) => path === LESSONS_PATH,
-    );
-    expect(lessonGets).toHaveLength(1);
-  });
-
-  it('возврат к «Обо всех» оставляет галочки в теле: вернулся к выбранным — они на месте', async () => {
-    const user = userEvent.setup();
-    serve(STUDENT, lessons('selected', ['c2']), lessons('all', ['c2']));
-    renderSection();
-
-    await user.click(
-      await screen.findByRole('radio', { name: 'Обо всех занятиях школы' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('radio', { name: 'Обо всех занятиях школы' }),
-      ).toBeChecked(),
-    );
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({ body: { mode: 'all', classIds: ['c2'] } }),
-    );
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-  });
-
-  it('галочка на занятии шлёт PUT с ней в списке, экран рисуется из ответа сервера', async () => {
-    const user = userEvent.setup();
-    const renamed = { ...EVENING, title: 'Цигун вечером' };
+    const box = await evening();
     // Сервер ответил не тем, что ушло (занятие переименовали, пока экран был
     // открыт): экран обязан показать ответ, а не собственное предположение.
-    serve(
-      STUDENT,
-      lessons('selected', ['c1']),
-      lessons('selected', ['c1', 'c2'], [MORNING, renamed]),
-    );
-    renderSection();
+    replies.write = makeSnapshot({
+      revision: '2',
+      classIds: ['c1', 'c2'],
+      classes: [MORNING, { ...EVENING, title: 'Цигун вечером' }],
+    });
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Цигун' }));
+    await user.click(box);
 
-    const evening = await screen.findByRole('checkbox', { name: 'Цигун вечером' });
-    expect(evening).toBeChecked();
-    expect(putCalls()[0]?.[1]).toEqual(
+    expect(await screen.findByRole('checkbox', { name: 'Цигун вечером' })).toBeChecked();
+    expect(syncCalls('PATCH')).toHaveLength(1);
+    expect(syncCalls('PATCH')[0]?.[1]).toEqual(
       expect.objectContaining({
-        method: 'PUT',
-        body: { mode: 'selected', classIds: ['c1', 'c2'] },
+        method: 'PATCH',
+        body: { version: 1, changes: [{ kind: 'class', id: 'c2', selected: true }] },
       }),
     );
+    // Второго GET за тем же самым нет (ADR-0087).
+    expect(syncCalls('GET')).toHaveLength(1);
   });
 
-  it('снятая галочка уходит из списка в PUT, остальные остаются', async () => {
+  it('снятая галочка шлёт selected: false, остальные остаются', async () => {
     const user = userEvent.setup();
-    serve(STUDENT, lessons('selected', ['c1', 'c2']), lessons('selected', ['c2']));
+    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c1', 'c2'] }) });
     renderSection();
+    const box = await morning();
+    replies.write = makeSnapshot({ revision: '2', classIds: ['c2'] });
 
-    await user.click(
-      await screen.findByRole('checkbox', { name: 'Тайцзи для начинающих · утро' }),
-    );
+    await user.click(box);
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('checkbox', { name: 'Тайцзи для начинающих · утро' }),
-      ).not.toBeChecked(),
-    );
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({ body: { mode: 'selected', classIds: ['c2'] } }),
-    );
+    await waitFor(() => expect(box).not.toBeChecked());
+    expect(screen.getByRole('checkbox', { name: 'Цигун' })).toBeChecked();
+    expect(sentChanges()).toEqual([[{ kind: 'class', id: 'c1', selected: false }]]);
   });
 
-  it('снята последняя галочка — после ответа появляется строка «ни о каких»', async () => {
+  it('снята последняя галочка — после ответа появляется строка «напоминаний не будет»', async () => {
     const user = userEvent.setup();
-    serve(STUDENT, lessons('selected', ['c2']), lessons('selected', []));
+    const replies = serveScripted({ read: makeSnapshot({ classIds: ['c2'] }) });
     renderSection();
+    const box = await evening();
+    replies.write = makeSnapshot({ revision: '2', classIds: [] });
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Цигун' }));
+    await user.click(box);
 
-    expect(await screen.findByText(/Ничего не отмечено/)).toBeInTheDocument();
+    expect(await screen.findByText(NOTHING_TICKED)).toBeInTheDocument();
   });
 
-  it('id удалённого занятия в тело не попадает: иначе сервер ответил бы 400 на всё', async () => {
+  it('пока PATCH в пути, все галочки выключены и положение не меняется; потом включаются с новым', async () => {
     const user = userEvent.setup();
-    serve(
-      STUDENT,
-      lessons('selected', ['gone', 'c1']),
-      lessons('selected', ['c1', 'c2']),
-    );
+    const pending = deferred();
+    serveScripted({ read: makeSnapshot({ classIds: ['c1'] }), write: pending.promise });
     renderSection();
+    const box = await evening();
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Цигун' }));
+    await user.click(box);
 
-    await waitFor(() => expect(putCalls()).toHaveLength(1));
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({ body: { mode: 'selected', classIds: ['c1', 'c2'] } }),
-    );
-  });
-
-  it('пока PUT в пути, режимы и галочки выключены и положение не меняется', async () => {
-    const user = userEvent.setup();
-    let finishPut: (value: unknown) => void = () => undefined;
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me') return Promise.resolve(STUDENT);
-      if (path === LESSONS_PATH) return Promise.resolve(lessons('selected', ['c1']));
-      if (path === SCOPE_PATH) {
-        return new Promise((resolve) => {
-          finishPut = resolve;
-        });
-      }
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    renderSection();
-
-    const evening = await screen.findByRole('checkbox', { name: 'Цигун' });
-    await user.click(evening);
-
-    await waitFor(() => expect(evening).toBeDisabled());
-    expect(screen.getByRole('radio', { name: 'Обо всех занятиях школы' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: 'Только о выбранных' })).toBeDisabled();
-    expect(
-      screen.getByRole('checkbox', { name: 'Тайцзи для начинающих · утро' }),
-    ).toBeDisabled();
+    await waitFor(() => expect(box).toBeDisabled());
+    expect(await morning()).toBeDisabled();
     // Без оптимистичной отрисовки: галочка не встаёт, пока нет ответа.
-    expect(evening).not.toBeChecked();
+    expect(box).not.toBeChecked();
 
-    finishPut(lessons('selected', ['c1', 'c2']));
+    pending.settle(makeSnapshot({ revision: '2', classIds: ['c1', 'c2'] }));
 
     await waitFor(() =>
       expect(screen.getByRole('checkbox', { name: 'Цигун' })).toBeEnabled(),
@@ -377,67 +251,179 @@ describe('LessonScopeSection — запись выбора', () => {
   });
 });
 
-describe('LessonScopeSection — ошибки', () => {
-  it('ответ 400 с текстом из конверта — текст виден, выбор остаётся прежним', async () => {
+describe('LessonScopeSection — нет сети', () => {
+  it('галочки выключены и сказано почему; сеть вернулась — включены, ничего не отправлено', async () => {
+    serveScripted();
+    renderSection();
+    const box = await evening();
+
+    announceConnection(false);
+
+    expect(box).toBeDisabled();
+    expect(await morning()).toBeDisabled();
+    expect(screen.getByText(OFFLINE)).toBeInTheDocument();
+
+    announceConnection(true);
+
+    expect(box).toBeEnabled();
+    expect(screen.queryByText(OFFLINE)).not.toBeInTheDocument();
+    expect(syncCalls('PATCH')).toHaveLength(0);
+  });
+});
+
+describe('LessonScopeSection — отказ сервера', () => {
+  it.each([
+    [
+      400,
+      'invalid_input',
+      'Такого занятия больше нет в расписании. Отметьте занятия заново.',
+    ],
+    [409, 'selection_limit', 'Можно отметить не больше 50 занятий.'],
+  ] as const)(
+    '%i: текст сервера виден как есть, галочка прежняя, следующий выбор уходит',
+    async (status, code, message) => {
+      const user = userEvent.setup();
+      const replies = serveScripted({ write: new ApiError(message, status, code) });
+      renderSection();
+      const box = await evening();
+
+      await user.click(box);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(box).not.toBeChecked();
+      expect(box).toBeEnabled();
+      expect(syncCalls('GET')).toHaveLength(1);
+
+      replies.write = makeSnapshot({ revision: '2', classIds: ['c2'] });
+      await user.click(box);
+
+      await waitFor(() => expect(box).toBeChecked());
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(syncCalls('PATCH')).toHaveLength(2);
+    },
+  );
+});
+
+describe('LessonScopeSection — неясный исход', () => {
+  it('сбой сети: не «не удалось», а «проверяем»; один GET; галочка из чтения; PATCH один; контролы включены', async () => {
     const user = userEvent.setup();
-    const message =
-      'Такого занятия больше нет в расписании. Обновите страницу и отметьте занятия заново.';
-    serve(
-      STUDENT,
-      lessons('selected', ['c1']),
-      new ApiError(message, 400, 'invalid_input'),
+    const reading = deferred();
+    const replies = serveScripted();
+    renderSection();
+    const box = await evening();
+    // Сервер запись принял, а ответ потерялся: на нём галочка уже стоит.
+    replies.write = new ApiError('Нет связи с сервером.', 0, 'network');
+    replies.read = reading.promise;
+
+    await user.click(box);
+
+    expect(await screen.findByText(CHECKING)).toBeInTheDocument();
+    expect(screen.queryByText(/Не удалось сохранить/)).not.toBeInTheDocument();
+    expect(box).toBeDisabled();
+    expect(box).not.toBeChecked();
+
+    reading.settle(makeSnapshot({ revision: '2', classIds: ['c2'] }));
+
+    await waitFor(() => expect(box).toBeEnabled());
+    expect(box).toBeChecked();
+    expect(screen.queryByText(CHECKING)).not.toBeInTheDocument();
+    expect(syncCalls('GET')).toHaveLength(2);
+    expect(sentChanges()).toEqual([[{ kind: 'class', id: 'c2', selected: true }]]);
+  });
+
+  it.each([
+    ['5xx', new ApiError('Сбой', 502, 'internal_error')],
+    ['429', new ApiError('Слишком часто', 429, 'rate_limited')],
+    ['ответ 2xx не снимок', { version: 1 }],
+    ['снимок с версией 2', { ...makeSnapshot({ revision: '2' }), version: 2 }],
+  ])(
+    '%s: читаем, а не повторяем; после чтения галочка по данным сервера',
+    async (_name, failure) => {
+      const user = userEvent.setup();
+      const replies = serveScripted();
+      renderSection();
+      const box = await evening();
+      replies.write = failure;
+      replies.read = makeSnapshot({ revision: '2', classIds: [] });
+
+      await user.click(box);
+
+      await waitFor(() => expect(syncCalls('GET')).toHaveLength(2));
+      await waitFor(() => expect(box).toBeEnabled());
+      expect(box).not.toBeChecked();
+      expect(syncCalls('PATCH')).toHaveLength(1);
+    },
+  );
+
+  it('ответ записи со старой ревизией и чужого аккаунта не применяются — вместо них чтение', async () => {
+    const user = userEvent.setup();
+    const replies = serveScripted({
+      read: makeSnapshot({ revision: '5', classIds: ['c1'] }),
+    });
+    renderSection();
+    const box = await evening();
+
+    const stale = [
+      makeSnapshot({ revision: '4', classIds: ['c1', 'c2'] }),
+      makeSnapshot({ accountId: 'u2', revision: '9', classIds: ['c1', 'c2'] }),
+    ];
+    for (const [index, response] of stale.entries()) {
+      replies.write = response;
+      await user.click(box);
+      // Чтение номер `index + 2`: первое уходило при открытии экрана.
+      await waitFor(() => expect(syncCalls('GET')).toHaveLength(index + 2));
+      await waitFor(() => expect(box).toBeEnabled());
+      expect(box).not.toBeChecked();
+    }
+
+    expect(syncCalls('PATCH')).toHaveLength(2);
+    expect(syncCalls('GET')).toHaveLength(3);
+  });
+
+  it('проверка не удалась — «Проверить ещё раз», галочки выключены; повтор возвращает управление', async () => {
+    const user = userEvent.setup();
+    const replies = serveScripted();
+    renderSection();
+    const box = await evening();
+    replies.write = new ApiError('Сбой', 500, 'internal_error');
+    replies.read = new ApiError('Сервис недоступен', 503, 'unknown');
+
+    await user.click(box);
+
+    const retry = await screen.findByRole('button', { name: 'Проверить ещё раз' });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Не удалось проверить, сохранилось ли. Менять настройки пока нельзя.',
     );
-    renderSection();
+    expect(box).toBeDisabled();
+    expect(syncCalls('GET')).toHaveLength(2);
 
-    const evening = await screen.findByRole('checkbox', { name: 'Цигун' });
-    await user.click(evening);
+    replies.read = makeSnapshot({ revision: '2', classIds: ['c2'] });
+    await user.click(retry);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(evening).not.toBeChecked();
-    expect(evening).toBeEnabled();
+    await waitFor(() => expect(box).toBeEnabled());
+    expect(box).toBeChecked();
+    expect(
+      screen.queryByRole('button', { name: 'Проверить ещё раз' }),
+    ).not.toBeInTheDocument();
+    expect(syncCalls('GET')).toHaveLength(3);
+    expect(syncCalls('PATCH')).toHaveLength(1);
   });
+});
 
-  it('неопознанная ошибка — общий текст, не текст исключения', async () => {
+describe('LessonScopeSection — загрузка', () => {
+  it('сбой — баннер с повтором вместо списка, повтор перечитывает снимок', async () => {
     const user = userEvent.setup();
-    serve(STUDENT, lessons('all', []), new Error('boom'));
-    renderSection();
-
-    await user.click(await screen.findByRole('radio', { name: 'Только о выбранных' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Не удалось сохранить. Попробуйте ещё раз.',
-    );
-    expect(screen.getByRole('radio', { name: 'Обо всех занятиях школы' })).toBeChecked();
-  });
-
-  it('следующая попытка убирает прошлую ошибку', async () => {
-    const user = userEvent.setup();
-    serve(STUDENT, lessons('all', []), new Error('boom'));
-    renderSection();
-    await user.click(await screen.findByRole('radio', { name: 'Только о выбранных' }));
-    await screen.findByRole('alert');
-
-    serve(STUDENT, lessons('all', []), lessons('selected', []));
-    await user.click(screen.getByRole('radio', { name: 'Только о выбранных' }));
-
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-  });
-
-  it('сбой загрузки — баннер с повтором вместо контролов, повтор перечитывает занятия', async () => {
-    const user = userEvent.setup();
-    serve(STUDENT, new Error('сеть недоступна'));
+    const replies = serveScripted({ read: new Error('сеть недоступна') });
     renderSection();
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Не удалось загрузить занятия. Попробуйте ещё раз.');
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 
-    serve(STUDENT, lessons('all', []));
+    replies.read = makeSnapshot();
     await user.click(within(alert).getByRole('button', { name: 'Попробовать ещё раз' }));
 
-    expect(
-      await screen.findByRole('radio', { name: 'Обо всех занятиях школы' }),
-    ).toBeChecked();
+    expect(await morning()).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
