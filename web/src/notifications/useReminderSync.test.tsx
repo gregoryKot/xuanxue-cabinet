@@ -5,7 +5,7 @@
 // действие, ни одного повтора, одно чтение после неясного исхода.
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReminderChange } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
@@ -13,6 +13,8 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { makeMe } from '../test-support/meFixture';
 import {
+  EVENING_ID,
+  MORNING_ID,
   announceConnection,
   deferred,
   makeSnapshot,
@@ -33,8 +35,8 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 restoreConnectionBetweenTests();
 
-const TICK_C1: ReminderChange = { kind: 'class', id: 'c1', selected: true };
-const TICK_C2: ReminderChange = { kind: 'class', id: 'c2', selected: true };
+const TICK_C1: ReminderChange = { kind: 'class', id: MORNING_ID, selected: true };
+const TICK_C2: ReminderChange = { kind: 'class', id: EVENING_ID, selected: true };
 const NETWORK_FAILURE = new ApiError('Нет связи с сервером.', 0, 'network');
 const SERVER_FAILURE = new ApiError('Сбой', 500, 'internal_error');
 
@@ -122,7 +124,7 @@ describe('useReminderSync — первое чтение', () => {
 
 describe('useReminderSync — запись', () => {
   it('тело PATCH — версия и одно изменение; ответ становится снимком без второго GET', async () => {
-    const response = makeSnapshot({ revision: '2', classIds: ['c1'] });
+    const response = makeSnapshot({ revision: '2', classIds: [MORNING_ID] });
     serveScripted({ write: response });
     const hook = await mountReady();
 
@@ -151,13 +153,13 @@ describe('useReminderSync — запись', () => {
 
     await save(hook, TICK_C2);
     await act(async () => {
-      pending.settle(makeSnapshot({ revision: '2', classIds: ['c1'] }));
+      pending.settle(makeSnapshot({ revision: '2', classIds: [MORNING_ID] }));
       await Promise.resolve(); // дать эффектам и промисам отработать внутри act
     });
 
     // Второе действие в очередь не встало: после ответа первого оно не ушло.
     expect(sentChanges()).toEqual([[TICK_C1]]);
-    expect(hook.result.current.snapshot?.classIds).toEqual(['c1']);
+    expect(hook.result.current.snapshot?.classIds).toEqual([MORNING_ID]);
     expect(hook.result.current.controlsDisabled).toBe(false);
   });
 
@@ -234,7 +236,7 @@ describe('useReminderSync — неясный исход записи', () => {
       const replies = serveScripted();
       const hook = await mountReady();
       // Подтверждено: ревизия 1. Пока запись летела, сервер ушёл на ревизию 3.
-      const current = makeSnapshot({ revision: '3', classIds: ['c1', 'c2'] });
+      const current = makeSnapshot({ revision: '3', classIds: [MORNING_ID, EVENING_ID] });
       replies.read = current;
       replies.write = failure;
 
@@ -393,7 +395,7 @@ describe('useReminderSync — размонтирование и сигналы',
     hook.unmount();
     expect(signal.aborted).toBe(true);
     await act(async () => {
-      pending.settle(makeSnapshot({ revision: '2', classIds: ['c1'] }));
+      pending.settle(makeSnapshot({ revision: '2', classIds: [MORNING_ID] }));
       await Promise.resolve(); // дать эффектам и промисам отработать внутри act
     });
 
@@ -434,5 +436,110 @@ describe('useReminderSync — размонтирование и сигналы',
 
     announceConnection(true);
     await waitFor(() => expect(syncCalls('GET')).toHaveLength(3));
+  });
+});
+
+describe('useReminderSync — Retry-After', () => {
+  const HOLD_SEC = 60;
+  const HOLD_MS = HOLD_SEC * 1000;
+  const throttled = () =>
+    new ApiError('Слишком часто', 429, 'rate_limited', undefined, undefined, HOLD_SEC);
+
+  // Часы подменяются только у таймеров хука, и после монтирования: `waitFor` из
+  // testing-library сам живёт на таймерах и с подменёнными не дождался бы.
+  const useHookTimers = () =>
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  afterEach(() => vi.useRealTimers());
+
+  async function advance(ms: number) {
+    await act(async () => {
+      vi.advanceTimersByTime(ms);
+      await Promise.resolve(); // дать эффектам и промисам отработать внутри act
+      await Promise.resolve();
+    });
+  }
+
+  it('429 с Retry-After: чтение не уходит до конца паузы, потом уходит одно; запись не повторяется', async () => {
+    const replies = serveScripted();
+    const hook = await mountReady();
+    useHookTimers();
+    const current = makeSnapshot({ revision: '3', classIds: [MORNING_ID] });
+    replies.read = current;
+    replies.write = throttled();
+
+    await save(hook);
+
+    expect(hook.result.current).toMatchObject({
+      notice: 'retryHold',
+      controlsDisabled: true,
+    });
+    await advance(HOLD_MS - 1);
+    expect(syncCalls('GET')).toHaveLength(1);
+    act(() => hook.result.current.save(TICK_C2));
+    expect(syncCalls('PATCH')).toHaveLength(1);
+
+    await advance(1);
+
+    expect(syncCalls('GET')).toHaveLength(2);
+    expect(hook.result.current.snapshot).toEqual(current);
+    expect(hook.result.current).toMatchObject({ notice: null, controlsDisabled: false });
+    await advance(HOLD_MS * 2);
+    expect(syncCalls('PATCH')).toHaveLength(1);
+    expect(syncCalls('GET')).toHaveLength(2);
+  });
+
+  it('503 с Retry-After держит чтение так же, как 429', async () => {
+    const replies = serveScripted();
+    const hook = await mountReady();
+    useHookTimers();
+    replies.write = new ApiError('Недоступно', 503, 'unknown', undefined, undefined, 5);
+
+    await save(hook);
+    await advance(4999);
+    expect(syncCalls('GET')).toHaveLength(1);
+    await advance(1);
+
+    expect(syncCalls('GET')).toHaveLength(2);
+    expect(syncCalls('PATCH')).toHaveLength(1);
+  });
+
+  it('сбой проверки с Retry-After: «ещё раз» до конца паузы ничего не шлёт, после — читает', async () => {
+    const replies = serveScripted();
+    const hook = await mountReady();
+    useHookTimers();
+    replies.write = SERVER_FAILURE;
+    replies.read = throttled();
+    await save(hook);
+    await advance(0);
+    expect(hook.result.current.notice).toBe('checkFailed');
+    expect(syncCalls('GET')).toHaveLength(2);
+
+    act(() => hook.result.current.retryRead());
+    await advance(HOLD_MS - 1);
+    expect(syncCalls('GET')).toHaveLength(2);
+
+    await advance(1);
+    replies.read = makeSnapshot({ revision: '4' });
+    act(() => hook.result.current.retryRead());
+    await advance(0);
+
+    expect(syncCalls('GET')).toHaveLength(3);
+    expect(hook.result.current.snapshot?.revision).toBe('4');
+    expect(syncCalls('PATCH')).toHaveLength(1);
+  });
+  it('уход с экрана гасит таймер паузы: чтения после ухода нет', async () => {
+    const replies = serveScripted();
+    const hook = await mountReady();
+    useHookTimers();
+    replies.write = throttled();
+    await save(hook);
+    expect(vi.getTimerCount()).toBe(1);
+
+    hook.unmount();
+    await advance(HOLD_MS * 2);
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(syncCalls('GET')).toHaveLength(1);
+    expect(syncCalls('PATCH')).toHaveLength(1);
   });
 });

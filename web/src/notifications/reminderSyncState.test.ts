@@ -4,7 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiErrorCode } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
-import { makeClass, makeSnapshot } from '../test-support/reminderSyncFixtures';
+import {
+  EVENING_ID,
+  MORNING_ID,
+  makeSnapshot,
+} from '../test-support/reminderSyncFixtures';
 import {
   REMINDER_SYNC_LOAD_ERROR,
   REMINDER_SYNC_NOTICE_TEXT,
@@ -12,7 +16,6 @@ import {
   classifyWriteFailure,
   initialReminderSyncState,
   needsRead,
-  parseReminderSnapshot,
   reminderSyncNotice,
   reminderSyncReducer,
   type ReminderSyncEvent,
@@ -21,7 +24,7 @@ import {
 } from './reminderSyncState';
 
 const ME = 'u1';
-const CONFIRMED = makeSnapshot({ revision: '5', classIds: ['c1'] });
+const CONFIRMED = makeSnapshot({ revision: '5', classIds: [MORNING_ID] });
 
 function stateIn(
   phase: ReminderSyncPhase,
@@ -33,6 +36,7 @@ function stateIn(
     online: true,
     readError: null,
     refusal: null,
+    retryHoldSec: null,
     ...overrides,
   };
 }
@@ -108,88 +112,6 @@ describe('reminderSyncNotice', () => {
     expect(REMINDER_SYNC_NOTICE_TEXT.checking).toBe(
       'Не знаем, сохранилось ли, — проверяем…',
     );
-  });
-});
-
-describe('parseReminderSnapshot — что считается снимком', () => {
-  it('полный снимок разбирается, лишние поля отбрасываются', () => {
-    const body = { ...makeSnapshot({ revision: '12', lessonIds: ['l1'] }), extra: 1 };
-
-    expect(parseReminderSnapshot(body)).toEqual(
-      makeSnapshot({ revision: '12', lessonIds: ['l1'] }),
-    );
-  });
-
-  it('пустой выбор и нулевая ревизия — снимок, а не ошибка', () => {
-    const empty = makeSnapshot({
-      revision: '0',
-      classIds: [],
-      lessonIds: [],
-      classes: [],
-    });
-
-    expect(parseReminderSnapshot(empty)).toEqual(empty);
-  });
-
-  it.each([0, 15, 30, 60, 120, null])(
-    'своё время %s из списка принимается',
-    (minutes) => {
-      expect(
-        parseReminderSnapshot(makeSnapshot({ leadMinutes: minutes })),
-      ).not.toBeNull();
-    },
-  );
-
-  it.each([
-    ['не объект', 'снимок'],
-    ['null', null],
-    ['массив', []],
-    ['версия 2', { ...makeSnapshot(), version: 2 }],
-    ['без версии', { ...makeSnapshot(), version: undefined }],
-    ['accountId числом', { ...makeSnapshot(), accountId: 1 }],
-    ['пустой accountId', makeSnapshot({ accountId: '' })],
-    ['ревизия числом', { ...makeSnapshot(), revision: 5 }],
-    ['ревизия с ведущим нулём', makeSnapshot({ revision: '05' })],
-    ['отрицательная ревизия', makeSnapshot({ revision: '-1' })],
-    ['дробная ревизия', makeSnapshot({ revision: '1.5' })],
-    ['пустая ревизия', makeSnapshot({ revision: '' })],
-    ['classIds не массив', { ...makeSnapshot(), classIds: 'c1' }],
-    ['classIds с повтором', makeSnapshot({ classIds: ['c1', 'c1'] })],
-    ['classIds не по возрастанию', makeSnapshot({ classIds: ['c2', 'c1'] })],
-    ['lessonIds с числом', { ...makeSnapshot(), lessonIds: [1] }],
-    ['lessonIds не по возрастанию', makeSnapshot({ lessonIds: ['b', 'a'] })],
-    ['время вне списка', makeSnapshot({ leadMinutes: 45 })],
-    ['время дробью', { ...makeSnapshot(), leadMinutes: 1.5 }],
-    ['время строкой', { ...makeSnapshot(), leadMinutes: '15' }],
-    ['без времени', { ...makeSnapshot(), leadMinutes: undefined }],
-    ['школьное время ноль', makeSnapshot({ schoolMinutes: 0 })],
-    ['школьное время дробью', makeSnapshot({ schoolMinutes: 60.5 })],
-    ['школьное время строкой', { ...makeSnapshot(), schoolMinutes: '60' }],
-    ['каталог не массив', { ...makeSnapshot(), classes: {} }],
-    [
-      'занятие без расписания',
-      {
-        ...makeSnapshot(),
-        classes: [{ id: 'c1', title: 'а', groupLabel: '', tz: 'UTC' }],
-      },
-    ],
-    [
-      'занятие с кривой строкой расписания',
-      {
-        ...makeSnapshot(),
-        classes: [
-          { id: 'c1', title: 'а', groupLabel: '', tz: 'UTC', slots: [{ weekday: 'пн' }] },
-        ],
-      },
-    ],
-    [
-      'каталог с повтором id',
-      makeSnapshot({
-        classes: [makeClass('c1', 'а', 1, '09:00'), makeClass('c1', 'б', 2, '10:00')],
-      }),
-    ],
-  ])('%s — не снимок', (_name, body) => {
-    expect(parseReminderSnapshot(body)).toBeNull();
   });
 });
 
@@ -284,7 +206,7 @@ describe('сохранение', () => {
   });
 
   it('ответ записи — подтверждённый снимок, второго чтения нет', () => {
-    const response = makeSnapshot({ revision: '6', classIds: ['c1', 'c2'] });
+    const response = makeSnapshot({ revision: '6', classIds: [MORNING_ID, EVENING_ID] });
     const next = run(stateIn('saving'), saved(response));
 
     expect(next).toMatchObject({ phase: 'idle', snapshot: response });
@@ -315,7 +237,7 @@ describe('сохранение', () => {
   it('равная ревизия принимается: каталог и школьное значение живут отдельно от выбора', () => {
     const refreshed = makeSnapshot({
       revision: '5',
-      classIds: ['c1'],
+      classIds: [MORNING_ID],
       schoolMinutes: 45,
     });
     const next = run(stateIn('saving'), saved(refreshed));
@@ -393,7 +315,7 @@ describe('сохранение', () => {
 
 describe('проверка после неясного исхода', () => {
   it('чтение приносит текущее состояние, сохранение снова открыто', () => {
-    const current = makeSnapshot({ revision: '7', classIds: ['c2'] });
+    const current = makeSnapshot({ revision: '7', classIds: [EVENING_ID] });
     const next = run(stateIn('verifying'), read(current));
 
     expect(next).toMatchObject({ phase: 'idle', snapshot: current, readError: null });
@@ -456,7 +378,11 @@ describe('проверка после неясного исхода', () => {
   });
 
   it('чтение с равной ревизией принимается', () => {
-    const same = makeSnapshot({ revision: '5', classIds: ['c1'], schoolMinutes: 30 });
+    const same = makeSnapshot({
+      revision: '5',
+      classIds: [MORNING_ID],
+      schoolMinutes: 30,
+    });
 
     expect(run(stateIn('verifying'), read(same))).toMatchObject({
       phase: 'idle',
@@ -471,6 +397,209 @@ describe('проверка после неясного исхода', () => {
   });
 });
 
+const apiErrorHeld = (status: number, retryAfterSec: number | undefined) =>
+  new ApiError(
+    'Слишком часто',
+    status,
+    'rate_limited',
+    undefined,
+    undefined,
+    retryAfterSec,
+  );
+
+const elapsed: ReminderSyncEvent = { type: 'retryHoldElapsed' };
+const HELD_SECONDS = 60;
+
+function saveFailedWith(error: unknown): ReminderSyncState {
+  return run(stateIn('saving'), { type: 'saveFailed', error, kind: 'class' });
+}
+
+describe('пауза по Retry-After после записи', () => {
+  it.each([429, 503])(
+    '%i с Retry-After: неясный исход, чтения и сохранения нет, пока пауза не вышла',
+    (status) => {
+      const held = saveFailedWith(apiErrorHeld(status, HELD_SECONDS));
+
+      expect(held).toMatchObject({
+        phase: 'verifying',
+        snapshot: CONFIRMED,
+        readError: null,
+        retryHoldSec: HELD_SECONDS,
+      });
+      expect(needsRead(held)).toBe(false);
+      expect(canSave(held)).toBe(false);
+      expect(reminderSyncNotice(held)).toBe('retryHold');
+    },
+  );
+
+  it('когда пауза вышла, уходит обычное одно чтение — не повтор записи', () => {
+    const next = run(saveFailedWith(apiErrorHeld(429, HELD_SECONDS)), elapsed);
+
+    expect(next).toMatchObject({ phase: 'verifying', retryHoldSec: null });
+    expect(needsRead(next)).toBe(true);
+    expect(canSave(next)).toBe(false);
+    expect(reminderSyncNotice(next)).toBe('checking');
+  });
+
+  it('без сети после паузы чтение ждёт сети, как и без паузы', () => {
+    const held = run(saveFailedWith(apiErrorHeld(429, HELD_SECONDS)), elapsed);
+    const offline = run(held, { type: 'connection', online: false });
+
+    expect(needsRead(offline)).toBe(false);
+    expect(needsRead(run(offline, { type: 'connection', online: true }))).toBe(true);
+  });
+
+  it.each([
+    ['429 без заголовка', apiErrorHeld(429, undefined)],
+    ['заголовок 0', apiErrorHeld(429, 0)],
+    ['заголовок отрицательный', apiErrorHeld(503, -5)],
+    ['заголовок не число', apiErrorHeld(503, Number.NaN)],
+    ['не ApiError', new SyntaxError('Unexpected token')],
+  ])('%s — паузы нет, чтение сразу, как раньше', (_name, error) => {
+    const next = saveFailedWith(error);
+
+    expect(next).toMatchObject({ phase: 'verifying', retryHoldSec: null });
+    expect(needsRead(next)).toBe(true);
+    expect(reminderSyncNotice(next)).toBe('checking');
+  });
+
+  it('пауза длиннее часа сжимается до часа: таймер браузера не выдержит суток', () => {
+    expect(saveFailedWith(apiErrorHeld(429, 86400)).retryHoldSec).toBe(3600);
+  });
+
+  it('отказ сервера паузы не ставит, даже с Retry-After: записи не было', () => {
+    const next = saveFailedWith(
+      new ApiError('Нельзя', 409, 'unknown', undefined, undefined, 30),
+    );
+
+    expect(next).toMatchObject({ phase: 'idle', retryHoldSec: null });
+    expect(canSave(next)).toBe(true);
+  });
+
+  it('ответ записи не снимок — паузы нет, чтение сразу', () => {
+    const next = run(stateIn('saving'), saved({ version: 1 }));
+
+    expect(next.retryHoldSec).toBeNull();
+    expect(needsRead(next)).toBe(true);
+  });
+
+  it('статус «проверим позже» не говорит «не сохранилось»', () => {
+    expect(REMINDER_SYNC_NOTICE_TEXT.retryHold).toBe(
+      'Не знаем, сохранилось ли. Проверим чуть позже — сервер попросил подождать.',
+    );
+  });
+});
+
+describe('пауза по Retry-After после чтения', () => {
+  const readHeld = (state: ReminderSyncState) =>
+    run(state, { type: 'readFailed', error: apiErrorHeld(429, HELD_SECONDS) });
+
+  it('проверка после записи: сбой виден, «ещё раз» ничего не делает, пока пауза не вышла', () => {
+    const held = readHeld(stateIn('verifying'));
+
+    expect(held).toMatchObject({
+      readError: REMINDER_SYNC_NOTICE_TEXT.checkFailed,
+      retryHoldSec: HELD_SECONDS,
+    });
+    expect(reminderSyncNotice(held)).toBe('checkFailed');
+    expect(run(held, { type: 'readRetried' })).toBe(held);
+    expect(needsRead(held)).toBe(false);
+  });
+
+  it('первое чтение: текст сбоя виден, «ещё раз» ждёт конца паузы', () => {
+    const held = readHeld(initialReminderSyncState(true));
+
+    expect(held.readError).toBe('Слишком часто');
+    expect(run(held, { type: 'readRetried' })).toBe(held);
+    expect(needsRead(held)).toBe(false);
+  });
+
+  it.each([['loading' as const], ['verifying' as const]])(
+    'после паузы в фазе %s «ещё раз» снова работает, сбой остаётся до нажатия',
+    (phase) => {
+      const afterHold = run(readHeld(stateIn(phase)), elapsed);
+
+      expect(afterHold.retryHoldSec).toBeNull();
+      expect(afterHold.readError).not.toBeNull();
+      expect(needsRead(afterHold)).toBe(false);
+
+      const retried = run(afterHold, { type: 'readRetried' });
+      expect(retried.readError).toBeNull();
+      expect(needsRead(retried)).toBe(true);
+    },
+  );
+
+  it('новый сбой чтения без Retry-After снимает прежнюю паузу', () => {
+    const next = run(readHeld(stateIn('verifying')), {
+      type: 'readFailed',
+      error: apiError(503),
+    });
+
+    expect(next.retryHoldSec).toBeNull();
+  });
+
+  it('успешное чтение снимает паузу и открывает сохранение', () => {
+    const next = run(
+      readHeld(stateIn('verifying')),
+      read(makeSnapshot({ revision: '6' })),
+    );
+
+    expect(next).toMatchObject({ phase: 'idle', retryHoldSec: null });
+    expect(canSave(next)).toBe(true);
+  });
+
+  it('«срок вышел» без паузы ничего не меняет', () => {
+    const state = stateIn('verifying');
+
+    expect(run(state, elapsed)).toBe(state);
+  });
+});
+
+describe('битый ответ записи и чтения — не пустой выбор', () => {
+  const malformed = [
+    ['школьное время 1', makeSnapshot({ revision: '6', schoolMinutes: 1 })],
+    ['школьное время 1441', makeSnapshot({ revision: '6', schoolMinutes: 1441 })],
+    ['id выбора не ObjectId', makeSnapshot({ revision: '6', classIds: ['class-1'] })],
+    [
+      'id занятия заглавным hex',
+      makeSnapshot({ revision: '6', lessonIds: ['A'.repeat(24)] }),
+    ],
+  ] as const;
+
+  it.each(malformed)(
+    'ответ записи с %s: проверка, подтверждённое прежнее, сохранять нельзя, пока не прочитали',
+    (_name, body) => {
+      const next = run(stateIn('saving'), saved(body));
+
+      expect(next).toMatchObject({ phase: 'verifying', snapshot: CONFIRMED });
+      expect(canSave(next)).toBe(false);
+      expect(needsRead(next)).toBe(true);
+      expect(run(next, { type: 'saveStarted' })).toBe(next);
+      // Чтение вернуло исправный снимок — сохранять снова можно.
+      expect(canSave(run(next, read(makeSnapshot({ revision: '6' }))))).toBe(true);
+    },
+  );
+
+  it.each(malformed)(
+    'ответ чтения с %s: сбой чтения, подтверждённое прежнее',
+    (_name, body) => {
+      const next = run(stateIn('verifying'), read(body));
+
+      expect(next).toMatchObject({
+        phase: 'verifying',
+        snapshot: CONFIRMED,
+        readError: REMINDER_SYNC_NOTICE_TEXT.checkFailed,
+      });
+      expect(canSave(next)).toBe(false);
+    },
+  );
+
+  it('первое чтение с битым ответом — сбой загрузки, а не пустой выбор', () => {
+    const next = run(initialReminderSyncState(true), read(malformed[0][1]));
+
+    expect(next).toMatchObject({ snapshot: null, readError: REMINDER_SYNC_LOAD_ERROR });
+  });
+});
 describe('события не в своей фазе', () => {
   const strayWrites: ReminderSyncEvent[] = [
     saved(makeSnapshot({ revision: '9' })),

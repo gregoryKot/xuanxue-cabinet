@@ -1783,7 +1783,7 @@
   "web/src/notifications/notificationTarget.ts": 48,
   "web/src/notifications/pushNotificationsCopy.ts": 59,
   "web/src/notifications/pushSectionState.ts": 120,
-  "web/src/notifications/reminderSyncState.ts": 293,
+  "web/src/notifications/reminderSyncState.ts": 252,
   "web/src/notifications/pushSubscriptionCodec.ts": 38,
   "web/src/notifications/useLessonReminder.ts": 49,
   "web/src/notifications/useNotificationPrefs.ts": 57,

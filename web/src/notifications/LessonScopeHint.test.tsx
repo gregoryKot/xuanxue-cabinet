@@ -20,6 +20,7 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import { makeMe } from '../test-support/meFixture';
+import { LESSON_ID, MORNING_ID } from '../test-support/reminderSyncFixtures';
 import { LessonScopeHint } from './LessonScopeHint';
 
 vi.mock('../api/http', async () => {
@@ -38,7 +39,7 @@ const STUDENT = makeMe({ roles: [] });
 
 const catalogue: ReminderSyncSnapshot['classes'] = [
   {
-    id: 'c1',
+    id: MORNING_ID,
     title: 'Утро',
     groupLabel: '',
     tz: 'Asia/Jerusalem',
@@ -144,7 +145,7 @@ describe('LessonScopeHint — когда показывается', () => {
   });
 
   it('выбрано занятие расписания — карточки нет', async () => {
-    serve({ sync: snapshot({ classIds: ['c1'] }) });
+    serve({ sync: snapshot({ classIds: [MORNING_ID] }) });
     renderHint();
 
     await waitForLoaded();
@@ -152,7 +153,7 @@ describe('LessonScopeHint — когда показывается', () => {
   });
 
   it('выбрано отдельное занятие — карточки нет', async () => {
-    serve({ sync: snapshot({ lessonIds: ['l1'] }) });
+    serve({ sync: snapshot({ lessonIds: [LESSON_ID] }) });
     renderHint();
 
     await waitForLoaded();
