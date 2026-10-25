@@ -167,6 +167,50 @@ describe('installGlobalErrorReporting', () => {
     expect(reportClientErrorMock).not.toHaveBeenCalled();
   });
 
+  // Инцидент 2026-10-03: `AbortError: The operation was aborted.` из Safari на
+  // /attempts/:id — прерванный load() `video.play()`. У DOMException в Safari
+  // нет стека, место броска не определить, и ошибку принимали за нашу.
+  function dispatchRejection(reason: unknown): void {
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: reason });
+    window.dispatchEvent(event);
+  }
+
+  it('отказ промиса с DOMException AbortError (отмена браузером) не уходит', () => {
+    installGlobalErrorReporting();
+
+    // Как в Safari: у DOMException нет стека. В Node он есть, и кадры vitest
+    // (file:///…) сами сошли бы за чужой код, скрыв, что фильтра на отмену нет.
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    Object.defineProperty(abort, 'stack', { value: undefined });
+
+    dispatchRejection(abort);
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  // Объект из другого realm не проходит instanceof DOMException нашего окна.
+  it('AbortError без прототипа DOMException (чужой realm) тоже не уходит', () => {
+    installGlobalErrorReporting();
+
+    dispatchRejection({ name: 'AbortError', message: 'The operation was aborted.' });
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('обычные Error и TypeError в отказе промиса по-прежнему уходят', () => {
+    installGlobalErrorReporting();
+    const boom = ownError('boom');
+    const typeError = new TypeError('x is not a function');
+    typeError.stack = `TypeError: x\n    at run (${window.location.origin}/assets/index-abc.js:1:2)`;
+
+    dispatchRejection(boom);
+    dispatchRejection(typeError);
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', boom);
+    expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', typeError);
+  });
+
   it('ошибка из файла нашего origin (filename) уходит', () => {
     installGlobalErrorReporting();
     const error = ownError('кабум');
