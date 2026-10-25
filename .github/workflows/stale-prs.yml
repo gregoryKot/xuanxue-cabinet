@@ -1,0 +1,54 @@
+name: Забытые PR
+
+# Раз в сутки: PR старше 7 дней (черновики тоже) красят прогон и шлют список
+# в Telegram владельцу (ADR-0186). Правило 1а и «Зависимости» в CLAUDE.md
+# требовали довести PR до конца или закрыть с причиной, но держались на
+# памяти. Один короткий прогон в день укладывается в бюджет минут Actions
+# (ADR-0111). '41 6 * * *' — минута смещена от ровного часа, тем же приёмом,
+# что в backup.yml и uptime.yml: GitHub откладывает прогоны на *:00.
+on:
+  schedule:
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: stale-prs
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # История не нужна: скрипт читает список PR через gh, а не git.
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # shell: bash — явно, ради pipefail (тот же довод, что в uptime.yml):
+      # без него статус шага = статус `tee`, и падение скрипта слева не красит
+      # джобу. stale-output.txt читает следующий шаг, чтобы не звать gh дважды.
+      - name: проверка PR (scripts/check-stale-prs.mjs)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-stale-prs.mjs | tee stale-output.txt
+
+      - name: алерт в Telegram
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          {
+            cat stale-output.txt 2>/dev/null || echo "Проверка забытых PR упала: подробности недоступны."
+            echo
+            echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | node scripts/notify-telegram.mjs
