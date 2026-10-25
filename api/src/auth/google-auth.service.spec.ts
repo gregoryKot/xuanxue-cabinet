@@ -20,7 +20,7 @@ import type { GoogleLoginIdentityService } from '../users/google-login-identity.
 import type { UserLean, UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { GOOGLE_OAUTH_COOKIE, readGoogleOAuthCookie } from './google-oauth-cookie';
-import { buildSessionCookie } from './session-cookie';
+import { buildSessionCookie, sessionCookieProfile } from './session-cookie';
 import { signSession } from './session-token';
 import type { GoogleTokenClient } from './google-token-client';
 
@@ -50,13 +50,15 @@ function cookieHeader(payload: Record<string, unknown>, extra?: string): string 
 }
 
 /** Настоящий `session` cookie, подписанный тем же secret, что примет
- * AuthService.verifySession в fakeAuth() ниже — findSessionUser читает его
+ * AuthService.verifyCookieHeader в build() ниже — findSessionUser читает его
  * без мока, той же функцией, что и продовый AuthGuard. */
 function realSessionCookie(userId: string): string {
   const token = signSession({ userId, issuedAt: NOW }, SESSION_SECRET);
-  return buildSessionCookie(token, { secure: false, maxAgeSec: 3600 }).split(
-    ';',
-  )[0] as string;
+  return buildSessionCookie(
+    token,
+    sessionCookieProfile('http://localhost:3000'),
+    3600,
+  ).split(';')[0] as string;
 }
 
 const USER: UserLean = {
@@ -85,14 +87,18 @@ function build(options: BuildOptions = {}) {
     touchLogin: options.touchLogin ?? (() => Promise.resolve()),
     findById: options.findById ?? (() => Promise.resolve(USER)),
   } as unknown as UsersService;
-  // verifySession настоящий (не фейк) — findSessionUser реально подписывает
+  // verifyCookieHeader настоящий (не фейк) — findSessionUser реально подписывает
   // и проверяет payload через session-token.ts, тест не должен угадывать
   // формат payload сам; issueSession — фейк, только для входа.
-  const realAuthService = new AuthService(SESSION_SECRET, fakeConfig());
+  const realAuthService = new AuthService(
+    SESSION_SECRET,
+    sessionCookieProfile('http://localhost:3000'),
+  );
   const authService = {
-    issueSession: options.issueSession ?? (() => ({ token: 't', cookie: 'session=tok' })),
-    verifySession: (token: string, now: DateTime) =>
-      realAuthService.verifySession(token, now),
+    issueSession:
+      options.issueSession ?? (() => ({ token: 't', cookies: ['session=tok'] })),
+    verifyCookieHeader: (header: string | undefined, now: DateTime) =>
+      realAuthService.verifyCookieHeader(header, now),
   } as unknown as AuthService;
   const identityService = {
     resolveGoogleUser: options.resolveGoogleUser ?? (() => Promise.resolve(USER)),
@@ -279,7 +285,7 @@ describe('GoogleAuthService.login — обычный вход', () => {
       },
       issueSession: (id) => {
         issuedFor = id;
-        return { token: 't', cookie: 'session=tok' };
+        return { token: 't', cookies: ['session=tok'] };
       },
     });
     const cookie = cookieHeader({
@@ -295,7 +301,7 @@ describe('GoogleAuthService.login — обычный вход', () => {
       NOW,
     );
 
-    expect(result).toEqual({ user: USER, cookie: 'session=tok' });
+    expect(result).toEqual({ user: USER, cookies: ['session=tok'] });
     expect(receivedJoin).toBe('x'.repeat(32));
     expect(touched).toBe(USER.id);
     expect(issuedFor).toBe(USER.id);
@@ -315,7 +321,7 @@ describe('GoogleAuthService.login — обычный вход', () => {
       resolveGoogleUser: () => Promise.resolve({ ...USER, status: 'blocked' }),
       issueSession: () => {
         issued = true;
-        return { token: 't', cookie: 'session=tok' };
+        return { token: 't', cookies: ['session=tok'] };
       },
     });
     const cookie = cookieHeader({
@@ -415,7 +421,7 @@ describe('GoogleAuthService.login — intent=link', () => {
       },
       issueSession: () => {
         issued = true;
-        return { token: 't', cookie: 'session=tok' };
+        return { token: 't', cookies: ['session=tok'] };
       },
     });
     const cookie = linkGoogleCookie(USER.id, realSessionCookie(USER.id));
@@ -427,7 +433,7 @@ describe('GoogleAuthService.login — intent=link', () => {
     );
 
     expect(result).toEqual({ user: { ...USER, googleId: 'sub-3' } });
-    expect(result.cookie).toBeUndefined();
+    expect(result.cookies).toBeUndefined();
     expect(linkedWith).toEqual({ userId: USER.id, sub: 'sub-3' });
     expect(issued).toBe(false);
   });

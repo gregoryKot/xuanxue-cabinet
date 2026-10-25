@@ -12,6 +12,7 @@ import { screenExplanationStyle, screenHintStyle } from '../components/screenLay
 import { useAuth } from './AuthProvider';
 import { LoginRefusedNotice } from './LoginRefusedNotice';
 import { redirectToTelegramAuth } from './telegramAuthRedirect';
+import { useLeavePending } from './useLeavePending';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
 const NOT_CONFIGURED_MESSAGE =
@@ -69,7 +70,7 @@ export function TelegramLoginSection({
     inviteCode,
     enabled: authStatus !== 'loading', // F56 — гонка 401, комментарий у опции
   });
-  const [pending, setPending] = useState(false);
+  const [pending, markLeaving] = useLeavePending();
   // Человек нажал «Войти другим способом» на объяснении отказа: ошибка
   // сервера никуда не делась, но форму ему показываем снова — он мог войти
   // не тем аккаунтом Telegram (LoginRefusedNotice.tsx).
@@ -79,7 +80,7 @@ export function TelegramLoginSection({
   const telegramBotId = config?.telegramBotId;
 
   function handleLoginClick(botId: number) {
-    setPending(true);
+    markLeaving();
     redirectToTelegramAuth(botId);
   }
 

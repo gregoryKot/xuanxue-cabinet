@@ -15,6 +15,7 @@ const me: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 describe('hasRole', () => {

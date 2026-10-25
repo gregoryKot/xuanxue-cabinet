@@ -10,12 +10,13 @@
 // select` с кеглем ≥16px; (б) ни один input/textarea/select в web/src не задаёт
 // `font`/`fontSize` инлайном — иначе он вернул бы зум, а правило (а) не поможет.
 //
-// Разбор — чистые функции без fs, гоняются на фикстурах в
-// check-control-font-size.test.mjs; обход дерева — в main(), как в
-// check-card-list-gap.mjs, откуда взята и maskLiterals (CLAUDE.md «Дубли»).
+// Разбор — чистые функции без fs, гоняются на фикстурах в check-control-font-size.test.mjs;
+// обход дерева — в main(), как в check-card-list-gap.mjs, откуда и maskLiterals (CLAUDE.md «Дубли»).
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative, dirname } from 'path';
+import { join, dirname } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { maskLiterals } from './check-card-list-gap.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const CONTROL_TAG_RE = /<(input|textarea|select)\b/g;
 // `font:` — шорткод, задаёт кегль. `fontFamily` зума не касается и не ловится:
@@ -266,7 +267,7 @@ function main() {
   }
 
   const files = {};
-  for (const file of walk(SRC)) files[relative(ROOT, file)] = readFileSync(file, 'utf8');
+  for (const file of walk(SRC)) files[repoPath(ROOT, file)] = readFileSync(file, 'utf8');
 
   const findings = findInlineControlFontFindings(files);
   const cssOk = hasControlFontSizeRule(readFileSync(join(SRC, 'index.css'), 'utf8'));
@@ -295,4 +296,4 @@ function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (isMainModule(import.meta.url)) main();

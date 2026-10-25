@@ -5,6 +5,7 @@
 // AuthProvider в web/src/auth/ читают одну и ту же форму, расхождение ловит
 // tsc.
 import type { UserRole, UserStatus } from './auth';
+import type { HomeTileKey } from './home-tiles';
 
 /**
  * Профиль текущей сессии для интерфейса. Ученик — это `active` без ролей
@@ -87,6 +88,11 @@ export interface MeDto {
    * флаг приходит с сервера. «Профиль» показывает переключатель только при `true`;
    * включить режим по этому флагу нельзя, сервер проверяет роли заново. */
   canUseStudentMode: boolean;
+  /** Плитки «Главной», которые человек скрыл у себя (ADR-0179,
+   * `users.homeHiddenTiles`). Пусто — показываем все; настройка личная и живёт в
+   * базе, поэтому с телефона и с компьютера главная одна. Меняет только сам
+   * человек, `PUT /me/home-tiles`. */
+  homeHiddenTiles: HomeTileKey[];
 }
 
 /**

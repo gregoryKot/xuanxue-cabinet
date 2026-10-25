@@ -7,14 +7,15 @@
 // уведомления подхватывается всеми молча, без миграции старых документов.
 // Срок хранения — пока жив аккаунт: `DELETE /users/:id` удаляет документ
 // целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4). Кроме переключателей
-// здесь же выбор «о каких занятиях» (`lessonScopeMode`, `lessonClassIds`,
-// ADR-0162), своё «за сколько напомнить о занятии» (`lessonReminderMinutes`,
-// ADR-0162) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
+// здесь же выбор «о каких занятиях» для отмен, записей и материалов
+// (`lessonScopeMode`, `lessonClassIds`, ADR-0162), выбор для напоминаний
+// «Занятие скоро» и своё «за сколько» (`reminderClassIds`, `reminderLessonIds`,
+// `lessonReminderMinutes`, ADR-0185) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
-  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_MODES,
   NOTIFICATION_KINDS,
+  REMINDER_SYNC_LEAD_CHOICES,
   SETTINGS_LIMITS,
 } from '@xuanxue/shared';
 import type { LessonScopeMode, NotificationKind } from '@xuanxue/shared';
@@ -59,7 +60,8 @@ export class NotificationPrefsRecord {
   })
   paymentReminderDay?: number;
 
-  // О каких занятиях напоминать (ADR-0162). Два верхнеуровневых поля, а не
+  // О каких занятиях сообщать об отмене, записи и новом материале (ADR-0162).
+  // Напоминания «Занятие скоро» от него не зависят (reminderClassIds ниже). Два верхнеуровневых поля, а не
   // вложенный объект: политика шифрования читает только верхний уровень
   // (field-policy.ts). Нет `lessonScopeMode` — `all`: ученик ничего не
   // выбирал, документ ему не нужен.
@@ -73,14 +75,29 @@ export class NotificationPrefsRecord {
   @Prop({ type: [String], default: undefined })
   lessonClassIds?: string[];
 
-  // Своё «за сколько минут напомнить о занятии» (ADR-0162). Нет поля — «как в
+  // Своё «за сколько минут напомнить о занятии» (ADR-0185). Нет поля — «как в
   // школе» (`settings.lessonReminderMinutes`): человек ничего не выбирал или
   // снял выбор. Отдельное поле, как `paymentReminderDay`: число не влезает в
-  // overrides. Значения — только из короткого списка; `enum` ловит запись через
-  // `create`/`save`, а запись через API держит DTO (updateOne валидаторы схемы
-  // не запускает).
-  @Prop({ type: Number, enum: LESSON_REMINDER_CHOICES })
+  // overrides. Значения — только из короткого списка (`0` — в момент начала);
+  // `enum` ловит запись через `create`/`save`, а запись через API держат DTO и
+  // разбор тела записи (updateOne валидаторы схемы не запускает).
+  @Prop({ type: Number, enum: REMINDER_SYNC_LEAD_CHOICES })
   lessonReminderMinutes?: number;
+
+  // Выбор для синхронизации напоминаний с приложением Daychi (ADR-0185): о каких
+  // занятиях расписания и о каких отдельных занятиях. `default: undefined` по
+  // той же причине, что у `lessonClassIds` — пустой массив каждому документу
+  // настроек не нужен; нет поля — пусто.
+  @Prop({ type: [String], default: undefined })
+  reminderClassIds?: string[];
+
+  @Prop({ type: [String], default: undefined })
+  reminderLessonIds?: string[];
+
+  // Счётчик изменений выбора: клиент по нему отличает свежий снимок от
+  // устаревшего. Нет поля — 0, выбор ещё не менялся.
+  @Prop({ type: Number, min: 0 })
+  reminderRevision?: number;
 }
 
 export const NotificationPrefsSchema = SchemaFactory.createForClass(
@@ -100,6 +117,15 @@ export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
     'id занятий расписания школы, не свободный текст и не персональные данные',
   ),
   lessonReminderMinutes: plain(
-    'число из короткого списка 15/30/60/120, не свободный текст и не персональные данные',
+    'число из короткого списка 0/15/30/60/120, не свободный текст и не персональные данные',
+  ),
+  reminderClassIds: plain(
+    'id занятий расписания школы, не свободный текст и не персональные данные',
+  ),
+  reminderLessonIds: plain(
+    'id отдельных занятий школы, не свободный текст и не персональные данные',
+  ),
+  reminderRevision: plain(
+    'счётчик изменений выбора, не свободный текст и не персональные данные',
   ),
 };

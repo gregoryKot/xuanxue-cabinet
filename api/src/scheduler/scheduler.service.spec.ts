@@ -8,8 +8,8 @@ import type { PreviewService } from '../broadcasts/preview.service';
 import type { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
+import type { VideoOrphansSweepService } from './video-orphans-sweep.service';
 import type { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
-import type { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import type { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonCancelNoticeService } from '../lessons/lesson-cancel-notice.service';
@@ -39,7 +39,7 @@ function buildService(overrides: {
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   remindPayments?: PaymentReminderService['remind'];
   removeImageOrphans?: ExamImageSweepService['removeOrphans'];
-  removeVideoOrphans?: ExamVideoSweepService['removeOrphans'];
+  removeVideoOrphans?: VideoOrphansSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
   sweepStorageOrphans?: StorageOrphansService['sweep'];
   removeExpiredAnswerVideos?: AnswerVideoSweepService['removeExpired'];
@@ -122,7 +122,7 @@ function buildService(overrides: {
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
     { remind: remindPayments } as unknown as PaymentReminderService,
     { removeOrphans: removeImageOrphans } as unknown as ExamImageSweepService,
-    { removeOrphans: removeVideoOrphans } as unknown as ExamVideoSweepService,
+    { removeOrphans: removeVideoOrphans } as unknown as VideoOrphansSweepService,
     {
       removeExpired: removeExpiredScreenshots,
     } as unknown as PaymentScreenshotSweepService,

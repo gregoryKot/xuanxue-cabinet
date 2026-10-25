@@ -238,6 +238,49 @@ describe('SettingsService', () => {
       expect(settings.newcomerContact).toBe('Маше @masha_teacher');
     });
 
+    it('boardNotice — сохраняется, get видит его после (read-after-write); новое объявление заменяет прежнее целиком', async () => {
+      await service.update({
+        newcomerContact: 'Маше @masha_teacher',
+        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
+      });
+      expect((await service.get()).boardNotice).toEqual({
+        text: 'Ретрит в ноябре',
+        until: '2026-10-20',
+      });
+
+      await service.update({ boardNotice: { text: 'Каникулы', until: '2026-12-31' } });
+
+      const settings = await service.get();
+      expect(settings.boardNotice).toEqual({ text: 'Каникулы', until: '2026-12-31' });
+      expect(settings.newcomerContact).toBe('Маше @masha_teacher');
+    });
+
+    it('boardNotice: null — снимает объявление (поля нет), остальные настройки на месте', async () => {
+      await service.update({
+        newcomerContact: 'Маше @masha_teacher',
+        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
+      });
+
+      await service.update({ boardNotice: null });
+
+      const settings = await service.get();
+      expect(settings.boardNotice).toBeUndefined();
+      expect(settings.newcomerContact).toBe('Маше @masha_teacher');
+    });
+
+    it('без boardNotice в теле — объявление не трогается', async () => {
+      await service.update({
+        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
+      });
+
+      await service.update({ previewMinutes: 15 });
+
+      expect((await service.get()).boardNotice).toEqual({
+        text: 'Ретрит в ноябре',
+        until: '2026-10-20',
+      });
+    });
+
     it('schoolSiteUrl: null — снимает адрес (поля нет), не сохраняет литерал null', async () => {
       await service.update({ schoolSiteUrl: 'https://xuanxue.su' });
 

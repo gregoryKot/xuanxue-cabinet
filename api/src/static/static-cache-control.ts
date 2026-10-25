@@ -17,6 +17,7 @@
 import { relative } from 'path';
 import type { ServerResponse } from 'http';
 import type { ServeStaticModuleOptions } from '@nestjs/serve-static';
+import { ROOT_ROUTES } from '../common/root-routes';
 
 const ONE_YEAR_SECONDS = 31_536_000;
 
@@ -50,7 +51,7 @@ export function staticCacheControl(pathInsideRoot: string): string {
 export function staticAssetsOptions(rootPath: string): ServeStaticModuleOptions {
   return {
     rootPath,
-    exclude: ['/api/{*splat}'],
+    exclude: ['/api/{*splat}', ...ROOT_ROUTES.map((path) => `/${path}`)],
     serveStaticOptions: {
       // setHeaders зовут оба пути раздачи: express.static на каждый найденный
       // файл и SPA-фолбэк @nestjs/serve-static перед res.sendFile(index.html).

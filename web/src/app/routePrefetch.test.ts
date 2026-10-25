@@ -28,7 +28,10 @@ import {
   GRADING_QUEUE_PATH,
   attemptPath,
 } from '../api/gradingPaths';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
+import { MY_PAYMENTS_PATH, paymentsListPath } from '../api/paymentsApiPaths';
+import { MY_BOARD_PATH } from '../api/boardApiPaths';
+import { MY_EVENTS_PATH, SCHOOL_EVENTS_PATH } from '../api/eventsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
@@ -83,21 +86,25 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/templates')).toEqual([SETTINGS_PATH, nextLessonsPath()]);
   });
 
+  // Тот же GET /settings, что у «Шаблонов», плюс число «сколько учеников
+  // выбрали своё время напоминания» под полем (ADR-0176).
+  it('/school — настройки школы и число выбравших своё напоминание', () => {
+    expect(prefetchAt('/school')).toEqual([
+      SETTINGS_PATH,
+      '/notifications/lesson-prefs-stats',
+    ]);
+  });
+
   it('/exam-items — вопросы без фильтра', () => {
     expect(prefetchAt('/exam-items')).toEqual([examItemsListPath('')]);
   });
 
-  // «/» тоже сюда: STAFF_ROOT_PATH (screenAccess.ts) и EMPTY_PATH_FALLBACK
-  // (routeMatch.ts) — одна константа с 2026-09-27 (ADR-0138), гейт от
-  // повторного расхождения.
-  it('/exams (и /) — список без фильтра, очередь проверки, статистика вопросов', () => {
-    const expected = [
+  it('/exams — список без фильтра, очередь проверки, статистика вопросов', () => {
+    expect(prefetchAt('/exams')).toEqual([
       examsListPath({ status: '' }),
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
-    ];
-    expect(prefetchAt('/exams')).toEqual(expected);
-    expect(prefetchAt('/')).toEqual(expected);
+    ]);
   });
 
   it('/grading — оба раздела: очередь и проверенные', () => {
@@ -110,23 +117,44 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/profile')).toEqual([]);
   });
 
-  it('/notifications/settings — виды уведомлений и список занятий для выбора', () => {
+  it('/notifications/settings — виды уведомлений и снимок настроек напоминаний', () => {
     expect(prefetchAt('/notifications/settings')).toEqual([
       NOTIFICATION_PREFS_PATH,
-      MY_LESSON_NOTIFICATIONS_PATH,
+      REMINDER_SYNC_PATH,
     ]);
   });
 
-  it('/notifications — лента, список своих экзаменов (новые задания) и занятия (подсказка «выберите свои»)', () => {
+  it('/notifications — лента, список своих экзаменов (новые задания) и снимок напоминаний (подсказка «отметьте свои»)', () => {
     expect(prefetchAt('/notifications')).toEqual([
       NOTIFICATIONS_FEED_PATH,
       MY_EXAMS_PATH,
-      MY_LESSON_NOTIFICATIONS_PATH,
+      REMINDER_SYNC_PATH,
     ]);
   });
 
-  // Решение владельца: экзамены — отдельный экран и первый после входа
-  // (docs/PLAN.md §11).
+  // «Доска» (ADR-0173, у штата — ADR-0174): запись таблицы одна на обе
+  // роли, поэтому греет объединение: экзамены, занятия, оплата и объявление
+  // ученика плюс настройки школы (объявление штат правит с доски, ADR-0172,
+  // дополнение 2026-10-07) и очередь проверки штата. Лишнее для роли отсекает
+  // firstScreenPaths (prefetchFirstScreen.test.ts), а «/» с ADR-0174 ведёт
+  // сюда же — гейт от повторного расхождения EMPTY_PATH_FALLBACK
+  // (routeMatch.ts) и rootPathFor (screenAccess.ts).
+  it('/board (и /) — запросы обеих досок, включая события ученика и штата', () => {
+    const expected = [
+      MY_EXAMS_PATH,
+      MY_LESSONS_PATH,
+      MY_PAYMENTS_PATH,
+      MY_BOARD_PATH,
+      SETTINGS_PATH,
+      GRADING_QUEUE_PATH,
+      MY_EVENTS_PATH,
+      SCHOOL_EVENTS_PATH,
+    ];
+    expect(prefetchAt('/board')).toEqual(expected);
+    expect(prefetchAt('/')).toEqual(expected);
+  });
+
+  // Решение владельца: экзамены — отдельный экран (docs/PLAN.md §11).
   it('/tasks — список своих экзаменов', () => {
     expect(prefetchAt('/tasks')).toEqual([MY_EXAMS_PATH]);
   });
@@ -141,6 +169,10 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/library — библиотека материалов ученика', () => {
     expect(prefetchAt('/library')).toEqual([MY_MATERIALS_PATH]);
+  });
+
+  it('/payments — список оплат текущего месяца (месяц называет сервер)', () => {
+    expect(prefetchAt('/payments')).toEqual([paymentsListPath(null)]);
   });
 
   it('/people — ссылка-приглашение; список учеников (GET /users) не греем — он только для admin', () => {
@@ -208,6 +240,12 @@ describe('RouteModule.prefetch — редактор существующей з�
     ]);
   });
 
+  // ADR-0177: одиночного GET у события нет, правка находит его в списке штата.
+  it('/events/new — читать нечего, /events/:id — список событий штата', () => {
+    expect(prefetchAt('/events/new')).toEqual([]);
+    expect(prefetchAt('/events/652f00000000000000000009')).toEqual([SCHOOL_EVENTS_PATH]);
+  });
+
   it('/exams/:id — карточка экзамена и вопросы, вместе с удалёнными из банка (ADR-0140)', () => {
     expect(prefetchAt('/exams/652f00000000000000000006')).toEqual([
       '/exams/652f00000000000000000006',
@@ -267,7 +305,10 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/materials/new',
       '/materials/tags',
       '/materials/652f00000000000000000008',
+      '/events/new',
+      '/events/652f00000000000000000009',
       '/templates',
+      '/school',
       '/exam-items',
       '/exam-items/652f00000000000000000004',
       '/exams',
@@ -279,12 +320,14 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/profile',
       '/notifications',
       '/notifications/settings',
+      '/board',
       '/tasks',
       '/lessons',
       '/archive',
       '/library',
       '/attempts/652f00000000000000000007',
       '/people',
+      '/payments',
     ];
 
     for (const pathname of samplePathnames) {

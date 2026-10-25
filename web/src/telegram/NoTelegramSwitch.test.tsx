@@ -37,6 +37,7 @@ const ME_AFTER_TOGGLE: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function renderSwitch(noTelegram: boolean) {

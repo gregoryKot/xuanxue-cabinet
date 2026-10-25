@@ -36,8 +36,8 @@ export async function findLessonClassesByIds(
  * Расшифровывает каждую дату занятия и собирает из неё DTO вместе с классом
  * из `classById` (см. `findLessonClassesByIds`). Дата, у которой класс не
  * нашёлся — рассинхрон данных (класс у даты занятия удалить нельзя, пока на
- * него ссылается хоть одна дата, ClassesService.remove), молча пропускается,
- * не роняя весь список ученику.
+ * него ссылается хоть одна дата, ClassesService.remove); её молча
+ * пропускают, не роняя весь список ученику.
  */
 export function joinLessonsWithClasses<T>(
   docs: LeanLesson[],

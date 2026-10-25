@@ -88,4 +88,17 @@ describe('Кеш статики (e2e)', () => {
     expect(res.text).toContain(INDEX_MARKER);
     expect(res.headers['cache-control']).toBe(REVALIDATE_CACHE_CONTROL);
   });
+
+  // Вход Daychi (ADR-0181) и вход из wiki (ADR-0183) отвечают от корня сайта:
+  // отдай SPA на этот адрес index.html, Nest-контроллер до запроса бы не дошёл.
+  // Локальный профиль: у входа из wiki здесь 404 самого маршрута, не SPA.
+  it.each(['/auth/native/authorize?client_id=x', '/wiki?returnTo=%2F'])(
+    'маршрут от корня (ROOT_ROUTES) %s SPA не отдаёт',
+    async (path) => {
+      const res = await request(server()).get(path);
+
+      expect(res.status).toBe(404);
+      expect(res.text).not.toContain(INDEX_MARKER);
+    },
+  );
 });

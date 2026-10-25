@@ -8,8 +8,12 @@ import { withCsrf } from './http';
 import type { TestApp } from './create-app';
 
 /** `getApp` — геттер, не значение: вызывается лениво из `it()`, когда
- * `beforeAll` уже присвоил testApp. */
-export function createExamVideoPartsHelpers(getApp: () => TestApp) {
+ * `beforeAll` уже присвоил testApp. `base` — маршрут вида видео: у записи занятия
+ * (ADR-0180) тот же протокол частей под своим адресом. */
+export function createExamVideoPartsHelpers(
+  getApp: () => TestApp,
+  base = '/api/exam-videos',
+) {
   const server = (): ReturnType<TestApp['app']['getHttpServer']> =>
     getApp().app.getHttpServer();
 
@@ -18,7 +22,7 @@ export function createExamVideoPartsHelpers(getApp: () => TestApp) {
     sizeBytes: number,
     fingerprint = `${sizeBytes}:1`,
   ): request.Test {
-    const req = withCsrf(request(server()).post('/api/exam-videos/uploads'));
+    const req = withCsrf(request(server()).post(`${base}/uploads`));
     return (cookie ? req.set('Cookie', cookie) : req).send({ sizeBytes, fingerprint });
   }
 
@@ -28,7 +32,7 @@ export function createExamVideoPartsHelpers(getApp: () => TestApp) {
     n: number,
     bytes: Buffer,
   ): request.Test {
-    const req = withCsrf(request(server()).put(`/api/exam-videos/${id}/parts/${n}`)).set(
+    const req = withCsrf(request(server()).put(`${base}/${id}/parts/${n}`)).set(
       'Content-Type',
       'application/octet-stream',
     );
@@ -40,7 +44,7 @@ export function createExamVideoPartsHelpers(getApp: () => TestApp) {
     id: string,
     body?: CompleteVideoUploadInput,
   ): request.Test {
-    const req = withCsrf(request(server()).post(`/api/exam-videos/${id}/complete`));
+    const req = withCsrf(request(server()).post(`${base}/${id}/complete`));
     const withSession = cookie ? req.set('Cookie', cookie) : req;
     return body ? withSession.send(body) : withSession;
   }

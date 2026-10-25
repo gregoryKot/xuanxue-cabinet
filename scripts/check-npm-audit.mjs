@@ -16,6 +16,7 @@ import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { npmCommand } from './tool-command.mjs';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const ALLOWLIST_PATH = join(SCRIPTS_DIR, 'audit-allowlist.json');
@@ -26,7 +27,8 @@ const BLOCKING_SEVERITIES = new Set(['high', 'critical']);
  * отличаем по отсутствию разбираемого вывода. */
 function runAudit() {
   try {
-    return execFileSync('npm', ['audit', '--omit=dev', '--json'], {
+    const { command, args } = npmCommand(['audit', '--omit=dev', '--json']);
+    return execFileSync(command, args, {
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     });

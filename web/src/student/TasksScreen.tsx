@@ -34,16 +34,15 @@
 // закрытия диалога — useTaskStart.ts.
 import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
+import { ExamTaskList } from './ExamTaskList';
 import { useMyExams } from './MyExamsProvider';
 import { splitTasksToDo } from './splitTasksToDo';
+import { TaskStartDialog } from './TaskStartDialog';
 import { useStartFromLink } from './useStartFromLink';
-import { StudentExamCard } from './StudentExamCard';
 import { useTaskStart } from './useTaskStart';
 
 const TITLE = 'Задания';
@@ -68,32 +67,13 @@ const headingStyle: CSSProperties = { margin: 0 };
 
 export default function TasksScreen() {
   const { data: exams, loading, error, reload } = useMyExams();
-  const {
-    pendingExamId,
-    errors: startErrors,
-    confirm,
-    start,
-    confirmStart,
-    cancelConfirm,
-  } = useTaskStart();
+  const taskStart = useTaskStart();
 
   const ready = !loading && !error && exams !== null;
   // Глубокая ссылка из уведомления `/tasks?start=<examId>` (ADR-0129) — ждёт
   // загруженного списка (`ready ? exams : null`), иначе экзамен ещё не
   // найти. Тот же `start`, что у кнопки «Начать» на карточке ниже.
-  useStartFromLink(ready ? exams : null, start);
-
-  function renderCard(exam: MyExamDto) {
-    return (
-      <StudentExamCard
-        key={exam.id}
-        exam={exam}
-        pending={pendingExamId === exam.id}
-        error={startErrors[exam.id] || null}
-        onStart={() => start(exam)}
-      />
-    );
-  }
+  useStartFromLink(ready ? exams : null, taskStart.start);
 
   function renderGroup(rubric: string, tasks: MyExamDto[]) {
     if (tasks.length === 0) return null;
@@ -102,7 +82,7 @@ export default function TasksScreen() {
         <h2 className="xuanxue-eyebrow" style={headingStyle}>
           {rubric}
         </h2>
-        <ul style={cardListStyle}>{tasks.map(renderCard)}</ul>
+        <ExamTaskList exams={tasks} taskStart={taskStart} />
       </div>
     );
   }
@@ -131,18 +111,7 @@ export default function TasksScreen() {
       {ready && renderGroup(REVIEW_RUBRIC, review)}
       {ready && renderGroup(DONE_RUBRIC, done)}
 
-      {confirm && (
-        <ConfirmDialog
-          title={confirm.copy.title}
-          message={confirm.copy.message}
-          confirmLabel={confirm.copy.confirmLabel}
-          cancelLabel={confirm.copy.cancelLabel}
-          confirmVariant={confirm.copy.confirmVariant}
-          pending={pendingExamId === confirm.exam.id}
-          onConfirm={() => confirmStart(confirm.exam)}
-          onCancel={cancelConfirm}
-        />
-      )}
+      <TaskStartDialog taskStart={taskStart} />
     </section>
   );
 }

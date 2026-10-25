@@ -1,0 +1,301 @@
+// Главная штата (ADR-0174, плитки без рубрик — ADR-0178): объявление, очередь
+// проверки, события и четыре входа в разделы. Рендерим через BoardScreen — он ветвится по роли, и
+// ветку ученика тоже проверяем отсюда (штат в режиме ученика). Сеть —
+// mockApiByPath (ADR-0116).
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Route } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  type ExamAttemptQueueItemDto,
+  type MeDto,
+  type MyExamDto,
+  type MyLessonDto,
+  type SchoolEventDto,
+  type SettingsDto,
+} from '@xuanxue/shared';
+import { GRADING_QUEUE_PATH } from '../api/gradingPaths';
+import type * as HttpModule from '../api/http';
+import { makeMe, STAFF_IN_STUDENT_MODE_ME } from '../test-support/meFixture';
+import {
+  mockApiByPath,
+  mockedApiFetch,
+  resetApiFetchBetweenTests,
+} from '../test-support/apiFetchMock';
+import { makeSchoolEvent } from '../test-support/schoolEventFixture';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
+import {
+  NO_EVENTS_RESPONSES,
+  renderBoardWithRoutes,
+  SETTINGS_EMPTY,
+} from './boardTestRender';
+
+vi.mock('../api/http', async () => {
+  const actual = await vi.importActual<typeof HttpModule>('../api/http');
+  return { ...actual, apiFetch: vi.fn() };
+});
+
+resetApiFetchBetweenTests();
+stubViewerTimeZone();
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(TODAY);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const TEACHER = makeMe({ id: 't1', name: 'Дима', roles: ['teacher'] });
+// «Сегодня» главной штата — new Date() (StaffBoard.tsx): фиксируем, чтобы
+// «до 20 октября» не истекло от того, что тест запустили позже.
+const TODAY = new Date('2026-10-10T12:00:00Z');
+const QUEUE_ERROR_TEXT = 'Не удалось загрузить очередь проверки. Попробуйте ещё раз.';
+
+function makeAttempt(id: string): ExamAttemptQueueItemDto {
+  return {
+    id,
+    examId: 'e1',
+    examTitle: 'Форма первого уровня',
+    userId: `u-${id}`,
+    userName: 'Мария',
+    status: 'submitted',
+    startedAt: '2026-10-05T10:00:00.000Z',
+    submittedAt: '2026-10-05T10:30:00.000Z',
+    expired: false,
+  };
+}
+
+interface StaffBoardData {
+  me?: MeDto;
+  settings?: SettingsDto | Error;
+  queue?: ExamAttemptQueueItemDto[] | Error;
+  events?: SchoolEventDto[];
+}
+
+function renderStaffBoard({
+  me = TEACHER,
+  settings = SETTINGS_EMPTY,
+  queue = [],
+  events = [],
+}: StaffBoardData = {}) {
+  // Ответы ученических запросов нужны только штату в режиме ученика.
+  mockApiByPath({
+    '/auth/me': me,
+    '/auth/config': {},
+    '/settings': settings,
+    '/me/board': { notice: null },
+    [GRADING_QUEUE_PATH]: queue,
+    '/me/exams': [] satisfies MyExamDto[],
+    '/me/lessons': [] satisfies MyLessonDto[],
+    ...NO_EVENTS_RESPONSES,
+    '/events': events,
+  });
+  return renderBoardWithRoutes(
+    <>
+      <Route path="/grading" element={<p>Экран проверки</p>} />
+      <Route path="/planning" element={<p>Экран занятий штата</p>} />
+      <Route path="/broadcasts" element={<p>Экран рассылок</p>} />
+      <Route path="/materials" element={<p>Экран материалов</p>} />
+      <Route path="/school" element={<p>Экран школы</p>} />
+    </>,
+  );
+}
+
+function callsTo(prefix: string) {
+  return mockedApiFetch.mock.calls.filter(([path]) => path.startsWith(prefix));
+}
+
+describe('StaffBoard — шапка и плитки', () => {
+  it('заголовок «Главная», объяснения под ним и рубрик нет', async () => {
+    const { container } = renderStaffBoard();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Главная' }),
+    ).toBeInTheDocument();
+    await screen.findByText('Пока нечего проверять.');
+    expect(screen.queryByText(/Здесь объявление ученикам/)).not.toBeInTheDocument();
+    for (const heading of ['Ждёт вас', 'События', 'Настроить']) {
+      expect(screen.queryByRole('heading', { name: heading })).not.toBeInTheDocument();
+    }
+    expect(container.querySelector('.xuanxue-eyebrow')).toBeNull();
+    expect(screen.queryByText('Доска')).not.toBeInTheDocument();
+  });
+
+  it('плитки по порядку: объявление, «Проверка», события, входы в разделы; ученических нет', async () => {
+    renderStaffBoard({
+      events: [makeSchoolEvent({ id: 'ev1', startsAt: '2026-11-14T08:00:00.000Z' })],
+    });
+    await screen.findByText('Пока нечего проверять.');
+    await screen.findByRole('link', { name: /Ретрит в Галилее/ });
+
+    const order = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
+    expect(order).toEqual([
+      '/grading',
+      '/events/ev1',
+      '/events/new',
+      '/planning',
+      '/broadcasts',
+      '/materials',
+      '/school',
+    ]);
+    const addNotice = screen.getByRole('button', { name: /Добавить объявление/ });
+    const grading = screen.getByRole('link', { name: /Проверка/ });
+    expect(
+      addNotice.compareDocumentPosition(grading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByText('Сдать экзамен')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Оплата/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Ближайшее занятие')).not.toBeInTheDocument();
+  });
+});
+
+describe('StaffBoard — карточка «Проверка»', () => {
+  it('в очереди две работы — число внутри карточки', async () => {
+    renderStaffBoard({ queue: [makeAttempt('a1'), makeAttempt('a2')] });
+
+    expect(await screen.findByText('2 работы ждут проверки.')).toBeInTheDocument();
+  });
+
+  it('очередь пуста — честная фраза, не «0 работ»', async () => {
+    renderStaffBoard();
+
+    expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
+    expect(screen.queryByText(/0 работ/)).not.toBeInTheDocument();
+  });
+
+  it('карточка ведёт на «Проверку»', async () => {
+    const user = userEvent.setup();
+    renderStaffBoard({ queue: [makeAttempt('a1')] });
+
+    await user.click(await screen.findByRole('link', { name: /Проверка/ }));
+
+    expect(await screen.findByText('Экран проверки')).toBeInTheDocument();
+  });
+
+  it('сбой очереди — баннер с «Обновить», карточка и входы на месте, повтор перечитывает очередь', async () => {
+    const user = userEvent.setup();
+    renderStaffBoard({ queue: new TypeError('Failed to fetch') });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(QUEUE_ERROR_TEXT);
+    expect(screen.getByRole('link', { name: /Проверка/ })).toBeInTheDocument();
+    for (const name of ['Занятия', 'Рассылки', 'Материалы', 'Школа']) {
+      expect(screen.getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
+    }
+
+    expect(callsTo(GRADING_QUEUE_PATH)).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Обновить' }));
+    expect(callsTo(GRADING_QUEUE_PATH)).toHaveLength(2);
+  });
+});
+
+describe('StaffBoard — входы в разделы', () => {
+  it('четыре карточки-входа: занятия, рассылки, материалы, школа (ADR-0176)', async () => {
+    renderStaffBoard();
+    await screen.findByRole('link', { name: /Школа/ });
+
+    const hrefs = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+      .filter((href) => href !== '/grading' && href !== '/events/new');
+    expect(hrefs).toEqual(['/planning', '/broadcasts', '/materials', '/school']);
+  });
+
+  // «Расписание» значит один экран, /schedule (ADR-0025, дополнение
+  // 2026-10-08): карточка на доске ведёт на «Занятия» и так называется.
+  it('карточка «Занятия» с подсказкой про четыре недели, карточки «Расписание» нет', async () => {
+    renderStaffBoard();
+
+    const card = await screen.findByRole('link', { name: /Занятия/ });
+    expect(card).toHaveAttribute('href', '/planning');
+    expect(card).toHaveTextContent('Занятия на четыре недели');
+    expect(card).toHaveTextContent('разовое занятие и постоянное расписание');
+    expect(screen.queryByRole('link', { name: /Расписание/ })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['Занятия', 'Экран занятий штата'],
+    ['Рассылки', 'Экран рассылок'],
+    ['Материалы', 'Экран материалов'],
+    ['Школа', 'Экран школы'],
+  ])('«%s» ведёт на свой экран', async (name, screenText) => {
+    const user = userEvent.setup();
+    renderStaffBoard();
+    await screen.findByRole('link', { name: /Школа/ });
+
+    await user.click(screen.getByRole('link', { name: new RegExp(name) }));
+
+    expect(await screen.findByText(screenText)).toBeInTheDocument();
+  });
+});
+
+describe('StaffBoard — запросы и объявление', () => {
+  it('запросов ученика нет, настройки школы запрашиваются один раз', async () => {
+    renderStaffBoard();
+    await screen.findByText('Пока нечего проверять.');
+    await screen.findByRole('button', { name: /Добавить объявление/ });
+
+    for (const prefix of [
+      '/me/exams',
+      '/me/lessons',
+      '/me/payments',
+      '/me/board',
+      '/me/events',
+    ]) {
+      expect(callsTo(prefix)).toHaveLength(0);
+    }
+    expect(callsTo('/settings')).toHaveLength(1);
+  });
+
+  it('объявление школы стоит и на доске штата', async () => {
+    renderStaffBoard({
+      settings: {
+        ...SETTINGS_EMPTY,
+        boardNotice: { text: 'Ретрит в ноябре', until: '2026-10-20' },
+      },
+    });
+
+    const notice = await screen.findByRole('complementary', {
+      name: 'Объявление школы',
+    });
+    expect(notice).toHaveTextContent('Ретрит в ноябре');
+  });
+
+  // Настройки не пришли — объявления не видно, но доска живёт: баннер с
+  // повтором, очередь и входы на месте, «Обновить» перечитывает настройки.
+  it('сбой загрузки настроек — баннер с «Обновить», повтор перечитывает настройки', async () => {
+    const user = userEvent.setup();
+    renderStaffBoard({ settings: new TypeError('Failed to fetch') });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось загрузить настройки. Попробуйте ещё раз.',
+    );
+    expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Добавить объявление/ })).toBeNull();
+
+    expect(callsTo('/settings')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Обновить' }));
+    expect(callsTo('/settings')).toHaveLength(2);
+  });
+});
+
+describe('StaffBoard — роли', () => {
+  it.each(['admin', 'assistant'] as const)(
+    '%s видит ту же главную штата',
+    async (role) => {
+      renderStaffBoard({ me: makeMe({ roles: [role] }) });
+
+      expect(await screen.findByRole('link', { name: /Занятия/ })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Проверка/ })).toBeInTheDocument();
+    },
+  );
+
+  it('штат в режиме ученика — главная ученика, очередь проверки не запрашивается', async () => {
+    renderStaffBoard({ me: STAFF_IN_STUDENT_MODE_ME });
+
+    expect(await screen.findByText('Сейчас от вас ничего не ждут.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Рассылки/ })).not.toBeInTheDocument();
+    expect(callsTo(GRADING_QUEUE_PATH)).toHaveLength(0);
+  });
+});

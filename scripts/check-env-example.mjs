@@ -10,7 +10,8 @@
 // Исключения — переменные окружения платформы/рантайма, не специфичные для
 // приложения: NODE_ENV, TZ, CI, RAILWAY_*.
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const API_SRC = join(ROOT, 'api', 'src');
@@ -33,7 +34,7 @@ const found = new Map();
 function record(name, file) {
   if (isExcluded(name)) return;
   if (!found.has(name)) found.set(name, new Set());
-  found.get(name).add(relative(ROOT, file));
+  found.get(name).add(repoPath(ROOT, file));
 }
 
 const CONFIG_GET_RE =
@@ -56,7 +57,7 @@ let envExample;
 try {
   envExample = readFileSync(ENV_EXAMPLE_PATH, 'utf8');
 } catch {
-  console.error(`❌ не найден ${relative(ROOT, ENV_EXAMPLE_PATH)}`);
+  console.error(`❌ не найден ${repoPath(ROOT, ENV_EXAMPLE_PATH)}`);
   process.exit(1);
 }
 const documented = new Set(

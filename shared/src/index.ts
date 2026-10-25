@@ -74,6 +74,43 @@ export type {
 } from './auth';
 export type { MeDto, SetNoTelegramInput, SetStudentModeInput } from './me';
 export { STUDENT_MODE_PAYMENT_MESSAGE, STUDENT_MODE_STAFF_ONLY_MESSAGE } from './me';
+export type {
+  NativeAccountResponse,
+  NativeCallbackErrorCode,
+  NativeErrorCode,
+  NativeRevokeInput,
+  NativeTokenInput,
+  NativeTokenResponse,
+} from './native-auth';
+export {
+  NATIVE_ATTEMPT_LIFETIME_SEC,
+  NATIVE_ATTEMPT_PARAM,
+  NATIVE_CALLBACK_ERROR_CODES,
+  NATIVE_CANCEL_PARAM,
+  NATIVE_CHALLENGE_METHOD,
+  NATIVE_CLIENT_ID,
+  NATIVE_CODE_LIFETIME_SEC,
+  NATIVE_CONTINUATION_PATH,
+  NATIVE_CONTINUE_ENDPOINT_PATH,
+  NATIVE_CREDENTIAL_LIFETIME_SEC,
+  NATIVE_ERROR_CODES,
+  NATIVE_GRANT_TYPE,
+  NATIVE_REDIRECT_URI,
+  NATIVE_RENEW_THRESHOLD_SEC,
+  NATIVE_RESPONSE_TYPE,
+  NATIVE_SCOPE,
+  NATIVE_TOKEN_TYPE,
+  NATIVE_TOKEN_TYPE_HINT,
+} from './native-auth';
+export type { HomeTileKey, SetHomeTilesInput } from './home-tiles';
+export {
+  HOME_TILES,
+  HOME_TILES_MAX,
+  STAFF_HOME_TILES,
+  STUDENT_HOME_TILES,
+  buildHomeTilesInput,
+  normalizeHomeHiddenTiles,
+} from './home-tiles';
 export type { VerifyEmailCodeInput } from './email-login-code';
 export {
   EMAIL_LOGIN_CODE_LENGTH,
@@ -119,6 +156,7 @@ export {
   EMAIL_LOGIN_QUOTA_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
 } from './auth';
+export { WIKI_ENTRY_PATH, WIKI_RETURN_TO_PARAM } from './wiki-entry';
 export type { UpdateMyProfileInput } from './person-name';
 export {
   NEW_PERSON_NAME,
@@ -270,12 +308,17 @@ export type {
   VideoDownloadQuery,
   StartExamVideoInput,
 } from './exam-videos';
-export type { CompleteVideoUploadInput, VideoUploadDto } from './video-uploads';
+export type {
+  CompleteVideoUploadInput,
+  SetVideoPosterInput,
+  VideoUploadDto,
+} from './video-uploads';
 export {
   VIDEO_POSTER_LIMITS,
   VIDEO_POSTER_NOT_JPEG_MESSAGE,
   VIDEO_POSTER_TOO_LARGE_MESSAGE,
   VIDEO_POSTER_NOT_FOUND_MESSAGE,
+  VIDEOS_WITHOUT_POSTER_BATCH,
 } from './video-uploads';
 export {
   EXAM_VIDEO_CONTENT_TYPES,
@@ -288,6 +331,13 @@ export {
   VIDEO_DOWNLOAD_QUERY_VALUE,
   EXAM_VIDEO_UPLOADING_MESSAGE,
 } from './exam-videos';
+export type { LessonVideoDto, StartLessonVideoInput } from './lesson-videos';
+export {
+  LESSON_VIDEO_LIMITS,
+  LESSON_VIDEO_TOO_LARGE_MESSAGE,
+  LESSON_VIDEO_UPLOADING_MESSAGE,
+  LESSON_VIDEO_NOT_FOUND_MESSAGE,
+} from './lesson-videos';
 export type {
   StartAnswerVideoInput,
   AnswerVideoUploadDto,
@@ -369,6 +419,12 @@ export {
   MY_LESSONS_LIMIT_MAX,
 } from './lessons';
 export { MY_ARCHIVE_LIMIT_DEFAULT, MY_ARCHIVE_LIMIT_MAX } from './my-lessons-archive';
+export {
+  PUBLIC_LESSONS_LIMIT_MAX,
+  PUBLIC_LESSONS_LIMIT_DEFAULT,
+  PUBLIC_LESSONS_WINDOW_MAX_WEEKS,
+} from './public-lessons';
+export type { PublicLessonDto, ListPublicLessonsQuery } from './public-lessons';
 export type {
   ChannelConfig,
   ChannelDto,
@@ -396,6 +452,8 @@ export {
   IDEMPOTENCY_KEY_LIMITS,
   IDEMPOTENCY_KEY_RE,
 } from './broadcasts';
+export type { BoardNotice, MyBoardDto } from './board';
+export { isBoardNoticeActive } from './board';
 export type {
   PaymentReminderSettings,
   SettingsDto,
@@ -474,14 +532,11 @@ export { availableNotifications } from './notification-availability';
 export type {
   LessonScope,
   LessonScopeClassDto,
-  LessonReminderDto,
   LessonScopeMode,
   MyLessonNotificationsDto,
-  UpdateLessonReminderInput,
   UpdateLessonScopeInput,
 } from './lesson-notifications';
 export {
-  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_CLASS_IDS_MAX,
   LESSON_SCOPE_MODES,
   LESSON_SCOPED_KINDS,
@@ -490,6 +545,18 @@ export {
   isLessonInScope,
 } from './lesson-notifications';
 export type { LessonPrefsStatsDto } from './lesson-prefs-stats';
+export type {
+  ReminderChange,
+  ReminderLeadMinutes,
+  ReminderSyncPatch,
+  ReminderSyncSnapshot,
+} from './reminder-sync';
+export {
+  REMINDER_SYNC_LEAD_CHOICES,
+  REMINDER_SYNC_MAX_BODY_BYTES,
+  REMINDER_SYNC_MAX_CHANGES,
+  REMINDER_SYNC_VERSION,
+} from './reminder-sync';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
 export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {
@@ -611,3 +678,15 @@ export type {
   UserDataExportReferenceDto,
   UserDataExportSectionDto,
 } from './user-export';
+export type {
+  SchoolEventDto,
+  CreateSchoolEventInput,
+  UpdateSchoolEventInput,
+  ListSchoolEventsQuery,
+} from './school-events';
+export {
+  SCHOOL_EVENT_LIMITS,
+  MY_SCHOOL_EVENTS_LIMIT,
+  SCHOOL_EVENT_NOT_FOUND_MESSAGE,
+  SCHOOL_EVENT_ENDS_BEFORE_START_MESSAGE,
+} from './school-events';

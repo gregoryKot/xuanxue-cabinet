@@ -3,8 +3,16 @@ import { LESSON_LIMITS } from '@xuanxue/shared';
 import { toAddRecordingInput, validateRecordingForm } from './recordingFormInput';
 
 describe('validateRecordingForm', () => {
-  it('пустая ссылка — ошибка', () => {
-    expect(validateRecordingForm('  ')).toMatch(/Укажите ссылку/);
+  it('ни файла, ни ссылки — ошибка', () => {
+    expect(validateRecordingForm('  ')).toMatch(/файл записи или укажите ссылку/);
+  });
+
+  it('файл загружен, ссылки нет — форма валидна', () => {
+    expect(validateRecordingForm('  ', true)).toBeNull();
+  });
+
+  it('файл загружен, но вписанная ссылка кривая — ошибка ссылки', () => {
+    expect(validateRecordingForm('http://youtu.be/x', true)).toMatch(/https:\/\//);
   });
 
   it('не https — ошибка', () => {
@@ -33,6 +41,22 @@ describe('toAddRecordingInput', () => {
     expect(toAddRecordingInput('Запись занятия', 'https://youtu.be/x')).toEqual({
       title: 'Запись занятия',
       url: 'https://youtu.be/x',
+    });
+  });
+
+  it('только файл: ссылки в теле нет, videoId на месте', () => {
+    expect(toAddRecordingInput('', '  ', 'v1')).toEqual({
+      title: undefined,
+      url: undefined,
+      videoId: 'v1',
+    });
+  });
+
+  it('файл и ссылка вместе — одна запись с обоими', () => {
+    expect(toAddRecordingInput('Часть 1', 'https://youtu.be/x', 'v1')).toEqual({
+      title: 'Часть 1',
+      url: 'https://youtu.be/x',
+      videoId: 'v1',
     });
   });
 });

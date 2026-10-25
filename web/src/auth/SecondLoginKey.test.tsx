@@ -35,6 +35,7 @@ const BASE: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function renderKey(me: MeDto, config: unknown = { emailLoginEnabled: true }) {

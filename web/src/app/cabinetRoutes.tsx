@@ -1,11 +1,8 @@
 // Маршруты внутри кабинета — всё, что живёт под AppShell за RequireAuth.
-// Вынесены из App.tsx отдельным списком: App.tsx остался про вход, охрану и
-// корень дерева, а таблица экранов растёт здесь и не упирается в предел
-// размера файла (CLAUDE.md «Храповики», check-file-size-ratchet).
+// Вынесены из App.tsx: тот остался про вход, охрану и корень дерева.
 //
-// Пути и загрузчики чанков — из routeModules.ts (React.lazy: тяжёлые экраны
-// не тянутся в стартовый бандл): оттуда же их берёт предзагрузка (main.tsx,
-// usePrefetchRoutes.ts), и два списка не разъезжаются.
+// Пути и загрузчики чанков — из routeModules.ts (React.lazy): оттуда же их
+// берёт предзагрузка (main.tsx, usePrefetchRoutes.ts) — списки не разъезжаются.
 //
 // Фрагмент, а не компонент: `<Routes>` разбирает детей сам и умеет заглянуть
 // внутрь `<React.Fragment>`, а компонент между `<Route>` и его детьми сломал
@@ -13,6 +10,7 @@
 import { Navigate, Route } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { RequireDevErrorsAccess } from '../auth/RequireDevErrorsAccess';
+import { RequirePaymentsAccess } from '../auth/RequirePaymentsAccess';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
@@ -27,10 +25,13 @@ const ChannelEditorScreen = lazyRoute(ROUTE_MODULES.channelEditor.load);
 const MaterialsScreen = lazyRoute(ROUTE_MODULES.materials.load);
 const MaterialsTagsScreen = lazyRoute(ROUTE_MODULES.materialsTags.load);
 const MaterialEditorScreen = lazyRoute(ROUTE_MODULES.materialEditor.load);
+const EventEditorScreen = lazyRoute(ROUTE_MODULES.eventEditor.load);
 const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazyRoute(ROUTE_MODULES.templates.load);
+const SchoolScreen = lazyRoute(ROUTE_MODULES.school.load);
 const PeopleScreen = lazyRoute(ROUTE_MODULES.people.load);
+const PaymentsScreen = lazyRoute(ROUTE_MODULES.payments.load);
 const ExamItemsScreen = lazyRoute(ROUTE_MODULES.examItems.load);
 const ExamItemEditorScreen = lazyRoute(ROUTE_MODULES.examItemEditor.load);
 const ExamsScreen = lazyRoute(ROUTE_MODULES.exams.load);
@@ -43,14 +44,15 @@ const ProfileScreen = lazyRoute(ROUTE_MODULES.profile.load);
 const InstallAppScreen = lazyRoute(ROUTE_MODULES.install.load);
 const NotificationsScreen = lazyRoute(ROUTE_MODULES.notifications.load);
 const NotificationSettingsScreen = lazyRoute(ROUTE_MODULES.notificationSettings.load);
+const BoardScreen = lazyRoute(ROUTE_MODULES.board.load);
 const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
 const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
 const DevErrorsScreen = lazyRoute(ROUTE_MODULES.devErrors.load);
 
-/** «/» — первый экран уже известной роли (решение владельца: у ученика это
- * «Задания», у штата с 2026-09-27 — «Экзамены», ADR-0138). Роль решает
+/** «/» — первый экран уже известной роли (владелец 2026-10-06: «Доска» при
+ * любом входе — ADR-0173/0174; у бухгалтера «Оплаты», ADR-0171). Роль решает
  * rootPathFor (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес
  * корня не разъехался с адресом редиректа при отказе в чужом маршруте. */
 function RootRedirect() {
@@ -74,23 +76,20 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />
-    {/* «Библиотека» (слой 3.2) — подэкран «Занятий», вход кнопкой в шапке
-        PlanningActions.tsx, не пункт меню (ADR-0025). Роль на маршруте не
-        нужна: AppShell.tsx уже отдаёт Outlet только штату школы, ученик сюда
-        не попадёт (как /exam-items), а API дополнительно закрыт ролью на
-        контроллере (MaterialsController). */}
+    {/* «Материалы» (ADR-0055): роль на маршруте не нужна, Outlet штата отдаёт AppShell.tsx. */}
     <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
     <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
-    {/* Подэкран «Материалов» — общая выдача по тегу (ADR-0075/0078), вход
-        карточкой на MaterialsScreen.tsx и пилюлей тега на карточке
-        материала/занятия (ADR-0025: не пункт меню). Раньше
-        /materials/:materialId — та же причина, что у /materials/new выше:
-        статический сегмент должен выигрывать у параметра. */}
+    {/* Выдача по тегу (ADR-0075/0078) — подэкран «Материалов»; раньше
+        /materials/:materialId: статический сегмент выигрывает у параметра. */}
     <Route path={ROUTE_MODULES.materialsTags.path} element={<MaterialsTagsScreen />} />
     <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
+    {/* События школы (ADR-0177) — штат, ученику маршрут закрыт canSeeRoute. */}
+    <Route path={ROUTE_MODULES.eventNew.path} element={<EventEditorScreen />} />
+    <Route path={ROUTE_MODULES.eventEditor.path} element={<EventEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
     <Route path={ROUTE_MODULES.templates.path} element={<TemplatesScreen />} />
+    <Route path={ROUTE_MODULES.school.path} element={<SchoolScreen />} />
     <Route path={ROUTE_MODULES.examItems.path} element={<ExamItemsScreen />} />
     <Route path={ROUTE_MODULES.examItemNew.path} element={<ExamItemEditorScreen />} />
     <Route path={ROUTE_MODULES.examItemEditor.path} element={<ExamItemEditorScreen />} />
@@ -108,15 +107,11 @@ export const cabinetRoutes = (
         на контроллере (ExamAttemptsController). */}
     <Route path={ROUTE_MODULES.grading.path} element={<GradingQueueScreen />} />
     <Route path={ROUTE_MODULES.attemptReview.path} element={<AttemptReviewScreen />} />
-    {/* Личный экран человека, не раздел домена — вход из подвала кабинета на
-        мониторе и значка профиля на телефоне (ADR-0045, AppShellBrandRow.tsx),
-        не из навигации разделов (docs/adr/0025). Доступен любой роли:
-        canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
+    {/* Личный экран человека (ADR-0045), вход из подвала кабинета и значком
+        профиля, не из навигации разделов (docs/adr/0025). Открыт любой роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
-    {/* Инструкция «как поставить кабинет на телефон» (docs/PWA.md) — личное
-        место человека, как «/profile» выше, вход карточкой в оболочке или
-        ссылкой на «Профиле», не пункт меню. Доступен любой роли: canSeeRoute
-        (screenAccess.ts) не ограничивает его. */}
+    {/* Как поставить кабинет на телефон (docs/PWA.md): личное место, как
+        «/profile» выше, вход карточкой, не пункт меню. Открыт любой роли. */}
     <Route path={ROUTE_MODULES.install.path} element={<InstallAppScreen />} />
     {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
         «/profile» выше, вход значком в оболочке, не из навигации разделов
@@ -129,9 +124,8 @@ export const cabinetRoutes = (
       path={ROUTE_MODULES.notificationSettings.path}
       element={<NotificationSettingsScreen />}
     />
-    {/* «Задания» и «Занятия» — два маршрута ученика (решение владельца:
-        экзамены — отдельный экран и первый после входа, docs/PLAN.md §11).
-        Открыты любой роли, как «/profile» выше. */}
+    {/* Экраны ученика, первый — «Доска» (ADR-0173); открыты любой роли. */}
+    <Route path={ROUTE_MODULES.board.path} element={<BoardScreen />} />
     <Route path={ROUTE_MODULES.tasks.path} element={<TasksScreen />} />
     <Route path={ROUTE_MODULES.studentLessons.path} element={<LessonsScreen />} />
     {/* «Записи занятий» (слой 3.3) — подэкран «Занятий», вход карточкой на
@@ -157,6 +151,10 @@ export const cabinetRoutes = (
         удаление данных внутри экрана остаются только у admin (SECURITY §3). */}
     <Route element={<RequirePeopleAccess />}>
       <Route path={ROUTE_MODULES.people.path} element={<PeopleScreen />} />
+    </Route>
+    {/* «Оплаты» (ADR-0171): учителя гвард уводит на его корень, не на 403. */}
+    <Route element={<RequirePaymentsAccess />}>
+      <Route path={ROUTE_MODULES.payments.path} element={<PaymentsScreen />} />
     </Route>
     {/* Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx),
         вход карточкой SectionLink на «Профиле», не пункт меню (ADR-0025). */}

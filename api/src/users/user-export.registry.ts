@@ -10,10 +10,9 @@
 // с токеном или хешем ушло бы в файл молча. `userId`, `_id`, `__v` и метки
 // времени решаются одинаково для всех и в списки не входят.
 //
-// Не входит по умолчанию три вида полей: технические секреты (хеши кодов,
-// ключи push, идентификаторы файлов Telegram и R2), сведения о других
-// людях (кто проверил работу, кто подтвердил оплату) и байты файлов —
-// вместо них метаданные (тип, размер, даты) и срок хранения.
+// По умолчанию не входят: технические секреты (хеши кодов, ключи push, id файлов
+// Telegram и R2), сведения о других людях (кто проверил, кто подтвердил оплату)
+// и байты файлов — вместо них метаданные (тип, размер, даты) и срок хранения.
 import {
   ANSWER_VIDEO_RETENTION,
   BACKUP_RETENTION_DAYS,
@@ -24,7 +23,9 @@ import {
   formatDaysRu,
   formatYearsRu,
 } from '@xuanxue/shared';
+import { NATIVE_AUTH_EXPORT_SECTIONS } from '../native-auth/native-auth.export';
 import { toStudentBlock } from '../exams/exam-attempt.mapper';
+import { NOTIFICATION_PREFS_EXPORT_SECTIONS } from '../notifications/notification-prefs.export';
 import type { AttemptBlockRecord } from '../exams/exam-attempt.schema';
 import {
   USER_MODEL_NAME,
@@ -84,18 +85,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       'profileNamedAt',
       'noTelegramAt',
       'studentModeAt',
-    ],
-    omit: {},
-  },
-  NotificationPrefsRecord: {
-    title: 'Настройки уведомлений',
-    retention: ACCOUNT_RETENTION,
-    include: [
-      'overrides',
-      'paymentReminderDay',
-      'lessonScopeMode',
-      'lessonClassIds',
-      'lessonReminderMinutes',
+      'homeHiddenTiles',
     ],
     omit: {},
   },
@@ -237,6 +227,8 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
     include: ['email', 'expiresAt'],
     omit: { tokenHash: SECRET_HASH },
   },
+  ...NATIVE_AUTH_EXPORT_SECTIONS,
+  ...NOTIFICATION_PREFS_EXPORT_SECTIONS,
 };
 
 /** Ссылки на человека в данных школы — только число записей (что и где он
@@ -268,12 +260,18 @@ export const USER_EXPORT_REFERENCES = [
     path: 'createdBy',
     title: 'Видео к вопросам, которые загрузил',
   },
+  { model: 'LessonVideoRecord', path: 'createdBy', title: 'Файлы записей, что загрузил' },
   {
     model: 'GradingCommentPresetRecord',
     path: 'createdBy',
     title: 'Заготовки комментариев, которые завёл',
   },
   { model: 'MaterialRecord', path: 'createdBy', title: 'Материалы, которые добавил' },
+  {
+    model: 'SchoolEventRecord',
+    path: 'createdBy',
+    title: 'События школы, которые завёл',
+  },
   {
     model: 'PaymentRecord',
     path: 'confirmedBy',

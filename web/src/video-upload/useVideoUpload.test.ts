@@ -582,6 +582,25 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     expect(compress).not.toHaveBeenCalled();
   });
 
+  // ADR-0180: запись занятия — смонтированный файл до 2000 МБ, сжатие часа видео
+  // держало бы результат в памяти вкладки. Остальные виды видео не затронуты.
+  it('canCompress: false — большой файл грузится сразу, сжатие не зовётся', async () => {
+    const { compress } = controlledCompress();
+    const transport = makeFakeTransport();
+    const { result, onDone } = renderUpload(transport, { compress, canCompress: false });
+
+    act(() => result.current.selectFile(bigFile()));
+
+    expect(result.current.state).toMatchObject({
+      phase: 'uploading',
+      totalBytes: BIG_BYTES,
+    });
+    expect(compress).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.state.phase).toBe('done'));
+    expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(BIG_BYTES);
+    expect(onDone).toHaveBeenCalledWith(FAKE_UPLOAD_RESULT);
+  });
+
   it('в браузере без WebCodecs сжатие пропускается и у большого файла', async () => {
     vi.unstubAllGlobals();
     const { compress } = controlledCompress();

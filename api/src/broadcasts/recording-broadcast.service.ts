@@ -16,6 +16,7 @@ import { findChannelsForLesson } from './broadcast-channels.queries';
 import { CANCEL_REASON as REASON } from './broadcast-cancel-reasons';
 import { buildRecordingText } from './broadcast-planner.render';
 import { findClassForRecording } from './broadcast-planner.queries';
+import { hasBroadcastableSource, recordingKeyOf } from './recording-key';
 import { BroadcastModels } from './broadcast-models.provider';
 import {
   insertBroadcastWithDeliveries,
@@ -40,13 +41,6 @@ const LESSON_PROJECTION = {
   tags: 1,
 } as const;
 
-/** url — ключ идемпотентности, когда есть; только видеофайл (Telegram) —
- * ключ по file_id. `assertHasRecordingSource` (lessons.recording.ts)
- * гарантирует, что хотя бы одно поле есть. */
-function recordingKeyOf(recording: Recording): string | undefined {
-  return recording.url ?? recording.telegramFileId;
-}
-
 @Injectable()
 export class RecordingBroadcastService {
   private readonly logger = new Logger(RecordingBroadcastService.name);
@@ -68,6 +62,9 @@ export class RecordingBroadcastService {
     recording: Recording,
     now: DateTime,
   ): Promise<void> {
+    // Запись без ссылки и без file_id (только файл в кабинете) рассылать пока нечем:
+    // ADR-0180, PLAN §18 слой 2 — рассылку запустят публикации (recording-key.ts).
+    if (!hasBroadcastableSource(recording)) return;
     try {
       await this.send(lessonId, recording, now);
     } catch (err) {

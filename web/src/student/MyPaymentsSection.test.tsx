@@ -40,6 +40,7 @@ const ME_NO_TELEGRAM: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ME_TELEGRAM: MeDto = { ...ME_NO_TELEGRAM, telegramLinked: true };
 

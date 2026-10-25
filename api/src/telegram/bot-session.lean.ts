@@ -6,11 +6,8 @@
 import { Types } from 'mongoose';
 import type { ExamItemKind, GradingOutcome } from '@xuanxue/shared';
 import { decryptRecord } from '../utils/encryption';
-import {
-  BOT_SESSION_ENCRYPT_SCHEMA,
-  type BotSessionKind,
-  type NewExamItemStep,
-} from './bot-session.schema';
+import { BOT_SESSION_ENCRYPT_SCHEMA, type BotSessionKind } from './bot-session.schema';
+import type { NewExamItemStep } from './new-exam-item-steps';
 import type { NewExamStep } from './new-exam-steps';
 import type { NewExamItemDraftOption } from './new-exam-item-draft-wait';
 
@@ -18,6 +15,10 @@ export interface BotSessionLean {
   kind: BotSessionKind;
   /** Есть только у kind 'topic'/'recording'. */
   lessonId?: Types.ObjectId;
+  /** Источник записи до выбора занятия кнопкой (ADR-0175, recording-wait.ts)
+   * — есть только у 'recording', когда записи ждут несколько занятий. */
+  recordingUrl?: string | null;
+  recordingFileId?: string | null;
   /** Есть только у kind 'examMedia'/'examText'. */
   attemptId?: Types.ObjectId;
   /** Номер вопроса (bot-session.schema.ts) — есть у 'examText' всегда, у
@@ -73,6 +74,8 @@ export type RawBotSessionLean = Omit<
 export const BOT_SESSION_LEAN_PROJECTION = {
   kind: 1,
   lessonId: 1,
+  recordingUrl: 1,
+  recordingFileId: 1,
   attemptId: 1,
   questionIndex: 1,
   itemId: 1,

@@ -12,6 +12,7 @@ import {
   type LeanNoticeLesson,
   type PlanLesson,
 } from './lesson-notice-queries';
+import { ZERO_LEAD_TOLERANCE_SECONDS } from './lesson-reminder-plan';
 
 /** Вид строки ленты, которую пишет этот шаг тика. */
 export const LESSON_SOON_KIND = 'lesson_soon' as const;
@@ -22,9 +23,12 @@ export const LESSON_SOON_KIND = 'lesson_soon' as const;
 // но в окне их единицы, а сортировка по началу держит ближайшие впереди.
 const LESSON_REMINDER_BATCH_LIMIT = 20;
 
-/** Занятия `scheduled`, которые начнутся в `(now, now + maxLead]`, у активных
- * классов. Окно берёт самого раннего из людей; кому из них пора именно сейчас,
- * решает `planReminders`. Класс выключен или удалён — напоминать не о чем. */
+/** Занятия `scheduled`, которые начнутся в `[now − допуск, now + maxLead]`, у
+ * активных классов. Нижняя граница заходит в прошлое на допуск нулевого «за
+ * сколько» (`ZERO_LEAD_TOLERANCE_SECONDS`): напоминание «в момент начала»
+ * уходит на первом тике после него. Окно берёт самого раннего из людей; кому из
+ * них пора именно сейчас, решает `planReminders`. Класс выключен или удалён —
+ * напоминать не о чем. */
 export async function findUpcomingLessons(
   lessonModel: Model<LessonRecord>,
   classModel: Model<ClassRecord>,
@@ -36,7 +40,7 @@ export async function findUpcomingLessons(
       {
         status: 'scheduled',
         startsAt: {
-          $gt: now.toJSDate(),
+          $gte: now.minus({ seconds: ZERO_LEAD_TOLERANCE_SECONDS }).toJSDate(),
           $lte: now.plus({ minutes: maxLead }).toJSDate(),
         },
       },

@@ -1,15 +1,15 @@
-// Подсказка в ленте «выберите свои занятия» (LessonScopeHint.tsx, ADR-0162,
-// п. 5): кому она показывается, что в ней написано, и что делает «Оставить все».
-// Лента вокруг неё — в NotificationsScreen.test.tsx; здесь одна карточка с тем,
-// что ей отдаёт useLessonScope.ts.
+// Подсказка в ленте «отметьте свои занятия» (LessonScopeHint.tsx, ADR-0185): кому
+// она показывается, что в ней написано и куда ведёт. Лента вокруг неё — в
+// NotificationsScreen.test.tsx; правила показа без React — в
+// lessonReminderVisibility.test.ts.
 import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  LessonScopeClassDto,
-  MeDto,
-  MyLessonNotificationsDto,
+import {
+  REMINDER_SYNC_VERSION,
+  type MeDto,
+  type NotificationKind,
+  type ReminderSyncSnapshot,
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
@@ -19,6 +19,8 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
+import { makeMe } from '../test-support/meFixture';
+import { LESSON_ID, MORNING_ID } from '../test-support/reminderSyncFixtures';
 import { LessonScopeHint } from './LessonScopeHint';
 
 vi.mock('../api/http', async () => {
@@ -28,52 +30,49 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const LESSONS_PATH = '/me/notifications/lessons';
-const SCOPE_PATH = '/me/notifications/lessons/scope';
+const SYNC_PATH = '/me/notifications/lessons/sync';
+const PREFS_PATH = '/me/notifications';
 const REGION_NAME = 'О каких занятиях напоминать';
-const HEADLINE_START = 'Напоминаем обо всех занятиях школы — ';
+const SOON: NotificationKind = 'lesson_soon';
 
-const STUDENT: MeDto = {
-  id: 'u1',
-  name: 'Мария Ли',
-  roles: [],
-  status: 'active',
-  telegramLinked: false,
-  botChatActive: false,
-  email: 'maria@example.com',
-  hasEmail: true,
-  noTelegram: false,
-  needsProfile: false,
-  googleLinked: false,
-  studentMode: false,
-  canUseStudentMode: false,
-};
+const STUDENT = makeMe({ roles: [] });
 
-const slot = (weekday: number) => ({ weekday, time: '19:00', durationMin: 60 });
+const catalogue: ReminderSyncSnapshot['classes'] = [
+  {
+    id: MORNING_ID,
+    title: 'Утро',
+    groupLabel: '',
+    tz: 'Asia/Jerusalem',
+    slots: [{ weekday: 1, time: '07:00', durationMin: 60 }],
+  },
+];
 
-const classWithSlots = (id: string, slotCount: number): LessonScopeClassDto => ({
-  id,
-  title: `Занятие ${id}`,
-  groupLabel: '',
-  tz: 'Asia/Jerusalem',
-  slots: Array.from({ length: slotCount }, (_, index) => slot(index)),
+const snapshot = (over: Partial<ReminderSyncSnapshot> = {}): ReminderSyncSnapshot => ({
+  version: REMINDER_SYNC_VERSION,
+  accountId: STUDENT.id,
+  revision: '0',
+  classIds: [],
+  lessonIds: [],
+  leadMinutes: null,
+  schoolMinutes: 60,
+  classes: catalogue,
+  ...over,
 });
 
-const lessons = (
-  scopeChosen: boolean,
-  classes: LessonScopeClassDto[] = [classWithSlots('c1', 2), classWithSlots('c2', 1)],
-  classIds: string[] = [],
-): MyLessonNotificationsDto => ({
-  scope: { mode: 'all', classIds },
-  scopeChosen,
-  classes,
-  reminder: { minutes: null, schoolMinutes: 60 },
-});
+interface Served {
+  me?: MeDto;
+  sync?: unknown;
+  enabled?: NotificationKind[];
+}
 
 // Узкий путь раньше широкого: `mockApiByPath` берёт первое совпадение по
-// префиксу, а `/me/notifications/lessons/scope` начинается с `/…/lessons`.
-function serve(me: MeDto, response: unknown, putResponse: unknown = response) {
-  mockApiByPath({ '/auth/me': me, [SCOPE_PATH]: putResponse, [LESSONS_PATH]: response });
+// префиксу, а `/me/notifications/lessons/sync` начинается с `/me/notifications`.
+function serve({ me = STUDENT, sync = snapshot(), enabled = [SOON] }: Served = {}) {
+  mockApiByPath({
+    '/auth/me': me,
+    [SYNC_PATH]: sync,
+    [PREFS_PATH]: { enabled },
+  });
 }
 
 function renderHint() {
@@ -86,69 +85,101 @@ function renderHint() {
   );
 }
 
-const lessonGets = () =>
-  mockedApiFetch.mock.calls.filter(([path]) => path === LESSONS_PATH);
-const putCalls = () => mockedApiFetch.mock.calls.filter(([path]) => path === SCOPE_PATH);
+const callsTo = (path: string) =>
+  mockedApiFetch.mock.calls.filter(([called]) => called === path);
+const writes = () =>
+  mockedApiFetch.mock.calls.filter(
+    ([, init]) =>
+      (init as { method?: string } | undefined)?.method !== undefined &&
+      (init as { method?: string }).method !== 'GET',
+  );
 const findCard = () => screen.findByRole('complementary', { name: REGION_NAME });
 const queryCard = () => screen.queryByRole('complementary', { name: REGION_NAME });
 
-/** Ответ на `GET` занятий получен и разобран: без этого «карточки нет» верно
- * и пока запрос ещё в пути. */
-async function waitForLessonsLoaded() {
-  await waitFor(() => expect(lessonGets()).toHaveLength(1));
+/** Оба ответа получены и разобраны: без этого «карточки нет» верно и пока
+ * запросы ещё в пути. */
+async function waitForLoaded() {
+  await waitFor(() => {
+    expect(callsTo(SYNC_PATH)).toHaveLength(1);
+    expect(callsTo(PREFS_PATH)).toHaveLength(1);
+  });
   await act(() => Promise.resolve());
 }
 
-describe('LessonScopeHint — кому показывается', () => {
-  it('ученик, который ничего не выбирал: что приходит, как поменять и что нажать', async () => {
-    serve(STUDENT, lessons(false));
+describe('LessonScopeHint — когда показывается', () => {
+  it('ничего не отмечено, напоминания включены, занятия в школе есть: что будет и что нажать', async () => {
+    serve();
     renderHint();
 
     const card = await findCard();
 
-    expect(card).toHaveTextContent(`${HEADLINE_START}3 раза в неделю`);
-    expect(screen.getByText('3 раза в неделю').tagName).toBe('STRONG');
-    expect(card).toHaveTextContent('Отметьте свои — и лишнего не будет.');
+    expect(card).toHaveTextContent(
+      'Напоминаний о занятиях не будет, пока вы не отметите свои',
+    );
+    expect(screen.getByText('не будет').tagName).toBe('STRONG');
+    expect(card).toHaveTextContent('Отметьте занятия, о которых хотите знать');
     expect(screen.getByRole('link', { name: 'Выбрать занятия' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Оставить все' })).toBeEnabled();
   });
 
-  it('число — слоты расписания всех занятий, с правильным склонением', async () => {
-    serve(STUDENT, lessons(false, [classWithSlots('c1', 3), classWithSlots('c2', 2)]));
+  it('единственное действие — «Выбрать занятия», ведёт в настройки уведомлений', async () => {
+    serve();
     renderHint();
 
-    expect(await screen.findByText('5 раз в неделю')).toBeInTheDocument();
-  });
+    await findCard();
 
-  it('одно занятие в неделю — «1 раз»', async () => {
-    serve(STUDENT, lessons(false, [classWithSlots('c1', 1)]));
-    renderHint();
-
-    expect(await screen.findByText('1 раз в неделю')).toBeInTheDocument();
-  });
-
-  it('«Выбрать занятия» — ссылка на настройки уведомлений', async () => {
-    serve(STUDENT, lessons(false));
-    renderHint();
-
-    expect(await screen.findByRole('link', { name: 'Выбрать занятия' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Выбрать занятия' })).toHaveAttribute(
       'href',
       '/notifications/settings',
     );
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('человек уже выбирал (даже «все») — карточки нет', async () => {
-    serve(STUDENT, lessons(true));
+  it('ничего не пишет в сеть: только чтение снимка и настроек', async () => {
+    serve();
     renderHint();
 
-    await waitForLessonsLoaded();
+    await findCard();
+
+    expect(writes()).toHaveLength(0);
+  });
+
+  it('выбрано занятие расписания — карточки нет', async () => {
+    serve({ sync: snapshot({ classIds: [MORNING_ID] }) });
+    renderHint();
+
+    await waitForLoaded();
+    expect(queryCard()).not.toBeInTheDocument();
+  });
+
+  it('выбрано отдельное занятие — карточки нет', async () => {
+    serve({ sync: snapshot({ lessonIds: [LESSON_ID] }) });
+    renderHint();
+
+    await waitForLoaded();
+    expect(queryCard()).not.toBeInTheDocument();
+  });
+
+  it('«Занятие скоро» выключено — карточки нет', async () => {
+    serve({ enabled: [] });
+    renderHint();
+
+    await waitForLoaded();
+    expect(queryCard()).not.toBeInTheDocument();
+  });
+
+  it('в расписании школы нет занятий — карточки нет: отмечать нечего', async () => {
+    serve({ sync: snapshot({ classes: [] }) });
+    renderHint();
+
+    await waitForLoaded();
     expect(queryCard()).not.toBeInTheDocument();
   });
 
   it.each(['teacher', 'assistant', 'admin', 'accountant'] as const)(
-    'штат (%s) — карточки нет и за занятиями никто не ходит',
+    'штат (%s) — карточки нет и за снимком никто не ходит',
     async (role) => {
-      serve({ ...STUDENT, roles: [role] }, lessons(false));
+      serve({ me: makeMe({ roles: [role] }) });
       renderHint();
 
       await waitFor(() =>
@@ -156,134 +187,38 @@ describe('LessonScopeHint — кому показывается', () => {
       );
       await act(() => Promise.resolve());
       expect(queryCard()).not.toBeInTheDocument();
-      expect(lessonGets()).toHaveLength(0);
+      expect(callsTo(SYNC_PATH)).toHaveLength(0);
     },
   );
 
-  it('в расписании нет занятий — карточки нет: «0 раз в неделю» ничего не подсказывает', async () => {
-    serve(STUDENT, lessons(false, []));
+  it('сбой чтения снимка — карточки нет и ошибки на экране нет: данные второстепенные', async () => {
+    serve({ sync: new ApiError('Сервер не отвечает.', 500, 'unknown') });
     renderHint();
 
-    await waitForLessonsLoaded();
-    expect(queryCard()).not.toBeInTheDocument();
-  });
-
-  it('занятия есть, а слотов в расписании нет — тоже карточки нет', async () => {
-    serve(STUDENT, lessons(false, [classWithSlots('c1', 0)]));
-    renderHint();
-
-    await waitForLessonsLoaded();
-    expect(queryCard()).not.toBeInTheDocument();
-  });
-
-  it('сбой загрузки — карточки нет и ошибки на экране нет: данные второстепенные', async () => {
-    serve(STUDENT, new ApiError('Сервер не отвечает.', 500, 'unknown'));
-    renderHint();
-
-    await waitForLessonsLoaded();
+    await waitForLoaded();
     expect(queryCard()).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText(/Сервер не отвечает/)).not.toBeInTheDocument();
   });
 
+  it('снимок не по контракту — карточки нет', async () => {
+    serve({ sync: { version: 99 } });
+    renderHint();
+
+    await waitForLoaded();
+    expect(queryCard()).not.toBeInTheDocument();
+  });
+
   it('пока данные в пути — ничего: ни карточки, ни скелетона', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me') return Promise.resolve(STUDENT);
-      if (path === LESSONS_PATH) return new Promise(() => undefined);
+      if (path === SYNC_PATH) return new Promise(() => undefined);
+      if (path === PREFS_PATH) return Promise.resolve({ enabled: [SOON] });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     const { container } = renderHint();
 
-    await waitFor(() => expect(lessonGets()).toHaveLength(1));
+    await waitFor(() => expect(callsTo(SYNC_PATH)).toHaveLength(1));
     expect(container).toBeEmptyDOMElement();
-  });
-});
-
-describe('LessonScopeHint — «Оставить все»', () => {
-  it('шлёт PUT «все» с текущими галочками и прячет карточку по ответу, без второго GET', async () => {
-    const user = userEvent.setup();
-    serve(STUDENT, lessons(false, undefined, ['c1']), lessons(true, undefined, ['c1']));
-    renderHint();
-
-    await user.click(await screen.findByRole('button', { name: 'Оставить все' }));
-
-    await waitFor(() => expect(queryCard()).not.toBeInTheDocument());
-    expect(putCalls()).toHaveLength(1);
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({
-        method: 'PUT',
-        body: { mode: 'all', classIds: ['c1'] },
-      }),
-    );
-    expect(lessonGets()).toHaveLength(1);
-  });
-
-  it('id занятия, которого нет в списке, в тело не попадает: сервер ответил бы 400 на всё', async () => {
-    const user = userEvent.setup();
-    serve(
-      STUDENT,
-      lessons(false, undefined, ['gone', 'c2']),
-      lessons(true, undefined, ['c2']),
-    );
-    renderHint();
-
-    await user.click(await screen.findByRole('button', { name: 'Оставить все' }));
-
-    await waitFor(() => expect(putCalls()).toHaveLength(1));
-    expect(putCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({ body: { mode: 'all', classIds: ['c2'] } }),
-    );
-  });
-
-  it('пока PUT в пути, кнопка выключена, карточка на месте; ответ её убирает', async () => {
-    const user = userEvent.setup();
-    let finishPut: (value: unknown) => void = () => undefined;
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me') return Promise.resolve(STUDENT);
-      if (path === LESSONS_PATH) return Promise.resolve(lessons(false));
-      if (path === SCOPE_PATH) {
-        return new Promise((resolve) => {
-          finishPut = resolve;
-        });
-      }
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    renderHint();
-
-    const keep = await screen.findByRole('button', { name: 'Оставить все' });
-    await user.click(keep);
-
-    await waitFor(() => expect(keep).toBeDisabled());
-    expect(queryCard()).toBeInTheDocument();
-
-    act(() => finishPut(lessons(true)));
-
-    await waitFor(() => expect(queryCard()).not.toBeInTheDocument());
-  });
-
-  it('ответ с ошибкой — текст из ответа виден, карточка и кнопка остаются', async () => {
-    const user = userEvent.setup();
-    const message = 'Сервер занят. Попробуйте через минуту.';
-    serve(STUDENT, lessons(false), new ApiError(message, 503, 'unknown'));
-    renderHint();
-
-    await user.click(await screen.findByRole('button', { name: 'Оставить все' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(queryCard()).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Оставить все' })).toBeEnabled();
-  });
-
-  it('неопознанная ошибка — общий текст, не текст исключения', async () => {
-    const user = userEvent.setup();
-    serve(STUDENT, lessons(false), new Error('boom'));
-    renderHint();
-
-    await user.click(await screen.findByRole('button', { name: 'Оставить все' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Не удалось сохранить. Попробуйте ещё раз.',
-    );
-    expect(screen.queryByText(/boom/)).not.toBeInTheDocument();
   });
 });

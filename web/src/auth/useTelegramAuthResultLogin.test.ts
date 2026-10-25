@@ -8,8 +8,11 @@ import type { TelegramLoginInput } from '@xuanxue/shared';
 import type * as RouterModule from 'react-router-dom';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { saveNativeAttempt } from './nativeAttempt';
 import { saveReturnTo } from './returnTo';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
+
+const NATIVE_ATTEMPT_ID = '0123456789abcdef01234567';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -91,6 +94,23 @@ describe('useTelegramAuthResultLogin', () => {
 
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith('/exams', { replace: true }),
+    );
+  });
+
+  it('фрагмент есть, во вкладке попытка Daychi (ADR-0181) — навигация на её экран', async () => {
+    saveReturnTo('/exams');
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    renderHook(() => useTelegramAuthResultLogin(refresh));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith(
+        `/login/native?attempt=${NATIVE_ATTEMPT_ID}`,
+        { replace: true },
+      ),
     );
   });
 

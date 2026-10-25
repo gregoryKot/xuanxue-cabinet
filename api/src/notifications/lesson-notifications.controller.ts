@@ -1,5 +1,6 @@
-// GET/PUT /me/notifications/lessons — «о каких занятиях напоминать» и «за
-// сколько минут» (ADR-0162).
+// GET/PUT /me/notifications/lessons — «о каких занятиях» для отмен, записей и новых
+// материалов (ADR-0162). Напоминания «Занятие скоро» этот выбор не читает и не
+// пишет: они живут в /me/notifications/lessons/sync (ADR-0185).
 // Без @Roles: доступно любой роли, включая ученика и гостя без единой роли, —
 // человек настраивает только свой аккаунт, userId берётся из сессии
 // (@CurrentUser), не из тела или query (SECURITY §3).
@@ -8,7 +9,6 @@ import type { MyLessonNotificationsDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
-import { UpdateLessonReminderDto } from './dto/update-lesson-reminder.dto';
 import { UpdateLessonScopeDto } from './dto/update-lesson-scope.dto';
 import { LessonNotificationsService } from './lesson-notifications.service';
 
@@ -31,16 +31,5 @@ export class LessonNotificationsController {
     @CurrentUser() user: UserLean,
   ): Promise<MyLessonNotificationsDto> {
     return this.lessonNotifications.update(user.id, body);
-  }
-
-  // PUT, а не PATCH: тело — выбор целиком (минуты или `null`), второй такой же
-  // запрос ничего не меняет.
-  @Put('reminder-minutes')
-  @ApiRoute('PUT /me/notifications/lessons/reminder-minutes')
-  updateReminder(
-    @Body() body: UpdateLessonReminderDto,
-    @CurrentUser() user: UserLean,
-  ): Promise<MyLessonNotificationsDto> {
-    return this.lessonNotifications.updateReminder(user.id, body);
   }
 }

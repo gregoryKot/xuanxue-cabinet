@@ -44,6 +44,7 @@ import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import { ExamVideosModule } from '../exam-videos/exam-videos.module';
+import { LessonVideosModule } from '../lesson-videos/lesson-videos.module';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
 import { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
@@ -77,6 +78,7 @@ import { TelegramTeacherNotifier } from '../telegram/telegram-teacher-notifier';
 import { UserModelModule } from '../users/user-model.module';
 import { UsersModule } from '../users/users.module';
 import { VideoUploadsModule } from '../video-uploads/video-uploads.module';
+import { VideoOrphansSweepService } from './video-orphans-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { SchedulerService } from './scheduler.service';
 
@@ -96,6 +98,7 @@ import { SchedulerService } from './scheduler.service';
     MediaModule,
     ExamImagesModule,
     ExamVideosModule,
+    LessonVideosModule, // LessonVideoSweepService — шаг «видео-сироты» (ADR-0180)
     // AnswerVideoSweepService (ADR-0137) — провайдер этого модуля, цикла нет.
     AnswerVideosModule,
     NotificationsModule,
@@ -127,6 +130,7 @@ import { SchedulerService } from './scheduler.service';
     PaymentReminderService, // напоминание ученикам об оплате (ADR-0150)
     ExamImageSweepService,
     ExamVideoSweepService,
+    VideoOrphansSweepService, // один шаг «видео-сироты» на все виды видео (ADR-0180)
     ExamAttemptRetentionSweepService, // срок хранения попыток (ADR-0153)
     PaymentScreenshotSweepService,
     // Только по токену — второй провайдер класса без токена (было раньше)

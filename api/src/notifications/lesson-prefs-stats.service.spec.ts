@@ -1,8 +1,9 @@
-// Против настоящей Mongo (CLAUDE.md «Тесты»): число для штата к выбору «о каких
-// занятиях» и «за сколько» (ADR-0162, п. 5). Запрос идёт через `$lookup` по
-// строковому `userId`, а мок модели пропустил бы ошибку в самом запросе.
+// Против настоящей Mongo (CLAUDE.md «Тесты»): число для штата к настройкам напоминаний
+// (ADR-0185). Запрос идёт через `$lookup` по строковому `userId`, а мок модели пропустил
+// бы ошибку в самом запросе.
 import type { Connection, Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { writeOwnReminderMinutes } from '../test-support/own-reminder-minutes';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonPrefsStatsService } from './lesson-prefs-stats.service';
 import { LessonScopeService } from './lesson-scope.service';
@@ -49,10 +50,21 @@ describe('LessonPrefsStatsService', () => {
     return user._id.toString();
   }
 
+  /** Выбор напоминаний, как его кладёт синхронизация (ADR-0185). */
+  const remindAbout = (
+    userId: string,
+    { classes = [], lessons = [] }: { classes?: string[]; lessons?: string[] },
+  ) =>
+    prefsModel.updateOne(
+      { userId },
+      { $set: { reminderClassIds: classes, reminderLessonIds: lessons } },
+      { upsert: true },
+    );
+
   it('пустая база — честные нули, не undefined и не NaN', async () => {
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 0,
-      chosenClasses: 0,
+      withReminders: 0,
       ownReminder: 0,
     });
   });
@@ -64,13 +76,13 @@ describe('LessonPrefsStatsService', () => {
       roles: ['admin'],
       studentModeAt: new Date('2026-10-01T10:00:00Z'),
     });
-    await scopes.set(admin, { mode: 'selected', classIds: ['a'] });
-    await scopes.setReminderMinutes(admin, 60);
+    await remindAbout(admin, { classes: ['a'] });
+    await writeOwnReminderMinutes(prefsModel, admin, 60);
     await person();
 
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 1,
-      chosenClasses: 0,
+      withReminders: 0,
       ownReminder: 0,
     });
   });
@@ -81,45 +93,85 @@ describe('LessonPrefsStatsService', () => {
 
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 2,
-      chosenClasses: 0,
+      withReminders: 0,
       ownReminder: 0,
     });
   });
 
-  it('«выбранные» и своя минута считаются независимо: у одного обе, у другого одна', async () => {
+  it('напоминания: считается любой выбор — занятие расписания, отдельное занятие или оба', async () => {
+    const byClass = await person();
+    const byLesson = await person();
+    const both = await person();
+    await person();
+    await remindAbout(byClass, { classes: ['a'] });
+    await remindAbout(byLesson, { lessons: ['l1'] });
+    await remindAbout(both, { classes: ['a', 'b'], lessons: ['l1'] });
+
+    await expect(service.getStats()).resolves.toEqual({
+      activeStudents: 4,
+      withReminders: 3,
+      ownReminder: 0,
+    });
+  });
+
+  it('пустой выбор и поля, которых нет, — это «ничего не выбрано»', async () => {
+    const emptied = await person();
+    const onlyMinutes = await person();
+    await remindAbout(emptied, {});
+    await writeOwnReminderMinutes(prefsModel, onlyMinutes, 30);
+
+    expect((await service.getStats()).withReminders).toBe(0);
+  });
+
+  it('старый фильтр «о каких занятиях» напоминаниями не считается', async () => {
+    const picky = await person();
+    const everything = await person();
+    await scopes.set(picky, { mode: 'selected', classIds: ['a', 'b'] });
+    await scopes.set(everything, { mode: 'all', classIds: ['a'] });
+
+    await expect(service.getStats()).resolves.toEqual({
+      activeStudents: 2,
+      withReminders: 0,
+      ownReminder: 0,
+    });
+  });
+
+  it('выбор и своя минута считаются независимо: у одного обе, у другого одна', async () => {
     const vanya = await person();
     const masha = await person();
     await person();
-    await scopes.set(vanya, { mode: 'selected', classIds: ['a'] });
-    await scopes.setReminderMinutes(vanya, 60);
-    await scopes.setReminderMinutes(masha, 15);
+    await remindAbout(vanya, { classes: ['a'] });
+    await writeOwnReminderMinutes(prefsModel, vanya, 60);
+    await writeOwnReminderMinutes(prefsModel, masha, 15);
 
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 3,
-      chosenClasses: 1,
+      withReminders: 1,
       ownReminder: 2,
     });
   });
 
-  it('режим «все» с галочками не считается выбором, «выбранные» без галочек — считается', async () => {
-    const withTicks = await person();
-    const withoutTicks = await person();
-    await scopes.set(withTicks, { mode: 'all', classIds: ['a', 'b'] });
-    await scopes.set(withoutTicks, { mode: 'selected', classIds: [] });
+  it('0 — своя минута («в момент начала»): считается, а не теряется как «пусто»', async () => {
+    const vanya = await person();
+    await writeOwnReminderMinutes(prefsModel, vanya, 0);
 
-    await expect(service.getStats()).resolves.toEqual({
-      activeStudents: 2,
-      chosenClasses: 1,
-      ownReminder: 0,
-    });
+    expect((await service.getStats()).ownReminder).toBe(1);
   });
 
   it('вернулся к «как в школе» — своей минутой уже не считается', async () => {
     const vanya = await person();
-    await scopes.setReminderMinutes(vanya, 30);
-    await scopes.setReminderMinutes(vanya, null);
+    await writeOwnReminderMinutes(prefsModel, vanya, 30);
+    await writeOwnReminderMinutes(prefsModel, vanya, null);
 
     expect((await service.getStats()).ownReminder).toBe(0);
+  });
+
+  it('снял все занятия — в «выбрали» уже не входит', async () => {
+    const vanya = await person();
+    await remindAbout(vanya, { classes: ['a'] });
+    await remindAbout(vanya, {});
+
+    expect((await service.getStats()).withReminders).toBe(0);
   });
 
   it('штат и заблокированные не входят ни в одно из трёх чисел', async () => {
@@ -127,24 +179,24 @@ describe('LessonPrefsStatsService', () => {
     const teacher = await person({ roles: ['teacher'] });
     const blocked = await person({ status: 'blocked' });
     for (const id of [student, teacher, blocked]) {
-      await scopes.set(id, { mode: 'selected', classIds: ['a'] });
-      await scopes.setReminderMinutes(id, 120);
+      await remindAbout(id, { classes: ['a'] });
+      await writeOwnReminderMinutes(prefsModel, id, 120);
     }
 
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 1,
-      chosenClasses: 1,
+      withReminders: 1,
       ownReminder: 1,
     });
   });
 
   it('документ настроек без ученика (удалён) числа не двигает', async () => {
-    await scopes.set('64b000000000000000000001', { mode: 'selected', classIds: ['a'] });
+    await remindAbout('64b000000000000000000001', { classes: ['a'] });
     await person();
 
     await expect(service.getStats()).resolves.toEqual({
       activeStudents: 1,
-      chosenClasses: 0,
+      withReminders: 0,
       ownReminder: 0,
     });
   });

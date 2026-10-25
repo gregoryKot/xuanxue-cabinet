@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
-import { canSeeRoute, isTeacher, rootPathFor } from './screenAccess';
+import {
+  canSeePayments,
+  canSeeRoute,
+  isAccountant,
+  isTeacher,
+  rootPathFor,
+} from './screenAccess';
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {
@@ -16,6 +22,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     googleLinked: false,
     studentMode: false,
     canUseStudentMode: false,
+    homeHiddenTiles: [],
     ...overrides,
   };
 }
@@ -36,21 +43,60 @@ describe('isTeacher', () => {
   });
 });
 
-describe('rootPathFor', () => {
-  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» — основной экран
-  // штата при входе, было «Занятия»/планирование.
-  it('штат — «Экзамены»', () => {
-    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/exams');
-    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/exams');
-    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/exams');
+describe('canSeePayments', () => {
+  it('бухгалтер и админ — true', () => {
+    expect(canSeePayments(makeMe({ roles: ['accountant'] }))).toBe(true);
+    expect(canSeePayments(makeMe({ roles: ['admin'] }))).toBe(true);
   });
 
-  it('ученик — «Задания» (решение владельца: экзамены — первый экран)', () => {
-    expect(rootPathFor(makeMe({ roles: [] }))).toBe('/tasks');
+  it('учитель, ассистент, ученик и null — false', () => {
+    expect(canSeePayments(makeMe({ roles: ['teacher'] }))).toBe(false);
+    expect(canSeePayments(makeMe({ roles: ['assistant'] }))).toBe(false);
+    expect(canSeePayments(makeMe({ roles: [] }))).toBe(false);
+    expect(canSeePayments(null)).toBe(false);
+  });
+});
+
+describe('isAccountant', () => {
+  it('бухгалтер без ролей штата — true', () => {
+    expect(isAccountant(makeMe({ roles: ['accountant'] }))).toBe(true);
+  });
+
+  it('бухгалтер с ролью штата — false: он штат, меню штата', () => {
+    expect(isAccountant(makeMe({ roles: ['accountant', 'teacher'] }))).toBe(false);
+    expect(isAccountant(makeMe({ roles: ['accountant', 'admin'] }))).toBe(false);
+  });
+
+  it('без роли бухгалтера и null — false', () => {
+    expect(isAccountant(makeMe({ roles: [] }))).toBe(false);
+    expect(isAccountant(null)).toBe(false);
+  });
+});
+
+describe('rootPathFor', () => {
+  // Решение владельца 2026-10-06 (ADR-0174, заменяет ADR-0138): «Главная» —
+  // первый экран при любом входе, у штата тоже; «Экзамены» остались вторым
+  // пунктом панели.
+  it('штат — «Главная»', () => {
+    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/board');
+    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/board');
+    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/board');
+  });
+
+  it('бухгалтер без ролей штата — «Оплаты» (ADR-0171)', () => {
+    expect(rootPathFor(makeMe({ roles: ['accountant'] }))).toBe('/payments');
+  });
+
+  it('бухгалтер с ролью штата — «Главная»: он штат, не бухгалтер', () => {
+    expect(rootPathFor(makeMe({ roles: ['accountant', 'teacher'] }))).toBe('/board');
+  });
+
+  it('ученик — «Главная» (решение владельца 2026-10-06, ADR-0173)', () => {
+    expect(rootPathFor(makeMe({ roles: [] }))).toBe('/board');
   });
 
   it('сессия ещё не известна (null) — тот же безопасный минимум, что у ученика', () => {
-    expect(rootPathFor(null)).toBe('/tasks');
+    expect(rootPathFor(null)).toBe('/board');
   });
 });
 
@@ -58,6 +104,19 @@ describe('canSeeRoute', () => {
   it('штат — маршрут открыт на любом адресе кабинета', () => {
     expect(canSeeRoute(makeMe(), '/planning')).toBe(true);
     expect(canSeeRoute(makeMe(), '/exams')).toBe(true);
+  });
+
+  // ADR-0171: «Оплаты» открыты тем, кто их видит; учитель штата — нет, хотя
+  // остальные маршруты штата ему открыты.
+  it('«/payments» — бухгалтеру и админу true, учителю и ученику false', () => {
+    expect(canSeeRoute(makeMe({ roles: ['accountant'] }), '/payments')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: ['admin'] }), '/payments')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: ['teacher'] }), '/payments')).toBe(false);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/payments')).toBe(false);
+  });
+
+  it('бухгалтер без ролей штата на маршруте штата — false', () => {
+    expect(canSeeRoute(makeMe({ roles: ['accountant'] }), '/planning')).toBe(false);
   });
 
   it('ученик на маршруте штата — false, его уводит редиректом AppShell', () => {
@@ -85,7 +144,18 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/materials/tags')).toBe(false);
   });
 
-  it('ученик на своих «/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
+  // ADR-0177: страницы события — только штату; ученик видит события на доске.
+  it('«/events/new» и «/events/:id» — штату true, ученику и бухгалтеру false', () => {
+    for (const pathname of ['/events/new', '/events/652f00000000000000000009']) {
+      expect(canSeeRoute(makeMe({ roles: ['teacher'] }), pathname)).toBe(true);
+      expect(canSeeRoute(makeMe({ roles: ['admin'] }), pathname)).toBe(true);
+      expect(canSeeRoute(makeMe({ roles: [] }), pathname)).toBe(false);
+      expect(canSeeRoute(makeMe({ roles: ['accountant'] }), pathname)).toBe(false);
+    }
+  });
+
+  it('ученик на своих «/board»/«/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/board')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/lessons')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/archive')).toBe(true);

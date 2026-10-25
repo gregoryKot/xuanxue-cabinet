@@ -18,10 +18,12 @@ import type { Schema } from 'mongoose';
 import {
   ANSWER_VIDEO_RETENTION,
   EXAM_ATTEMPT_RETENTION_YEARS,
+  NATIVE_CREDENTIAL_LIFETIME_SEC,
   PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS,
 } from '@xuanxue/shared';
 import { AnswerVideoSweepService } from '../answer-videos/answer-video-sweep.service';
 import { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
+import { NativeCredentialSchema } from '../native-auth/native-credential.schema';
 import { NotificationSchema } from '../notifications/notification.schema';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerService } from './scheduler.service';
@@ -65,6 +67,12 @@ const DECLARED: readonly DeclaredRetention[] = [
       schema: NotificationSchema,
       expireAfterSeconds: 90 * SECONDS_IN_DAY,
     },
+  },
+  {
+    collection: 'native_credentials',
+    promised: NATIVE_CREDENTIAL_LIFETIME_SEC / SECONDS_IN_DAY,
+    // Срок вписан в сам `expiresAt` при выдаче, индекс убирает запись в этот момент.
+    enforcer: { kind: 'ttl', schema: NativeCredentialSchema, expireAfterSeconds: 0 },
   },
 ];
 

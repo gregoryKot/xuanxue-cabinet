@@ -3,7 +3,8 @@
 // та же проверка, что у material-file-body.ts: common/raw-body-session.spec.ts
 // покрывает её ветки по отдельности, здесь — только что предикат её зовёт.
 import { DateTime } from 'luxon';
-import { SESSION_COOKIE } from '../auth/session-cookie';
+import { AuthService } from '../auth/auth.service';
+import { SESSION_COOKIE, sessionCookieProfile } from '../auth/session-cookie';
 import { SESSION_MAX_AGE_DAYS, signSession } from '../auth/session-token';
 import { EXAM_IMAGES_ROUTE_PATH, makeIsRawImageUpload } from './exam-image-body';
 
@@ -31,7 +32,9 @@ function req(overrides: {
 }
 
 describe('makeIsRawImageUpload', () => {
-  const isRawImageUpload = makeIsRawImageUpload(SECRET);
+  const isRawImageUpload = makeIsRawImageUpload(
+    new AuthService(SECRET, sessionCookieProfile('http://localhost:3000')),
+  );
 
   it('POST на /api/exam-images с image/jpeg и валидной сессией — true', () => {
     expect(isRawImageUpload(req({}))).toBe(true);

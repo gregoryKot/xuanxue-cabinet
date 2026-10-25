@@ -186,7 +186,7 @@ Telegram» (ADR-0067). Нажали — кабинет перестаёт зва
 стоит плашка «Вы в режиме ученика · Вернуться к роли», её нельзя закрыть. Оба места
 зовут один хук `useStudentMode`: ответ `PUT` — `MeDto` — кладётся в `applyMe`, меню
 перестраивается без второго запроса, а человека уводят на первый экран новой роли
-(«Задания» или «Экзамены»). Секция оплаты в «Профиле» в режиме скрыта.
+(«Главная» или «Экзамены»). Секция оплаты в «Профиле» в режиме скрыта.
 
 **Групп у ученика пока нет, и это видно на экране.** `GET /me/lessons`
 (`MyLessonsService`) отдаёт расписание всей школы, а не «своё»: делить занятия между
@@ -208,23 +208,28 @@ Telegram» (ADR-0067). Нажали — кабинет перестаёт зва
 Коллекции MongoDB. Свободный текст и секреты каналов шифруются AES-256-GCM ключом
 из `ENCRYPTION_KEY`, как в текущем проекте.
 
-| Коллекция                              | Поля                                                                                                                                                                                                                               | Комментарий                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                                | name, email, pendingEmail?, telegramId, googleId, roles[], status, lastLoginAt, joinedViaInviteAt?, profileNamedAt?, noTelegramAt?, studentModeAt?, createdAt                                                                      | status: active / blocked. `studentModeAt` — момент, когда штат включил себе режим ученика (ADR-0163; роли в `roles` при этом не меняются, пустые их видит только `AuthGuard`). Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `classes`                              | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin, everyWeeks?, startsOn?}], tz, channelIds[], leadMinutes, active                                                          | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `lessons`                              | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt?, cancelledAt?, recordingReadyAt?     | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания: уникальный частичный индекс (classId, plannedAt). Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые. `cancelledAt` (UTC) — когда отменили: ставит `PATCH` при переходе в `cancelled`, снимает возврат в `scheduled`; от него шаг тика «отмена ученикам» сутки сообщает ученикам (§13, ADR-0162). `recordingReadyAt` (UTC) — когда появилась первая запись: ставит `addRecording` одной командой с `$push` (`$min`, вторая запись момент не двигает), от него шаг «запись ученикам» сутки сообщает тем, кто включил вид (§13); наружу не уходит                                                                                                                             |
-| `channels`                             | type, title, config (зашифровано), target, createdBy, active                                                                                                                                                                       | type: telegram / vk / manual. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникальный частичный индекс (type, target)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `broadcasts`                           | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                                                      | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `deliveries`                           | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId, manualPromptedAt?                                                                                                                              | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки. `manualPromptedAt` — бот прислал текст+кнопку «Скопировал, отправил» для ручного канала (status manual), условный апдейт ДО отправки, один раз                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `bot_sessions`                         | chatId, kind, lessonId, expiresAt                                                                                                                                                                                                  | Ожидание бота в личном чате учителя: kind topic («Изменить тему»/`/тема`, TTL 10 минут) или kind recording («Запись?», TTL 12 часов). Уникальный индекс chatId — один документ на чат, новое ожидание вытесняет старое; TTL-индекс — по expiresAt. Ключ — chatId Telegram, персональных данных нет: без userId, не в USER_OWNED_COLLECTIONS                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `payments`                             | userId, month, status, amountMinor?, confirmedBy?, confirmedAt?, screenshotKind?, screenshotFileId?, screenshotFileUniqueId?, screenshotImageId?, screenshotAt?, reminderSentAt?, note?                                            | Этап 2, ТЗ в §15. Абонемент на календарный месяц (`YYYY-MM` в поясе школы), валюта ILS константой, сумма — целое в агорах. Уникальный индекс (userId, month) — он же защита от второго скриншота. В `USER_OWNED_COLLECTIONS`, живёт, пока жив аккаунт (ADR-0049)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `payment_screenshots`                  | bytes (зашифрованы), contentType, sizeBytes                                                                                                                                                                                        | Этап 2. Байты снимка перевода, загруженного в кабинете — только для тех, у кого Telegram не связан; присланное боту хранится как `file_id`, байты через нас не идут. Срок хранения: 30 дней после подтверждения, 90 дней без него — шаг тика, не TTL-индекс (ADR-0050)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `materials`                            | title (зашифровано), url (зашифровано), kind, classIds[], tags[], access, announceAt?, createdBy                                                                                                                                   | Этап 3, §14. Данные школы (ADR-0010): без `userId`, `createdBy` — в `USER_REFERENCE_PATHS`. kind: book / article / video / document, список закрыт (ADR-0047). `classIds[]` — занятия расписания, пустой массив = материал всей школы. `tags[]` — рубрикация свободным текстом, не доступ (ADR-0058). access: all / staff — `staff` видит только штат школы, ученику такой материал не приходит вовсе (ADR-0058); доступа по оплате у материалов нет (ADR-0096). `announceAt` (UTC) — когда учитель отметил «Сообщить ученикам»: ставит только создание с `access: 'all'`, правка не двигает; от него шаг «материал ученикам» сутки сообщает тем, кто включил вид (§13, ADR-0162); наружу не уходит                                                                                                                   |
-| `exams`, `exam_items`, `exam_attempts` | см. §11                                                                                                                                                                                                                            | Этап 4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `notification_prefs`                   | userId, overrides[{kind, enabled}], paymentReminderDay?, lessonScopeMode?, lessonClassIds?, lessonReminderMinutes?                                                                                                                 | См. §13. Только ручные отклонения от дефолта роли (`defaultNotifications`) — то, что человек не трогал, не хранится. «О каких занятиях напоминать» (ADR-0162): `lessonScopeMode` (`all` \| `selected`, нет поля — `all`) и `lessonClassIds` (id занятий строками, режим «все» список не стирает); `lessonReminderMinutes` — своё «за сколько минут» до занятия (15/30/60/120, нет поля — как в школе). Уникальный индекс userId, один документ на человека. Живёт, пока жив аккаунт. В `USER_OWNED_COLLECTIONS`                                                                                                                                                                                                                                                                                                       |
-| `push_subscriptions`                   | userId, endpoint, p256dh (зашифрован), auth (зашифрован), createdAt                                                                                                                                                                | ADR-0092. Подписка браузера на push, одна на устройство; уникальный индекс `endpoint` — он же идемпотентность повторной подписки того же устройства, повторный `POST /me/push-subscriptions` тем же браузером переписывает `userId` (upsert). `p256dh`/`auth` — секреты доставки push (RFC 8291), шифруются (`EncryptSchema`); при пустом теле push (ADR-0092 «Решение») сейчас не читаются — хранятся впрок, на переход к push с содержимым. В `USER_OWNED_COLLECTIONS`, живёт, пока жив аккаунт; удаление мёртвых подписок по 404/410 от push-сервиса — `PushSenderService`, `api/src/push/push-sender.service.ts`                                                                                                                                                                                                  |
-| `settings`                             | один документ школы: templates{lesson_link, recording}, tz, previewMinutes, lessonReminderMinutes, schoolSiteUrl, newcomerContact, dataControllerName, dataControllerContact, paymentReminder{enabled, dayOfMonth, time, template} | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10). `dataControllerName`/`dataControllerContact` — кто отвечает за данные учеников и как с ним связаться: публичный текст для страницы `/privacy` (статья 11 Закона о защите частной жизни Израиля), отдаётся через `GET /auth/config`, дефолта нет — пока поля пустые, страница отправляет к учителю. `lessonReminderMinutes` — за сколько минут до занятия ученику приходит напоминание (§13, ADR-0135), дефолт `DEFAULT_LESSON_REMINDER_MINUTES`. `paymentReminder` — напоминание об оплате (§15 п. 2.5, ADR-0051), дефолт `DEFAULT_PAYMENT_REMINDER` (выключено); старая база без подобъекта отдаёт его поле за полем |
-| `notifications`                        | userId, kind, examId?, attemptId?, examTitle? (зашифровано), lessonId?, lessonTitle? (зашифровано), lessonStartsAt?, materialId?, materialTitle? (зашифровано), paymentMonth?, outcome?, readAt?, dismissedAt?                     | Лента кабинета (§13, `GET/POST /me/inbox`, ADR-0061). Уникальные частичные индексы (userId, kind, attemptId), (userId, kind, lessonId), (userId, kind, paymentMonth) и (userId, kind, materialId) — идемпотентность записи; `materialId` и снимок названия — у `material_new` (ADR-0162); `paymentMonth` — 'YYYY-MM', у `payment_due` (ADR-0150); `lessonStartsAt` — начало занятия (UTC), у `lesson_cancelled` (ADR-0162), вид входит в ключ индекса по занятию. TTL-индекс на createdAt, 90 дней                                                                                                                                                                                                                                                                                                                    |
+| Коллекция                              | Поля                                                                                                                                                                                                                                     | Комментарий                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                                | name, email, pendingEmail?, telegramId, googleId, roles[], status, lastLoginAt, joinedViaInviteAt?, profileNamedAt?, noTelegramAt?, studentModeAt?, homeHiddenTiles?[], createdAt                                                        | status: active / blocked. `studentModeAt` — момент, когда штат включил себе режим ученика (ADR-0163; роли в `roles` при этом не меняются, пустые их видит только `AuthGuard`). `homeHiddenTiles` — ключи плиток «Главной», которые человек скрыл у себя (ADR-0179, `PUT /me/home-tiles`; нет поля — показываем всё). Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `classes`                              | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin, everyWeeks?, startsOn?}], tz, channelIds[], leadMinutes, active                                                                | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `lessons`                              | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url?, telegramFileId?, videoId?}], note, ruleId?, recordingPromptedAt?, cancelledAt?, recordingReadyAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания: уникальный частичный индекс (classId, plannedAt). Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые. `cancelledAt` (UTC) — когда отменили: ставит `PATCH` при переходе в `cancelled`, снимает возврат в `scheduled`; от него шаг тика «отмена ученикам» сутки сообщает ученикам (§13, ADR-0162). `recordingReadyAt` (UTC) — когда появилась первая запись: ставит `addRecording` одной командой с `$push` (`$min`, вторая запись момент не двигает), от него шаг «запись ученикам» сутки сообщает тем, кто включил вид (§13); наружу не уходит                                                                                                                                                                                                                                                                                                                      |
+| `lesson_videos`                        | key (R2), contentType?, sizeBytes, fingerprint, status, uploadId?, parts[], r2CompletedAt?, completedAt?, poster?, createdBy                                                                                                             | Файл записи занятия в R2 (ADR-0180, §18). Данные школы (ADR-0010): без `userId`, `createdBy` — в `USER_REFERENCE_PATHS`. Состояние загрузки частями — общий класс `VideoUploadRecord` (ADR-0165), потолок 2000 МБ (`LESSON_VIDEO_LIMITS`). Смотрит любой вошедший, но только готовое видео, на которое ссылается `lessons.recordings.videoId`; сирота старше суток и брошенная загрузка убираются шагом «видео-сироты». Индекс `lessons.recordings.videoId` — частичный                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `channels`                             | type, title, config (зашифровано), target, createdBy, active                                                                                                                                                                             | type: telegram / vk / manual. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникальный частичный индекс (type, target)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `broadcasts`                           | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                                                            | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `deliveries`                           | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId, manualPromptedAt?                                                                                                                                    | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки. `manualPromptedAt` — бот прислал текст+кнопку «Скопировал, отправил» для ручного канала (status manual), условный апдейт ДО отправки, один раз                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `bot_sessions`                         | chatId, kind, lessonId, recordingUrl, recordingFileId, expiresAt                                                                                                                                                                         | Ожидание бота в личном чате учителя: kind topic («Изменить тему»/`/тема`, TTL 10 минут) или kind recording («Запись?», TTL 12 часов). Уникальный индекс chatId — один документ на чат, новое ожидание вытесняет старое; TTL-индекс — по expiresAt. Ключ — chatId Telegram, персональных данных нет: без userId, не в USER_OWNED_COLLECTIONS                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `payments`                             | userId, month, status, amountMinor?, confirmedBy?, confirmedAt?, screenshotKind?, screenshotFileId?, screenshotFileUniqueId?, screenshotImageId?, screenshotAt?, reminderSentAt?, note?                                                  | Этап 2, ТЗ в §15. Абонемент на календарный месяц (`YYYY-MM` в поясе школы), валюта ILS константой, сумма — целое в агорах. Уникальный индекс (userId, month) — он же защита от второго скриншота. В `USER_OWNED_COLLECTIONS`, живёт, пока жив аккаунт (ADR-0049)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `payment_screenshots`                  | bytes (зашифрованы), contentType, sizeBytes                                                                                                                                                                                              | Этап 2. Байты снимка перевода, загруженного в кабинете — только для тех, у кого Telegram не связан; присланное боту хранится как `file_id`, байты через нас не идут. Срок хранения: 30 дней после подтверждения, 90 дней без него — шаг тика, не TTL-индекс (ADR-0050)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `materials`                            | title (зашифровано), url (зашифровано), kind, classIds[], tags[], access, announceAt?, createdBy                                                                                                                                         | Этап 3, §14. Данные школы (ADR-0010): без `userId`, `createdBy` — в `USER_REFERENCE_PATHS`. kind: book / article / video / document, список закрыт (ADR-0047). `classIds[]` — занятия расписания, пустой массив = материал всей школы. `tags[]` — рубрикация свободным текстом, не доступ (ADR-0058). access: all / staff — `staff` видит только штат школы, ученику такой материал не приходит вовсе (ADR-0058); доступа по оплате у материалов нет (ADR-0096). `announceAt` (UTC) — когда учитель отметил «Сообщить ученикам»: ставит только создание с `access: 'all'`, правка не двигает; от него шаг «материал ученикам» сутки сообщает тем, кто включил вид (§13, ADR-0162); наружу не уходит                                                                                                                                                                                                                                                                                                            |
+| `school_events`                        | title (зашифровано), startsAt, endsAt?, place? (зашифровано), description? (зашифровано), createdBy                                                                                                                                      | События школы: ретрит, семинар, выезд (ADR-0177). Данные школы (ADR-0010): без `userId`, `createdBy` — в `USER_REFERENCE_PATHS`. `startsAt`/`endsAt` — UTC; индекс `{ startsAt: 1 }`. Ученику `GET /me/events` отдаёт события, у которых `endsAt ?? startsAt` не в прошлом, не больше 20                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `exams`, `exam_items`, `exam_attempts` | см. §11                                                                                                                                                                                                                                  | Этап 4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `notification_prefs`                   | userId, overrides[{kind, enabled}], paymentReminderDay?, lessonScopeMode?, lessonClassIds?, lessonReminderMinutes?, reminderClassIds?, reminderLessonIds?, reminderRevision?                                                             | См. §13. Только ручные отклонения от дефолта роли (`defaultNotifications`) — то, что человек не трогал, не хранится. «О каких занятиях сообщать» об отмене, записи и новом материале (ADR-0162): `lessonScopeMode` (`all` \| `selected`, нет поля — `all`) и `lessonClassIds` (id занятий строками, режим «все» список не стирает); `lessonReminderMinutes` — своё «за сколько минут» до занятия (0/15/30/60/120, нет поля — как в школе; `0` — напомнить в момент начала; пишет `PATCH /me/notifications/lessons/sync`). `reminderClassIds` и `reminderLessonIds` (id строками) — о каких занятиях приходит «Занятие скоро» и что синхронизируется с Daychi (нет списков — напоминаний нет), `reminderRevision` — счётчик его изменений (нет поля — 0); читаются снимком `GET /me/notifications/lessons/sync` и меняются `PATCH` того же маршрута условной записью по `reminderRevision` (ADR-0185). Уникальный индекс userId, один документ на человека. Живёт, пока жив аккаунт. В `USER_OWNED_COLLECTIONS` |
+| `push_subscriptions`                   | userId, endpoint, p256dh (зашифрован), auth (зашифрован), createdAt                                                                                                                                                                      | ADR-0092. Подписка браузера на push, одна на устройство; уникальный индекс `endpoint` — он же идемпотентность повторной подписки того же устройства, повторный `POST /me/push-subscriptions` тем же браузером переписывает `userId` (upsert). `p256dh`/`auth` — секреты доставки push (RFC 8291), шифруются (`EncryptSchema`); при пустом теле push (ADR-0092 «Решение») сейчас не читаются — хранятся впрок, на переход к push с содержимым. В `USER_OWNED_COLLECTIONS`, живёт, пока жив аккаунт; удаление мёртвых подписок по 404/410 от push-сервиса — `PushSenderService`, `api/src/push/push-sender.service.ts`                                                                                                                                                                                                                                                                                                                                                                                           |
+| `native_grants`                        | userId, clientId, revokedAt?, purgeAt                                                                                                                                                                                                    | ADR-0181. Доступ приложения Daychi к аккаунту; токены в `native_credentials`. Индекс `userId`, TTL-индекс по `purgeAt` (сдвигается `$max` при каждой выдаче токена, чтобы знание об отзыве пережило последний токен). В `USER_OWNED_COLLECTIONS`, выгрузка без `purgeAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `native_credentials`                   | tokenHash, grantId, userId, issuedAt, expiresAt                                                                                                                                                                                          | ADR-0181. Один токен — одна запись: `sha256` токена, уникальный индекс `tokenHash`, индексы `grantId` и `userId`, TTL-индекс по `expiresAt` (90 дней с выдачи). Сам токен не хранится и не выгружается. В `USER_OWNED_COLLECTIONS`, живёт, пока жив аккаунт или доступ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `native_authorizations`                | issuer, clientId, redirectUri, scope, state, codeChallenge, bindingHash, expiresAt, completedAt?, userId?, codeHash?, codeExpiresAt?, codeConsumedAt?, purgeAt                                                                           | ADR-0181. Попытка входа Daychi из браузера и её код — одна запись: параметры запроса, `sha256` привязки браузера (cookie `native_authz`) и кода. Попытка годна 900 секунд от создания, код — 60 секунд от выдачи и один обмен. Уникальный частичный индекс `codeHash`, индекс `userId`, TTL-индекс по `purgeAt` (900 + 60 секунд от создания). В `USER_OWNED_COLLECTIONS`, поля попытки не выгружаются                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `settings`                             | один документ школы: templates{lesson_link, recording}, tz, previewMinutes, lessonReminderMinutes, schoolSiteUrl, newcomerContact, dataControllerName, dataControllerContact, paymentReminder{enabled, dayOfMonth, time, template}       | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10). `dataControllerName`/`dataControllerContact` — кто отвечает за данные учеников и как с ним связаться: публичный текст для страницы `/privacy` (статья 11 Закона о защите частной жизни Израиля), отдаётся через `GET /auth/config`, дефолта нет — пока поля пустые, страница отправляет к учителю. `lessonReminderMinutes` — за сколько минут до занятия ученику приходит напоминание (§13, ADR-0135), дефолт `DEFAULT_LESSON_REMINDER_MINUTES`. `paymentReminder` — напоминание об оплате (§15 п. 2.5, ADR-0051), дефолт `DEFAULT_PAYMENT_REMINDER` (выключено); старая база без подобъекта отдаёт его поле за полем                                                                                                                                                                                          |
+| `notifications`                        | userId, kind, examId?, attemptId?, examTitle? (зашифровано), lessonId?, lessonTitle? (зашифровано), lessonStartsAt?, materialId?, materialTitle? (зашифровано), paymentMonth?, outcome?, readAt?, dismissedAt?                           | Лента кабинета (§13, `GET/POST /me/inbox`, ADR-0061). Уникальные частичные индексы (userId, kind, attemptId), (userId, kind, lessonId), (userId, kind, paymentMonth) и (userId, kind, materialId) — идемпотентность записи; `materialId` и снимок названия — у `material_new` (ADR-0162); `paymentMonth` — 'YYYY-MM', у `payment_due` (ADR-0150); `lessonStartsAt` — начало занятия (UTC), у `lesson_cancelled` (ADR-0162), вид входит в ключ индекса по занятию. TTL-индекс на createdAt, 90 дней                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 Реестр «таблиц с userId» для удаления аккаунта (`USER_OWNED_COLLECTIONS`) и реестр ссылок
 на пользователя из данных школы (`USER_REFERENCE_PATHS`) — `api/src/users/user-data.registry.ts`,
@@ -270,6 +275,19 @@ api: валидация env, логи с requestId и редакцией, кон
   скриншот перевода в бота или загружает на сайте, бухгалтер подтверждает одной
   кнопкой — а чаще отмечает перевод сам, увидев его в выписке (§15, ADR-0049).
 - Напоминания об оплате по расписанию, в тот канал, где ученик есть (ADR-0051).
+- Объявление на главной ученика: строка от учителя и последний день показа,
+  например «Ретрит в ноябре — оплата до 20 октября Маше». Настройка школы; учитель
+  пишет и правит её с главной штата (плюс на экране, ADR-0172 дополнение 2026-10-07),
+  ученик читает `GET /me/board` (ADR-0172). Учёта, кто оплатил ретрит, нет: сущность
+  «разовый сбор» ждёт разговора с учителем.
+- Первый экран ученика — «Главная» (`/board`, `web/src/board/`; до 2026-10-08 «Доска»):
+  плитки без рубрик — объявление, экзамены к сдаче, оплата за месяц, события школы и
+  ближайшее занятие, и только то, что у человека есть: нет экзаменов к сдаче или
+  занятий — про них ни слова. Пункт «Задания» в панели — только при наличии экзаменов
+  (ADR-0173, ADR-0178).
+- «Главная» — первый экран и у штата (ADR-0174): объявление, число работ на проверке,
+  события и входы в расписание, рассылки, материалы, школу; эти разделы ушли из
+  панели, меню штата — «Главная», «Экзамены», «Ученики».
 - Личные рассылки: кроме групп, ссылка уходит лично в Telegram или на email — куда
   ученик включил. ТЗ — §15 п. 2.7, отдельная задача от напоминания о занятии: вид
   `lesson_soon` и его доставка (лента + push) сделаны раньше, до этапа 2 (ADR-0135,
@@ -655,9 +673,9 @@ broadcast-journal.ts`) — окно обязательно и не шире `JOU
    Ближайшее занятие теперь на «Занятиях» — блок «Сегодня»
    (`web/src/planning/PlanningToday.tsx`): что идёт сегодня, а если пусто —
    ближайшая дата из уже загруженных занятий. Маршрут `/` ведёт по роли
-   (`rootPathFor`, `web/src/app/screenAccess.ts`) — у штата с 2026-09-27 это
-   `/exams`, первый экран после входа теперь «Экзамены»
-   ([ADR-0138](adr/0138-staff-lands-on-exams.md), было `/planning`).
+   (`rootPathFor`, `web/src/app/screenAccess.ts`) — с 2026-10-06 у штата это
+   `/board`, «Главная» ([ADR-0174](adr/0174-board-first-screen-for-everyone.md);
+   с 2026-09-27 по 2026-10-06 — «Экзамены», ADR-0138; до того `/planning`).
 8. **Ученики.** Только админ (блокер аудита Б3 — до этого экрана вторую роль
    назначали правкой Atlas руками): кто хоть раз вошёл через Telegram, и
    переключатели «Учитель»/«Разработчик» на каждого, кнопка «Удалить
@@ -722,8 +740,9 @@ broadcast-journal.ts`) — окно обязательно и не шире `JOU
    отказ, что у остальных.
 
 Первый экран после входа объясняет за пять секунд, что здесь и зачем — у штата это
-теперь «Экзамены» (решение владельца 2026-09-27,
-[ADR-0138](adr/0138-staff-lands-on-exams.md); было «Занятия», п.3). То же правило
+теперь «Главная» (решение владельца 2026-10-06,
+[ADR-0174](adr/0174-board-first-screen-for-everyone.md); до того «Экзамены», ADR-0138,
+и «Занятия», п.3). То же правило
 действует на каждом экране кабинета, не только на первом (пример «Занятий»: «Здесь
 занятия на 4 недели вперёд, из расписания. Впишите тему заранее и добавьте запись
 после занятия — рассылка уйдёт сама»; «Расписания»: «Здесь
@@ -832,7 +851,11 @@ Telegraf-инстанс, регистрация вебхука при старт
   закончилось (`startsAt + durationMin ≤ now`), бот ещё не спрашивал
   (`recordingPromptedAt`, условный апдейт ДО отправки через общий `claimOnce`
   — `api/src/common/claim-once.ts`, тот же приём, что у `PreviewService`), класс
-  ещё активен → до `PROMPT_BATCH_LIMIT` (20) занятий за тик, каждому учителю текст
+  ещё активен, у занятия была ссылка (`hasLessonLink`, `api/src/lessons/lesson-link.ts`
+  — то же правило, что у планировщика рассылок; без ссылки занятие шло вживую,
+  вопрос не задаётся, а `recordingPromptedAt` и `recordingDeclinedAt` ставятся
+  молча, чтобы не занимать батч, ADR-0175) → до `PROMPT_BATCH_LIMIT` (20) занятий
+  за тик, каждому учителю текст
   - кнопка «Записи не будет» (`norec:{lessonId}`), ожидание ответа — `bot_sessions`
     (kind `recording`, TTL 12 часов). Ни одного подключённого чата — вопрос не
     задаётся и `recordingPromptedAt` не ставится (иначе учитель, подключившийся
@@ -844,10 +867,19 @@ Telegraf-инстанс, регистрация вебхука при старт
     `assertValidRecordingUrl`, `api/src/lessons/lessons.recording.ts` — что бот, что
     DTO идут через одну проверку) и запускает рассылку записи тем же путём, что и
     раньше (`RecordingBroadcastService`); подтверждение называет занятие: «Запись
-    сохранена к занятию «{название}» {время}, рассылка ушла/ждёт отправки». Кнопка
-    «Записи не будет» закрывает только своё ожидание — по `lessonId` из callback data
-    (`BotSessionService.clearIfLesson`), а не любое активное в чате: второй вопрос
-    «Запись?» раньше ответа на первый не теряется. Сообщение не по теме (не ссылка,
+    сохранена к занятию «{название}» {время}, рассылка ушла/ждёт отправки».
+    **Несколько занятий подряд (ADR-0175).** Чьи записи бот ждёт, считается по самим
+    занятиям (`recording-pending.ts`: `recordingPromptedAt` не старше 12 часов, записи
+    нет, `recordingDeclinedAt` не стоит), не по сессии чата. Ответ (reply) на вопрос
+    бота кладёт запись в то занятие — id из кнопки `norec:{lessonId}` отвечаемого
+    сообщения (`recording-reply.ts`), работает и без активного ожидания; иначе ждёт
+    одно занятие — в него; ждут несколько — «К какому занятию эта запись?» с кнопкой
+    `recpick:{lessonId}` на каждое, источник до выбора лежит на сессии
+    (`recordingUrl`/`recordingFileId`). После сохранения или «Записи не будет»
+    ожидание чата переводится на следующее занятие из списка, подтверждение
+    заканчивается «Ещё жду запись к «{название}» {время}». Кнопка «Записи не будет»
+    ставит `recordingDeclinedAt` на занятии и закрывает ожидание, только если ждать
+    больше нечего (`RecordingButtonsHandler`). Сообщение не по теме (не ссылка,
     не видео) при активном ожидании не закрывает его — бот ждёт следующее сообщение;
     ожидание истекло — «Ожидание записи истекло», с действием (добавить запись в
     кабинете, в «Планировании»);
@@ -1239,7 +1271,8 @@ ADR-0026) получает собственный экран: ближайшие
 §14, «Границы»), поэтому занятия — школьные, не «свои». Результат по форме появится
 вместе со слоем 4.6. **Реализовано** — у ученика два своих экрана и панель вкладок,
 как у штата школы ([ADR-0054](adr/0046-student-tasks-screen.md)). «Задания»
-(`/tasks`, `student/TasksScreen.tsx`) — первый экран после входа: сначала то, что ждёт
+(`/tasks`, `student/TasksScreen.tsx`) — второй экран после «Главной» (ADR-0173; до него был
+первым; пункт панели есть, только когда у ученика есть экзамены, ADR-0178): сначала то, что ждёт
 ученика, под рубрикой «Сдавать сейчас», посередине — сданное и ещё не
 проверенное учителем под рубрикой «На проверке», ниже — «Уже позади»
 ([ADR-0120](adr/0120-tasks-are-split-by-what-waits-for-the-student.md),
@@ -1627,8 +1660,10 @@ ADR-0133 держится и при гигабайте). Обрыв продол
 | `media_assets`            | ученика | ссылка на видео — вместе с попыткой               |
 | `exam_images`             | школы   | пока на неё ссылается вопрос или попытка          |
 | `exam_videos`             | школы   | пока на него ссылается вопрос или попытка         |
+| `lesson_videos`           | школы   | пока на него ссылается запись занятия (ADR-0180)  |
 | `answer_videos`           | ученика | 90 дней после проверки, без проверки — год        |
 | `grading_comment_presets` | школы   | живёт, пока используется; удаляет учитель вручную |
+| `school_events`           | школы   | живёт, пока школа жива; удаляет учитель вручную   |
 | `exam_seen_marks`         | ученика | вместе с аккаунтом (ADR-0129)                     |
 
 Срок хранения попытки ([ADR-0153](adr/0153-exam-attempt-retention.md)) исполняет шаг
@@ -1987,7 +2022,7 @@ validate.spec.ts` (те же сообщения, что у POST /exams),
 | Вид (`NotificationKind`) | Кому по умолчанию                | Когда придёт                                                                                      |
 | ------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `exam_result`            | Ученик                           | Учитель проверил работу и выставил итог (§11, слой 4.7)                                           |
-| `lesson_soon`            | Ученик                           | За выбранное человеком время (15–120 мин), иначе `settings.lessonReminderMinutes` — лента и push  |
+| `lesson_soon`            | Ученик                           | Выбранные занятия, за своё время (0–120 мин) или `settings.lessonReminderMinutes` (ADR-0185)      |
 | `lesson_cancelled`       | Ученик                           | Следующим тиком после отмены занятия учителем, по занятиям «о каких» — лента и push (ADR-0162)    |
 | `recording_ready`        | Никому: ученик включает сам      | Учитель добавил запись занятия — лента и push, если вид включён (ADR-0162)                        |
 | `material_new`           | Никому: ученик включает сам      | Учитель создал материал, отметив «Сообщить ученикам» — лента и push, если вид включён (ADR-0162)  |
@@ -2083,16 +2118,16 @@ callback/сообщение/команда), которые не зависят 
 ссылки), не про напоминание.
 
 Настройка «за сколько минут напомнить ученикам» — `settings.lessonReminderMinutes`
-(§4), тот же путь в БД и на экране «Шаблоны», что у `previewMinutes` (§6). Это значение
+(§4), тот же путь в БД, что у `previewMinutes` (§6); на экране «Школа» (ADR-0176). Это значение
 школы, то есть «как в школе»; у каждого человека есть и своё (ADR-0162):
-`notification_prefs.lessonReminderMinutes` — 15, 30, 60 или 120 минут, нет поля — «как в
-школе» (`effectiveReminderMinutes`, `shared/`). `GET /me/notifications/lessons` отдаёт
-`reminder: { minutes, schoolMinutes }` (`minutes: null` — «как в школе»), запись —
-`PUT /me/notifications/lessons/reminder-minutes` (`{ minutes }` из списка или `null`, ответ
-тот же, что у `GET`); на экране «Настройки уведомлений» это поле «За сколько напомнить»
+`notification_prefs.lessonReminderMinutes` — 0, 15, 30, 60 или 120 минут, нет поля — «как в
+школе» (`effectiveReminderMinutes`, `shared/`). Ноль — напомнить в момент начала: первый
+тик в `[startsAt, startsAt + 60 с]`, раньше начала и позже допуска не напоминает. Своё значение
+читает и пишет снимок `/me/notifications/lessons/sync` (`leadMinutes`, `null` — «как в
+школе», ADR-0185); на экране «Настройки уведомлений» это поле «За сколько напомнить»
 под переключателем «Занятие скоро» (`LessonReminderField`: «Как в школе — за 1 час», «За 15
-минут», «За 30 минут», «За 1 час», «За 2 часа»), видное, пока вид включён. Тик берёт занятия в окне самого раннего из людей, а «пора ли этому
-человеку» решает чистая `planReminders` (`api/src/lessons/lesson-reminder-plan.ts`);
+минут», «За 30 минут», «За 1 час», «За 2 часа»), видное, пока вид включён. Тик берёт занятия в окне самого раннего из людей, у которых есть
+выбор напоминаний, а «о том ли занятии и пора ли этому человеку» решает чистая `planReminders` (`api/src/lessons/lesson-reminder-plan.ts`);
 отметка «уже напомнили» — строка ленты с уникальным индексом `(userId, kind, lessonId)`,
 а не поле занятия (`studentReminderSentAt` удалено): строку вставляет
 `insertNotificationRowOnce`, push уходит только тому, чей вызов её вставил. Отдельно от
@@ -2111,9 +2146,9 @@ callback/сообщение/команда), которые не зависят 
 `api/src/lessons/lesson-cancel-notice.service.ts`; ход шага — `LessonNoticeStep`, общий
 с «Записью занятия»): занятия `cancelled`, отменённые не
 раньше суток назад (`LESSON_NOTICE_WINDOW_HOURS`, сутки повторов на случай сбоя, потом
-занятие не перечитывается), ещё не начавшиеся, у активных классов. Получатели — те же,
-что у `lesson_soon`, и ищет их один и тот же `LessonRecipientsService`: активные ученики
-с включённым видом, о занятиях по их выбору. Строка ленты несёт `lessonId`, снимок
+занятие не перечитывается), ещё не начавшиеся, у активных классов. Получателей ищет
+тот же `LessonRecipientsService`, что у `lesson_soon`: активные ученики с включённым
+видом; о каких занятиях — решает их выбор «о каких занятиях» (ADR-0162). Строка ленты несёт `lessonId`, снимок
 названия класса и `lessonStartsAt` (UTC); «уже сообщили» — уникальный индекс `(userId,
 kind, lessonId)`, вид в ключе, поэтому строка `lesson_soon` того же занятия отмену не
 блокирует; push уходит только тому, чей вызов строку вставил (`insertRowAndPush`).
@@ -2193,7 +2228,12 @@ kind, lessonId)`, вид в ключе, поэтому строка `lesson_soon
 «Уведомления» на «Профиле» и тихая ссылка внизу ленты `/notifications`; доступен любой
 роли, виды ограничены тем, что человеку доступно (`availableNotifications`, ADR-0025).
 
-Напоминание уходит активным ученикам школы. По умолчанию — **о любом занятии**, не
+«Занятие скоро» приходит активным ученикам о тех занятиях, которые человек выбрал для
+напоминаний: целиком занятие расписания (`reminderClassIds`) или отдельная дата
+(`reminderLessonIds`), ADR-0185. Оба списка пусты, пока человек ничего не выбрал: общего
+«обо всех» у напоминания нет, и новое занятие расписания само в выбор не попадает. Выбор
+«о каких занятиях» ниже напоминание не фильтрует, он действует на «Занятие отменено»,
+«Запись занятия» и «Новый материал». Для них по умолчанию — **о любом занятии**, не
 только «своим»: групп у ученика в кабинете пока нет (§14, `GET /me/lessons` уже отдаёт
 расписание школы целиком по той же причине, ADR-0135). Но человек выбирает сам
 (ADR-0162): **«Обо всех занятиях»** или **«Только о выбранных»** — галочки на занятиях
@@ -2203,42 +2243,41 @@ kind, lessonId)`, вид в ключе, поэтому строка `lesson_soon
 `{ scope: { mode, classIds }, scopeChosen, classes }` (активные занятия: название, подпись
 группы, пояс, дни и время — без ссылок, паролей и тегов; `scopeChosen` — выбирал ли человек
 сам: записан режим, «все» руками тоже) и `PUT /me/notifications/lessons/scope`
-(`{ mode, classIds }`, ответ тот же, что у `GET`; несуществующее занятие — 400). Выбор
+(`{ mode, classIds }`, ответ тот же, что у `GET`; несуществующее занятие — 400): они
+остаются для отмен, записей и материалов и к выбору напоминаний доступа не имеют. Выбор
 фильтрует уведомления, а не доступ: расписание, архив и материалы остаются общими.
 Экран — «Настройки уведомлений», три блока сверху вниз: push на это
 устройство (`PushNotificationsSection`, ADR-0092), «О каких занятиях»
-(`LessonScopeSection`: «Обо всех занятиях школы» / «Только о выбранных» и галочки
-занятий) и «Что присылать» (`NotificationPrefsSection`, переключатели видов; под «Занятие
+(`LessonScopeSection`: галочки занятий расписания — выбор напоминаний «Занятие скоро») и
+«Что присылать» (`NotificationPrefsSection`, переключатели видов; под «Занятие
 скоро», пока оно включено, — «За сколько напомнить», подсказка называет срок жирным:
-«Напоминание придёт за **1 час** до начала занятия.»). Занятия, выбор и своё «за сколько»
-экран читает одним `GET` на оба блока. Блок «О каких занятиях» виден тому, у кого есть вид про занятие (`hasLessonScopedKinds`), —
+«Напоминание придёт за **1 час** до начала занятия.»). Выбор и своё «за сколько» экран
+читает одним снимком на оба блока. Блок «О каких занятиях» виден тому, у кого есть вид про занятие (`hasLessonScopedKinds`), —
 сегодня ученику; штат пока получает обо всех занятиях, решение владельца 2026-09-30.
-Каждое изменение — сразу `PUT` с выбором целиком, экран рисуется из его ответа, без
-второго `GET` (ADR-0087). Дни и время занятий — по часам школы, как в сетке «Расписания»:
-в списке правила, а не даты; пояс школы, если он другой, подписан один раз над списком
-(`ruleTzNote`). В теле `PUT` только занятия, которые
-человек видит в списке: id уже удалённого занятия сервер отклонил бы 400 и не дал бы
-сохранить вообще ничего. «Выбранные» без галочек — строка «Ничего не отмечено —
-уведомлений о занятиях не будет».
+Каждое изменение — сразу `PATCH` снимка с одним изменением, экран рисуется из его ответа,
+без второго `GET` (ADR-0087, ADR-0185). Дни и время занятий — по часам школы, как в сетке
+«Расписания»: в списке правила, а не даты; пояс школы, если он другой, подписан один раз
+над списком (`ruleTzNote`). Ничего не отмечено — строка «Ничего не отмечено — напоминаний
+о занятиях не будет».
 
-**Число для штата (ADR-0162, п. 5).** На экране «Шаблоны», под школьным «За сколько минут
-напомнить ученикам о занятии», — строка «Свои занятия выбрали **5 из 40** учеников, своё
-время напоминания — **3**»: сколько активных учеников этим меню воспользовались.
-`GET /notifications/lesson-prefs-stats` (teacher/assistant/admin) отдаёт `{ activeStudents,
-chosenClasses, ownReminder }` одним запросом к базе, без имён; строку собирает
+**Число для штата (ADR-0185).** На экране «Школа» (ADR-0176), под школьным «За сколько минут
+напомнить ученикам о занятии», — строка «Занятия для напоминаний отметили **5 из 40**
+учеников, своё время напоминания — **3**»: сколько активных учеников этим меню
+воспользовались. `GET /notifications/lesson-prefs-stats` (teacher/assistant/admin) отдаёт
+`{ activeStudents, withReminders, ownReminder }` одним запросом к базе, без имён:
+`withReminders` — ученики хотя бы с одним занятием расписания или отдельным занятием в
+выборе напоминаний, `ownReminder` — со своим «за сколько», включая `0`; строку собирает
 `formatLessonPrefsStats` (`web/src/templates/lessonPrefsStatsText.ts`). На пустой базе и
-пока никто не выбирал — «Пока никто из учеников не выбирал свои занятия и время напоминания.»
+пока никто не выбирал — «Пока никто из учеников не отметил занятия и не выбрал своё время.»
 
-**Подсказка в ленте и строка в боте (ADR-0162, п. 5).** Пока человек сам ничего не
-выбирал (`scopeChosen: false`) и у него есть вид про занятие, над лентой `/notifications`
-стоит карточка «Напоминаем обо всех занятиях школы — **16 раз в неделю**» (число — слоты
-расписания, `weeklyLessonCount`) с припиской «Отметьте свои — и лишнего не будет.», главным
-действием «Выбрать занятия» (ведёт в `/notifications/settings`) и тихой кнопкой «Оставить
-все»: она шлёт `PUT …/scope` с режимом «все» и прячет карточку по ответу (`scopeChosen: true`,
-без второго `GET`). «Все», записанное руками, тоже выбор — карточка не возвращается. Данные
-те же, что у настроек (`useLessonScope`), штат за ними не ходит. Карточка необязательная: пока
-данных нет, загрузка не удалась или в расписании нет ни одного занятия — её нет, баннера
-ошибки тоже. В боте на `/notifications` у человека с видом про занятие последняя строка меню
+**Подсказка в ленте и строка в боте (ADR-0185).** Пока у ученика «Занятие скоро» включено, а
+в выборе напоминаний нет ни занятия расписания, ни отдельного занятия, над лентой
+`/notifications` стоит карточка «Напоминаний о занятиях **не будет**, пока вы не отметите
+свои» с припиской «Отметьте занятия, о которых хотите знать, — напомним перед началом.» и
+единственным действием «Выбрать занятия» (ведёт в `/notifications/settings`). Данные —
+снимок `GET /me/notifications/lessons/sync`, карточка только читает; штат за ним не ходит.
+Карточка необязательная: пока данных нет, загрузка не удалась или в расписании нет ни
+одного занятия — её нет, баннера ошибки тоже. В боте на `/notifications` у человека с видом про занятие последняя строка меню
 — «О каких занятиях и за сколько напоминать — в кабинете: Уведомления → Настройки.» (простым
 текстом: меню строится без адреса кабинета).
 
@@ -2755,14 +2794,19 @@ Telegram сам: её контакт стоит в напоминании и в 
 `paymentContact`). Ученик не делает ничего сверх этого.
 
 Сужено 2026-09-29 (ADR-0157): Маша отказалась вести оплаты в кабинете. Экран
-«Оплаты» (слой 2.3) не делаем, секция «Абонемент» у ученика (слой 2.4) спрятана в
-коде. API и данные `payments` остаются — снимок по-прежнему ставит `awaiting`.
+«Оплаты» (слой 2.3) возвращён 2026-10-06 (ADR-0171): отмечает бухгалтер. Секция
+«Абонемент» у ученика (слой 2.4) пока спрятана в коде. API и данные `payments`
+остаются — снимок по-прежнему ставит `awaiting`.
 
 ### Чего здесь нет
 
 Возврата денег, приёма платежей внутри кабинета, долгов за прошлые месяцы
 отдельным счётчиком, «заморозки» абонемента на время отъезда. Каждое из этого —
 отдельный разговор с Машей, а не догадка разработчика.
+
+Разовые сборы вроде ретрита тоже не сущность: пока это объявление со сроком показа
+на главной ученика, без цены и отметок оплат (ADR-0172). Событие с датой, местом
+и подробностями — отдельная сущность `school_events` (ADR-0177), но без записи и оплат.
 
 Доступа к материалам по оплате не будет и здесь: механику этапа 3 убрали целиком
 (ADR-0096), материалы школы открыты всем, кто в школе. Если когда-нибудь понадобится
@@ -2884,8 +2928,9 @@ type="file">`, `prepareExamImage` ужимает до 1280 px, `POST
 пределами окна отказ с названием месяца и ожидание не заводится, у кабинета —
 400 в общем конверте и байты не пишутся.
 
-**2.3. Подтверждение одной кнопкой.** Экран «Оплаты» — пятый пункт навигации,
-роли `accountant` и `admin` (ADR-0025, `navItems.ts`). Выбор месяца сверху,
+**2.3. Подтверждение одной кнопкой.** Экран «Оплаты», роли `accountant` и
+`admin`: у бухгалтера — единственный пункт навигации, у админа — подэкран
+«Учеников» (ADR-0171, предел меню пять пунктов). Выбор месяца сверху,
 по умолчанию текущий в поясе школы. Сначала — те, кто ждёт подтверждения, со
 снимком по нажатию и кнопкой «Подтвердить»; ниже — оплатившие; ниже — молчащие,
 с кнопкой «Отметить оплату» (ADR-0049: главный случай — перевод, который Маша
@@ -2898,7 +2943,16 @@ type="file">`, `prepareExamImage` ужимает до 1280 px, `POST
 Read-after-write обязателен: «подтвердил → `GET /me/payments` ученика показывает
 `paid`», не только «запрос вернул 200».
 
-**Снято (ADR-0157).** Маша не будет отмечать оплаты в кабинете. PR #469 закрыт без мержа. Критерий этапа теперь — напоминание и снимок у Маши в Telegram (2.2, 2.5).
+**Реализовано** — #466 (снимок штату, ADR-0149) и экран (ADR-0171; первая попытка, #469, закрыта без мержа). Снимок,
+загруженный в кабинете, открывается в строке по нажатию
+(`GET /payments/:userId/:month/screenshot`), снимок из бота экран честно
+называет лежащим в Telegram — его байтов у нас нет (ADR-0050). Бухгалтер
+получил свою панель из одного пункта и корень `/payments`; админ входит
+кнопкой в шапке «Учеников». Строка берёт свежее состояние из ответа
+confirm/revoke (`usePayments.ts`, ADR-0087). Поля суммы на экране нет:
+подтверждение — одна кнопка, сумма остаётся необязательной (§16).
+
+**Возвращён 2026-10-06 (ADR-0171, отменяет ADR-0157).** Владелец решил вернуть экран: ученику нужна доска состояния, админу — «кто не оплатил», обоим нужен факт оплаты. Отмечает бухгалтер, кнопка «Отметить оплату» без снимка — главный путь; снимок бухгалтеру в личку (ADR-0159) не меняется.
 
 **2.4. Что видит ученик.** Строка в его кабинете: месяц и одно из трёх — «Оплачено
 15 сентября», «Ждём подтверждения», «Оплаты за сентябрь нет». Рядом — «Отправить
@@ -2929,7 +2983,7 @@ Read-after-write обязателен: «подтвердил → `GET /me/payme
 (ADR-0049).
 
 **2.5. Напоминание по расписанию** (ADR-0051). Шаг тика `напоминания об оплате`
-после шага «дедлайны экзаменов». Настройка школы на экране «Шаблоны», секция
+после шага «дедлайны экзаменов». Настройка школы на экране «Школа» (до ADR-0176 — «Шаблоны»), секция
 «Оплаты»: включатель, день месяца (1–31, 31 в коротком месяце — последний день),
 время, текст шаблона. Подстановки — `{месяц}`, `{сумма}`, `{имя}`, `{ссылка}`, `{контакт}`,
 движок `renderTemplate` общий с постами.
@@ -2937,8 +2991,8 @@ Read-after-write обязателен: «подтвердил → `GET /me/payme
 Получатели: активные ученики без ролей штата, чей месяц не `paid`, с включённым
 видом `payment_due`. Канал — личный чат бота, нет чата — строка в ленте кабинета
 (ADR-0061). Право на отправку забирается `claimOnce` по `reminderSentAt`.
-Отмечать `paid` после ADR-0157 негде, поэтому напоминание получают все активные
-ученики. Текст — «напоминаем об оплате», без «абонемента»: сохранённый старый
+Отмечать `paid` в кабинете стало негде с ADR-0157 (экран вернулся в ADR-0171, но
+получателей это пока не меняет), поэтому напоминание получают все активные ученики. Текст — «напоминаем об оплате», без «абонемента»: сохранённый старый
 дефолт меняет миграция 0016, правленный учителем текст она не трогает.
 
 Текст по умолчанию (учитель правит его сам, дальше не наше дело):
@@ -2995,8 +3049,8 @@ ADR-0150), #471 (секция «Оплаты» на экране «Шаблон�
 через `plural-ru.ts`, юнит-тест `payments-summary.spec.ts`. В барабане
 `shared/src/index.ts` имени пока нет — потребителя в `web` ещё нет, а мёртвый
 реэкспорт роняет `check-shared-exports.mjs`. **Осталось:** вывод наверху экрана
-«Оплаты» и vitest на шапку — снято вместе с экраном (ADR-0157), форматтер ждёт,
-вернут ли экран.
+«Оплаты» и vitest на шапку — снято вместе с экраном (ADR-0157); экран вернулся
+(ADR-0171), вывод числа — отдельным шагом.
 
 **2.7. Напоминание о занятии лично ученику** (отзыв владельца 2026-09-22:
 «уведомления нельзя включить на расписание?»). Тот же пункт этапа 2, что и
@@ -3015,8 +3069,8 @@ ADR-0150), #471 (секция «Оплаты» на экране «Шаблон�
   обязателен.
 - **Кому.** Активные люди с включённым `lesson_soon`. Ученику он в дефолте
   (`STUDENT_NOTIFICATIONS`), штату — нет: учителю занятие и так известно.
-  Групп у ученика пока нет (§11 слой 4.1), поэтому получатели — все ученики
-  школы, как и список занятий, который они уже видят на «Занятиях».
+  Получатель получает напоминание о занятиях, которые сам выбрал для
+  напоминаний (ADR-0185): нет выбора — нет напоминаний.
 - **Куда.** Личный чат бота (`PersonalChats.chatFor`), нет чата — строка в
   ленте кабинета (ADR-0061), как у напоминания об оплате (п. 2.5).
 - **Один раз.** Уникальный индекс `deliveries (broadcastId, channelId)` —
@@ -3029,7 +3083,7 @@ ADR-0150), #471 (секция «Оплаты» на экране «Шаблон�
 - **Чего в пункте нет.** Отдельной школьной настройки «за сколько минут» для
   личного напоминания и отдельного вида под запись занятия — оба добавляют школе
   второй рычаг там, где хватает одного. Своё время у ученика для `lesson_soon`
-  (15/30/60/120, ADR-0162, §13) — не рычаг школы, а личный выбор человека.
+  (0/15/30/60/120, ADR-0162, ADR-0185, §13) — не рычаг школы, а личный выбор человека.
 
 **Не начато.**
 
@@ -3294,3 +3348,80 @@ preload-ом ещё при разборе HTML, отклик на нажатие
    скриптом.
 3. Отдельно и независимо — PR «меньше последовательных шагов к базе» по таблице
    шага 3: сначала `GET /me/exams` и `GET /auth/me`, потом оценка и старт попытки.
+
+## 18. ТЗ: запись занятия — один файл, все площадки
+
+Отзыв владельца 2026-10-10: Дима монтирует запись и загружает её руками в каждое
+место отдельно — YouTube, Telegram, а нужны ещё ВК, кабинет, Boosty. Цель — одна
+загрузка готового файла на сайт, остальное кабинет делает сам. Решение и
+альтернативы — ADR-0180. Заменяет шаг «одна запись = ссылка + видео» из §6 п.3:
+запись несёт файл, ссылку и `file_id` вместе, пост по записи — один.
+
+### Что должно получиться
+
+Дима открывает занятие на сайте, в разделе «Запись» выбирает файл и уходит. Через
+какое-то время запись играет в кабинете, лежит на YouTube, видео стоит в каждом
+Telegram-чате школы с текстом поста, ВК получил ссылку, а в Boosty и Facebook бот
+прислал Диме готовый текст — вставить и нажать «Скопировал, отправил». Что где
+вышло или не вышло — видно на странице занятия.
+
+### Слои, каждый мержится и работает сам
+
+1. **Загрузка записи на сайт.** Новый вид видео (`lesson_videos`) поверх ядра
+   `api/src/video-uploads/`: потолок 2 ГБ, загружает штат, смотрят все, кому
+   видны записи (`/me/lessons/archive`, ADR-0114). Без сжатия в браузере.
+   `Recording` получает `videoId`; файл и ссылка — одна запись. Плеер на странице
+   занятия и в «Записях занятий». Срок хранения в R2 — настройка на экране
+   «Школа», по умолчанию 90 дней; уборщик удаляет файл, запись остаётся со
+   ссылкой. Пока площадок нет, рассылка уходит сразу, как сейчас.
+   Сделано (API): `POST /lesson-videos/uploads`, `PUT /lesson-videos/:id/parts/:n`,
+   `POST /lesson-videos/:id/complete` для штата, `GET /lesson-videos/:id` и
+   `…/poster` для любого вошедшего (только видео, стоящее в записи занятия);
+   `POST /lessons/:id/recording` принимает `videoId`; ключ рассылки записи — `videoId`
+   раньше `url`, а запись только с `videoId` (без ссылки и file_id) рассылку не создаёт — её
+   запустят публикации слоя 2; `ArchivedRecordingDto.videoId`. Сделано (web): в разделе «Запись» — выбор файла
+   общим загрузчиком без сжатия (`canCompress: false`), файл и ссылка уходят одной
+   записью; плеер файла на странице занятия и в «Записях занятий». Срок хранения
+   по дням — следующий PR. Известный пробел: уход со страницы занятия внутри
+   приложения посреди загрузки теряет `videoId` (файл уберёт уборщик сирот) —
+   закрывается в слое 2 привязкой загрузки к занятию на сервере.
+2. **Публикации.** У записи — `publications[{ target, status, attempts,
+nextAttemptAt, error, result }]`, шаг тика планировщика с лизингом (ADR-0014):
+   берёт `pending`, публикует, пишет результат; повтор через 2 и 10 минут, потом
+   `failed` и сообщение учителю. Рассылка записи стартует, когда все публикации
+   дошли до `done` или `failed`. Статус по площадкам — на странице занятия.
+3. **Telegram.** Свой `telegram-bot-api --local` вторым сервисом на Railway с
+   томом; бот переезжает на него (`logOut`, `apiRoot` в Telegraf, вебхук заново).
+   Шаг публикации: `sendVideo` файла из R2 потоком в личку загрузившему —
+   `file_id` в запись, дальше существующая рассылка по `file_id`. RUNBOOK — переезд
+   и откат на облачный API, `/api/health` и Docker-смок проверяют сервер.
+4. **YouTube.** Админ подключает канал школы на экране «Школа» (OAuth,
+   `youtube.upload`, `access_type=offline`; refresh-токен в БД, зашифрован). Шаг
+   публикации: резюмируемая загрузка из R2, ссылка YouTube — в `{ссылка}` поста.
+   Видимость (открытое или по ссылке) — настройка там же.
+5. **ВК файлом** — только когда поддержка ВК выдаст право `video`. Админ входит
+   через VK ID, шаг публикации — `video.save` в видео сообщества, в беседу уходит
+   вложение. До того ВК получает ссылку в тексте.
+
+Число раздела (ADR-0025): сколько записей загружено за месяц и сколько публикаций
+не вышло; на пустой базе — «пока нечего показать».
+
+### Что нужно от владельца
+
+- **Telegram:** `api_id` и `api_hash` с my.telegram.org — нужны своему серверу
+  Bot API, получаются под номером телефона владельца. И согласие на второй сервис
+  на Railway (небольшая доплата к тарифу).
+- **YouTube:** аккаунт, на котором канал школы, и Google Cloud проект с YouTube
+  Data API, опубликованный («In production»). Если аккаунт школы — Google
+  Workspace, проверка приложения не нужна. Пробная загрузка покажет, нужен ли
+  аудит YouTube API (без него загрузки могут быть заперты в «private»).
+- **ВК:** письмо в devsupport@corp.vk.com с просьбой о праве `video` для
+  приложения школы. Без ответа слой 5 не начинается.
+- **Срок хранения** записей в кабинете: 90 дней или иначе.
+
+### Границы — чего здесь нет и почему
+
+- Boosty и Facebook-группы — только ручной канал: у Boosty нет открытого API,
+  Groups API Facebook удалён (ADR-0008, ADR-0180).
+- Запись из облака Zoom напрямую — Дима монтирует запись (ADR-0180).
+- Монтаж, обрезка, обложки в кабинете — нет.

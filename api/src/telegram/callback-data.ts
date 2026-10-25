@@ -1,7 +1,8 @@
 // Callback data кнопок бота — формат «действие:параметр» (CLAUDE.md
 // «Ошибки»: «callback data действие:параметр, параметры валидируются»).
-// Параметр у cancel/topic/norec/sent — ObjectId (id рассылки/занятия/
-// доставки), у notif — NotificationKind (кнопка «Уведомления»), у menu —
+// Параметр у cancel/topic/norec/recpick/sent — ObjectId (id рассылки/занятия/
+// доставки; recpick — «К какому занятию?» под присланной записью, ADR-0175),
+// у notif — NotificationKind (кнопка «Уведомления»), у menu —
 // экран главного меню (bot-menu.ts); разбор и
 // построение — в одном месте, не по одной реализации на кнопку. Валидация
 // формата параметра — за вызывающим кодом (по действию известно, что
@@ -45,6 +46,7 @@ const CALLBACK_ACTIONS = [
   'cancel',
   'topic',
   'norec',
+  'recpick',
   'sent',
   'notif',
   'menu',

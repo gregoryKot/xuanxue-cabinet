@@ -47,6 +47,27 @@ describe('toMyArchivedLessonDto', () => {
     expect(dto.status).toBe('cancelled');
   });
 
+  // ADR-0180: файл в кабинете играет экран ученика; file_id Telegram по-прежнему
+  // наружу не уходит, даже когда рядом лежит videoId.
+  it('запись с файлом в кабинете — videoId в DTO, ссылка рядом, telegramFileId нет', () => {
+    const dto = toMyArchivedLessonDto(
+      lesson({
+        recordings: [
+          { title: 'Файл', videoId: 'video-1', telegramFileId: 'secret-file-id' },
+          { title: 'Оба', url: 'https://cloud.example/rec-2', videoId: 'video-2' },
+        ],
+      }),
+      CLASS,
+      [],
+    );
+
+    expect(dto.recordings).toEqual([
+      { title: 'Файл', videoId: 'video-1' },
+      { title: 'Оба', url: 'https://cloud.example/rec-2', videoId: 'video-2' },
+    ]);
+    expect(JSON.stringify(dto)).not.toContain('secret-file-id');
+  });
+
   it('запись со ссылкой — title и url, без telegramFileId', () => {
     const dto = toMyArchivedLessonDto(
       lesson({

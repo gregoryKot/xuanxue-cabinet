@@ -31,13 +31,13 @@ export class EmailCodeController {
     @Body() body: VerifyEmailCodeDto,
     @Res({ passthrough: true }) res: ResponseLike,
   ): Promise<MeDto> {
-    const { user, cookie } = await this.emailAuthService.verifyCode(
+    const { user, cookies } = await this.emailAuthService.verifyCode(
       body.email,
       body.code,
       DateTime.utc(),
       body.inviteCode,
     );
-    res.setHeader('Set-Cookie', cookie);
+    res.setHeader('Set-Cookie', cookies);
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 }

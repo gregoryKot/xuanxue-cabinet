@@ -16,6 +16,7 @@ import { ExamItemRecord } from '../exams/exam-item.schema';
 import { referencedMediaIds } from '../exams/exam-media-references';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
+import { removeUnreferencedVideos } from '../video-uploads/video-orphans-remove';
 import { STALE_UPLOAD_DAYS } from '../video-uploads/video-upload-stale';
 import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { EXAM_VIDEO_READY_FILTER } from './exam-video.mapper';
@@ -75,16 +76,11 @@ export class ExamVideoSweepService {
     const referenced = new Set(
       (await referencedMediaIds(this, 'videoIds', ids)).map((id) => id.toString()),
     );
-    const orphans = candidates.filter((doc) => !referenced.has(doc._id.toString()));
-    if (orphans.length === 0) return 0;
-
-    // removeNow (ADR-0079) сама кладёт ключ в журнал перед удалением из R2 —
-    // отказ хранилища не теряет ключ молча, следующий тик StorageOrphansService.sweep
-    // доберёт его сам, даже если запись exam_videos удалена уже сейчас.
-    for (const orphan of orphans) {
-      await this.orphans.removeNow(orphan.key, now);
-    }
-    await this.model.deleteMany({ _id: { $in: orphans.map((doc) => doc._id) } });
-    return orphans.length;
+    return removeUnreferencedVideos(
+      { model: this.model, orphans: this.orphans },
+      candidates,
+      referenced,
+      now,
+    );
   }
 }

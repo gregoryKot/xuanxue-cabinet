@@ -29,6 +29,8 @@ function logSample(): Record<string, unknown> {
           limit: '50',
           code: 'g'.repeat(20),
           state: 'h'.repeat(43),
+          code_challenge: 'k'.repeat(43),
+          attempt: 'l'.repeat(24),
         },
         body: {
           email: 'user@example.com',
@@ -37,12 +39,15 @@ function logSample(): Record<string, unknown> {
           code: 'b'.repeat(32),
           inviteCode: 'c'.repeat(32),
           state: 'i'.repeat(43),
+          token: 'j'.repeat(43),
+          code_verifier: 'm'.repeat(43),
           message: { text: '/start join_' + 'd'.repeat(32), chat: { id: 1 } },
         },
       },
       res: {
         headers: {
           'set-cookie': 'session=tok; HttpOnly',
+          location: 'su.xuanxue.daychi:/oauth/cabinet?code=' + 'n'.repeat(43),
           'content-type': 'application/json',
         },
       },
@@ -109,11 +114,16 @@ describe('REDACT_PATHS', () => {
     expect(query.token).toBe('[Redacted]');
     expect(query.code).toBe('[Redacted]');
     expect(query.state).toBe('[Redacted]');
+    expect(query.code_challenge).toBe('[Redacted]');
+    expect(query.attempt).toBe('[Redacted]');
+    expect(body.code_verifier).toBe('[Redacted]');
+    expect(resHeaders.location).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
     expect(body.code).toBe('[Redacted]');
     expect(body.inviteCode).toBe('[Redacted]');
     expect(body.state).toBe('[Redacted]');
+    expect(body.token).toBe('[Redacted]');
     expect((body.message as Record<string, unknown>).text).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');

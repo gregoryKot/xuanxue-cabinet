@@ -91,18 +91,15 @@ export class GoogleAuthController {
     // cookie ничего, даже если первая упала на середине.
     res.setHeader('Set-Cookie', clearGoogleOAuthCookie());
     const cookieHeader = asSingleHeader(req.headers.cookie);
-    const { user, cookie } = await this.googleAuthService.login(
+    const { user, cookies = [] } = await this.googleAuthService.login(
       body,
       cookieHeader,
       DateTime.utc(),
     );
-    // `cookie` — только у входа (GoogleAuthService.login): привязка не
+    // `cookies` — только у входа (GoogleAuthService.login): привязка не
     // выпускает новую сессию (ADR-0059, тот же принцип у EmailLinkService),
     // клиент уже вошёл тем токеном, что принёс с собой.
-    res.setHeader(
-      'Set-Cookie',
-      cookie ? [clearGoogleOAuthCookie(), cookie] : clearGoogleOAuthCookie(),
-    );
+    res.setHeader('Set-Cookie', [clearGoogleOAuthCookie(), ...cookies]);
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 }

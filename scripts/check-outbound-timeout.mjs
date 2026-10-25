@@ -13,8 +13,10 @@
 // check-outbound-timeout.test.mjs гоняет их на строках-фикстурах, не на
 // реальном дереве (тот же приём).
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripLiterals } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // Тесты и тестовая инфраструктура не ходят в сеть в продакшене.
@@ -108,7 +110,7 @@ function main() {
   let totalCalls = 0;
   const findings = [];
   for (const file of collectFiles()) {
-    const fileLabel = relative(ROOT, file);
+    const fileLabel = repoPath(ROOT, file);
     const calls = scanFetchCalls(readFileSync(file, 'utf8'));
     totalCalls += calls.length;
     for (const call of calls) {
@@ -130,7 +132,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт — не при импорте из теста
-// (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

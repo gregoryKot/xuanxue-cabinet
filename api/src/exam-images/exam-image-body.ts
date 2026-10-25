@@ -20,6 +20,7 @@
 import { DateTime } from 'luxon';
 import { EXAM_IMAGE_CONTENT_TYPES } from '@xuanxue/shared';
 import type { ExamImageContentType } from '@xuanxue/shared';
+import type { SessionVerifier } from '../auth/auth.service';
 import { hasSignedSession } from '../common/raw-body-session';
 import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
@@ -47,16 +48,16 @@ function isExamImageContentType(value: string): value is ExamImageContentType {
 }
 
 /** Фабрика вместо голой функции — та же причина, что у
- * `makeIsMaterialFileUpload` (material-file-body.ts): секрет сессии из DI
+ * `makeIsMaterialFileUpload` (material-file-body.ts): проверка сессии из DI
  * замыкается один раз в app.setup.ts, предикат зовётся на каждый запрос. */
 export function makeIsRawImageUpload(
-  secret: string,
+  sessions: SessionVerifier,
 ): (req: IncomingRequestLike) => boolean {
   return (req: IncomingRequestLike): boolean => {
     if ((req.method ?? '').toUpperCase() !== 'POST') return false;
     const path = routePath(req.url);
     if (!RAW_IMAGE_UPLOAD_ROUTES.some((route) => route.test(path))) return false;
     if (!isExamImageContentType(mediaType(req.headers['content-type']))) return false;
-    return hasSignedSession(req, secret, DateTime.utc());
+    return hasSignedSession(req, sessions, DateTime.utc());
   };
 }

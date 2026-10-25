@@ -46,7 +46,7 @@ function fakeConfig(values: Record<string, unknown>): ConfigService {
 
 function fakeAuthService(): AuthService {
   return {
-    issueSession: () => ({ token: 't', cookie: 'session=tok' }),
+    issueSession: () => ({ token: 't', cookies: ['session=tok'] }),
   } as unknown as AuthService;
 }
 
@@ -150,7 +150,7 @@ describe('TelegramAuthService.login', () => {
       inviteCode: 'a'.repeat(32),
     });
     expect(touchedId).toBe(BASE_USER.id);
-    expect(result.cookie).toBe('session=tok');
+    expect(result.cookies).toEqual(['session=tok']);
   });
 
   it('без inviteCode — тоже зовёт resolveTelegramUser, просто с undefined', async () => {

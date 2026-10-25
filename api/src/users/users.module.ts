@@ -19,6 +19,7 @@ import { InviteLinkService } from './invite-link.service';
 import { LoginIdentityService } from './login-identity.service';
 import { MyNoTelegramController } from './my-no-telegram.controller';
 import { MyProfileController } from './my-profile.controller';
+import { MyHomeTilesController } from './my-home-tiles.controller';
 import { MyStudentModeController } from './my-student-mode.controller';
 import { TeachersService } from './teachers.service';
 import { TelegramLinkCodeService } from './telegram-link-code.service';
@@ -31,6 +32,7 @@ import { UserNamesService } from './user-names.service';
 import { UserNoTelegramService } from './user-no-telegram.service';
 import { UserProfileService } from './user-profile.service';
 import { UserRolesService } from './user-roles.service';
+import { UserHomeTilesService } from './user-home-tiles.service';
 import { UserStudentModeService } from './user-student-mode.service';
 import { UserStatusService } from './user-status.service';
 import { UsersController } from './users.controller';
@@ -67,6 +69,7 @@ import { UsersService } from './users.service';
     MyProfileController,
     MyNoTelegramController,
     MyStudentModeController,
+    MyHomeTilesController,
   ],
   providers: [
     UsersService,
@@ -79,6 +82,7 @@ import { UsersService } from './users.service';
     UserProfileService,
     UserNoTelegramService,
     UserStudentModeService,
+    UserHomeTilesService,
     UserBotChatStatusService,
     UserEmailService,
     EmailLoginUserService,

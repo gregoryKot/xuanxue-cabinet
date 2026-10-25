@@ -32,6 +32,7 @@ const ME: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 afterEach(() => {

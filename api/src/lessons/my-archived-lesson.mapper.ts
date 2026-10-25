@@ -53,6 +53,8 @@ export function toMyArchivedLessonDto(
   };
 }
 
+// `videoId` отдаётся — это не секрет: вид видео проверяет доступ сам
+// (LessonVideosService, видео должно стоять в записи занятия).
 // `telegramFileId` наружу не уходит никогда (ключ к файлу в Telegram, ученику
 // бесполезен и не его дело — тот же приём, что у media-asset.mapper.ts):
 // вместо него флаг `inTelegramOnly`. Запись без url и без telegramFileId в
@@ -60,9 +62,11 @@ export function toMyArchivedLessonDto(
 // допускает — такую запись пропускаем совсем, чтобы экран не рисовал строку
 // «Открыть» в никуда.
 function toArchivedRecordingDto(recording: Recording): ArchivedRecordingDto | null {
-  if (recording.url) return { title: recording.title, url: recording.url };
-  if (recording.telegramFileId) {
-    return { title: recording.title, inTelegramOnly: true };
-  }
+  const { title, url, videoId } = recording;
+  // Файл в кабинете и ссылка — одна запись (ADR-0180): экран играет файл, ссылка
+  // остаётся рядом. `inTelegramOnly` — только когда открыть в браузере нечем.
+  if (videoId || url)
+    return { title, url: url || undefined, videoId: videoId || undefined };
+  if (recording.telegramFileId) return { title, inTelegramOnly: true };
   return null;
 }

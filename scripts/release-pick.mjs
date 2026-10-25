@@ -14,6 +14,7 @@ import {
   DEFAULT_STAGING_HEALTH_URL,
 } from './release-candidate.mjs';
 import { ciStatusFor, holdReason } from './release-github.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 function runGit(args) {
   const result = spawnSync('git', args, {
@@ -126,7 +127,7 @@ export async function runPick() {
   writeOutput('reason', '');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   runPick().catch((err) => {
     console.error(`❌ release-pick: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;

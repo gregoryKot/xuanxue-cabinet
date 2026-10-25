@@ -1,12 +1,14 @@
 // «Запись?» — шаг тика (docs/PLAN.md §6 «Telegram-бот для учителя»): занятие
 // закончилось (startsAt + durationMin ≤ now), бот ещё не спрашивал
-// (recordingPromptedAt), класс активен → условный апдейт recordingPromptedAt
-// (ДО отправки — второй тик/инстанс не спросит дважды) → каждому учителю
-// текст + кнопка «Записи не будет», ожидание — bot_sessions kind 'recording'.
+// (recordingPromptedAt), класс активен, у занятия была ссылка (lesson-link.ts;
+// без ссылки — только отметка, recording-prompt.queries.ts) → условный апдейт
+// recordingPromptedAt (ДО отправки — второй тик/инстанс не спросит дважды) →
+// каждому учителю текст + кнопка «Записи не будет», ожидание — bot_sessions
+// kind 'recording'.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
-import type { Model, Types } from 'mongoose';
+import type { Model } from 'mongoose';
 import { classDisplayName } from '@xuanxue/shared';
 import { claimAndRun } from '../common/claim-once';
 import { errorMessage, errorStack } from '../common/error-info';
@@ -15,7 +17,14 @@ import { inlineButton } from '../telegram/callback-data';
 import { BotSessionService } from '../telegram/bot-session.service';
 import { PersonalChats, type PersonalChat } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
+import { hasLessonLink } from './lesson-link';
 import { LessonRecord } from './lesson.schema';
+import {
+  DUE_LESSON_PROJECTION,
+  isLessonOver,
+  markNoRecordingExpected,
+  type DueLesson,
+} from './recording-prompt.queries';
 
 // Запас, чтобы не пересканировать всю историю scheduled-занятий без
 // recordingPromptedAt (тот же приём, что DUE_LOOKBACK_MINUTES у планировщика
@@ -26,14 +35,6 @@ const LOOKBACK_DAYS = 7;
 // уткнутся в 429 Telegram; 20 на тик — тот же порядок, что делает раннер
 // доставок, следующий тик доберёт остаток.
 const PROMPT_BATCH_LIMIT = 20;
-
-interface DueLesson {
-  _id: Types.ObjectId;
-  classId: Types.ObjectId;
-  topic: string;
-  startsAt: Date;
-  durationMin: number;
-}
 
 export interface RecordingPromptResult {
   prompted: number;
@@ -72,7 +73,7 @@ export class RecordingPromptService {
             $lte: now.toJSDate(),
           },
         },
-        { classId: 1, topic: 1, startsAt: 1, durationMin: 1 },
+        DUE_LESSON_PROJECTION,
       )
       .limit(PROMPT_BATCH_LIMIT)
       .lean<DueLesson[]>();
@@ -83,10 +84,19 @@ export class RecordingPromptService {
       const cls = await this.classModel
         .findOne(
           { _id: lesson.classId, active: true },
-          { title: 1, groupLabel: 1, tz: 1 },
+          { title: 1, groupLabel: 1, tz: 1, zoomLink: 1 },
         )
-        .lean<{ title: string; groupLabel?: string; tz: string } | null>();
+        .lean<{
+          title: string;
+          groupLabel?: string;
+          tz: string;
+          zoomLink?: string;
+        } | null>();
       if (!cls) continue; // класс выключен/удалён — спрашивать не о чем
+      if (!hasLessonLink(lesson, cls)) {
+        await markNoRecordingExpected(this.lessonModel, lesson._id, now);
+        continue;
+      }
       // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
       // try/catch — упади promptTeachers (например, botSessions.
       // startRecordingWait не записался в Mongo), отметка осталась бы
@@ -135,11 +145,4 @@ export class RecordingPromptService {
       await this.bot.sendMessage(chat.chatId, text, buttons);
     }
   }
-}
-
-function isLessonOver(lesson: DueLesson, now: DateTime): boolean {
-  const endsAt = DateTime.fromJSDate(lesson.startsAt, { zone: 'utc' }).plus({
-    minutes: lesson.durationMin,
-  });
-  return endsAt <= now;
 }

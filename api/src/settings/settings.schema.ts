@@ -5,6 +5,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SCHOOL_TZ } from '@xuanxue/shared';
 import { plain, type FieldPolicy } from '../common/field-policy';
+import {
+  SettingsBoardNoticeSchema,
+  type SettingsBoardNoticeSubdoc,
+} from './settings-board-notice.schema';
 
 export const SETTINGS_SCHOOL_ID = 'school';
 
@@ -97,6 +101,11 @@ export class SettingsRecord {
   // (DEFAULT_PAYMENT_REMINDER) подставляется при чтении (toSettingsDto).
   @Prop({ type: SettingsPaymentReminderSchema })
   paymentReminder?: SettingsPaymentReminderSubdoc;
+
+  // Не required и без default: пока учитель не написал объявление, поля нет, и
+  // `GET /me/board` отдаёт `notice: null` (ADR-0172).
+  @Prop({ type: SettingsBoardNoticeSchema })
+  boardNotice?: SettingsBoardNoticeSubdoc;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);
@@ -123,5 +132,9 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   'paymentReminder.template': plain(
     'текст пишет учитель, уходит ученику как есть — данных ученика в нём нет, они подставляются при отправке (ADR-0051)',
   ),
+  'boardNotice.text': plain(
+    'текст пишет учитель и показывает всем ученикам на доске как есть — персональных данных в нём нет (ADR-0172)',
+  ),
+  'boardNotice.until': plain('дата «YYYY-MM-DD» — последний день показа, нужна выборке'),
   'paymentReminder.time': plain('время суток «HH:mm» в поясе школы, нужно планировщику'),
 };

@@ -3,14 +3,26 @@
 // модуля вынести нельзя, — а всё, что после него, живёт здесь: типизированная
 // ссылка на мок и сброс между тестами. Именно этот хвост jscpd поймал как
 // дубль в AppShell.test.tsx и LessonsScreen.test.tsx (CLAUDE.md «Дубли»).
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { apiFetch } from '../api/http';
 
 export const mockedApiFetch = vi.mocked(apiFetch);
 
 /** Зовётся на уровне файла теста: регистрирует сброс мока после каждого
- * теста, чтобы заглушки одного не протекали в следующий. */
+ * теста, чтобы заглушки одного не протекали в следующий.
+ *
+ * Счётчик вызовов чистится ещё и в начале теста. `afterEach` файла идёт раньше
+ * общего `cleanup()` (setupTests.ts), и экран прошлого теста между ними ещё
+ * смонтирован: его эффект, отложенный планировщиком React, успевал позвать
+ * `apiFetch` уже после сброса и записывался следующему тесту. Так упал
+ * StaffBoard.test.tsx «штат в режиме ученика…» на main ac85bbc (CI 39251428020):
+ * очередь проверки, которую просил предыдущий тест с ролью assistant. К
+ * `beforeEach` прошлый экран уже размонтирован, а `mockClear` оставляет
+ * заглушки, поставленные в `beforeEach` самого файла. */
 export function resetApiFetchBetweenTests(): void {
+  beforeEach(() => {
+    mockedApiFetch.mockClear();
+  });
   afterEach(() => {
     mockedApiFetch.mockReset();
   });

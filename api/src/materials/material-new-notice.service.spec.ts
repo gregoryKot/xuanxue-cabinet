@@ -270,6 +270,31 @@ describe('MaterialNewNoticeService.announce (ADR-0162)', () => {
       expect(push.sendToUser).toHaveBeenCalledTimes(2);
     });
 
+    // ADR-0185: выбор напоминаний («Занятие скоро») материал не трогает.
+    it('выбор напоминаний материал не меняет: решает только «о каких занятиях»', async () => {
+      const inScope = await student('Ваня');
+      const outOfScope = await student('Маша');
+      const thisClass = await createClass({ title: 'Цигун для глаз' });
+      const otherClass = await createClass({ title: 'Тайцзи' });
+      await onlyClasses(inScope, [thisClass._id.toString()]);
+      await onlyClasses(outOfScope, [otherClass._id.toString()]);
+      await prefsModel.updateOne(
+        { userId: inScope },
+        { $set: { reminderClassIds: [otherClass._id.toString()] } },
+      );
+      await prefsModel.updateOne(
+        { userId: outOfScope },
+        { $set: { reminderClassIds: [thisClass._id.toString()] } },
+      );
+      await material({ classIds: [thisClass._id.toString()] });
+      const { service } = build();
+
+      expect(await service.announce(NOW)).toEqual({ notified: 1 });
+
+      expect(await rowsOf(inScope)).toHaveLength(1);
+      expect(await rowsOf(outOfScope)).toEqual([]);
+    });
+
     it('«выбранные» без галочек не получают материал с занятием', async () => {
       const id = await student('Ваня');
       const cls = await createClass();

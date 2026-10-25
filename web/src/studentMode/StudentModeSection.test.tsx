@@ -70,7 +70,7 @@ describe('StudentModeSection — режим выключен', () => {
     ).toBeInTheDocument();
   });
 
-  it('нажатие шлёт PUT { enabled: true }, подпись меняется по ответу, ведёт на «Задания»', async () => {
+  it('нажатие шлёт PUT { enabled: true }, подпись меняется по ответу, ведёт на «Главную»', async () => {
     const user = userEvent.setup();
     renderSection(STAFF_ME, { '/me/student-mode': STAFF_IN_STUDENT_MODE_ME });
 
@@ -87,7 +87,7 @@ describe('StudentModeSection — режим выключен', () => {
     expect(
       await screen.findByRole('button', { name: 'Вернуться к своей роли' }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('path')).toHaveTextContent('/tasks');
+    expect(screen.getByTestId('path')).toHaveTextContent('/board');
     // Ответ записи применён как есть: второго чтения профиля нет (ADR-0087).
     expect(callsTo('/auth/me')).toHaveLength(1);
   });
@@ -146,7 +146,7 @@ describe('StudentModeSection — режим выключен', () => {
 });
 
 describe('StudentModeSection — режим включён', () => {
-  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Экзамены» штата', async () => {
+  it('кнопка «Вернуться к своей роли» шлёт PUT { enabled: false } и ведёт на «Главную»', async () => {
     const user = userEvent.setup();
     renderSection(STAFF_IN_STUDENT_MODE_ME, { '/me/student-mode': STAFF_ME });
 
@@ -162,6 +162,6 @@ describe('StudentModeSection — режим включён', () => {
     expect(
       await screen.findByRole('button', { name: 'Включить режим ученика' }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('path')).toHaveTextContent('/exams');
+    expect(screen.getByTestId('path')).toHaveTextContent('/board');
   });
 });

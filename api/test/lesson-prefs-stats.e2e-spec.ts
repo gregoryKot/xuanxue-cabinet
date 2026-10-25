@@ -1,12 +1,16 @@
-// e2e число для штата к выбору «о каких занятиях» и «за сколько» (ADR-0162,
-// п. 5) на настоящем AppModule: GET /notifications/lesson-prefs-stats — без
+// e2e число для штата к настройкам напоминаний (ADR-0185) на настоящем AppModule: GET /notifications/lesson-prefs-stats — без
 // сессии 401, ученику и бухгалтеру 403 (это школьная сводка, не данные
 // человека), штату — три числа. Read-after-write через две точки входа: ученик
-// пишет свой выбор `PUT /me/notifications/lessons/...`, штат читает число.
+// пишет свой выбор `PATCH /me/notifications/lessons/sync`, штат читает число.
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ClassDto, LessonPrefsStatsDto } from '@xuanxue/shared';
+import type {
+  ApiErrorBody,
+  ClassDto,
+  LessonPrefsStatsDto,
+  ReminderChange,
+} from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { NotificationPrefsRecord } from '../src/notifications/notification-prefs.schema';
 import { USER_MODEL_NAME } from '../src/users/user-data.registry';
@@ -16,8 +20,14 @@ import { sessionCookieFor, withCsrf } from './e2e-support/http';
 import { createUserWithSession } from './e2e-support/session';
 
 const STATS_PATH = '/api/notifications/lesson-prefs-stats';
+const SYNC_PATH = '/api/me/notifications/lessons/sync';
 const SCOPE_PATH = '/api/me/notifications/lessons/scope';
-const REMINDER_PATH = '/api/me/notifications/lessons/reminder-minutes';
+
+const counts = (activeStudents: number, withReminders: number, ownReminder: number) => ({
+  activeStudents,
+  withReminders,
+  ownReminder,
+});
 
 describe('Число «выбрали свои занятия и время» для штата (e2e)', () => {
   let testApp: TestApp;
@@ -62,6 +72,17 @@ describe('Число «выбрали свои занятия и время» д
     return res.body as ClassDto;
   }
 
+  /** Запись выбора напоминаний, как её делает кабинет и приложение. */
+  async function saveReminders(
+    cookie: string,
+    ...changes: ReminderChange[]
+  ): Promise<void> {
+    await withCsrf(request(server()).patch(SYNC_PATH))
+      .set('Cookie', cookie)
+      .send({ version: 1, changes })
+      .expect(200);
+  }
+
   async function getStats(cookie: string): Promise<LessonPrefsStatsDto> {
     const res = await request(server()).get(STATS_PATH).set('Cookie', cookie);
     expect(res.status).toBe(200);
@@ -88,30 +109,19 @@ describe('Число «выбрали свои занятия и время» д
 
   it('штат видит те же числа: учитель, помощник и админ', async () => {
     const vanya = await studentCookie('Ваня');
-    await withCsrf(request(server()).put(REMINDER_PATH))
-      .set('Cookie', vanya)
-      .send({ minutes: 15 })
-      .expect(200);
+    await saveReminders(vanya, { kind: 'lead', minutes: 15 });
 
     for (const role of ['teacher', 'assistant', 'admin'] as const) {
       const cookie = await sessionCookieFor(testApp.app, [role]);
 
-      expect(await getStats(cookie)).toEqual({
-        activeStudents: 1,
-        chosenClasses: 0,
-        ownReminder: 1,
-      });
+      expect(await getStats(cookie)).toEqual(counts(1, 0, 1));
     }
   });
 
   it('пустая школа — три нуля, штат в число не входит', async () => {
     const teacher = await sessionCookieFor(testApp.app, ['teacher']);
 
-    expect(await getStats(teacher)).toEqual({
-      activeStudents: 0,
-      chosenClasses: 0,
-      ownReminder: 0,
-    });
+    expect(await getStats(teacher)).toEqual(counts(0, 0, 0));
   });
 
   it('ученики выбирают сами → штат видит число сразу (read-after-write)', async () => {
@@ -120,38 +130,22 @@ describe('Число «выбрали свои занятия и время» д
     const masha = await studentCookie('Маша');
     await studentCookie('Петя');
     const teacher = await sessionCookieFor(testApp.app, ['teacher']);
-    expect(await getStats(teacher)).toEqual({
-      activeStudents: 3,
-      chosenClasses: 0,
-      ownReminder: 0,
-    });
+    expect(await getStats(teacher)).toEqual(counts(3, 0, 0));
 
+    await saveReminders(vanya, { kind: 'class', id: cls.id, selected: true });
+    // Старый фильтр «о каких занятиях» напоминаниями не считается.
     await withCsrf(request(server()).put(SCOPE_PATH))
-      .set('Cookie', vanya)
+      .set('Cookie', masha)
       .send({ mode: 'selected', classIds: [cls.id] })
       .expect(200);
-    // «Все» с галочкой — не выбор: режим «все» список не стирает.
-    await withCsrf(request(server()).put(SCOPE_PATH))
-      .set('Cookie', masha)
-      .send({ mode: 'all', classIds: [cls.id] })
-      .expect(200);
-    await withCsrf(request(server()).put(REMINDER_PATH))
-      .set('Cookie', masha)
-      .send({ minutes: 120 })
-      .expect(200);
+    await saveReminders(masha, { kind: 'lead', minutes: 0 });
 
-    expect(await getStats(teacher)).toEqual({
-      activeStudents: 3,
-      chosenClasses: 1,
-      ownReminder: 1,
-    });
+    expect(await getStats(teacher)).toEqual(counts(3, 1, 1));
 
-    // Вернулся к «как в школе» — число падает обратно.
-    await withCsrf(request(server()).put(REMINDER_PATH))
-      .set('Cookie', masha)
-      .send({ minutes: null })
-      .expect(200);
-    expect((await getStats(teacher)).ownReminder).toBe(0);
+    // Снял занятие и вернулся к «как в школе» — числа падают обратно.
+    await saveReminders(vanya, { kind: 'class', id: cls.id, selected: false });
+    await saveReminders(masha, { kind: 'lead', minutes: null });
+    expect(await getStats(teacher)).toEqual(counts(3, 0, 0));
   });
 
   it('заблокированный ученик в числа не входит, а ответ — ровно три числа', async () => {
@@ -168,8 +162,8 @@ describe('Число «выбрали свои занятия и время» д
     expect(res.status).toBe(200);
     expect(Object.keys(res.body as object).sort()).toEqual([
       'activeStudents',
-      'chosenClasses',
       'ownReminder',
+      'withReminders',
     ]);
     expect((res.body as LessonPrefsStatsDto).activeStudents).toBe(1);
   });

@@ -1,7 +1,5 @@
-// Подъём Mongo + сборка MessageHandler для трёх message.handler.*.spec.ts
-// (спек-лимит 300 строк — CLAUDE.md «Файлы»). fakeCtx/messageOf —
-// message.handler.fake-ctx.ts, seedTeacher/seedLesson — message.handler.seed.ts
-// (файл-лимит 150 у каждого).
+// Подъём Mongo + сборка MessageHandler для message.handler.*.spec.ts (спек-лимит
+// 300 строк). fakeCtx — message.handler.fake-ctx.ts, seedLesson — message.handler.seed.ts.
 import type { Connection, Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
@@ -11,6 +9,7 @@ import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.s
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
+import type { LessonVideosService } from '../../lesson-videos/lesson-videos.service';
 import { LessonsService } from '../../lessons/lessons.service';
 import { MaterialRecord, MaterialSchema } from '../../materials/material.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
@@ -109,12 +108,14 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     broadcastModel,
     userModel,
     materialModel,
+    {} as unknown as LessonVideosService,
   );
   const recordingWaitHandler = new RecordingWaitHandler(
     new BotSessionService(botSessionModel),
     lessonsService,
     broadcastModel,
     classModel,
+    lessonModel,
   );
   const topicWaitHandler = new TopicWaitHandler(
     new BotSessionService(botSessionModel),

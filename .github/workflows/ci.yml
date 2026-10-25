@@ -312,6 +312,8 @@ jobs:
         run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение
         run: node scripts/check-adr-numbers.mjs
+      - name: скилл /collaborate установлен и отслеживается git (ADR-0169)
+        run: node scripts/check-workshop-skill.mjs
       # 2026-09-27 маркеры конфликта уехали в main в оглавлении ADR: prettier
       # переформатировал их в таблицу и цитату, и ни один гейт их не увидел.
       - name: маркеров конфликта слияния нет

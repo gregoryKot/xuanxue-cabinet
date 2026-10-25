@@ -9,9 +9,8 @@
 // isPaymentContactVisible (myPaymentsVisibility.ts), не условие в JSX.
 import type { CSSProperties } from 'react';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { RichText } from '../components/RichText';
-import { screenExplanationStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
+import { PaymentContactLine } from './PaymentContactLine';
 import { PaymentReminderDayField } from './PaymentReminderDayField';
 import { useMyPayments } from './useMyPayments';
 
@@ -31,13 +30,7 @@ export function PaymentContactNote() {
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
       {loading && !error && <SkeletonLines widths={['85%']} />}
 
-      {page && !error && (
-        <p style={screenExplanationStyle}>
-          {/* Без `**` вокруг контакта: ник внутри него ссылка, а ссылка сама
-              выделена; акцент разрывался бы на непарные маркеры. */}
-          <RichText text={`Отправьте скриншот об оплате ${page.contact}.`} />
-        </p>
-      )}
+      {page && !error && <PaymentContactLine contact={page.contact} />}
 
       {/* Выбор дня — только когда школа напоминание включила: сервер тогда
           присылает `reminder` (ADR-0161, ADR-0069), иначе выбирать нечего. */}

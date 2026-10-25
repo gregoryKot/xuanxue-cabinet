@@ -7,8 +7,10 @@
 // findCollisions) без обращения к fs — check-route-collisions.test.mjs гоняет
 // их на строках-фикстурах, не на реальном дереве api/src.
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripComments } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROUTE_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'All'];
 
@@ -94,7 +96,7 @@ function main() {
 
   const entries = [];
   for (const file of walk(SRC)) {
-    entries.push({ fileLabel: relative(ROOT, file), src: readFileSync(file, 'utf8') });
+    entries.push({ fileLabel: repoPath(ROOT, file), src: readFileSync(file, 'utf8') });
   }
 
   const { routes, collisions } = findCollisions(entries);
@@ -115,7 +117,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

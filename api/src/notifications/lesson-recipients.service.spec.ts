@@ -4,6 +4,7 @@
 // спеки самих шагов: вид — параметр, и у разных видов получатели разные.
 import type { Connection, Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { writeOwnReminderMinutes } from '../test-support/own-reminder-minutes';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecipientsService } from './lesson-recipients.service';
 import { LessonScopeService } from './lesson-scope.service';
@@ -12,6 +13,13 @@ import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
 } from './notification-prefs.schema';
+
+// Выбор по умолчанию: обо всех занятиях, без выбора напоминаний (ADR-0185).
+const ALL_NO_REMINDERS = {
+  scope: { mode: 'all', classIds: [] },
+  reminderClassIds: new Set<string>(),
+  reminderLessonIds: new Set<string>(),
+};
 
 describe('LessonRecipientsService.findFor', () => {
   let memory: MemoryMongo;
@@ -56,8 +64,8 @@ describe('LessonRecipientsService.findFor', () => {
 
     expect(recipients.map((r) => r.id).sort()).toEqual([vanya, masha].sort());
     // Выбор есть у каждого получателя: нет записи — «обо всех» и «как в школе».
-    expect(lessonPrefs.get(vanya)).toEqual({ scope: { mode: 'all', classIds: [] } });
-    expect(lessonPrefs.get(masha)).toEqual({ scope: { mode: 'all', classIds: [] } });
+    expect(lessonPrefs.get(vanya)).toEqual(ALL_NO_REMINDERS);
+    expect(lessonPrefs.get(masha)).toEqual(ALL_NO_REMINDERS);
   });
 
   it('вид выключен — человека в списке нет, а по другому виду он есть: вид — параметр', async () => {
@@ -95,7 +103,7 @@ describe('LessonRecipientsService.findFor', () => {
       const { recipients, prefs: lessonPrefs } = await service.findFor('lesson_soon');
 
       expect(recipients.map((r) => r.id)).toEqual([teacher]);
-      expect(lessonPrefs.get(teacher)).toEqual({ scope: { mode: 'all', classIds: [] } });
+      expect(lessonPrefs.get(teacher)).toEqual(ALL_NO_REMINDERS);
     });
 
     it('выключил режим — из получателей пропал: чтение read-after-write по базе', async () => {
@@ -144,15 +152,33 @@ describe('LessonRecipientsService.findFor', () => {
     const picky = await person('Ваня');
     const plain = await person('Маша');
     await scopes.set(picky, { mode: 'selected', classIds: ['c1'] });
-    await scopes.setReminderMinutes(picky, 30);
+    await writeOwnReminderMinutes(prefsModel, picky, 30);
 
     const { prefs: lessonPrefs } = await service.findFor('lesson_soon');
 
     expect(lessonPrefs.get(picky)).toEqual({
+      ...ALL_NO_REMINDERS,
       scope: { mode: 'selected', classIds: ['c1'] },
       reminderMinutes: 30,
     });
-    expect(lessonPrefs.get(plain)).toEqual({ scope: { mode: 'all', classIds: [] } });
+    expect(lessonPrefs.get(plain)).toEqual(ALL_NO_REMINDERS);
+  });
+
+  // ADR-0185: выбор напоминаний приезжает вместе с получателем, у каждого свой.
+  it('выбор напоминаний приходит вместе с получателем; у кого его нет — пустые множества', async () => {
+    const chooser = await person('Ваня');
+    const plain = await person('Маша');
+    await prefsModel.create({
+      userId: chooser,
+      reminderClassIds: ['c1'],
+      reminderLessonIds: ['l1', 'l2'],
+    });
+
+    const { prefs: lessonPrefs } = await service.findFor('lesson_soon');
+
+    expect(lessonPrefs.get(chooser)?.reminderClassIds).toEqual(new Set(['c1']));
+    expect(lessonPrefs.get(chooser)?.reminderLessonIds).toEqual(new Set(['l1', 'l2']));
+    expect(lessonPrefs.get(plain)).toEqual(ALL_NO_REMINDERS);
   });
 
   it('учеников нет — пустой список и пустой выбор, без ошибки', async () => {

@@ -35,6 +35,7 @@ const STUDENT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {

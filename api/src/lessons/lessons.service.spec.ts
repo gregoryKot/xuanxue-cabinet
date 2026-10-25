@@ -16,6 +16,7 @@ import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
+import type { LessonVideosService } from '../lesson-videos/lesson-videos.service';
 import { LessonsService } from './lessons.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
@@ -99,6 +100,7 @@ describe('LessonsService', () => {
       broadcastModel,
       userModel,
       materialModel,
+      {} as unknown as LessonVideosService,
     );
   }, 60_000);
 

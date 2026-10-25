@@ -7,7 +7,7 @@
 // попадает, поэтому редакция здесь.
 import type { IncomingMessage } from 'http';
 import pino from 'pino';
-import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
+import { INVITE_QUERY_PARAM, NATIVE_ATTEMPT_PARAM } from '@xuanxue/shared';
 
 // Токен входа по email сейчас всегда приходит в теле (POST /auth/email/verify,
 // req.body.inviteCode/hash — см. redact-paths.ts), не query. Параметр описан
@@ -21,6 +21,10 @@ const LOGIN_TOKEN_QUERY_PARAM = 'token';
 // редактирует REDACT_PATHS.
 const GOOGLE_CODE_QUERY_PARAM = 'code';
 const GOOGLE_STATE_QUERY_PARAM = 'state';
+// Вход нативного Daychi (ADR-0181): `GET /auth/native/authorize` несёт
+// code_challenge и тот же state, `/api/auth/native/continue` — номер попытки.
+// Профиль запрещает адресам входа попадать в журналы целиком.
+const NATIVE_QUERY_PARAMS = ['code_challenge', 'code_verifier', NATIVE_ATTEMPT_PARAM];
 
 // Тот же текст, что censor в buildPinoHttpOptions (redact.censor) — единый
 // маркер «здесь был секрет» для обоих механизмов редакции.
@@ -31,6 +35,7 @@ const SENSITIVE_QUERY_PARAMS: readonly string[] = [
   LOGIN_TOKEN_QUERY_PARAM,
   GOOGLE_CODE_QUERY_PARAM,
   GOOGLE_STATE_QUERY_PARAM,
+  ...NATIVE_QUERY_PARAMS,
 ];
 
 // Чистая функция — вырезает значения перечисленных query-параметров из url,
@@ -51,10 +56,15 @@ export function redactQueryValues(url: string, params: readonly string[]): strin
   return `${path}?${query}`;
 }
 
+// Имя сравнивается раскодированным тем же URLSearchParams, которым query
+// разбирают обработчики (native-browser-query.ts, браузер): `%73tate=` для них
+// тот же `state`, и сырое сравнение оставляло значение в логе (Workshop #7,
+// ревью 2026-10-11).
 function redactPair(pair: string, params: readonly string[]): string {
   const separatorIndex = pair.indexOf('=');
-  const name = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
-  return params.includes(name) ? `${name}=${REDACTED_VALUE}` : pair;
+  const rawName = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+  const [decoded] = new URLSearchParams(pair);
+  return decoded && params.includes(decoded[0]) ? `${rawName}=${REDACTED_VALUE}` : pair;
 }
 
 // Обёртка над стандартным сериализатором pino (`pino.stdSerializers.req`):

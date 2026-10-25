@@ -79,13 +79,13 @@ describe('RecordingSection — форма добавления', () => {
     );
   });
 
-  it('пустая ссылка — клиентская ошибка на поле «Ссылка на запись», onAdd не вызывается', async () => {
+  it('ни файла, ни ссылки — клиентская ошибка на поле «Ссылка на запись», onAdd не вызывается', async () => {
     const user = userEvent.setup();
     const { onAdd } = renderSection();
 
     await user.click(screen.getByRole('button', { name: 'Добавить запись' }));
 
-    const error = await screen.findByText('Укажите ссылку на запись.');
+    const error = await screen.findByText('Выберите файл записи или укажите ссылку.');
     expect(error).toBeInTheDocument();
     // Ошибка формы — на поле «Ссылка на запись» (ревью п.7), не «Название записи».
     expect(

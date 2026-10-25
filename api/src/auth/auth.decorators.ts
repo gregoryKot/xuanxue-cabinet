@@ -19,6 +19,22 @@ export const SKIP_CSRF_KEY = 'skipCsrf';
 export const SkipCsrf = (): ReturnType<typeof SetMetadata> =>
   SetMetadata(SKIP_CSRF_KEY, true);
 
+export const RENEW_ACTIVE_COOKIE_ONLY_KEY = 'renewActiveCookieOnly';
+/** Продление сессии на этом маршруте отдаёт одно поле `Set-Cookie` — действующую
+ * cookie профиля, без уборки прежней host-only `session`. Ответ уходит на
+ * бэкенд Daychi, а он передаёт браузеру только cookie сессии; уборка host-only
+ * относится к ответам самого кабинета браузеру (ADR-0183, контракт Workshop
+ * web-wiki-session). */
+export const RenewActiveCookieOnly = (): ReturnType<typeof SetMetadata> =>
+  SetMetadata(RENEW_ACTIVE_COOKIE_ONLY_KEY, true);
+
+export const ALLOW_NATIVE_BEARER_KEY = 'allowNativeBearer';
+/** Маршрут принимает вместо cookie сессии bearer приложения Daychi (ADR-0185).
+ * Без метки заголовок Authorization гвард не читает вовсе — ни один другой
+ * маршрут кабинета bearer не открывает (SECURITY §2). */
+export const AllowNativeBearer = (): ReturnType<typeof SetMetadata> =>
+  SetMetadata(ALLOW_NATIVE_BEARER_KEY, true);
+
 export const ROLES_KEY = 'roles';
 /** Маршрут виден только сессии хотя бы с одной из перечисленных ролей
  * (ADR-0010: данные школы — по роли, не по владельцу). Первый потребитель —

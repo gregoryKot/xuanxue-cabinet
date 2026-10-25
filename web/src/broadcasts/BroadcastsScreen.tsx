@@ -1,16 +1,17 @@
 // «Рассылки» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
-// docs/adr/0025). Вход в «Каналы» и «Шаблоны» — ссылками внизу, не
-// пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
+// docs/adr/0025). Вход в «Каналы» и «Шаблоны» — вторичные кнопки в шапке
+// (ScreenActions.tsx, дополнение 2026-10-08): внизу под журналом их надо было
+// долистывать, не пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
 // прямо сейчас. Новая рассылка — страница `/broadcasts/new`
 // (BroadcastNewScreen.tsx, ADR-0033), отсюда только переход. Числа, фильтры,
 // пустое состояние — отдельные компоненты (CLAUDE.md «Файлы»).
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { JOURNAL_RANGE_MAX_WEEKS, type BroadcastStatus } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
+import { screenSectionStyle } from '../components/screenLayout';
+import { ScreenActions, type ScreenAction } from '../components/ScreenActions';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useChannels } from '../channels/useChannels';
@@ -18,7 +19,6 @@ import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useSettings } from '../templates/useSettings';
 import { BroadcastCard } from './BroadcastCard';
 import { BroadcastFilters } from './BroadcastFilters';
-import { BroadcastsSectionLinks } from './BroadcastsSectionLinks';
 import { BroadcastsSummary } from './BroadcastsSummary';
 import { DEFAULT_JOURNAL_RANGE_WEEKS } from './broadcastWindow';
 import { initialStatusFromQuery } from './broadcastStatusFilter';
@@ -32,6 +32,8 @@ const TITLE = 'Рассылки';
 // (pr-k3-fixes.md п.19).
 const EXPLANATION = 'Журнал показывает, что ушло, что ждёт и что не отправилось.';
 const BROADCASTS_PATH = '/broadcasts';
+const CHANNELS_PATH = '/channels';
+const TEMPLATES_PATH = '/templates';
 
 export default function BroadcastsScreen() {
   const [searchParams] = useSearchParams();
@@ -66,21 +68,26 @@ export default function BroadcastsScreen() {
     await broadcastsState.reload();
   }
 
+  // «Каналы» и «Шаблоны» видны всегда: им не нужен журнал, а ждать его ради
+  // входа в настройки незачем. «Новая рассылка» — после загрузки, как раньше.
+  const actions: ScreenAction[] = [
+    { label: 'Каналы', onClick: () => void navigate(CHANNELS_PATH) },
+    { label: 'Шаблоны', onClick: () => void navigate(TEMPLATES_PATH) },
+  ];
+  if (!loading) {
+    actions.push({
+      label: 'Новая рассылка',
+      onClick: () => void navigate(`${BROADCASTS_PATH}/new`),
+      variant: 'primary',
+    });
+  }
+
   return (
     <section style={screenSectionStyle}>
       <ScreenHeader
         title={TITLE}
         explanation={EXPLANATION}
-        action={
-          !loading && (
-            <Button
-              style={primaryActionStyle}
-              onClick={() => void navigate(`${BROADCASTS_PATH}/new`)}
-            >
-              Новая рассылка
-            </Button>
-          )
-        }
+        action={<ScreenActions actions={actions} />}
       />
       <BroadcastsSummary />
       <ManualDeliveriesSection
@@ -125,7 +132,6 @@ export default function BroadcastsScreen() {
             ))}
           </ul>
         )}
-      <BroadcastsSectionLinks />
     </section>
   );
 }

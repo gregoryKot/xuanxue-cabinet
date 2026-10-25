@@ -6,14 +6,16 @@ import { LESSON_LIMITS, type AddRecordingInput, type Recording } from '@xuanxue/
 import { InvalidInputError } from '../common/errors';
 import type { LessonRecord } from './lesson.schema';
 
-const NO_RECORDING_SOURCE = 'Добавьте ссылку на запись или отправьте видео боту';
+const NO_RECORDING_SOURCE =
+  'Добавьте ссылку на запись, загрузите файл или отправьте видео боту';
 const INVALID_RECORDING_URL =
   'Не получилось разобрать ссылку на запись. Проверьте, что это https-адрес, и пришлите ещё раз.';
 
-/** Хотя бы одно из url/telegramFileId обязательно — иначе запись нечем
- * открыть: ни ссылки, ни файла у бота. */
+/** Хотя бы одно из url/telegramFileId/videoId обязательно — иначе запись нечем
+ * открыть: ни ссылки, ни файла у бота, ни файла в кабинете. */
 export function assertHasRecordingSource(input: AddRecordingInput): void {
-  if (input.url === undefined && input.telegramFileId === undefined) {
+  const { url, telegramFileId, videoId } = input;
+  if (url === undefined && telegramFileId === undefined && videoId === undefined) {
     throw new InvalidInputError(NO_RECORDING_SOURCE);
   }
 }
@@ -52,6 +54,7 @@ export function buildRecordingPush(
     title: input.title ?? classTitle,
     url: input.url,
     telegramFileId: input.telegramFileId,
+    videoId: input.videoId,
   };
 }
 
@@ -74,7 +77,7 @@ export function buildRecordingAddCommand(
   };
 }
 
-/** Условия для `$nor` в `updateOne` — повтор того же url/telegramFileId не
+/** Условия для `$nor` в `updateOne` — повтор того же url/telegramFileId/videoId не
  * плодит вторую запись (CLAUDE.md «API»: повторяемое действие идемпотентно
  * по явному ключу, не по флагу в памяти). Поле, которого нет во входе, в
  * проверке не участвует; `assertHasRecordingSource` гарантирует, что хотя бы
@@ -86,6 +89,9 @@ export function buildRecordingDuplicateConditions(
   if (input.url !== undefined) conditions.push({ 'recordings.url': input.url });
   if (input.telegramFileId !== undefined) {
     conditions.push({ 'recordings.telegramFileId': input.telegramFileId });
+  }
+  if (input.videoId !== undefined) {
+    conditions.push({ 'recordings.videoId': input.videoId });
   }
   return conditions;
 }

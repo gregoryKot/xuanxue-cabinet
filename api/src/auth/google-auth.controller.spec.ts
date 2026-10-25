@@ -121,7 +121,7 @@ describe('GoogleAuthController.login', () => {
   it('результат входа — две Set-Cookie: очистка заявки и новая сессия', async () => {
     const controller = await buildController({
       login: () =>
-        Promise.resolve<GoogleLoginResult>({ user: USER, cookie: SESSION_COOKIE }),
+        Promise.resolve<GoogleLoginResult>({ user: USER, cookies: [SESSION_COOKIE] }),
     });
     const { res, headers } = fakeResponse();
 
@@ -145,6 +145,7 @@ describe('GoogleAuthController.login', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
   });
 
@@ -160,7 +161,7 @@ describe('GoogleAuthController.login', () => {
       res,
     );
 
-    expect(headers['Set-Cookie']).toBe(CLEAR_COOKIE);
+    expect(headers['Set-Cookie']).toEqual([CLEAR_COOKIE]);
   });
 
   it('cookie заявки гасится до вызова сервиса — очистка стоит, даже когда сервис бросает', async () => {

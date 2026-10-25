@@ -7,16 +7,12 @@
 // фрагмента, за которым явный `\n`) — обрезка молча испортила бы вёрстку
 // поста. «Не пустой» проверяем отдельно — `\S` где-то в строке, не сам факт
 // непустой длины (иначе шаблон из одних пробелов/переводов строк прошёл бы).
-// schoolSiteUrl — адрес сайта школы (В6 аудита, ADR-0009-доп.): nullable-поле,
-// `null` снимает настройку (NULLABLE_SETTINGS_FIELDS, settings.service.ts).
-// newcomerContact — кому писать незнакомцу (ADR-0115): не nullable, пустая
-// строка не проходит (`\S`) — иначе бот оборвал бы фразу «Напишите …» на
-// полуслове.
-// dataControllerName/Contact — кто отвечает за данные учеников (страница
-// /privacy): nullable, `null` снимает поле; пустота и одни пробелы не проходят
-// (`\S` после обрезки) — иначе на странице вместо «спросите учителя» пусто.
-// paymentReminder — напоминание ученику об оплате (ADR-0051): вложенный
-// объект, PATCH меняет только переданные поля (settings-payment-reminder.ts).
+// Остальные поля — как в SettingsDto (shared). nullable (`null` — сброс,
+// NULLABLE_SETTINGS_FIELDS): schoolSiteUrl, dataControllerName/Contact (пустота
+// и одни пробелы не проходят, иначе на /privacy вместо «спросите учителя» пусто),
+// boardNotice (ADR-0172, board-notice.dto.ts). Не nullable: newcomerContact и
+// paymentContact — пустая строка оборвала бы фразу бота на полуслове. paymentReminder
+// (ADR-0051) — вложенный объект, PATCH меняет только переданные поля.
 import {
   IsBoolean,
   IsInt,
@@ -37,6 +33,7 @@ import {
   type PaymentReminderSettings,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
+import { BoardNoticeDto } from './board-notice.dto';
 
 // Продолжение фразы «Шаблон «…»: …» (validation-messages.ts) — без повтора
 // слова «Шаблон», дефолтное сообщение matches ничего не сказало бы про
@@ -97,18 +94,15 @@ export class UpdateSettingsDto implements ApiRouteBody<'PATCH /settings'> {
   @MaxLength(SETTINGS_LIMITS.schoolSiteUrlMaxLength)
   schoolSiteUrl?: string | null;
 
-  // Не в NULLABLE_SETTINGS_FIELDS — «сбросить в ничто» здесь смысла не
-  // имеет (в отличие от schoolSiteUrl): OptionalNotNull() пропускает
-  // undefined, но null проваливается в @IsInt() и получает 400, как у
-  // leadMinutes в class-fields.dto.ts.
+  // Не в NULLABLE_SETTINGS_FIELDS: «сбросить в ничто» смысла не имеет —
+  // OptionalNotNull() пропускает undefined, а null получает 400 от @IsInt().
   @OptionalNotNull()
   @IsInt()
   @Min(SETTINGS_LIMITS.previewMinutesMin)
   @Max(SETTINGS_LIMITS.previewMinutesMax)
   previewMinutes?: number;
 
-  // Не в NULLABLE_SETTINGS_FIELDS — та же причина, что у previewMinutes
-  // выше: «сбросить в ничто» смысла не имеет, только заменить другим числом.
+  // Не в NULLABLE_SETTINGS_FIELDS — та же причина, что у previewMinutes.
   @OptionalNotNull()
   @IsInt()
   @Min(SETTINGS_LIMITS.lessonReminderMinutesMin)
@@ -147,4 +141,10 @@ export class UpdateSettingsDto implements ApiRouteBody<'PATCH /settings'> {
   @ValidateNested()
   @Type(() => UpdatePaymentReminderDto)
   paymentReminder?: UpdatePaymentReminderDto;
+
+  // Объект заменяет объявление целиком, `null` — сбрасывает.
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BoardNoticeDto)
+  boardNotice?: BoardNoticeDto | null;
 }

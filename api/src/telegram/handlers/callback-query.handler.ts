@@ -25,7 +25,6 @@ import { isMenuScreenAction } from './bot-menu';
 import {
   GENERIC_ERROR,
   handleCancel,
-  handleNoRecording,
   handleNotificationToggle,
   handleSent,
   handleTopicButton,
@@ -48,6 +47,7 @@ import {
 } from './new-exam-item-router';
 import { NewExamCommandHandler } from './new-exam-command.handler';
 import { handleOpenMenuScreen } from './open-menu-screen';
+import { RecordingButtonsHandler } from './recording-buttons.handler';
 
 @Injectable()
 export class CallbackQueryHandler {
@@ -66,6 +66,7 @@ export class CallbackQueryHandler {
     private readonly botAccess: BotUserAccessService,
     private readonly config: ConfigService,
     private readonly newExamCommandHandler: NewExamCommandHandler,
+    private readonly recordingButtons: RecordingButtonsHandler,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -135,9 +136,8 @@ export class CallbackQueryHandler {
       }
 
       if (!(await this.isPersonalChat(chatId, now))) {
-        // chatId — полем объекта, не в тексте: список редакции
-        // (redact-paths.ts) управляет полями, не текстом строки
-        // (SECURITY §1 п.2, §4).
+        // chatId — полем объекта, не в тексте: редакция (redact-paths.ts)
+        // управляет полями, не текстом строки (SECURITY §1 п.2, §4).
         this.logger.warn({ chatId }, 'callback от чата без доступа');
         return;
       }
@@ -160,7 +160,8 @@ export class CallbackQueryHandler {
     if (action === 'topic') {
       return handleTopicButton(ctx, this.botSessions, chatId, id, now);
     }
-    if (action === 'norec') return handleNoRecording(ctx, this.botSessions, chatId, id);
+    if (action === 'norec') return this.recordingButtons.decline(ctx, chatId, id, now);
+    if (action === 'recpick') return this.recordingButtons.pick(ctx, chatId, id, now);
     if (action === 'sent') return handleSent(ctx, this.deliveriesService, id, now);
     if (action === 'menu' && isMenuScreenAction(id)) {
       return handleMenuScreen(
@@ -226,12 +227,8 @@ export class CallbackQueryHandler {
     }
     if (action === 'gradecl') return handleGradeCancel(ctx, this.botSessions, chatId, id);
     if (action === 'gradeq') {
-      return handleGradeView(
-        ctx,
-        this.examBotPorts.get(),
-        id,
-        this.config.get<string>('PUBLIC_URL'),
-      );
+      const url = this.config.get<string>('PUBLIC_URL');
+      return handleGradeView(ctx, this.examBotPorts.get(), id, url);
     }
   }
 

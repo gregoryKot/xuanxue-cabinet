@@ -7,17 +7,22 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  MeDto,
-  MyExamDto,
-  MyLessonNotificationsDto,
-  NotificationDto,
+import {
+  REMINDER_SYNC_VERSION,
+  type MeDto,
+  type MyExamDto,
+  type NotificationDto,
+  type ReminderSyncSnapshot,
 } from '@xuanxue/shared';
-import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
+import {
+  MY_EXAMS_PATH,
+  NOTIFICATION_PREFS_PATH,
+  NOTIFICATIONS_FEED_PATH,
+} from '../api/apiPaths';
 import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
 import { AuthProvider } from '../auth/AuthProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
@@ -25,6 +30,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
+import { MORNING_ID } from '../test-support/reminderSyncFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { NotificationsProvider } from './NotificationsProvider';
 import NotificationsScreen from './NotificationsScreen';
@@ -67,6 +73,7 @@ const ME_LINKED: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 const ME_NOT_LINKED: MeDto = {
   ...ME_LINKED,
@@ -102,20 +109,39 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   };
 }
 
-// Подсказка «выберите свои занятия» (ADR-0162, п. 5) спрашивает занятия у каждого
-// ученика. По умолчанию человек уже выбирал — подсказки нет, и остальные тесты
-// ленты её не видят; тесты подсказки подставляют свой ответ.
-const LESSONS_CHOSEN: MyLessonNotificationsDto = {
-  scope: { mode: 'all', classIds: [] },
-  scopeChosen: true,
-  classes: [],
-  reminder: { minutes: null, schoolMinutes: 60 },
-};
+// Подсказка «отметьте свои занятия» (ADR-0185) читает снимок напоминаний и
+// настройки уведомлений у каждого ученика. По умолчанию занятие уже отмечено —
+// подсказки нет, и остальные тесты ленты её не видят; тесты подсказки
+// подставляют свой снимок.
+const reminderSnapshot = (
+  overrides: Partial<ReminderSyncSnapshot> = {},
+): ReminderSyncSnapshot => ({
+  version: REMINDER_SYNC_VERSION,
+  accountId: 'u1',
+  revision: '1',
+  classIds: [MORNING_ID],
+  lessonIds: [],
+  leadMinutes: null,
+  schoolMinutes: 60,
+  classes: [
+    {
+      id: MORNING_ID,
+      title: 'Цигун',
+      groupLabel: '',
+      tz: 'Asia/Jerusalem',
+      slots: [{ weekday: 1, time: '19:00', durationMin: 60 }],
+    },
+  ],
+  ...overrides,
+});
 
+// Узкий путь раньше широкого: `mockApiByPath` берёт первое совпадение по
+// префиксу, а снимок начинается с `/me/notifications`.
 function renderScreen(overrides: Record<string, unknown> = {}, me: MeDto = ME_LINKED) {
   mockApiByPath({
     '/auth/me': me,
-    [MY_LESSON_NOTIFICATIONS_PATH]: LESSONS_CHOSEN,
+    [REMINDER_SYNC_PATH]: reminderSnapshot(),
+    [NOTIFICATION_PREFS_PATH]: { enabled: ['lesson_soon'] },
     [MY_EXAMS_PATH]: [],
     [NOTIFICATIONS_FEED_PATH]: { items: [], unreadCount: 0 },
     '/me/inbox/': undefined, // POST .../read и .../read-all
@@ -183,38 +209,23 @@ describe('NotificationsScreen — ссылка на настройки (ADR-0162
   });
 });
 
-// Подсказка «выберите свои занятия» (LessonScopeHint.tsx, ADR-0162, п. 5): тексты и
-// кнопки — в LessonScopeHint.test.tsx, здесь её место в ленте и то, что сбой
+// Подсказка «отметьте свои занятия» (LessonScopeHint.tsx, ADR-0185): тексты и
+// ссылка — в LessonScopeHint.test.tsx, здесь её место в ленте и то, что сбой
 // второстепенных данных ленту не трогает.
-describe('NotificationsScreen — подсказка «выберите свои занятия»', () => {
-  const lessonsPending = (overrides: Partial<MyLessonNotificationsDto> = {}) => ({
-    ...LESSONS_CHOSEN,
-    scopeChosen: false,
-    classes: [
-      {
-        id: 'c1',
-        title: 'Цигун',
-        groupLabel: '',
-        tz: 'Asia/Jerusalem',
-        slots: [
-          { weekday: 1, time: '19:00', durationMin: 60 },
-          { weekday: 3, time: '19:00', durationMin: 60 },
-        ],
-      },
-    ],
-    ...overrides,
-  });
-  const lessonGets = () =>
-    mockedApiFetch.mock.calls.filter(([path]) => path === MY_LESSON_NOTIFICATIONS_PATH);
+describe('NotificationsScreen — подсказка «отметьте свои занятия»', () => {
+  const HINT_TEXT = 'не будет';
+  const unchosen = reminderSnapshot({ classIds: [] });
+  const syncGets = () =>
+    mockedApiFetch.mock.calls.filter(([path]) => path === REMINDER_SYNC_PATH);
 
   it('стоит самой первой: над карточкой нового задания и над лентой', async () => {
     renderScreen({
-      [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending(),
+      [REMINDER_SYNC_PATH]: unchosen,
       [MY_EXAMS_PATH]: [makeExam()],
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
-    const hint = await screen.findByText('2 раза в неделю');
+    const hint = await screen.findByText(HINT_TEXT);
     const task = await screen.findByText('Новое задание');
     const row = await screen.findByText('Текст события');
     const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
@@ -223,48 +234,41 @@ describe('NotificationsScreen — подсказка «выберите свои
   });
 
   it('и при пустой ленте', async () => {
-    renderScreen({ [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending() });
+    renderScreen({ [REMINDER_SYNC_PATH]: unchosen });
 
-    expect(await screen.findByText('2 раза в неделю')).toBeInTheDocument();
+    expect(await screen.findByText(HINT_TEXT)).toBeInTheDocument();
     expect(await screen.findByText('Уведомлений пока нет.')).toBeInTheDocument();
   });
 
-  it('человек уже выбирал — подсказки нет', async () => {
+  it('занятие отмечено — подсказки нет', async () => {
     renderScreen();
 
     await screen.findByText('Уведомлений пока нет.');
-    await waitFor(() => expect(lessonGets()).toHaveLength(1));
-    expect(
-      screen.queryByRole('button', { name: 'Оставить все' }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => expect(syncGets()).toHaveLength(1));
+    expect(screen.queryByText(HINT_TEXT)).not.toBeInTheDocument();
   });
 
-  it('штат — подсказки нет и за занятиями лента не ходит', async () => {
+  it('штат — подсказки нет и за снимком лента не ходит', async () => {
     const teacher: MeDto = { ...ME_LINKED, roles: ['teacher'] };
-    renderScreen({ [MY_LESSON_NOTIFICATIONS_PATH]: lessonsPending() }, teacher);
+    renderScreen({ [REMINDER_SYNC_PATH]: unchosen }, teacher);
 
     await screen.findByText('Уведомлений пока нет.');
-    expect(
-      screen.queryByRole('button', { name: 'Оставить все' }),
-    ).not.toBeInTheDocument();
-    expect(lessonGets()).toHaveLength(0);
+    expect(screen.queryByText(HINT_TEXT)).not.toBeInTheDocument();
+    expect(syncGets()).toHaveLength(0);
   });
 
-  it('занятия не загрузились — ни подсказки, ни баннера ошибки: лента живёт без неё', async () => {
+  it('снимок не загрузился — ни подсказки, ни баннера ошибки: лента живёт без неё', async () => {
     renderScreen({
-      [MY_LESSON_NOTIFICATIONS_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
+      [REMINDER_SYNC_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
     await screen.findByText('Текст события');
-    await waitFor(() => expect(lessonGets()).toHaveLength(1));
-    expect(
-      screen.queryByRole('button', { name: 'Оставить все' }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => expect(syncGets()).toHaveLength(1));
+    expect(screen.queryByText(HINT_TEXT)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
-
 describe('NotificationsScreen — рубрики ленты', () => {
   it('сегодняшняя строка — рубрика «Сегодня», «Раньше» не рисуется', async () => {
     renderScreen({

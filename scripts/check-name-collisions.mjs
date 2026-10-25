@@ -18,6 +18,7 @@
 // сегодняшнем дереве репозитория.
 import { spawnSync } from 'child_process';
 import { join } from 'path';
+import { isMainModule } from './is-main-module.mjs';
 
 // Расширения, которые резолвер импорта подставляет сам: `./x` может оказаться
 // x.ts, x.tsx, x.js… — поэтому конфликтуют имена без расширения.
@@ -116,7 +117,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

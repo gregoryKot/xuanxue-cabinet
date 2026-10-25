@@ -20,7 +20,11 @@
 // prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
-import { APP_ERRORS_SCREEN_PATH, GOOGLE_LOGIN_CALLBACK_PATH } from '@xuanxue/shared';
+import {
+  APP_ERRORS_SCREEN_PATH,
+  GOOGLE_LOGIN_CALLBACK_PATH,
+  NATIVE_CONTINUATION_PATH,
+} from '@xuanxue/shared';
 import {
   CLASSES_LIST_PATH,
   EXAM_EDITOR_ITEMS_PATH,
@@ -28,9 +32,6 @@ import {
   INVITE_LINK_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
-  MY_LESSONS_ARCHIVE_PATH,
-  MY_LESSONS_PATH,
-  MY_MATERIALS_PATH,
   NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
@@ -50,10 +51,15 @@ import {
   attemptPath,
   attemptReviewPath,
 } from '../api/gradingPaths';
-import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
+import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
+import { paymentsListPath } from '../api/paymentsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
+import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
+import { EVENT_ROUTE_MODULES } from './eventRouteModules';
+import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
+import { WIKI_SESSION_ROUTE_MODULES } from './wikiSessionRouteModules';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -121,6 +127,12 @@ export const ROUTE_MODULES = {
     load: () => import('../auth/GoogleLoginCallbackScreen'),
     warm: false,
   },
+  // Вход для приложения Daychi (ADR-0181) — публичный, как login выше.
+  nativeLogin: {
+    path: NATIVE_CONTINUATION_PATH,
+    load: () => import('../auth/NativeLoginScreen'),
+    warm: false,
+  },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
   // Политика конфиденциальности (ADR-0145) — публичный маршрут, открыт и
   // гостю, и вошедшему (без редиректа), вошедшему чанк не нужен заранее.
@@ -136,15 +148,13 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
-  // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
-  // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.
+  // как login/join: сессии не требует и не выдаёт (EmailConfirmScreen.tsx).
   emailConfirm: {
     path: '/email/confirm',
     load: () => import('../auth/EmailConfirmScreen'),
     warm: false,
   },
-  // Экран первого входа (ADR-0044) — как login/emailLogin/join, вошедшему,
-  // который уже назвался, чанк не нужен, греть в фоне нечего.
+  // Экран первого входа (ADR-0044) — как login/join: назвавшемуся чанк не нужен.
   welcome: {
     path: '/welcome',
     load: () => import('../welcome/WelcomeScreen'),
@@ -157,9 +167,6 @@ export const ROUTE_MODULES = {
     // ScheduleScreen.tsx грузит и классы, и активные каналы сразу на монтировании.
     prefetch: () => [CLASSES_LIST_PATH, channelsListPath(true)],
   },
-  // `/schedule/new` раньше `/schedule/:classId`: matchRoute берёт первое
-  // совпадение, а статический сегмент должен выигрывать у параметра.
-  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
   classNew: {
     path: '/schedule/new',
     load: loadClassEditor,
@@ -189,9 +196,7 @@ export const ROUTE_MODULES = {
     // запрос экрана, который можно погреть параллельно с чанком.
     prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
-  // `/planning/new` раньше `/planning/:lessonId` — по той же причине.
-  // Учителя — как у classNew: LessonEditorForm.tsx спрашивает их после
-  // классов и самой записи.
+  // Учителей, как у classNew, LessonEditorForm.tsx спрашивает после записи.
   lessonNew: {
     path: '/planning/new',
     load: loadLessonEditor,
@@ -223,27 +228,21 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [apiRoutePath('GET /channels/:id', recordOf(pathname))],
   },
-  // «Материалы» — раздел меню штата, пятый пункт навигации (ADR-0055), не
-  // подэкран «Занятий» и не кнопка в шапке (так было раньше). Занятия
-  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и
-  // форме (привязка галочками, MaterialClassesField.tsx) — греем их вместе
-  // с самим ресурсом.
+  // «Материалы» (ADR-0055). Занятия нужны и списку (MaterialCard.tsx), и форме
+  // (MaterialClassesField.tsx) — греем их вместе с ресурсом.
   materials: {
     path: '/materials',
     load: () => import('../materials/MaterialsScreen'),
     warm: true,
     prefetch: () => [materialsListPath(''), CLASSES_LIST_PATH],
   },
-  // `/materials/new` раньше `/materials/:materialId` — та же причина, что у
-  // classNew/lessonNew выше (ADR-0033).
   materialNew: {
     path: '/materials/new',
     load: loadMaterialEditor,
     warm: true,
     prefetch: () => [CLASSES_LIST_PATH],
   },
-  // Подэкран «Материалов»: общая выдача по тегу (ADR-0075/0078). Тоже
-  // раньше materialEditor — та же причина, что у materialNew выше.
+  // Выдача по тегу (ADR-0075/0078) — раньше materialEditor, как любое `/x/new`.
   materialsTags: {
     path: '/materials/tags',
     load: () => import('../materials/MaterialsTagsScreen'),
@@ -279,6 +278,18 @@ export const ROUTE_MODULES = {
     load: () => import('../templates/TemplatesScreen'),
     warm: true,
     prefetch: () => [SETTINGS_PATH, nextLessonsPath()],
+  },
+  // «Школа» (ADR-0176) — настройки школы, вход карточкой с доски штата. Те же
+  // настройки, что у «Шаблонов», плюс число «сколько учеников выбрали своё
+  // время напоминания» (LessonPrefsStats.tsx).
+  school: {
+    path: '/school',
+    load: () => import('../school/SchoolScreen'),
+    warm: true,
+    prefetch: () => [
+      SETTINGS_PATH,
+      apiRoutePath('GET /notifications/lesson-prefs-stats'),
+    ],
   },
   examItems: {
     path: '/exam-items',
@@ -364,54 +375,21 @@ export const ROUTE_MODULES = {
     path: '/notifications',
     load: () => import('../notifications/NotificationsScreen'),
     warm: true,
-    prefetch: () => [
-      NOTIFICATIONS_FEED_PATH,
-      MY_EXAMS_PATH,
-      MY_LESSON_NOTIFICATIONS_PATH,
-    ],
+    prefetch: () => [NOTIFICATIONS_FEED_PATH, MY_EXAMS_PATH, REMINDER_SYNC_PATH],
   },
   // Подэкран ленты (ADR-0162): вход с «Профиля» и из ленты, открыт любой роли.
-  // Занятия (тут и в ленте) греются только тому, у кого есть вид про занятие, —
+  // Снимок напоминаний греется только тому, у кого есть вид про занятие, —
   // это решает prefetchFirstScreen.ts, таблица от роли не зависит.
   notificationSettings: {
     path: NOTIFICATION_SETTINGS_PATH,
     load: () => import('../notifications/NotificationSettingsScreen'),
     warm: true,
-    prefetch: () => [NOTIFICATION_PREFS_PATH, MY_LESSON_NOTIFICATIONS_PATH],
+    prefetch: () => [NOTIFICATION_PREFS_PATH, REMINDER_SYNC_PATH],
   },
-  // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
-  // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,
-  // открыты любой роли (screenAccess.ts, canSeeRoute).
-  tasks: {
-    path: '/tasks',
-    load: () => import('../student/TasksScreen'),
-    warm: true,
-    prefetch: () => [MY_EXAMS_PATH],
-  },
-  studentLessons: {
-    path: '/lessons',
-    load: () => import('../student/LessonsScreen'),
-    warm: true,
-    prefetch: () => [MY_LESSONS_PATH],
-  },
-  // «Записи занятий» (слой 3.3, docs/PLAN.md §14) — подэкран «Занятий», вход
-  // карточкой SectionLink на LessonsScreen.tsx, не пункт меню (ADR-0025), тот
-  // же приём, что у «Библиотеки» ученика (library ниже).
-  archive: {
-    path: '/archive',
-    load: () => import('../student/ArchiveScreen'),
-    warm: true,
-    prefetch: () => [MY_LESSONS_ARCHIVE_PATH],
-  },
-  // «Библиотека» ученика (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий»,
-  // вход карточкой SectionLink на LessonsScreen.tsx, не пункт меню
-  // (ADR-0025), тот же приём, что у «Записей занятий» (archive) выше.
-  library: {
-    path: '/library',
-    load: () => import('../student/LibraryScreen'),
-    warm: true,
-    prefetch: () => [MY_MATERIALS_PATH],
-  },
+  // Экраны ученика, страница события школы и экраны сессии, общей с wiki.
+  ...STUDENT_ROUTE_MODULES,
+  ...EVENT_ROUTE_MODULES,
+  ...WIKI_SESSION_ROUTE_MODULES,
   attempt: {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),
@@ -427,6 +405,13 @@ export const ROUTE_MODULES = {
     // ответит 403 (people/usePeople.ts) — не греем. Ссылка-приглашение
     // грузится независимо от роли (InviteLinkCard.tsx/useInviteLink.ts).
     prefetch: () => [INVITE_LINK_PATH],
+  },
+  payments: {
+    path: PAYMENTS_SCREEN_PATH,
+    load: () => import('../payments/PaymentsScreen'),
+    warm: true,
+    // Первый запрос usePayments (ADR-0171): месяц выбирает сервер.
+    prefetch: () => [paymentsListPath(null)],
   },
   // Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx), вход
   // карточкой SectionLink на «Профиле» (ADR-0025), не пункт меню. Чужая роль

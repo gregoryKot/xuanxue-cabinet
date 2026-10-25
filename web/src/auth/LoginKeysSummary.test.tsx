@@ -18,6 +18,7 @@ const BASE: MeDto = {
   needsProfile: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function valueOf(label: string): string | null {

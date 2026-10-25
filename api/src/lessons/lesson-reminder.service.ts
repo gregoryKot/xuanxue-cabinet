@@ -2,8 +2,8 @@
 // баг-репорт 2026-09-27 «ученик включил push на iPhone, напоминаний о
 // занятиях не приходило» — вида не было вовсе (ADR-0069).
 //
-// «За сколько минут» у каждого своё (ADR-0162, п. 3): человек выбирает из
-// 15/30/60/120, иначе берётся школьное `settings.lessonReminderMinutes`. Поэтому
+// «За сколько минут» у каждого своё (ADR-0162, п. 3; ADR-0185): человек выбирает
+// 0/15/30/60/120, иначе берётся школьное `settings.lessonReminderMinutes`. Поэтому
 // «напомнили» — свойство пары «человек × занятие», а не занятия: отметку
 // `studentReminderSentAt` заменила сама строка ленты, уникальный индекс
 // (userId, kind, lessonId) — и защита от дубля при втором тике или втором
@@ -11,8 +11,10 @@
 // вставил). Кандидаты — занятия `scheduled` в окне самого раннего из
 // людей; кому и когда пора, решает чистая `planReminders`.
 //
-// Получатели — активные ученики с включённым видом lesson_soon, о занятиях по
-// их выбору (LessonRecipientsService, общий с «Занятием отменено», ADR-0162).
+// Получатели — активные ученики с включённым видом lesson_soon и хотя бы одним
+// выбором напоминаний: классом или отдельным занятием (ADR-0185). Находит их
+// LessonRecipientsService, общий с «Занятием отменено»; выбор «о каких занятиях»
+// (ADR-0162) напоминание не трогает.
 // Доставка — лента кабинета и push (PushSenderService.sendToUser — никогда не
 // бросает, ADR-0092).
 import { Injectable, Logger } from '@nestjs/common';
@@ -31,6 +33,7 @@ import { findUpcomingLessons, LESSON_SOON_KIND } from './lesson-reminder-queries
 import {
   maxLeadMinutes,
   planReminders,
+  withReminderChoices,
   type PlannedReminder,
 } from './lesson-reminder-plan';
 
@@ -54,7 +57,11 @@ export class LessonReminderService {
   ) {}
 
   async remind(now: DateTime): Promise<LessonReminderResult> {
-    const { recipients, prefs } = await this.lessonRecipients.findFor(LESSON_SOON_KIND);
+    const found = await this.lessonRecipients.findFor(LESSON_SOON_KIND);
+    const { prefs } = found;
+    // Без выбора напоминаний человеку напоминать не о чем (ADR-0185): он не
+    // расширяет окно занятий и не попадает в запрос строк ленты.
+    const recipients = withReminderChoices(found.recipients, prefs);
     if (recipients.length === 0) return { reminded: 0 };
     const { lessonReminderMinutes: schoolMinutes } = await this.settingsService.get();
 

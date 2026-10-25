@@ -177,6 +177,24 @@ describe('LoginScreen — вход', () => {
     // на возврате (useTelegramAuthResultLogin), а не отсюда.
     expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/telegram', expect.anything());
   });
+
+  it('передумали и вернулись «Назад» — кнопка Telegram снова свободна (снимок 2026-10-18)', async () => {
+    const user = userEvent.setup();
+    mockRoutes(() => Promise.resolve({ telegramBotId: 123456 }));
+    renderScreen();
+    const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
+    await user.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+
+    // Safari достаёт страницу из кеша (bfcache) вместе с состоянием React.
+    const pageShow = new Event('pageshow') as Event & { persisted: boolean };
+    Object.defineProperty(pageShow, 'persisted', { value: true });
+    act(() => {
+      window.dispatchEvent(pageShow);
+    });
+
+    await waitFor(() => expect(button).toBeEnabled());
+  });
 });
 
 describe('LoginScreen — мобильный вход через #tgAuthResult= (баг с прода 2026-09-08)', () => {
@@ -202,6 +220,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -305,6 +324,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
   });
@@ -331,6 +351,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });

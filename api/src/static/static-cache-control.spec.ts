@@ -60,8 +60,12 @@ describe('staticAssetsOptions', () => {
     expect(headerFor(join(ROOT, 'sw.js'))).toBe(REVALIDATE_CACHE_CONTROL);
   });
 
-  it('оставляет /api за контроллерами Nest', () => {
-    expect(staticAssetsOptions(ROOT).exclude).toEqual(['/api/{*splat}']);
+  it('оставляет /api и маршруты от корня за контроллерами Nest', () => {
+    expect(staticAssetsOptions(ROOT).exclude).toEqual([
+      '/api/{*splat}',
+      '/auth/native/authorize',
+      '/wiki',
+    ]);
     expect(staticAssetsOptions(ROOT).rootPath).toBe(ROOT);
   });
 });

@@ -12,6 +12,8 @@ const NAMES: NavIconName[] = [
   'people',
   'materials',
   'tasks',
+  'payments',
+  'board',
 ];
 
 describe('NavIcon (ADR-0097)', () => {

@@ -25,12 +25,14 @@ describe('matchRoute', () => {
       ROUTE_MODULES.examItemEditor.load,
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
+    expect(loaderAt('/payments')).toBe(ROUTE_MODULES.payments.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
     expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
     expect(loaderAt('/notifications/settings')).toBe(
       ROUTE_MODULES.notificationSettings.load,
     );
     expect(loaderAt('/install')).toBe(ROUTE_MODULES.install.load);
+    expect(loaderAt('/board')).toBe(ROUTE_MODULES.board.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
@@ -52,6 +54,10 @@ describe('matchRoute', () => {
     expect(loaderAt('/materials/652f00000000000000000008')).toBe(
       ROUTE_MODULES.materialEditor.load,
     );
+    expect(loaderAt('/events/new')).toBe(ROUTE_MODULES.eventNew.load);
+    expect(loaderAt('/events/652f00000000000000000009')).toBe(
+      ROUTE_MODULES.eventEditor.load,
+    );
   });
 
   // Публичный маршрут подтверждения почты (ADR-0059) — вошедшему он не нужен,
@@ -61,6 +67,14 @@ describe('matchRoute', () => {
   it('подтверждение почты — свой чанк, в фоне не греется (ADR-0059)', async () => {
     expect(ROUTE_MODULES.emailConfirm.warm).toBe(false);
     await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
+  });
+
+  // Вход для Daychi (ADR-0181) — свой чанк, не экран входа кабинета: адрес
+  // `/login/native` не должен провалиться в `/login`.
+  it('вход для Daychi — свой чанк, в фоне не греется (ADR-0181)', async () => {
+    expect(loaderAt('/login/native')).toBe(ROUTE_MODULES.nativeLogin.load);
+    expect(ROUTE_MODULES.nativeLogin.warm).toBe(false);
+    await expect(ROUTE_MODULES.nativeLogin.load()).resolves.toHaveProperty('default');
   });
 
   // Центр уведомлений (ADR-0063) — свой чанк, греется в фоне, как «Профиль».
@@ -102,6 +116,13 @@ describe('matchRoute', () => {
     await expect(ROUTE_MODULES.materialsTags.load()).resolves.toHaveProperty('default');
   });
 
+  // ADR-0177: «/events/new» объявлен раньше «/events/:eventId» — иначе :eventId
+  // совпал бы со строкой «new»; чанк один на создание и правку.
+  it('страница события — один чанк на «новое» и на правку (ADR-0177)', async () => {
+    expect(ROUTE_MODULES.eventNew.load).toBe(ROUTE_MODULES.eventEditor.load);
+    await expect(ROUTE_MODULES.eventNew.load()).resolves.toHaveProperty('default');
+  });
+
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
     expect(loaderAt('/channels')).toBe(ROUTE_MODULES.channels.load);
     expect(loaderAt('/channels/new')).toBe(ROUTE_MODULES.channelNew.load);
@@ -122,6 +143,15 @@ describe('matchRoute', () => {
       ROUTE_MODULES.examPreview.load,
     );
     await expect(ROUTE_MODULES.examPreview.load()).resolves.toHaveProperty('default');
+  });
+
+  // «Школа» (ADR-0176) — свой чанк, а не часть «Шаблонов»: с «Шаблонов»
+  // настройки школы переехали, и /school не должен проваливаться в соседний экран.
+  it('«/school» — свой чанк, греется в фоне, не «Шаблоны» (ADR-0176)', async () => {
+    expect(loaderAt('/school')).toBe(ROUTE_MODULES.school.load);
+    expect(ROUTE_MODULES.school.load).not.toBe(ROUTE_MODULES.templates.load);
+    expect(ROUTE_MODULES.school.warm).toBe(true);
+    await expect(ROUTE_MODULES.school.load()).resolves.toHaveProperty('default');
   });
 
   it('«/archive» — свой чанк, загрузчик и правда приводит экран', async () => {
@@ -155,12 +185,12 @@ describe('matchRoute', () => {
 
   // Роль ушла в rootPathFor (screenAccess.ts, screenAccess.test.ts) — этот
   // резолвер по-прежнему без роли, «/» (сегментов нет) сопоставляется с
-  // STAFF_ROOT_PATH как единственным опорным путём для чанка/prefetch —
-  // с 2026-09-27 это «Экзамены», не «Занятия» (ADR-0138). Гейт от повторного
-  // расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и STAFF_ROOT_PATH
-  // (screenAccess.ts).
-  it('корень (сегментов нет) — чанк «Экзаменов»', () => {
-    expect(loaderAt('/')).toBe(ROUTE_MODULES.exams.load);
+  // BOARD_PATH как единственным опорным путём для чанка/prefetch — с
+  // 2026-10-06 это «Главная», не «Экзамены» (ADR-0174, заменяет ADR-0138). Гейт
+  // от повторного расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и
+  // rootPathFor (screenAccess.ts).
+  it('корень (сегментов нет) — чанк «Главной»', () => {
+    expect(loaderAt('/')).toBe(ROUTE_MODULES.board.load);
   });
 
   it('хвостовой слеш не мешает', () => {
@@ -176,9 +206,7 @@ describe('matchRoute', () => {
 describe('ROUTE_MODULES', () => {
   it('экраны входа не греются в фоне — вошедшему они не нужны', () => {
     const notWarmed = routes.filter((route) => !route.warm).map((route) => route.path);
-    // «/dev/errors» — тоже не греется, но по другой причине (комментарий в
-    // routeModules.ts): чужая роль сюда не заходит вовсе, прогревать чанк
-    // для каждого штата незачем.
+    // «/dev/errors» не греется по другой причине (routeModules.ts): чужая роль там не бывает.
     expect(notWarmed.sort()).toEqual([
       '/accessibility',
       '/dev/errors',
@@ -187,8 +215,11 @@ describe('ROUTE_MODULES', () => {
       '/login',
       '/login/email',
       '/login/google',
+      '/login/native',
+      '/logout',
       '/privacy',
       '/welcome',
+      '/wiki',
     ]);
   });
 

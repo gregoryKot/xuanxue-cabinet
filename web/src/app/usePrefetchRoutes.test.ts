@@ -11,6 +11,8 @@ const loadWarmSecond = vi.fn(() => Promise.resolve({ default: () => null }));
 const loadLogin = vi.fn(() => Promise.resolve({ default: () => null }));
 const loadTasks = vi.fn(() => Promise.resolve({ default: () => null }));
 const loadStudentLessons = vi.fn(() => Promise.resolve({ default: () => null }));
+const loadPayments = vi.fn(() => Promise.resolve({ default: () => null }));
+const loadBoard = vi.fn(() => Promise.resolve({ default: () => null }));
 
 vi.mock('./routeModules', () => ({
   ROUTE_MODULES: {
@@ -19,6 +21,10 @@ vi.mock('./routeModules', () => ({
     people: { path: '/people', load: () => loadWarmSecond(), warm: true },
     tasks: { path: '/tasks', load: () => loadTasks(), warm: true },
     studentLessons: { path: '/lessons', load: () => loadStudentLessons(), warm: true },
+    payments: { path: '/payments', load: () => loadPayments(), warm: true },
+    // Последним: тест «по одному чанку за раз» ждёт, что у штата первым
+    // идёт `exams` (порядок ключей объекта = порядок очереди).
+    board: { path: '/board', load: () => loadBoard(), warm: true },
   },
 }));
 
@@ -55,12 +61,15 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     googleLinked: false,
     studentMode: false,
     canUseStudentMode: false,
+    homeHiddenTiles: [],
     ...overrides,
   };
 }
 
 const TEACHER = makeMe();
 const STUDENT = makeMe({ id: 's1', roles: [] });
+const ADMIN = makeMe({ id: 'a1', roles: ['admin'] });
+const ACCOUNTANT = makeMe({ id: 'b1', roles: ['accountant'] });
 
 beforeEach(() => {
   idleTasks = [];
@@ -85,9 +94,67 @@ describe('usePrefetchRoutes', () => {
 
     expect(loadWarm).toHaveBeenCalledTimes(1);
     expect(loadWarmSecond).toHaveBeenCalledTimes(1);
+    expect(loadBoard).toHaveBeenCalledTimes(1);
     expect(loadLogin).not.toHaveBeenCalled();
     expect(loadTasks).not.toHaveBeenCalled();
     expect(loadStudentLessons).not.toHaveBeenCalled();
+  });
+
+  // ADR-0171: учителю оплаты закрыты — чанк, который он не откроет, не греем.
+  it('учитель без права на оплаты — чанк «Оплат» не греет', async () => {
+    stubIdleCallback();
+
+    renderHook(() => usePrefetchRoutes(TEACHER));
+    await runIdleQueue();
+
+    expect(loadPayments).not.toHaveBeenCalled();
+  });
+
+  it('админ греет разделы штата и «Оплаты»', async () => {
+    stubIdleCallback();
+
+    renderHook(() => usePrefetchRoutes(ADMIN));
+    await runIdleQueue();
+
+    expect(loadWarm).toHaveBeenCalledTimes(1);
+    expect(loadPayments).toHaveBeenCalledTimes(1);
+    expect(loadTasks).not.toHaveBeenCalled();
+  });
+
+  // ADR-0174: «Главная» — первый экран и штата, и ученика, один чанк на обе
+  // роли; бухгалтеру она не нужна — его корень «Оплаты» (ADR-0171).
+  it('«Главная» греется и штату, и ученику, бухгалтеру — нет', async () => {
+    stubIdleCallback();
+
+    const teacher = renderHook(() => usePrefetchRoutes(TEACHER));
+    await runIdleQueue();
+    expect(loadBoard).toHaveBeenCalledTimes(1);
+    teacher.unmount();
+
+    loadBoard.mockClear();
+    const student = renderHook(() => usePrefetchRoutes(STUDENT));
+    await runIdleQueue();
+    expect(loadBoard).toHaveBeenCalledTimes(1);
+    student.unmount();
+
+    loadBoard.mockClear();
+    renderHook(() => usePrefetchRoutes(ACCOUNTANT));
+    await runIdleQueue();
+    expect(loadBoard).not.toHaveBeenCalled();
+  });
+
+  it('бухгалтер греет только «Оплаты» — ни штат, ни экраны ученика', async () => {
+    stubIdleCallback();
+
+    renderHook(() => usePrefetchRoutes(ACCOUNTANT));
+    await runIdleQueue();
+
+    expect(loadPayments).toHaveBeenCalledTimes(1);
+    expect(loadWarm).not.toHaveBeenCalled();
+    expect(loadWarmSecond).not.toHaveBeenCalled();
+    expect(loadTasks).not.toHaveBeenCalled();
+    expect(loadStudentLessons).not.toHaveBeenCalled();
+    expect(loadBoard).not.toHaveBeenCalled();
   });
 
   it('ученику греет «Задания» и «Занятия» — не разделы штата (решение владельца)', async () => {
@@ -98,8 +165,10 @@ describe('usePrefetchRoutes', () => {
 
     expect(loadTasks).toHaveBeenCalledTimes(1);
     expect(loadStudentLessons).toHaveBeenCalledTimes(1);
+    expect(loadBoard).toHaveBeenCalledTimes(1);
     expect(loadWarm).not.toHaveBeenCalled();
     expect(loadWarmSecond).not.toHaveBeenCalled();
+    expect(loadPayments).not.toHaveBeenCalled();
   });
 
   it('по одному чанку за раз, чтобы не мешать первому экрану', () => {

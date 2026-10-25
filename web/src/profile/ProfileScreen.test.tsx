@@ -74,6 +74,7 @@ const STUDENT: MeDto = {
   googleLinked: false,
   studentMode: false,
   canUseStudentMode: false,
+  homeHiddenTiles: [],
 };
 
 function renderScreen(me: MeDto, authConfig: unknown = {}) {

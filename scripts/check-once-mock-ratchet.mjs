@@ -32,12 +32,13 @@
 // промежуточной переменной сегодня в репозитории не встречается и не
 // разбирается отдельно.
 //
-// Разбор вынесен в чистые функции без fs (findApiFetchMockIdentifiers,
-// findOnceMockFindings, diffByFile) — check-once-mock-ratchet.test.mjs
-// гоняет их на строках-фикстурах, не на сегодняшнем состоянии web/src.
+// Разбор — чистые функции без fs (findApiFetchMockIdentifiers, findOnceMockFindings,
+// diffByFile); check-once-mock-ratchet.test.mjs гоняет их на фикстурах, не на web/src.
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripLiterals } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const WEB_SRC = join(ROOT, 'web', 'src');
@@ -174,7 +175,7 @@ function* walk(dir) {
 function collectCounts() {
   const counts = {};
   for (const file of walk(WEB_SRC)) {
-    const fileLabel = relative(ROOT, file);
+    const fileLabel = repoPath(ROOT, file);
     const src = readFileSync(file, 'utf8');
     const n = findOnceMockFindings(fileLabel, src).length;
     if (n > 0) counts[fileLabel] = n;
@@ -248,7 +249,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (CI, `npm run gates`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

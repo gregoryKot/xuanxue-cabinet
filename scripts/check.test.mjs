@@ -5,7 +5,9 @@
 // ловить состояние окружения, а не логику раннера.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHECK_STEPS, describeExit, runSteps } from './check.mjs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { CHECK_STEPS, describeExit, resolveStepCommand, runSteps } from './check.mjs';
 
 test('describeExit: успешный шаг → null', () => {
   assert.equal(describeExit({ status: 0, signal: null, error: null }), null);
@@ -80,4 +82,31 @@ test('CHECK_STEPS: e2e api остался в списке', () => {
   const e2e = CHECK_STEPS.find((step) => step.args.includes('test:e2e'));
   assert.ok(e2e, 'шаг e2e пропал из npm run check');
   assert.deepEqual(e2e.args, ['run', 'test:e2e', '--workspace=api']);
+});
+
+// На Windows `npm` без shell — ENOENT (это npm.cmd), поэтому npm-шаг идёт
+// через node и npm_execpath.
+const npmStep = { name: 'lint', command: 'npm', args: ['run', 'lint'] };
+
+test('resolveStepCommand: npm-шаг с npm_execpath → node + npm-cli первым аргументом', () => {
+  const env = { npm_execpath: 'C:\\npm\\bin\\npm-cli.js' };
+  assert.deepEqual(resolveStepCommand(npmStep, env), {
+    command: process.execPath,
+    args: ['C:\\npm\\bin\\npm-cli.js', 'run', 'lint'],
+  });
+});
+
+test('resolveStepCommand: npm-шаг без npm_execpath и без npm рядом с node → голый npm', () => {
+  assert.deepEqual(resolveStepCommand(npmStep, {}, join(tmpdir(), 'no-node-here')), {
+    command: 'npm',
+    args: ['run', 'lint'],
+  });
+});
+
+test('resolveStepCommand: не-npm шаг → без изменений, даже при npm_execpath', () => {
+  const step = { name: 'node', command: process.execPath, args: ['-e', ''] };
+  assert.deepEqual(resolveStepCommand(step, { npm_execpath: '/x/npm-cli.js' }), {
+    command: process.execPath,
+    args: ['-e', ''],
+  });
 });

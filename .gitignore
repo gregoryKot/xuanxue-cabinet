@@ -9,7 +9,10 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
-.claude/
+# Личные настройки Claude Code (settings.local.json) не коммитим, а скилл
+# /collaborate — часть репозитория (ADR-0169): исключение возвращает его в git.
+.claude/*
+!.claude/skills/
 
 # Реальные ссылки Zoom, пароли и токены каналов живут только локально
 api/seed/*.local.json

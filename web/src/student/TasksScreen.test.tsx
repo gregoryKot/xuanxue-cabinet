@@ -481,6 +481,7 @@ describe('TasksScreen — штат школы на «/tasks»: список ви
       googleLinked: false,
       studentMode: false,
       canUseStudentMode: false,
+      homeHiddenTiles: [],
     };
     mockApiByPath({
       [MY_EXAMS_PATH]: [makeExam()],

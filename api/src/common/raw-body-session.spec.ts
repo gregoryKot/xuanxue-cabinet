@@ -2,13 +2,15 @@
 // у auth/session-token.spec.ts: нет cookie, чужая подпись, протухший токен,
 // валидный токен, всё с явным `now`.
 import { DateTime } from 'luxon';
-import { SESSION_COOKIE } from '../auth/session-cookie';
+import { AuthService } from '../auth/auth.service';
+import { SESSION_COOKIE, sessionCookieProfile } from '../auth/session-cookie';
 import { SESSION_MAX_AGE_DAYS, signSession } from '../auth/session-token';
 import { hasSignedSession } from './raw-body-session';
 import type { IncomingRequestLike } from './raw-body-route';
 
 const SECRET = 'a'.repeat(32);
 const OTHER_SECRET = 'b'.repeat(32);
+const SESSIONS = new AuthService(SECRET, sessionCookieProfile('http://localhost:3000'));
 const NOW = DateTime.fromISO('2026-09-05T12:00:00Z', { setZone: true });
 
 function reqWithCookie(cookie: string | string[] | undefined): IncomingRequestLike {
@@ -21,24 +23,24 @@ function reqWithCookie(cookie: string | string[] | undefined): IncomingRequestLi
 
 describe('hasSignedSession', () => {
   it('нет заголовка Cookie — false', () => {
-    expect(hasSignedSession(reqWithCookie(undefined), SECRET, NOW)).toBe(false);
+    expect(hasSignedSession(reqWithCookie(undefined), SESSIONS, NOW)).toBe(false);
   });
 
   it('Cookie есть, но без session= — false', () => {
-    expect(hasSignedSession(reqWithCookie('other=1'), SECRET, NOW)).toBe(false);
+    expect(hasSignedSession(reqWithCookie('other=1'), SESSIONS, NOW)).toBe(false);
   });
 
   it('валидный токен тем же секретом — true', () => {
     const token = signSession({ userId: 'u1', issuedAt: NOW }, SECRET);
     expect(
-      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SECRET, NOW),
+      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SESSIONS, NOW),
     ).toBe(true);
   });
 
   it('токен подписан чужим секретом — false', () => {
     const token = signSession({ userId: 'u1', issuedAt: NOW }, OTHER_SECRET);
     expect(
-      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SECRET, NOW),
+      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SESSIONS, NOW),
     ).toBe(false);
   });
 
@@ -46,20 +48,20 @@ describe('hasSignedSession', () => {
     const issuedAt = NOW.minus({ days: SESSION_MAX_AGE_DAYS, seconds: 1 });
     const token = signSession({ userId: 'u1', issuedAt }, SECRET);
     expect(
-      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SECRET, NOW),
+      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=${token}`), SESSIONS, NOW),
     ).toBe(false);
   });
 
   it('битый токен (не 3 части) — false, не исключение', () => {
-    expect(hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=мусор`), SECRET, NOW)).toBe(
-      false,
-    );
+    expect(
+      hasSignedSession(reqWithCookie(`${SESSION_COOKIE}=мусор`), SESSIONS, NOW),
+    ).toBe(false);
   });
 
   it('заголовок-массив — читает первое значение (asSingleHeader)', () => {
     const token = signSession({ userId: 'u1', issuedAt: NOW }, SECRET);
     expect(
-      hasSignedSession(reqWithCookie([`${SESSION_COOKIE}=${token}`]), SECRET, NOW),
+      hasSignedSession(reqWithCookie([`${SESSION_COOKIE}=${token}`]), SESSIONS, NOW),
     ).toBe(true);
   });
 });

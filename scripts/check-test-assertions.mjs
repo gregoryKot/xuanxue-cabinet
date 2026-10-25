@@ -11,8 +11,10 @@
 // комментарии, чтобы `it.skip` внутри литерала не читался как код.
 // check-test-assertions.test.mjs гоняет их на строках-фикстурах, не на дереве.
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { join } from 'path';
+import { repoPath } from './repo-path.mjs';
 import { stripLiterals } from './source-text.mjs';
+import { isMainModule } from './is-main-module.mjs';
 
 const SUFFIXES = ['.e2e-spec.ts', '.spec.ts', '.test.tsx', '.test.ts'];
 const SCAN_DIRS = ['api/src', 'api/test', 'web/src', 'shared/src'];
@@ -110,7 +112,7 @@ function main() {
     if (!existsSync(abs)) continue;
     for (const file of walk(abs)) {
       fileCount++;
-      const label = relative(ROOT, file);
+      const label = repoPath(ROOT, file);
       const src = readFileSync(file, 'utf8');
       testCount += stripLiterals(src).match(/(?<!\.)\b(?:it|test)\(/g)?.length ?? 0;
       for (const { line, name } of findDisabledTests(src)) {
@@ -133,6 +135,6 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт — не при импорте из теста.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

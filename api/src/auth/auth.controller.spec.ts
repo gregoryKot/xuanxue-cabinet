@@ -70,7 +70,10 @@ async function buildController(
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
-      { provide: AuthService, useValue: { logoutCookie: () => 'session=; Max-Age=0' } },
+      {
+        provide: AuthService,
+        useValue: { logoutCookies: () => ['session=; Max-Age=0'] },
+      },
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
       {
         provide: EmailAuthService,
@@ -233,6 +236,7 @@ describe('AuthController.me', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 
@@ -254,11 +258,11 @@ describe('AuthController.me', () => {
 });
 
 describe('AuthController.logout', () => {
-  it('ставит Set-Cookie из AuthService.logoutCookie()', async () => {
+  it('ставит Set-Cookie из AuthService.logoutCookies()', async () => {
     const controller = await buildController();
     const res = fakeResponse();
     controller.logout(res);
-    expect(res.headers['Set-Cookie']).toBe('session=; Max-Age=0');
+    expect(res.headers['Set-Cookie']).toEqual(['session=; Max-Age=0']);
   });
 });
 
@@ -308,7 +312,7 @@ describe('AuthController.verifyEmailLogin', () => {
         {
           provide: EmailAuthService,
           useValue: {
-            verify: () => Promise.resolve({ user: USER, cookie: 'session=email-tok' }),
+            verify: () => Promise.resolve({ user: USER, cookies: ['session=email-tok'] }),
           },
         },
         { provide: GoogleAuthService, useValue: {} },
@@ -327,7 +331,7 @@ describe('AuthController.verifyEmailLogin', () => {
 
     const me = await controller.verifyEmailLogin({ token: 'a'.repeat(64) }, res);
 
-    expect(res.headers['Set-Cookie']).toBe('session=email-tok');
+    expect(res.headers['Set-Cookie']).toEqual(['session=email-tok']);
     expect(me).toEqual({
       id: 'u1',
       name: 'Мария',
@@ -342,6 +346,7 @@ describe('AuthController.verifyEmailLogin', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 });
@@ -368,7 +373,7 @@ function fakeRequest(body: Record<string, unknown>): RequestLike {
 describe('AuthController.loginWithTelegram', () => {
   it('ставит Set-Cookie из результата TelegramAuthService.login() и возвращает MeDto', async () => {
     const controller = await buildController(() =>
-      Promise.resolve({ user: USER, cookie: 'session=tok' }),
+      Promise.resolve({ user: USER, cookies: ['session=tok'] }),
     );
     const res = fakeResponse();
 
@@ -379,7 +384,7 @@ describe('AuthController.loginWithTelegram', () => {
       res,
     );
 
-    expect(res.headers['Set-Cookie']).toBe('session=tok');
+    expect(res.headers['Set-Cookie']).toEqual(['session=tok']);
     expect(me).toEqual({
       id: 'u1',
       name: 'Мария',
@@ -394,6 +399,7 @@ describe('AuthController.loginWithTelegram', () => {
       needsProfile: true,
       studentMode: false,
       canUseStudentMode: true,
+      homeHiddenTiles: [],
     });
   });
 
@@ -401,7 +407,7 @@ describe('AuthController.loginWithTelegram', () => {
     let receivedInviteCode: string | undefined;
     const controller = await buildController((_dto, _rawBody, _now, inviteCode) => {
       receivedInviteCode = inviteCode;
-      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+      return Promise.resolve({ user: USER, cookies: ['session=tok'] });
     });
     const code = 'a'.repeat(32);
 
@@ -419,7 +425,7 @@ describe('AuthController.loginWithTelegram', () => {
     let receivedRawBody: Record<string, unknown> | undefined;
     const controller = await buildController((_dto, rawBody) => {
       receivedRawBody = rawBody;
-      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+      return Promise.resolve({ user: USER, cookies: ['session=tok'] });
     });
     const rawBody = { ...TELEGRAM_INPUT, unknown_field: 'от клиента' };
 
@@ -437,7 +443,7 @@ describe('AuthController.loginWithTelegram', () => {
     let receivedRawBody: Record<string, unknown> | undefined;
     const controller = await buildController((_dto, rawBody) => {
       receivedRawBody = rawBody;
-      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+      return Promise.resolve({ user: USER, cookies: ['session=tok'] });
     });
     const requestWithoutBody: RequestLike = { method: 'POST', headers: {} };
 

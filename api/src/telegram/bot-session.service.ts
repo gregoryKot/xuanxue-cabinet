@@ -32,13 +32,11 @@ import {
   type NewExamItemDraftPatch,
 } from './new-exam-item-draft-wait';
 import { paymentWaitUpdate } from './payment-wait';
+import { recordingSourceUpdate, recordingWaitUpdate } from './recording-wait';
+import type { RecordingSource } from './handlers/recording-source';
 
-// Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
-// (PLAN.md §6); «Запись?» ждёт куда дольше — снять запись можно не сразу
-// (EXAM_ANSWER_WAIT_HOURS в exam-answer-wait.ts — то же число для ответа на
-// вопрос экзамена, по той же причине).
+// «Изменить тему»//тема ждут недолго (PLAN.md §6); «Запись?» — recording-wait.ts.
 const TOPIC_WAIT_MINUTES = 10;
-const RECORDING_WAIT_HOURS = 12;
 // Комментарий проверки (ТЗ 4б.5) — короткое действие, тот же порядок, что у
 // темы: проверяющий ставит его тут же, не откладывая на потом.
 const GRADE_COMMENT_WAIT_MINUTES = 10;
@@ -52,19 +50,32 @@ export class BotSessionService {
   /** Новое ожидание вытесняет старое — один документ на чат (upsert по
    * уникальному индексу `chatId`), учитель отвечает на последнее, что видит. */
   async startTopicWait(chatId: number, lessonId: string, now: DateTime): Promise<void> {
-    await this.set(chatId, 'topic', lessonId, now.plus({ minutes: TOPIC_WAIT_MINUTES }));
+    const expiresAt = now.plus({ minutes: TOPIC_WAIT_MINUTES }).toJSDate();
+    await this.model.updateOne(
+      { chatId },
+      { $set: { kind: 'topic', lessonId: new Types.ObjectId(lessonId), expiresAt } },
+      { upsert: true },
+    );
   }
 
+  /** Ждём запись (ADR-0175) — апдейт в recording-wait.ts, как payment-wait.ts. */
   async startRecordingWait(
     chatId: number,
     lessonId: string,
     now: DateTime,
   ): Promise<void> {
-    await this.set(
-      chatId,
-      'recording',
-      lessonId,
-      now.plus({ hours: RECORDING_WAIT_HOURS }),
+    await this.model.updateOne(
+      { chatId },
+      { $set: recordingWaitUpdate(lessonId, now) },
+      { upsert: true },
+    );
+  }
+
+  /** Источник записи до выбора занятия кнопкой (ADR-0175) — поверх 'recording', не upsert. */
+  async setRecordingSource(chatId: number, source: RecordingSource): Promise<void> {
+    await this.model.updateOne(
+      { chatId, kind: 'recording' },
+      { $set: recordingSourceUpdate(source) },
     );
   }
 
@@ -238,24 +249,5 @@ export class BotSessionService {
       .findOne({ chatId, expiresAt: { $lte: now.toJSDate() } }, { kind: 1 })
       .lean<{ kind: BotSessionKind } | null>();
     return doc?.kind ?? null;
-  }
-
-  private async set(
-    chatId: number,
-    kind: 'topic' | 'recording',
-    lessonId: string,
-    expiresAt: DateTime,
-  ): Promise<void> {
-    await this.model.updateOne(
-      { chatId },
-      {
-        $set: {
-          kind,
-          lessonId: new Types.ObjectId(lessonId),
-          expiresAt: expiresAt.toJSDate(),
-        },
-      },
-      { upsert: true },
-    );
   }
 }

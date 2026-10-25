@@ -8,7 +8,51 @@ import {
   controllerSearchKeys,
   hasDenialAssertion,
   findUncoveredControllers,
+  parseRootRoutes,
 } from './check-ownership-e2e.mjs';
+
+test('parseRootRoutes: литералы списка, комментарий со «списком» не в счёт', () => {
+  const src = `
+// export const ROOT_ROUTES = ['commented/out'] as const;
+export const ROOT_ROUTES = [
+  'auth/native/authorize',
+  "other/root",
+] as const;`;
+  assert.deepEqual(parseRootRoutes(src), ['auth/native/authorize', 'other/root']);
+});
+
+test('parseRootRoutes: нет списка — нет маршрутов от корня', () => {
+  assert.deepEqual(parseRootRoutes(`export const OTHER = ['x'];`), []);
+});
+
+test('controllerSearchKeys: префикс из ROOT_ROUTES — ключ от корня, без /api', () => {
+  const src = `@Controller('auth/native/authorize')`;
+  assert.deepEqual(controllerSearchKeys(src, ['auth/native/authorize']), [
+    '/auth/native/authorize',
+  ]);
+  assert.deepEqual(
+    controllerSearchKeys(`@Controller('auth/native')`, ['auth/native/authorize']),
+    ['/api/auth/native'],
+  );
+});
+
+test('findUncoveredControllers: маршрут от корня закрывает спека с адресом от корня', () => {
+  const controllers = [
+    { fileLabel: 'root.controller.ts', src: `@Controller('auth/native/authorize')` },
+  ];
+  const covering = {
+    fileLabel: 'root.e2e-spec.ts',
+    src: `request(app).get('/auth/native/authorize?x=1'); expect(res.status).toBe(404);`,
+  };
+  const elsewhere = {
+    fileLabel: 'other.e2e-spec.ts',
+    src: `request(app).get('/api/lessons').expect(403);`,
+  };
+  const roots = ['auth/native/authorize'];
+
+  assert.deepEqual(findUncoveredControllers(controllers, [covering], roots), []);
+  assert.equal(findUncoveredControllers(controllers, [elsewhere], roots).length, 1);
+});
 
 test('controllerSearchKeys: обычный префикс — один ключ', () => {
   assert.deepEqual(controllerSearchKeys(`@Controller('lessons')`), ['/api/lessons']);

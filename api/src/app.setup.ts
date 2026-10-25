@@ -2,7 +2,7 @@
 // test/e2e-support/create-app.ts (e2e), чтобы поведение сервера не
 // расходилось с тем, что видят тесты (правило CLAUDE.md «одна механика —
 // одно место»). Сюда НЕ входит .listen() — в e2e его не вызывают.
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, RequestMethod, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
@@ -12,15 +12,18 @@ import {
   EXAM_IMAGE_LIMITS,
   MATERIAL_FILE_LIMITS,
 } from '@xuanxue/shared';
-import { SESSION_SECRET } from './auth/session-token';
+import { AuthService } from './auth/auth.service';
 import { CSP_DIRECTIVES } from './security/csp';
 import { makeAppVersionHeader } from './common/app-version-header';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { ROOT_ROUTES } from './common/root-routes';
 import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
 import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
+import { configureNativeBodyParsing } from './native-auth/native-http';
+import { configureReminderSyncBody } from './notifications/reminder-sync-body';
 import {
   makeIsVideoPart,
   VIDEO_PART_PATH_PATTERNS,
@@ -62,16 +65,19 @@ export function configureApp(app: NestExpressApplication): void {
   // bodyParser отключён в NestFactory.create (см. main.ts/create-app.ts) —
   // иначе дефолтный парсер (лимит ~100kb) успевает отработать первым, и наш
   // лимит ниже никогда не применяется.
+  // Сырое тело записи напоминаний — ДО глобального json: прочитанное здесь тело
+  // он пропускает (reminder-sync-body.ts, ADR-0185).
+  configureReminderSyncBody(app);
   app.useBodyParser('json', { limit: '1mb' });
 
-  // Секрет сессии — из DI, один раз здесь (не в самих предикатах: они
-  // чистые функции без Nest-контекста), и замыкается на оба предиката ниже
+  // Проверка сессии — из DI, один раз здесь (не в самих предикатах: они
+  // чистые функции без Nest-контекста), и замыкается на предикаты ниже
   // (SECURITY §4, ADR-0083, мера 1). app.get() безопасен до app.init():
   // NestExpressApplication резолвит уже созданный граф провайдеров.
-  const sessionSecret = app.get<string>(SESSION_SECRET);
-  const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
-  const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
-  const isVideoPart = makeIsVideoPart(sessionSecret, VIDEO_PART_PATH_PATTERNS);
+  const sessions = app.get(AuthService);
+  const isRawImageUpload = makeIsRawImageUpload(sessions);
+  const isMaterialFileUpload = makeIsMaterialFileUpload(sessions);
+  const isVideoPart = makeIsVideoPart(sessions, VIDEO_PART_PATH_PATTERNS);
 
   // Мера 2 (SECURITY §4, ADR-0083) — потолок на число сырых загрузок
   // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло бы в
@@ -114,7 +120,13 @@ export function configureApp(app: NestExpressApplication): void {
     limit: ANSWER_VIDEO_LIMITS.partBytes,
   });
 
-  app.setGlobalPrefix('api');
+  // Формы нативного Daychi (ADR-0181) — единственные urlencoded-тела в API;
+  // ошибки парсеров тела на его путях получают свой формат ответа.
+  configureNativeBodyParsing(app);
+
+  app.setGlobalPrefix('api', {
+    exclude: ROOT_ROUTES.map((path) => ({ path, method: RequestMethod.GET })),
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

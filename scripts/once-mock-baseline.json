@@ -1,5 +1,5 @@
 {
-  "total": 239,
+  "total": 237,
   "byFile": {
     "web/src/attempt/useAttempt.test.ts": 6,
     "web/src/attempt/useAttemptAutosave.test.ts": 16,
@@ -58,7 +58,7 @@
     "web/src/student/useMyMaterials.test.ts": 2,
     "web/src/telegram/useTelegramLinkCode.test.ts": 2,
     "web/src/templates/TemplateEditor.test.tsx": 3,
-    "web/src/templates/TemplatesScreen.test.tsx": 4,
+    "web/src/templates/TemplatesScreen.test.tsx": 2,
     "web/src/templates/useAutoPreview.test.ts": 2,
     "web/src/templates/useNextLessons.test.ts": 2,
     "web/src/templates/usePreview.test.ts": 7,

@@ -21,12 +21,14 @@ import { ChannelsModule } from './channels/channels.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AppErrorsModule } from './app-errors/app-errors.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
+import { BoardModule } from './board/board.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { AnswerVideosModule } from './answer-videos/answer-videos.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
 import { GradingPresetsModule } from './grading-presets/grading-presets.module';
+import { SchoolEventsModule } from './school-events/school-events.module';
 import { MaterialsModule } from './materials/materials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -37,7 +39,9 @@ import { TagsModule } from './tags/tags.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { SESSION_SECRET } from './auth/session-token';
+import { NativeAuthModule } from './native-auth/native-auth.module';
+import { WikiEntryModule } from './wiki-entry/wiki-entry.module';
+import { AuthService } from './auth/auth.service';
 import { throttleTracker, type ThrottleRequestLike } from './auth/throttle-tracker';
 import { SeedModule } from './seed/seed.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -74,16 +78,16 @@ import { staticAssetsOptions } from './static/static-cache-control';
       }),
     }),
     // Бакет троттлера (правило CLAUDE.md №4, ADR-0164): вошедший — по своей
-    // сессии, неверифицированный — по IP. Секрет сессии — тот же
-    // SESSION_SECRET, что у AuthGuard (экспорт AuthModule), второй фабрики
-    // нет. Гейт — api/test/throttle-session.e2e-spec.ts.
+    // сессии, неверифицированный — по IP. Сессию читает тот же AuthService,
+    // что у AuthGuard (экспорт AuthModule), второго разбора cookie нет.
+    // Гейт — api/test/throttle-session.e2e-spec.ts.
     ThrottlerModule.forRootAsync({
       imports: [AuthModule],
-      inject: [SESSION_SECRET],
-      useFactory: (secret: string) => ({
+      inject: [AuthService],
+      useFactory: (sessions: AuthService) => ({
         throttlers: [{ ttl: 60_000, limit: 120 }],
         getTracker: (req: ThrottleRequestLike) =>
-          throttleTracker(req, secret, DateTime.utc()),
+          throttleTracker(req, sessions, DateTime.utc()),
       }),
     }),
     DatabaseModule,
@@ -107,9 +111,11 @@ import { staticAssetsOptions } from './static/static-cache-control';
     AppErrorsModule,
     ClientErrorsModule,
     GradingPresetsModule,
+    SchoolEventsModule,
     MaterialsModule,
     NotificationsModule,
     PaymentsModule,
+    BoardModule,
     PushModule,
     SettingsModule,
     SummaryModule,
@@ -126,6 +132,11 @@ import { staticAssetsOptions } from './static/static-cache-control';
     // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
     // раньше провайдеров импортированных модулей).
     AuthModule,
+    // Нативный Daychi (ADR-0181): bearer вместо cookie, свои маршруты под
+    // /api/auth/native, @Public() для AuthGuard.
+    NativeAuthModule,
+    // Вход из wiki (ADR-0183): GET /wiki от корня сайта, @Public() для AuthGuard.
+    WikiEntryModule,
     TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     // Заголовки кеша (хэшированные ассеты — на год, index.html/sw.js —

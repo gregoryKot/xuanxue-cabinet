@@ -96,6 +96,8 @@ export class SettingsService {
     const { $set, $unset } = splitUpdate(rest, NULLABLE_SETTINGS_FIELDS);
     if (templates) Object.assign($set, templatesSetFrom(templates));
     if (paymentReminder) Object.assign($set, paymentReminderSetFrom(paymentReminder));
+    // Не экземпляр DTO, а простой объект: в базу уходят ровно два поля.
+    if (rest.boardNotice) $set.boardNotice = { ...rest.boardNotice };
     // Пустой `$set` и `$unset` разом (тело `{}`, оба шаблона опциональны,
     // или объект, где всё значения undefined — class-transformer
     // материализует поля DTO даже для пустого тела) — писать нечего: MongoDB

@@ -15,9 +15,12 @@
 //
 // Шаги — данные (CHECK_STEPS), не текст команды: `spawnSync(command, args)`
 // без shell, поэтому не нужно экранировать `&&`, а `TZ=...` шага передаётся
-// через `env`, не через синтаксис командной строки.
+// через `env`, не через синтаксис командной строки. npm-шаги запускаются через
+// node и `npm_execpath` (resolveStepCommand), чтобы работать и на Windows.
 import { spawnSync } from 'child_process';
 import { join } from 'path';
+import { isMainModule } from './is-main-module.mjs';
+import { npmCommand } from './tool-command.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const SYDNEY_TZ = 'Australia/Sydney';
@@ -81,6 +84,18 @@ export function describeExit({ status, signal, error }) {
 }
 
 /**
+ * Что реально запускать для шага. На Windows `npm` — это `npm.cmd`, а Node
+ * без shell отказывается его спавнить (ENOENT); включать shell нельзя: путь
+ * `process.execPath` вроде `C:\Program Files\nodejs\node.exe` с пробелом он
+ * разрежет. Поэтому npm-шаг идёт через сам node и npm-cli.js (`npmCommand`:
+ * `npm_execpath` от `npm run`, иначе npm рядом с node); не-npm шаг — как есть.
+ */
+export function resolveStepCommand(step, env = process.env, nodeDir) {
+  if (step.command !== 'npm') return { command: step.command, args: step.args };
+  return npmCommand(step.args, env, nodeDir);
+}
+
+/**
  * Шаги по порядку через `spawnSync` (без shell — `command`/`args` раздельно).
  * Останавливается на первом упавшем шаге и возвращает его вместе с причиной;
  * `null` — все шаги зелёные. `onStep(step, index)` вызывается перед запуском
@@ -91,7 +106,8 @@ export function describeExit({ status, signal, error }) {
 export function runSteps(steps, onStep) {
   for (const [index, step] of steps.entries()) {
     onStep?.(step, index);
-    const result = spawnSync(step.command, step.args, {
+    const { command, args } = resolveStepCommand(step);
+    const result = spawnSync(command, args, {
       stdio: step.stdio ?? 'inherit',
       cwd: ROOT,
       env: { ...process.env, ...step.env },
@@ -119,7 +135,7 @@ function main() {
 }
 
 // Запуск как самостоятельный скрипт (`npm run check`) — не при импорте из
-// теста (import.meta.url !== process.argv[1] в этом случае).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// теста (isMainModule ложно в этом случае).
+if (isMainModule(import.meta.url)) {
   main();
 }

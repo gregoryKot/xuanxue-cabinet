@@ -21,6 +21,7 @@
 import { Module } from '@nestjs/common';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
+import { LessonVideosModule } from '../lesson-videos/lesson-videos.module';
 import { MaterialModelModule } from '../materials/material-model.module';
 import { MaterialsModule } from '../materials/materials.module';
 import { UserModelModule } from '../users/user-model.module';
@@ -31,6 +32,8 @@ import { LessonsService } from './lessons.service';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { MyLessonsController } from './my-lessons.controller';
 import { MyLessonsService } from './my-lessons.service';
+import { PublicLessonsController } from './public-lessons.controller';
+import { PublicLessonsService } from './public-lessons.service';
 
 @Module({
   // UserModelModule — update() проверяет leaderId через assertTeacherExists
@@ -44,12 +47,14 @@ import { MyLessonsService } from './my-lessons.service';
     UserModelModule,
     MaterialModelModule,
     MaterialsModule,
+    LessonVideosModule, // addRecording проверяет videoId (ADR-0180)
   ],
-  controllers: [LessonsController, MyLessonsController],
+  controllers: [LessonsController, MyLessonsController, PublicLessonsController],
   providers: [
     LessonsService,
     MyLessonsService,
     MyLessonsArchiveService,
+    PublicLessonsService,
     LessonRecordingSummaryService,
   ],
   // MyLessonsService — ещё и боту: экран «Ближайшие занятия» показывает тот

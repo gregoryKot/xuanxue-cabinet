@@ -82,4 +82,8 @@ export const EXAM_VIDEO_NOT_FOUND_MESSAGE = 'Видео не найдено. З�
 export interface ExamVideoStatsDto {
   count: number;
   totalBytes: number;
+  /** Готовые видео без кадра-превью — загруженные до ADR-0165 или те, у
+   * которых снимок при загрузке не вышел. Ноль — у всех кадр есть; по этому
+   * числу штат решает, нажимать ли «Снять кадры» (ADR-0182). */
+  withoutPosterCount: number;
 }

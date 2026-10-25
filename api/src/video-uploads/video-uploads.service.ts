@@ -17,6 +17,7 @@ import { ObjectHeadService } from '../storage/object-head.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { assembleVideoUpload } from './video-upload-assemble';
 import { uploadVideoPart, type UploadPartInput } from './video-upload-part';
+import { completeVideoUpload, type CompleteInput } from './video-upload-complete';
 import { sweepStaleUploads, type SweepStaleInput } from './video-upload-stale';
 import { startVideoUpload, type StartUploadInput } from './video-upload-start';
 import type { RawLeanVideoUpload } from './video-upload.mapper';
@@ -53,6 +54,18 @@ export class VideoUploadsService {
     now: DateTime,
   ): Promise<void> {
     return assembleVideoUpload({ model, ...this.storage() }, doc, uploadId, now);
+  }
+
+  /** Завершить загрузку: кадр, сборка файла в R2, `ready`; повтор отдаёт ту же
+   * запись. Домен после вызова строит свой DTO из возвращённой записи. */
+  complete<T extends VideoUploadRecord, L extends RawLeanVideoUpload>(
+    model: Model<T>,
+    doc: L,
+    input: CompleteInput,
+  ): Promise<L> {
+    const assemble = (d: RawLeanVideoUpload, uploadId: string, now: DateTime) =>
+      this.assemble(model, d, uploadId, now);
+    return completeVideoUpload({ model, assemble }, doc, input);
   }
 
   /** Убрать брошенные `uploading`; возвращает, сколько убрано. */

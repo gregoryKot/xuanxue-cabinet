@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as RouterModule from 'react-router-dom';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { saveNativeAttempt } from './nativeAttempt';
 import { saveReturnTo } from './returnTo';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
 
@@ -25,6 +26,7 @@ vi.mock('react-router-dom', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const TOKEN = 'a'.repeat(64);
+const NATIVE_ATTEMPT_ID = '0123456789abcdef01234567';
 
 afterEach(() => {
   mockedApiFetch.mockReset();
@@ -90,6 +92,24 @@ describe('useEmailLoginVerify', () => {
 
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith('/planning?week=2', { replace: true }),
+    );
+  });
+
+  // ADR-0181: ссылка открыта в той же вкладке, где начат вход из Daychi, —
+  // назад на его экран. Ссылка в новой вкладке ключа не видит и ведёт домой
+  // (тест «token валиден с самого начала» выше).
+  it('успех, во вкладке попытка Daychi — переход на её экран', async () => {
+    saveNativeAttempt(NATIVE_ATTEMPT_ID);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    renderHook(() => useEmailLoginVerify(refresh, TOKEN));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith(
+        `/login/native?attempt=${NATIVE_ATTEMPT_ID}`,
+        { replace: true },
+      ),
     );
   });
 

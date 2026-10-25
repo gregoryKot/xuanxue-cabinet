@@ -43,8 +43,12 @@ function makeLibrary(scenario: Scenario = {}) {
     sinkOptions: undefined as unknown,
     timestamp: undefined as number | undefined,
     disposed: 0,
+    sources: [] as unknown[],
   };
   class Input {
+    constructor(options: { source: unknown }) {
+      record.sources.push(options.source);
+    }
     getPrimaryVideoTrack() {
       return Promise.resolve(
         track && {
@@ -73,7 +77,16 @@ function makeLibrary(scenario: Scenario = {}) {
   const lib = {
     Input,
     CanvasSink,
-    BlobSource: class {},
+    BlobSource: class {
+      kind = 'blob';
+    },
+    UrlSource: class {
+      kind = 'url';
+      constructor(
+        public url: string,
+        public options: unknown,
+      ) {}
+    },
     ALL_FORMATS: [],
   } as unknown as MediabunnyLibrary;
   return { lib, record };
@@ -81,14 +94,15 @@ function makeLibrary(scenario: Scenario = {}) {
 
 function capture(
   scenario: Scenario | Error = {},
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; source?: Blob | string; timeoutMs?: number } = {},
 ) {
+  const { source = BLOB, ...captureOptions } = options;
   const library = scenario instanceof Error ? undefined : makeLibrary(scenario);
   const loadLibrary = vi.fn(() =>
     library ? Promise.resolve(library.lib) : Promise.reject(scenario as Error),
   );
   return {
-    run: captureVideoPoster(BLOB, { ...options, loadLibrary }),
+    run: captureVideoPoster(source, { ...captureOptions, loadLibrary }),
     loadLibrary,
     record: library?.record,
   };
@@ -159,6 +173,41 @@ describe('captureVideoPoster — через Mediabunny', () => {
   });
 });
 
+describe('captureVideoPoster — адрес вместо файла (ADR-0182)', () => {
+  const URL_SOURCE = '/api/exam-videos/652f00000000000000000002/bytes';
+
+  it('библиотека читает адрес через UrlSource с урезанным кэшем, а не BlobSource', async () => {
+    const { run, record } = capture({}, { source: URL_SOURCE });
+
+    expect(await run).toBe(POSTER_BASE64);
+    expect(record?.sources).toHaveLength(1);
+    expect(record?.sources[0]).toMatchObject({
+      kind: 'url',
+      url: URL_SOURCE,
+      options: { maxCacheSize: 16 * 1024 * 1024 },
+    });
+  });
+
+  it('Blob по-прежнему идёт через BlobSource', async () => {
+    const { run, record } = capture();
+
+    await run;
+
+    expect(record?.sources[0]).toMatchObject({ kind: 'blob' });
+  });
+
+  it('повтор упавшего запроса ограничен: после двух неудач библиотека сдаётся', async () => {
+    const { run, record } = capture({}, { source: URL_SOURCE });
+    await run;
+    const { options } = record?.sources[0] as {
+      options: { getRetryDelay: (attempts: number) => number | null };
+    };
+
+    expect(options.getRetryDelay(0)).toBeGreaterThan(0);
+    expect(options.getRetryDelay(2)).toBeNull();
+  });
+});
+
 describe('captureVideoPoster — настоящая библиотека', () => {
   it('ленивый кусок грузится, а байты, которые не видео, дают null без ошибки', async () => {
     expect(await captureVideoPoster(BLOB)).toBeNull();
@@ -175,6 +224,21 @@ describe('captureVideoPoster — срок и отмена', () => {
     });
 
     await vi.advanceTimersByTimeAsync(POSTER_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(await run).toBeNull();
+  });
+
+  it('свой срок `timeoutMs` — для снимка из адреса (ADR-0182) он длиннее, чем при загрузке', async () => {
+    vi.useFakeTimers();
+    const { run } = capture({ hang: true }, { timeoutMs: POSTER_TIMEOUT_MS * 3 });
+    let settled = false;
+    void run.then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(POSTER_TIMEOUT_MS * 3 - 1);
     expect(settled).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
 
@@ -273,6 +337,27 @@ describe('captureVideoPoster — запасной путь через <video>', 
     expect(load).toHaveBeenCalled();
   });
 
+  it('адрес вместо файла: src ставится в адрес, объектный адрес не создаётся (ADR-0182)', async () => {
+    const createObjectURL = vi.fn(() => 'blob:unused');
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    const source = '/api/exam-videos/652f00000000000000000002/bytes';
+    const run = captureVideoPoster(source);
+    const video = await startedVideo();
+    describeVideo(video);
+
+    expect(video.getAttribute('src')).toBe(source);
+    video.dispatchEvent(new Event('loadeddata'));
+    await vi.waitFor(() => expect(video.currentTime).toBe(0.5));
+    video.dispatchEvent(new Event('seeked'));
+
+    expect(await run).toBe(POSTER_BASE64);
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+  });
+
   it('браузер не открыл видео (error) — кадра нет, адрес освобождён', async () => {
     const run = captureVideoPoster(BLOB);
     const video = await startedVideo();
@@ -329,6 +414,17 @@ describe('captureVideoPoster — запасной путь через <video>', 
 });
 
 describe('captureVideoPoster — нечем снимать', () => {
+  it('адрес в jsdom без createObjectURL: запасной путь доступен, ждёт события или срока', async () => {
+    vi.unstubAllGlobals();
+    vi.useFakeTimers();
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+    const run = captureVideoPoster('/api/exam-videos/x/bytes');
+
+    await vi.advanceTimersByTimeAsync(POSTER_TIMEOUT_MS);
+
+    expect(await run).toBeNull();
+  });
+
   it('нет ни VideoDecoder, ни URL.createObjectURL (jsdom) — сразу null, без ожидания срока', async () => {
     vi.unstubAllGlobals();
 

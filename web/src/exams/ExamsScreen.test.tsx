@@ -43,7 +43,9 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 
 const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
 const NO_IMAGES = { '/exam-images/stats-summary': { count: 0, totalBytes: 0 } };
-const NO_VIDEOS = { '/exam-videos/stats-summary': { count: 0, totalBytes: 0 } };
+const NO_VIDEOS = {
+  '/exam-videos/stats-summary': { count: 0, totalBytes: 0, withoutPosterCount: 0 },
+};
 // /answer-videos/stats-summary — ключ раньше общего /answer-videos ниже не
 // нужен: у экрана нет других запросов на этот префикс.
 const NO_ANSWER_VIDEOS = { '/answer-videos/stats-summary': { count: 0, totalBytes: 0 } };

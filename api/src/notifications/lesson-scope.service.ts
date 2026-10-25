@@ -1,10 +1,11 @@
-// «О каких занятиях напоминать» и «за сколько минут» (ADR-0162): чтение и
-// запись выбора человека в `notification_prefs`. Отдельный сервис, а не методы
-// NotificationPrefsService: тот стоит на границе храповика размера, а выбор
-// занятий — своя тема (он не про вид уведомления, а про то, о чём именно и
-// когда). Документ тот же, одна модель. Проверки «такое занятие есть» здесь
-// нет: это решение границы API (LessonNotificationsService), а `set` остаётся
-// чистой записью.
+// «О каких занятиях» (ADR-0162): чтение и запись выбора человека в
+// `notification_prefs` для отмен, записей и новых материалов, а для тика — чтение всего,
+// что он знает о человеке, включая выбор и «за сколько» напоминаний (ADR-0185), которые
+// пишет синхронизация. Отдельный сервис, а не методы NotificationPrefsService: тот стоит
+// на границе храповика размера, а выбор занятий — своя тема (он не про вид уведомления,
+// а про то, о чём именно и когда). Документ тот же, одна модель. Проверки «такое занятие
+// есть» здесь нет: это решение границы API (LessonNotificationsService), а `set`
+// остаётся чистой записью.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
@@ -13,18 +14,25 @@ import { ensurePrefsDoc } from './ensure-prefs-doc';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
 
 type LeanScope = Pick<NotificationPrefsRecord, 'lessonScopeMode' | 'lessonClassIds'>;
-type LeanLessonPrefs = LeanScope & Pick<NotificationPrefsRecord, 'lessonReminderMinutes'>;
+type LeanLessonPrefs = LeanScope &
+  Pick<
+    NotificationPrefsRecord,
+    'lessonReminderMinutes' | 'reminderClassIds' | 'reminderLessonIds'
+  >;
 
-/** Всё, что тик напоминания знает о человеке: о каких занятиях и за сколько.
- * `reminderMinutes` нет — «как в школе». */
+/** Всё, что шаги тика знают о человеке: `scope` — для отмены, записи и материалов
+ * (ADR-0162), `reminder*Ids` — для «Занятие скоро» (ADR-0185), друг на друга они не
+ * влияют. Нет документа или поля — пустые множества; `reminderMinutes` нет — «как в школе». */
 export interface LessonPrefs {
   scope: LessonScope;
   reminderMinutes?: number;
+  reminderClassIds: ReadonlySet<string>;
+  reminderLessonIds: ReadonlySet<string>;
 }
 
 /** Выбор человека и то, делал ли он его сам: «все» по умолчанию и «все»,
- * выбранное руками, читаются одинаково, а подсказка в ленте (ADR-0162, п. 5)
- * должна их различать. */
+ * выбранное руками, читаются одинаково, но в ответе GET /me/notifications/lessons
+ * различаются (scopeChosen). */
 export interface LessonScopeChoice {
   scope: LessonScope;
   chosen: boolean;
@@ -41,12 +49,14 @@ function toScope(doc: LeanScope | null | undefined): LessonScope {
 }
 
 function toLessonPrefs(doc: LeanLessonPrefs | undefined): LessonPrefs {
-  const prefs: LessonPrefs = { scope: toScope(doc) };
-  // Ключ не заводим пустым: «как в школе» — это отсутствие значения.
-  if (doc?.lessonReminderMinutes !== undefined) {
-    prefs.reminderMinutes = doc.lessonReminderMinutes;
-  }
-  return prefs;
+  const minutes = doc?.lessonReminderMinutes;
+  return {
+    scope: toScope(doc),
+    reminderClassIds: new Set(doc?.reminderClassIds),
+    reminderLessonIds: new Set(doc?.reminderLessonIds),
+    // Ключ не заводим пустым: «как в школе» — это отсутствие значения.
+    ...(minutes !== undefined && { reminderMinutes: minutes }),
+  };
 }
 
 @Injectable()
@@ -66,18 +76,9 @@ export class LessonScopeService {
     return { scope: toScope(doc), chosen: Boolean(doc?.lessonScopeMode) };
   }
 
-  /** Своё «за сколько минут» или `undefined` — «как в школе». */
-  async getReminderMinutes(userId: string): Promise<number | undefined> {
-    const doc = await this.model
-      .findOne({ userId }, { lessonReminderMinutes: 1 })
-      .lean<Pick<NotificationPrefsRecord, 'lessonReminderMinutes'> | null>();
-    return doc?.lessonReminderMinutes;
-  }
-
-  /** Выбор «о каких» и «за сколько» целой пачки людей одним запросом — тик
-   * напоминания о занятии не читает настройки по одному ученику в цикле.
-   * Каждый входной id есть в результате: у тех, у кого документа нет, — `all` и
-   * «как в школе». */
+  /** Выбор «о каких», «за сколько» и напоминаний целой пачки людей одним запросом —
+   * шаги тика не читают настройки по одному в цикле. Каждый входной id есть в
+   * результате: нет документа — `all`, «как в школе», пустые выборы напоминаний. */
   async getManyLessonPrefs(
     userIds: readonly string[],
   ): Promise<Map<string, LessonPrefs>> {
@@ -85,7 +86,14 @@ export class LessonScopeService {
     const docs = await this.model
       .find(
         { userId: { $in: [...userIds] } },
-        { userId: 1, lessonScopeMode: 1, lessonClassIds: 1, lessonReminderMinutes: 1 },
+        {
+          userId: 1,
+          lessonScopeMode: 1,
+          lessonClassIds: 1,
+          lessonReminderMinutes: 1,
+          reminderClassIds: 1,
+          reminderLessonIds: 1,
+        },
       )
       .lean<(LeanLessonPrefs & { userId: string })[]>();
     const byUserId = new Map(docs.map((doc) => [doc.userId, doc]));
@@ -106,18 +114,5 @@ export class LessonScopeService {
         },
       },
     );
-  }
-
-  /** Записать своё «за сколько минут»; `null` — вернуться к «как в школе»
-   * (`$unset`, а не 0: ноль означал бы «напомнить за 0 минут»). Сброс документ
-   * не заводит: сбрасывать нечего там, где ничего не выбирали. Идемпотентна —
-   * то же значение второй раз даёт тот же документ. */
-  async setReminderMinutes(userId: string, minutes: number | null): Promise<void> {
-    if (minutes === null) {
-      await this.model.updateOne({ userId }, { $unset: { lessonReminderMinutes: 1 } });
-      return;
-    }
-    await ensurePrefsDoc(this.model, userId);
-    await this.model.updateOne({ userId }, { $set: { lessonReminderMinutes: minutes } });
   }
 }

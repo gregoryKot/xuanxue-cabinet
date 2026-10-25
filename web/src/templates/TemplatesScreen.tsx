@@ -1,6 +1,7 @@
-// «Шаблоны» — тексты, которыми бот пишет от имени школы: посты, которые
-// рассылка собирает из плейсхолдеров (docs/PLAN.md §6 «Шаблоны»), и
-// напоминание ученику об оплате (§15 п. 2.5). Облик — направление «тихо и благородно»
+// «Шаблоны» — тексты постов, которые рассылка собирает из плейсхолдеров
+// (docs/PLAN.md §6 «Шаблоны»), и за сколько минут бот показывает черновик.
+// Напоминание об оплате и остальные настройки школы — экран «Школа»
+// (ADR-0176): здесь они были спрятаны под «Рассылками». Облик — направление «тихо и благородно»
 // (docs/adr/0031, макет Form.dc.html): заголовок раздела антиквой, колонка
 // страницы-редактора, разделы под волосяной линией, заливка терракотой одна —
 // у «Сохранить» внизу (остальные кнопки экрана вторичные).
@@ -23,11 +24,7 @@ import { primaryActionStyle } from '../components/screenLayout';
 import { editorPageStyle, editorSectionStyle } from '../components/editorLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
-import { DataControllerField } from './DataControllerField';
-import { NewcomerContactField } from './NewcomerContactField';
-import { PaymentContactField } from './PaymentContactField';
-import { PaymentReminderSection } from './PaymentReminderSection';
-import { SchoolSiteField } from './SchoolSiteField';
+import { PreviewMinutesField } from './PreviewMinutesField';
 import { useNextLessons } from './useNextLessons';
 import { useSavedDraft } from './useSavedDraft';
 import { TemplateEditor } from './TemplateEditor';
@@ -37,8 +34,7 @@ import { useSettings } from './useSettings';
 
 // VOICE.md «Начинать с сути, а не с определения темы» — не «Здесь тексты...»
 // (pr-k3-fixes.md п.19).
-const EXPLANATION =
-  'Что бот пишет от имени школы: посты в канал и напоминание об оплате.';
+const EXPLANATION = 'Что бот пишет **в канал школы**: анонс занятия и пост с записью.';
 
 const TITLE = 'Шаблоны';
 const SAVE_ERROR = 'Не удалось сохранить шаблоны. Попробуйте ещё раз.';
@@ -59,7 +55,7 @@ export default function TemplatesScreen() {
   const lessonsState = useNextLessons();
   const settings = settingsState.settings;
   // Сверка с сохранённым по `updatedAt` — на первой загрузке и после любого
-  // сохранения настроек, в том числе соседнего поля («Школа», «Оплаты»), но
+  // сохранения настроек, в том числе соседнего раздела («Черновик поста»), но
   // набранное и ещё не сохранённое она не перезатирает (useSavedDraft.ts).
   const [texts, setTexts, submit] = useSavedDraft<Record<TemplateKind, string> | null>(
     settings?.templates ?? null,
@@ -104,13 +100,11 @@ export default function TemplatesScreen() {
 
       {!settingsState.loading && !settingsState.error && texts && (
         <>
-          <SchoolSiteField settings={settings} update={settingsState.update} />
-          <NewcomerContactField settings={settings} update={settingsState.update} />
-          <DataControllerField settings={settings} update={settingsState.update} />
-          {/* «Оплаты» — до шаблонов постов: у неё своя кнопка сохранения, а
-              терракотовое «Сохранить» внизу закрывает именно шаблоны постов. */}
-          <PaymentReminderSection settings={settings} update={settingsState.update} />
-          <PaymentContactField settings={settings} update={settingsState.update} />
+          {/* Черновик — до шаблонов постов: у него своя кнопка сохранения, а
+              терракотовое «Сохранить» внизу закрывает именно шаблоны постов.
+              Настройки школы (сайт, контакты, напоминания ученикам) — на
+              экране «Школа» (school/SchoolScreen.tsx, ADR-0176). */}
+          <PreviewMinutesField settings={settings} update={settingsState.update} />
 
           {TEMPLATE_KINDS.map((kind) => (
             <TemplateEditor

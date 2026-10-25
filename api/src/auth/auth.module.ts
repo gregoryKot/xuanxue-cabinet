@@ -2,14 +2,21 @@
 // комментарий в auth.guard.ts про порядок относительно ThrottlerGuard из
 // AppModule). SESSION_SECRET — единственный провайдер секрета: JWT_SECRET из
 // ConfigService, если задан, иначе временный секрет на процесс (в production
-// JWT_SECRET гарантирован env.validation.ts).
+// JWT_SECRET гарантирован env.validation.ts). SESSION_PROFILE — имя и атрибуты
+// cookie по PUBLIC_URL (ADR-0183).
 import { randomBytes } from 'crypto';
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  RequestMethod,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Logger } from 'nestjs-pino';
 import { MailModule } from '../mail/mail.module';
+import { NativeGrantsModule } from '../native-auth/native-grants.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -27,6 +34,12 @@ import { GoogleAuthController } from './google-auth.controller';
 import { GoogleAuthService } from './google-auth.service';
 import { GoogleTokenClient } from './google-token-client';
 import { JoinController } from './join.controller';
+import {
+  SESSION_PROFILE,
+  sessionCookieProfile,
+  type SessionCookieProfile,
+} from './session-cookie';
+import { SessionCheckController, setNoStoreMiddleware } from './session-check.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLinkController } from './telegram-link.controller';
@@ -48,6 +61,11 @@ import { TelegramLinkController } from './telegram-link.controller';
     StorageModule,
     TelegramModule,
     MailModule,
+    // NativeGrantsService — AuthGuard принимает bearer на маршрутах с
+    // @AllowNativeBearer() (ADR-0185). Нативный модуль импортирует AuthModule,
+    // поэтому сам сервис вынесен в NativeGrantsModule, который про AuthModule
+    // не знает, — цикла нет.
+    NativeGrantsModule,
     MongooseModule.forFeature([
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),
@@ -59,6 +77,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     EmailLinkController,
     EmailCodeController,
     GoogleAuthController,
+    SessionCheckController,
   ],
   providers: [
     AuthService,
@@ -95,9 +114,24 @@ import { TelegramLinkController } from './telegram-link.controller';
         return randomBytes(32).toString('hex');
       },
     },
+    {
+      provide: SESSION_PROFILE,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): SessionCookieProfile =>
+        sessionCookieProfile(config.get<string>('PUBLIC_URL')),
+    },
   ],
-  // SESSION_SECRET — ключу бакета троттлера (app.module.ts, ADR-0164): та же
-  // подпись cookie, что у AuthGuard, вторую фабрику секрета не заводим.
-  exports: [SESSION_SECRET],
+  // AuthService — единственный читатель сессии: ключу бакета троттлера
+  // (app.module.ts, ADR-0164), предикатам сырых загрузок (app.setup.ts) и
+  // браузерной части входа Daychi (ADR-0181) — тем же правилом, что у AuthGuard.
+  exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  // no-store до гвардов: отказы 401/403/429 пишет фильтр, минуя контроллер
+  // (session-check.controller.ts).
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(setNoStoreMiddleware)
+      .forRoutes({ path: 'auth/session', method: RequestMethod.GET });
+  }
+}

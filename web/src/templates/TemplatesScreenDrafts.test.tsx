@@ -1,8 +1,9 @@
-// Разделы экрана «Шаблоны» (в том числе «Кто отвечает за данные») сохраняются
-// каждый своей кнопкой, а `updatedAt` у настроек один на всех. Сохранение
-// одного раздела не должно стирать то, что учитель набрал в других и ещё не
-// сохранил (useSavedDraft.ts): до 2026-09-29 каждое поле сбрасывалось до
-// сохранённого по общему `updatedAt`.
+// «Черновик поста» и шаблоны постов на экране «Шаблоны» сохраняются каждый
+// своей кнопкой, а `updatedAt` у настроек один на всех. Сохранение одного
+// не должно стирать то, что учитель набрал в другом и ещё не сохранил
+// (useSavedDraft.ts): до 2026-09-29 каждое поле сбрасывалось до сохранённого
+// по общему `updatedAt`. Такая же проверка для разделов «Школы» —
+// school/SchoolScreenDrafts.test.tsx.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -47,76 +48,75 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
   };
 }
 
+const SAVE_PREVIEW = 'Сохранить время предпросмотра';
+
 describe('TemplatesScreen — черновики разных разделов', () => {
-  it('сохранение адреса сайта не стирает набранное в «Оплатах» и в шаблоне поста', async () => {
+  it('сохранение времени предпросмотра не стирает набранное в шаблоне поста', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/settings': makeSettings(), '/lessons': [] });
     render(<TemplatesScreen />);
 
-    // Несохранённые правки в четырёх разделах.
-    fireEvent.change(await screen.findByLabelText('Время'), {
-      target: { value: '09:30' },
-    });
+    const field = await screen.findByLabelText(PREVIEW_LABEL);
+    await user.clear(field);
+    await user.type(field, '10');
     const [announcement] = screen.getAllByLabelText('Текст шаблона');
     if (!announcement) throw new Error('редактор анонса не отрисован');
     fireEvent.change(announcement, { target: { value: 'Анонс, правка' } });
-    await user.type(screen.getByLabelText('Адрес сайта школы'), 'https://xuanxue.su');
-    await user.type(screen.getByLabelText('Имя человека или название школы'), 'Дмитрий');
 
-    // Ответ на сохранение адреса: новый updatedAt, и заодно с сервера пришло
-    // время предпросмотра — по нему видно, что сверка с сохранённым прошла.
+    // Ответ на сохранение времени: новый updatedAt, и заодно с сервера пришёл
+    // другой текст записи — по нему видно, что сверка с сохранённым прошла.
     mockApiByPath({
       '/settings': makeSettings({
-        schoolSiteUrl: 'https://xuanxue.su',
-        previewMinutes: 25,
+        previewMinutes: 10,
+        templates: { lesson_link: 'Анонс', recording: 'Запись с сервера' },
         updatedAt: '2026-01-02T00:00:00Z',
       }),
       '/lessons': [],
     });
-    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
+    await user.click(screen.getByRole('button', { name: SAVE_PREVIEW }));
 
-    await waitFor(() => expect(screen.getByLabelText(PREVIEW_LABEL)).toHaveValue('25'));
-    expect(screen.getByLabelText('Время')).toHaveValue('09:30');
-    expect(screen.getByRole('button', { name: 'Сохранить напоминание' })).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getAllByLabelText('Текст шаблона')[1]).toHaveValue(
+        'Запись с сервера',
+      ),
+    );
     expect(screen.getAllByLabelText('Текст шаблона')[0]).toHaveValue('Анонс, правка');
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
-    expect(screen.getByLabelText('Имя человека или название школы')).toHaveValue(
-      'Дмитрий',
-    );
-    expect(
-      screen.getByRole('button', { name: 'Сохранить ответственного' }),
-    ).toBeEnabled();
+    expect(screen.getByLabelText(PREVIEW_LABEL)).toHaveValue('10');
+    expect(screen.getByRole('button', { name: SAVE_PREVIEW })).toBeDisabled();
   });
 
-  it('сохранение напоминания не стирает набранный адрес сайта', async () => {
+  it('сохранение шаблонов не стирает набранное время предпросмотра', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/settings': makeSettings(), '/lessons': [] });
     render(<TemplatesScreen />);
 
-    await user.type(
-      await screen.findByLabelText('Адрес сайта школы'),
-      'https://xuanxue.su',
-    );
-    fireEvent.change(screen.getByLabelText('Время'), { target: { value: '09:30' } });
+    const field = await screen.findByLabelText(PREVIEW_LABEL);
+    await user.clear(field);
+    await user.type(field, '10');
+    const [announcement] = screen.getAllByLabelText('Текст шаблона');
+    if (!announcement) throw new Error('редактор анонса не отрисован');
+    fireEvent.change(announcement, { target: { value: 'Анонс, правка' } });
 
     mockApiByPath({
       '/settings': makeSettings({
-        paymentReminder: { ...DEFAULT_PAYMENT_REMINDER, time: '09:30' },
-        previewMinutes: 25,
+        templates: { lesson_link: 'Анонс, правка', recording: 'Запись' },
         updatedAt: '2026-01-02T00:00:00Z',
       }),
       '/lessons': [],
     });
-    await user.click(screen.getByRole('button', { name: 'Сохранить напоминание' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
-    await waitFor(() => expect(screen.getByLabelText(PREVIEW_LABEL)).toHaveValue('25'));
-    expect(screen.getByLabelText('Адрес сайта школы')).toHaveValue('https://xuanxue.su');
-    expect(screen.getByRole('button', { name: 'Сохранить адрес' })).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled(),
+    );
+    expect(screen.getByLabelText(PREVIEW_LABEL)).toHaveValue('10');
+    expect(screen.getByRole('button', { name: SAVE_PREVIEW })).toBeEnabled();
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/settings',
       expect.objectContaining({
         method: 'PATCH',
-        body: { paymentReminder: { time: '09:30' } },
+        body: { templates: { lesson_link: 'Анонс, правка' } },
       }),
     );
   });

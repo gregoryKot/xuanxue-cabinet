@@ -108,6 +108,11 @@ import {
   EXAM_VIDEO_FIELD_POLICY,
 } from '../exam-videos/exam-video.schema';
 import {
+  LessonVideoRecord,
+  LessonVideoSchema,
+  LESSON_VIDEO_FIELD_POLICY,
+} from '../lesson-videos/lesson-video.schema';
+import {
   AnswerVideoRecord,
   AnswerVideoSchema,
   ANSWER_VIDEO_FIELD_POLICY,
@@ -117,6 +122,11 @@ import {
   GradingCommentPresetSchema,
   GRADING_COMMENT_PRESET_FIELD_POLICY,
 } from '../grading-presets/grading-comment-preset.schema';
+import {
+  SchoolEventRecord,
+  SchoolEventSchema,
+  SCHOOL_EVENT_FIELD_POLICY,
+} from '../school-events/school-event.schema';
 import {
   MaterialRecord,
   MaterialSchema,
@@ -142,6 +152,21 @@ import {
   AppErrorSchema,
   APP_ERROR_FIELD_POLICY,
 } from '../app-errors/app-error.schema';
+import {
+  NativeGrantRecord,
+  NativeGrantSchema,
+  NATIVE_GRANT_FIELD_POLICY,
+} from '../native-auth/native-grant.schema';
+import {
+  NativeCredentialRecord,
+  NativeCredentialSchema,
+  NATIVE_CREDENTIAL_FIELD_POLICY,
+} from '../native-auth/native-credential.schema';
+import {
+  NativeAuthorizationRecord,
+  NativeAuthorizationSchema,
+  NATIVE_AUTHORIZATION_FIELD_POLICY,
+} from '../native-auth/native-authorization.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -242,6 +267,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     fieldPolicy: EXAM_VIDEO_FIELD_POLICY,
   },
   {
+    name: LessonVideoRecord.name,
+    schema: LessonVideoSchema,
+    fieldPolicy: LESSON_VIDEO_FIELD_POLICY,
+  },
+  {
     name: AnswerVideoRecord.name,
     schema: AnswerVideoSchema,
     fieldPolicy: ANSWER_VIDEO_FIELD_POLICY,
@@ -250,6 +280,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: GradingCommentPresetRecord.name,
     schema: GradingCommentPresetSchema,
     fieldPolicy: GRADING_COMMENT_PRESET_FIELD_POLICY,
+  },
+  {
+    name: SchoolEventRecord.name,
+    schema: SchoolEventSchema,
+    fieldPolicy: SCHOOL_EVENT_FIELD_POLICY,
   },
   {
     name: MaterialRecord.name,
@@ -280,5 +315,20 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: AppErrorRecord.name,
     schema: AppErrorSchema,
     fieldPolicy: APP_ERROR_FIELD_POLICY,
+  },
+  {
+    name: NativeGrantRecord.name,
+    schema: NativeGrantSchema,
+    fieldPolicy: NATIVE_GRANT_FIELD_POLICY,
+  },
+  {
+    name: NativeCredentialRecord.name,
+    schema: NativeCredentialSchema,
+    fieldPolicy: NATIVE_CREDENTIAL_FIELD_POLICY,
+  },
+  {
+    name: NativeAuthorizationRecord.name,
+    schema: NativeAuthorizationSchema,
+    fieldPolicy: NATIVE_AUTHORIZATION_FIELD_POLICY,
   },
 ];

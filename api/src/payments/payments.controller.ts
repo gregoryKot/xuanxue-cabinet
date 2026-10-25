@@ -17,6 +17,7 @@ import {
 import { DateTime } from 'luxon';
 import type { PaymentDto, PaymentsPageDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { ResponseLike } from '../common/http-headers';
 import type { UserLean } from '../users/users.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
@@ -39,6 +40,7 @@ export class PaymentsController {
   ) {}
 
   @Get()
+  @ApiRoute('GET /payments')
   list(@Query() query: ListPaymentsDto): Promise<PaymentsPageDto> {
     return this.paymentsService.listMonth(query, DateTime.utc());
   }
@@ -61,6 +63,7 @@ export class PaymentsController {
 
   @Post(':userId/:month/confirm')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /payments/:userId/:month/confirm')
   confirm(
     @Param('userId') userId: string,
     @Param('month') month: string,
@@ -72,6 +75,7 @@ export class PaymentsController {
 
   @Post(':userId/:month/revoke')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /payments/:userId/:month/revoke')
   revoke(
     @Param('userId') userId: string,
     @Param('month') month: string,

@@ -40,6 +40,26 @@ export class UnauthorizedError extends DomainError {
   readonly status = 401;
 }
 
+// Запрос несёт и сессию браузера, и bearer приложения (ADR-0185): это ошибка
+// клиента, а не отказ в доступе, поэтому 400 — ни 401 («войдите»), ни 403.
+export class AmbiguousCredentialsError extends DomainError {
+  readonly code = 'ambiguous_credentials';
+  readonly status = 400;
+}
+
+// Положительных выборов занятий расписания стало бы больше потолка (ADR-0185):
+// запрос верен, но состояние аккаунта его не допускает — 409, а не 400.
+export class SelectionLimitError extends DomainError {
+  readonly code = 'selection_limit';
+  readonly status = 409;
+}
+
+// Тело запроса не `application/json` в UTF-8 (ADR-0185): разбор не начинается.
+export class UnsupportedMediaTypeError extends DomainError {
+  readonly code = 'unsupported_media_type';
+  readonly status = 415;
+}
+
 // Функция выключена конфигурацией (вход через Telegram без BOT_TOKEN) — не
 // вина клиента и не отказ в доступе: сервис сам не готов её обслужить,
 // 503, а не 403/500.
