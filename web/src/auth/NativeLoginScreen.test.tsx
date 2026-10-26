@@ -43,6 +43,7 @@ const CONTINUE_URL = `/api/auth/native/continue?attempt=${ATTEMPT_ID}`;
 const CONFIG: AuthConfigDto = {
   telegramBotId: 42,
   googleLoginEnabled: true,
+  telegramOidcEnabled: false,
   emailLoginEnabled: true,
   fileStorageEnabled: false,
 };

@@ -11,9 +11,8 @@ import { SkeletonLines } from '../components/Skeleton';
 import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { useAuth } from './AuthProvider';
 import { LoginRefusedNotice } from './LoginRefusedNotice';
-import { redirectToTelegramAuth } from './telegramAuthRedirect';
-import { useLeavePending } from './useLeavePending';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
+import { useTelegramLoginStart } from './useTelegramLoginStart';
 
 const NOT_CONFIGURED_MESSAGE =
   'Вход через Telegram не настроен. Напишите администратору школы.';
@@ -70,19 +69,14 @@ export function TelegramLoginSection({
     inviteCode,
     enabled: authStatus !== 'loading', // F56 — гонка 401, комментарий у опции
   });
-  const [pending, markLeaving] = useLeavePending();
+  const [pending, startLogin] = useTelegramLoginStart(config, inviteCode);
   // Человек нажал «Войти другим способом» на объяснении отказа: ошибка
   // сервера никуда не делась, но форму ему показываем снова — он мог войти
   // не тем аккаунтом Telegram (LoginRefusedNotice.tsx).
   const [refusalDismissed, setRefusalDismissed] = useState(false);
-  // Локальная переменная — TS сужает `number | undefined` до `number` по ней
-  // и в замыкании кнопки ниже (LoginScreen.tsx, тот же приём).
+  // Кнопка рисуется только при боте: прежнему входу нужен его id, а OpenID
+  // Connect без `BOT_TOKEN` на сервере не включается (ADR-0187).
   const telegramBotId = config?.telegramBotId;
-
-  function handleLoginClick(botId: number) {
-    markLeaving();
-    redirectToTelegramAuth(botId);
-  }
 
   // Отказ доступа занимает место всей формы: и кнопка Telegram, и почта под
   // ней привели бы к тому же 403 (LoginIdentityService — одно правило на оба
@@ -127,7 +121,7 @@ export function TelegramLoginSection({
           <Button
             size="large"
             pending={pending}
-            onClick={() => handleLoginClick(telegramBotId)}
+            onClick={startLogin}
             style={{ width: '100%', fontSize: 16 }}
           >
             Войти через Telegram

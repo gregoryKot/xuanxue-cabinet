@@ -37,6 +37,7 @@ afterEach(() => {
 const BASE_CONFIG: AuthConfigDto = {
   emailLoginEnabled: false,
   googleLoginEnabled: false,
+  telegramOidcEnabled: false,
   fileStorageEnabled: false,
 };
 

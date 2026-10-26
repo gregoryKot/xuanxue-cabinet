@@ -22,6 +22,7 @@ describe('isFileStorageEnabled', () => {
     emailLoginEnabled: false,
     fileStorageEnabled: true,
     googleLoginEnabled: false,
+    telegramOidcEnabled: false,
   };
 
   it('флаг true — true', () => {

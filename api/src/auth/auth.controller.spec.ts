@@ -1,40 +1,19 @@
 // Test.createTestingModule с фейками провайдеров — образец
-// health.controller.spec.ts: без HTTP, без Mongo.
+// health.controller.spec.ts: без HTTP, без Mongo. Сборка GET /auth/config —
+// AuthConfigService (auth-config.service.spec.ts), контроллер её только
+// проксирует.
 import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import {
-  DEFAULT_NEWCOMER_CONTACT,
-  DEFAULT_PAYMENT_CONTACT,
-  DEFAULT_PAYMENT_REMINDER,
-  DEFAULT_LESSON_REMINDER_MINUTES,
-  DEFAULT_PREVIEW_MINUTES,
-  type SettingsDto,
-  type TelegramLoginInput,
-} from '@xuanxue/shared';
+import { type AuthConfigDto, type TelegramLoginInput } from '@xuanxue/shared';
 import { fakeResponse } from '../test-support/http-fakes';
-import { SettingsService } from '../settings/settings.service';
-import { FileStoreService } from '../storage/file-store.service';
 import type { UserLean } from '../users/users.service';
+import { AuthConfigService } from './auth-config.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
-import { GoogleAuthService } from './google-auth.service';
 import { PersonalChats } from '../telegram/personal-chats';
-import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
-
-const SETTINGS_WITHOUT_SITE: SettingsDto = {
-  templates: { lesson_link: 'ссылка', recording: 'запись' },
-  tz: 'Asia/Jerusalem',
-  previewMinutes: DEFAULT_PREVIEW_MINUTES,
-  lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
-  newcomerContact: DEFAULT_NEWCOMER_CONTACT,
-  paymentContact: DEFAULT_PAYMENT_CONTACT,
-  paymentReminder: DEFAULT_PAYMENT_REMINDER,
-  updatedAt: '2026-09-06T18:00:00.000Z',
-};
 
 const USER: UserLean = {
   id: 'u1',
@@ -45,27 +24,23 @@ const USER: UserLean = {
   studentMode: false,
 };
 
+const CONFIG: AuthConfigDto = {
+  telegramBotId: 123456,
+  emailLoginEnabled: false,
+  googleLoginEnabled: false,
+  telegramOidcEnabled: true,
+  fileStorageEnabled: false,
+};
+
 async function buildController(
   telegramLogin: TelegramAuthService['login'] = () => {
     return Promise.reject(new Error('не ожидался вызов в этом тесте'));
   },
-  env: Record<string, string | undefined> = {},
-  settings: SettingsDto = SETTINGS_WITHOUT_SITE,
-  // Имя бота приходит из уже прогретого botInfo — в тестах подменяем фейком,
-  // сети тут нет (CLAUDE.md «Тесты»).
-  botUsername: string | undefined = undefined,
-  emailLoginEnabled = false,
   // botChatActive — честный проброс из PersonalChats.hasActiveChatFor(user)
   // (ADR-0042), не хардкод в контроллере: дефолт false совпадает с
-  // telegramLinked: false у USER ниже, отдельный тест ниже подменяет фейк на
+  // telegramLinked: false у USER ниже, отдельный тест подменяет фейк на
   // true и проверяет, что значение долетает до ответа.
   hasActiveChatFor: PersonalChats['hasActiveChatFor'] = () => Promise.resolve(false),
-  // Хранилище файлов (ADR-0057) — тот же признак, что у emailLoginEnabled:
-  // контроллер только пересказывает `FileStoreService.isEnabled`, в сеть не
-  // ходит ни он, ни фейк.
-  fileStorageEnabled = false,
-  // Вход через Google (ADR-0145) — та же логика, что у emailLoginEnabled.
-  googleLoginEnabled = false,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -80,142 +55,19 @@ async function buildController(
         useValue: {
           requestLink: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
           verify: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
-          isEnabled: () => emailLoginEnabled,
         },
       },
-      { provide: GoogleAuthService, useValue: { isEnabled: () => googleLoginEnabled } },
-      { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
-      { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
-      { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
+      { provide: AuthConfigService, useValue: { get: () => Promise.resolve(CONFIG) } },
       { provide: PersonalChats, useValue: { hasActiveChatFor } },
-      { provide: FileStoreService, useValue: { isEnabled: fileStorageEnabled } },
     ],
   }).compile();
   return module.get(AuthController);
 }
 
 describe('AuthController.getConfig', () => {
-  it('без BOT_TOKEN — telegramBotId отсутствует', async () => {
-    const controller = await buildController(undefined, {}, SETTINGS_WITHOUT_SITE);
-    await expect(controller.getConfig()).resolves.toEqual({
-      telegramBotId: undefined,
-      telegramBotUsername: undefined,
-      schoolSiteUrl: undefined,
-      emailLoginEnabled: false,
-      googleLoginEnabled: false,
-      fileStorageEnabled: false,
-    });
-  });
-
-  it('с BOT_TOKEN и заполненным адресом сайта — оба поля в ответе', async () => {
-    const controller = await buildController(
-      undefined,
-      { BOT_TOKEN: '123456:abcDEFghi-token_padding_here' },
-      { ...SETTINGS_WITHOUT_SITE, schoolSiteUrl: 'https://xuanxue.su' },
-    );
-    await expect(controller.getConfig()).resolves.toEqual({
-      telegramBotId: 123456,
-      telegramBotUsername: undefined,
-      schoolSiteUrl: 'https://xuanxue.su',
-      emailLoginEnabled: false,
-      googleLoginEnabled: false,
-      fileStorageEnabled: false,
-    });
-  });
-
-  // Ответственный за данные — публичный текст для страницы /privacy: что
-  // школа заполнила в настройках, то и уходит гостю, без правок по дороге.
-  it('ответственный за данные заполнен — имя и контакт в ответе', async () => {
-    const controller = await buildController(
-      undefined,
-      {},
-      {
-        ...SETTINGS_WITHOUT_SITE,
-        dataControllerName: 'Дмитрий Дейч',
-        dataControllerContact: 'privacy@xuanxue.su',
-      },
-    );
-    await expect(controller.getConfig()).resolves.toMatchObject({
-      dataControllerName: 'Дмитрий Дейч',
-      dataControllerContact: 'privacy@xuanxue.su',
-    });
-  });
-
-  it('ответственный не указан — полей в ответе нет', async () => {
+  it('отдаёт то, что собрал AuthConfigService, без правок по дороге', async () => {
     const controller = await buildController();
-    const config = await controller.getConfig();
-    expect(config.dataControllerName).toBeUndefined();
-    expect(config.dataControllerContact).toBeUndefined();
-  });
-
-  // Имя бота нужно кабинету для ссылки «Отправить видео» (ADR-0023): бот
-  // ответил при старте — имя есть; не ответил — поля нет, и кнопки не будет.
-  it('бот прогрет — имя бота в ответе', async () => {
-    const controller = await buildController(
-      undefined,
-      { BOT_TOKEN: '123456:abcDEFghi-token_padding_here' },
-      SETTINGS_WITHOUT_SITE,
-      'xuanxue_bot',
-    );
-    await expect(controller.getConfig()).resolves.toMatchObject({
-      telegramBotUsername: 'xuanxue_bot',
-    });
-  });
-
-  // EmailAuthService.isEnabled() — источник поля целиком (CLAUDE.md «Дубли»):
-  // контроллер не пересчитывает условие сам, только проксирует.
-  // ADR-0057: без ключей R2 поля загрузки на странице материала нет вовсе.
-  it('FileStoreService.isEnabled решает fileStorageEnabled в ответе', async () => {
-    const off = await buildController(
-      undefined,
-      {},
-      SETTINGS_WITHOUT_SITE,
-      undefined,
-      false,
-      undefined,
-      false,
-    );
-    const on = await buildController(
-      undefined,
-      {},
-      SETTINGS_WITHOUT_SITE,
-      undefined,
-      false,
-      undefined,
-      true,
-    );
-
-    expect((await off.getConfig()).fileStorageEnabled).toBe(false);
-    expect((await on.getConfig()).fileStorageEnabled).toBe(true);
-  });
-
-  it('EmailAuthService.isEnabled() true — emailLoginEnabled true в ответе', async () => {
-    const controller = await buildController(
-      undefined,
-      {},
-      SETTINGS_WITHOUT_SITE,
-      undefined,
-      true,
-    );
-    await expect(controller.getConfig()).resolves.toMatchObject({
-      emailLoginEnabled: true,
-    });
-  });
-
-  it('GoogleAuthService.isEnabled() true — googleLoginEnabled true в ответе', async () => {
-    const controller = await buildController(
-      undefined,
-      {},
-      SETTINGS_WITHOUT_SITE,
-      undefined,
-      false,
-      undefined,
-      false,
-      true,
-    );
-    await expect(controller.getConfig()).resolves.toMatchObject({
-      googleLoginEnabled: true,
-    });
+    await expect(controller.getConfig()).resolves.toBe(CONFIG);
   });
 });
 
@@ -244,14 +96,7 @@ describe('AuthController.me', () => {
   // PersonalChats.hasActiveChatFor(user) (ADR-0042): фейк отдаёт true,
   // проверяем, что это же значение долетает до MeDto.
   it('botChatActive приходит из PersonalChats.hasActiveChatFor(user)', async () => {
-    const controller = await buildController(
-      undefined,
-      {},
-      SETTINGS_WITHOUT_SITE,
-      undefined,
-      false,
-      () => Promise.resolve(true),
-    );
+    const controller = await buildController(undefined, () => Promise.resolve(true));
 
     await expect(controller.me(USER)).resolves.toMatchObject({ botChatActive: true });
   });
@@ -283,12 +128,8 @@ describe('AuthController.requestEmailLogin', () => {
             },
           },
         },
-        { provide: GoogleAuthService, useValue: {} },
-        { provide: ConfigService, useValue: { get: () => undefined } },
-        { provide: SettingsService, useValue: {} },
-        { provide: TelegramBotService, useValue: {} },
+        { provide: AuthConfigService, useValue: {} },
         { provide: PersonalChats, useValue: {} },
-        { provide: FileStoreService, useValue: { isEnabled: false } },
       ],
     }).compile();
     const controller = module.get(AuthController);
@@ -315,15 +156,11 @@ describe('AuthController.verifyEmailLogin', () => {
             verify: () => Promise.resolve({ user: USER, cookies: ['session=email-tok'] }),
           },
         },
-        { provide: GoogleAuthService, useValue: {} },
-        { provide: ConfigService, useValue: { get: () => undefined } },
-        { provide: SettingsService, useValue: {} },
-        { provide: TelegramBotService, useValue: {} },
+        { provide: AuthConfigService, useValue: {} },
         {
           provide: PersonalChats,
           useValue: { hasActiveChatFor: () => Promise.resolve(false) },
         },
-        { provide: FileStoreService, useValue: { isEnabled: false } },
       ],
     }).compile();
     const controller = module.get(AuthController);

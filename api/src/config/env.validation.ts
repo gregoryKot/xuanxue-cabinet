@@ -50,6 +50,7 @@ import {
   R2_SECRET_ACCESS_KEY_MESSAGE,
   RAILWAY_GIT_COMMIT_SHA_MESSAGE,
   SCHEDULER_ENABLED_MESSAGE,
+  TELEGRAM_LOGIN_CLIENT_SECRET_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_RE,
   VAPID_PRIVATE_KEY_MESSAGE,
@@ -143,6 +144,11 @@ export class EnvSchema {
   @IsOptional()
   @MinLength(16, { message: GOOGLE_CLIENT_SECRET_MESSAGE })
   GOOGLE_CLIENT_SECRET?: string;
+
+  // Client Secret бота из BotFather (ADR-0187); формат Telegram не обещает.
+  @IsOptional()
+  @IsNotEmpty({ message: TELEGRAM_LOGIN_CLIENT_SECRET_MESSAGE })
+  TELEGRAM_LOGIN_CLIENT_SECRET?: string;
 
   // Файлы материалов в Cloudflare R2 (ADR-0057) — все четыре или ни одной
   // (env.r2-group.ts). Без них загрузка выключена, кабинет поднимается как

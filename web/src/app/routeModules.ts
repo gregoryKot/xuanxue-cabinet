@@ -20,11 +20,7 @@
 // prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
-import {
-  APP_ERRORS_SCREEN_PATH,
-  GOOGLE_LOGIN_CALLBACK_PATH,
-  NATIVE_CONTINUATION_PATH,
-} from '@xuanxue/shared';
+import { APP_ERRORS_SCREEN_PATH, NATIVE_CONTINUATION_PATH } from '@xuanxue/shared';
 import {
   CLASSES_LIST_PATH,
   EXAM_EDITOR_ITEMS_PATH,
@@ -58,6 +54,7 @@ import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { EVENT_ROUTE_MODULES } from './eventRouteModules';
+import { PROVIDER_LOGIN_ROUTE_MODULES } from './providerLoginRouteModules';
 import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
 import { WIKI_SESSION_ROUTE_MODULES } from './wikiSessionRouteModules';
 
@@ -118,13 +115,6 @@ export const ROUTE_MODULES = {
   emailLogin: {
     path: '/login/email',
     load: () => import('../auth/EmailLoginCallbackScreen'),
-    warm: false,
-  },
-  // Возврат из Google (ADR-0145) — публичный маршрут, как login/emailLogin
-  // выше: не требует сессии, вошедшему чанк не нужен.
-  googleLogin: {
-    path: GOOGLE_LOGIN_CALLBACK_PATH,
-    load: () => import('../auth/GoogleLoginCallbackScreen'),
     warm: false,
   },
   // Вход для приложения Daychi (ADR-0181) — публичный, как login выше.
@@ -386,7 +376,9 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH, REMINDER_SYNC_PATH],
   },
-  // Экраны ученика, страница события школы и экраны сессии, общей с wiki.
+  // Возврат из Google и Telegram (ADR-0145, ADR-0187), экраны ученика, страница
+  // события школы и экраны сессии, общей с wiki.
+  ...PROVIDER_LOGIN_ROUTE_MODULES,
   ...STUDENT_ROUTE_MODULES,
   ...EVENT_ROUTE_MODULES,
   ...WIKI_SESSION_ROUTE_MODULES,

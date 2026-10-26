@@ -9,6 +9,7 @@ const CONFIG: AuthConfigDto = {
   emailLoginEnabled: true,
   fileStorageEnabled: true,
   googleLoginEnabled: false,
+  telegramOidcEnabled: false,
   telegramBotUsername: 'xuanxue_bot',
 };
 

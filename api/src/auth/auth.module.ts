@@ -21,6 +21,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { UsersModule } from '../users/users.module';
+import { AuthConfigService } from './auth-config.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -43,6 +44,9 @@ import { SessionCheckController, setNoStoreMiddleware } from './session-check.co
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLinkController } from './telegram-link.controller';
+import { TelegramOidcController } from './telegram-oidc.controller';
+import { TelegramOidcService } from './telegram-oidc.service';
+import { TelegramOidcTokenClient } from './telegram-oidc-token-client';
 
 @Module({
   // SettingsModule — GET /auth/config берёт schoolSiteUrl из
@@ -77,6 +81,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     EmailLinkController,
     EmailCodeController,
     GoogleAuthController,
+    TelegramOidcController,
     SessionCheckController,
   ],
   providers: [
@@ -90,6 +95,13 @@ import { TelegramLinkController } from './telegram-link.controller';
     // (импортирован выше), тем же путём, что LoginIdentityService.
     GoogleAuthService,
     GoogleTokenClient,
+    // Вход через Telegram по OIDC (ADR-0187): тем же устройством, что Google.
+    // LoginIdentityService (поиск/создание человека по Telegram ID) приходит
+    // экспортом UsersModule, как у TelegramAuthService. AuthConfigService —
+    // сборка GET /auth/config, вынесенная из AuthController (потолок 150 строк).
+    TelegramOidcService,
+    TelegramOidcTokenClient,
+    AuthConfigService,
     // Ссылка-приглашение школы (ADR-0030/0036): InviteLinkService и
     // LoginIdentityService приходят как экспорт UsersModule (импортирован
     // выше, второй провайдер здесь не заводим).

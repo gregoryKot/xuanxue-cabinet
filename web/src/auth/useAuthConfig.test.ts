@@ -32,6 +32,7 @@ describe('useAuthConfig', () => {
       emailLoginEnabled: false,
       fileStorageEnabled: false,
       googleLoginEnabled: false,
+      telegramOidcEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -48,6 +49,7 @@ describe('useAuthConfig', () => {
       emailLoginEnabled: false,
       fileStorageEnabled: false,
       googleLoginEnabled: false,
+      telegramOidcEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -74,6 +76,7 @@ describe('useAuthConfig', () => {
       emailLoginEnabled: false,
       fileStorageEnabled: false,
       googleLoginEnabled: false,
+      telegramOidcEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(config);
 
@@ -102,6 +105,7 @@ describe('useAuthConfig', () => {
       emailLoginEnabled: false,
       fileStorageEnabled: false,
       googleLoginEnabled: false,
+      telegramOidcEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(fresh);
 
@@ -117,6 +121,7 @@ describe('useAuthConfig', () => {
         emailLoginEnabled: false,
         fileStorageEnabled: false,
         googleLoginEnabled: false,
+        telegramOidcEnabled: false,
       });
     });
 

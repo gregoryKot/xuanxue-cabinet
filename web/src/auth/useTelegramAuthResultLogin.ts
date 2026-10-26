@@ -1,11 +1,14 @@
-// Завершение входа через Telegram после возврата (см. telegramAuthResult.ts —
-// баг с прода, найден 2026-09-08). Кнопка на LoginScreen.tsx лишь уводит
-// вкладку на Telegram (ADR-0028); при возврате на /login читаем
-// #tgAuthResult= из адреса и, если он есть, отправляем на сервер сами:
-// POST /auth/telegram → refresh() сессии → сохранённый адрес или домашний
-// экран (postLoginPath, аудит L2 — раньше жёстко /schedule). Логика вынесена
-// из LoginScreen.tsx в хук (CLAUDE.md «Логика вне компонентов» и файловый
-// храповик — компонент иначе не помещается в лимит).
+// Завершение прежнего входа через Telegram после возврата (см.
+// telegramAuthResult.ts — баг с прода, найден 2026-09-08). Работает, пока не
+// включён OpenID Connect (ADR-0187): тогда возврат принимает
+// TelegramLoginCallbackScreen.tsx, а этот хук удаляется вместе с прежним входом.
+// Кнопка на LoginScreen.tsx лишь уводит вкладку на Telegram (ADR-0028); при
+// возврате на /login читаем #tgAuthResult= из адреса и, если он есть,
+// отправляем на сервер сами: POST /auth/telegram → refresh() сессии →
+// сохранённый адрес или домашний экран (postLoginPath, аудит L2 — раньше
+// жёстко /schedule). Логика вынесена из LoginScreen.tsx в хук (CLAUDE.md
+// «Логика вне компонентов» и файловый храповик — компонент иначе не
+// помещается в лимит).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { INVITE_QUERY_PARAM, type MeDto, type TelegramLoginInput } from '@xuanxue/shared';

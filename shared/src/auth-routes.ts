@@ -5,8 +5,8 @@
 // появившийся `pendingEmail`). Публичные маршруты (`@Public()`) стоят рядом с
 // сессионными: ключ карты не различает, кто вправе позвать.
 //
-// Мимо карты — `GET /auth/google/start`: его открывает браузер переходом
-// (302 на Google), а не `apiFetch`.
+// Мимо карты — `GET /auth/google/start` и `GET /auth/telegram/oidc/start`:
+// их открывает браузер переходом (302 на Google или Telegram), а не `apiFetch`.
 import type {
   AuthConfigDto,
   RequestEmailLoginInput,
@@ -23,6 +23,7 @@ import type {
 } from './invite-link';
 import type { MeDto } from './me';
 import type { TelegramLinkCodeDto } from './telegram-link';
+import type { TelegramOidcLoginInput } from './telegram-oidc';
 
 /** Код ссылки-приглашения едет в query, а не в теле: подпись Telegram
  * считается по телу целиком, лишнее поле её сломало бы (ADR-0030/0036). */
@@ -60,6 +61,11 @@ export interface AuthRoutes {
     response: void;
   };
   'POST /auth/google': { query: undefined; body: GoogleLoginInput; response: MeDto };
+  'POST /auth/telegram/oidc': {
+    query: undefined;
+    body: TelegramOidcLoginInput;
+    response: MeDto;
+  };
   'POST /auth/join/check': {
     query: undefined;
     body: JoinByInviteInput;
@@ -83,6 +89,7 @@ export const AUTH_ROUTE_KEYS: Record<keyof AuthRoutes, true> = {
   'POST /auth/email/link': true,
   'POST /auth/email/confirm': true,
   'POST /auth/google': true,
+  'POST /auth/telegram/oidc': true,
   'POST /auth/join/check': true,
   'POST /auth/telegram/link-code': true,
   'POST /auth/logout': true,

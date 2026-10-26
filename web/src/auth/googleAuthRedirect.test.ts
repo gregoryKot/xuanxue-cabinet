@@ -1,10 +1,9 @@
-// Адрес входа через Google собираем сами (googleAuthRedirect.ts) — проверяем
-// путь, query-параметр приглашения и что переход уводит текущую вкладку, не
-// открывает новую (тот же приём, что telegramAuthRedirect.test.ts).
+// Вход через Google (googleAuthRedirect.ts) — проверяем, что переход уводит
+// текущую вкладку, а не открывает новую, и несёт код приглашения (тот же приём,
+// что telegramAuthRedirect.test.ts). Сам сборщик адреса — loginStartUrl.test.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   googleLinkStartUrl,
-  googleLoginStartUrl,
   redirectToGoogleAuth,
   redirectToGoogleLink,
 } from './googleAuthRedirect';
@@ -13,24 +12,6 @@ import { consumeReturnTo } from './returnTo';
 afterEach(() => {
   vi.unstubAllGlobals();
   sessionStorage.clear();
-});
-
-describe('googleLoginStartUrl', () => {
-  it('без кода приглашения — путь без query', () => {
-    expect(googleLoginStartUrl()).toBe('/api/auth/google/start');
-  });
-
-  it('с кодом приглашения — join в query, кодированный', () => {
-    const url = googleLoginStartUrl('a'.repeat(32));
-    expect(url).toBe(`/api/auth/google/start?join=${'a'.repeat(32)}`);
-  });
-
-  it('код с символами, которые нужно кодировать', () => {
-    const url = googleLoginStartUrl('код с пробелом');
-    expect(new URL(url, 'https://xuanxue.su').searchParams.get('join')).toBe(
-      'код с пробелом',
-    );
-  });
 });
 
 describe('redirectToGoogleAuth', () => {

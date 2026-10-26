@@ -3,14 +3,12 @@
 // Google. Отдельный injectable-класс, не метод в GoogleAuthService: e2e
 // подменяет его фейком, возвращающим самодельный id_token с тестовыми
 // claims — реальный Google в CI недоступен (google-auth.e2e-spec.ts).
+// Сетевая часть (таймаут, разбор ответа) — oauth-token-request.ts, общая с Telegram.
 import { Injectable, Logger } from '@nestjs/common';
-import { errorMessage } from '../common/error-info';
 import type { GoogleOAuthConfig } from './google-login-config';
+import { requestIdToken } from './oauth-token-request';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
-// Сеть, которая не рвётся, а молчит, иначе держит запрос до таймаута
-// платформы (CLAUDE.md, check-outbound-timeout.mjs).
-const TOKEN_REQUEST_TIMEOUT_MS = 10_000;
 
 export interface GoogleTokenExchangeParams {
   code: string;
@@ -23,10 +21,8 @@ export class GoogleTokenClient {
   private readonly logger = new Logger(GoogleTokenClient.name);
 
   /** `null` — Google отказал в обмене или ответ не тот, что ожидался; вызывающий
-   * код (GoogleAuthService) отвечает одним GOOGLE_LOGIN_FAILED_MESSAGE, здесь
-   * только лог с причиной (SECURITY §2: тело ответа и код в лог не идут — там
-   * может быть эхо client_secret/code). */
-  async exchange({
+   * код (GoogleAuthService) отвечает одним GOOGLE_LOGIN_FAILED_MESSAGE. */
+  exchange({
     code,
     verifier,
     config,
@@ -39,32 +35,10 @@ export class GoogleTokenClient {
       grant_type: 'authorization_code',
       code_verifier: verifier,
     });
-
-    let response: Response;
-    try {
-      response = await fetch(TOKEN_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-        signal: AbortSignal.timeout(TOKEN_REQUEST_TIMEOUT_MS),
-      });
-    } catch (err) {
-      this.logger.error(`Google token endpoint недоступен: ${errorMessage(err)}`);
-      return null;
-    }
-
-    if (!response.ok) {
-      this.logger.error(`Google token endpoint ответил ${response.status}`);
-      return null;
-    }
-
-    const payload = (await response.json().catch(() => null)) as {
-      id_token?: unknown;
-    } | null;
-    if (!payload || typeof payload.id_token !== 'string') {
-      this.logger.error('Google token endpoint не вернул id_token');
-      return null;
-    }
-    return payload.id_token;
+    return requestIdToken(this.logger, {
+      provider: 'Google',
+      endpoint: TOKEN_ENDPOINT,
+      body,
+    });
   }
 }

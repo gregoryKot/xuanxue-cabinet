@@ -13,6 +13,7 @@
 import type { DateTime } from 'luxon';
 import type { GoogleIdentity } from '../users/google-login-identity.service';
 import { timingSafeEqualStrings } from './google-oauth-pkce';
+import { decodeJwtPayload } from './jwt-payload';
 
 const GOOGLE_ISSUERS = new Set(['https://accounts.google.com', 'accounts.google.com']);
 const SUB_MAX_LENGTH = 255;
@@ -33,7 +34,7 @@ export function parseGoogleIdToken(
   idToken: string,
   { clientId, nonce, now }: ParseGoogleIdTokenParams,
 ): GoogleIdentity {
-  const claims = decodePayload(idToken);
+  const claims = decodeJwtPayload(idToken);
 
   if (typeof claims.iss !== 'string' || !GOOGLE_ISSUERS.has(claims.iss)) {
     throw new Error('id_token: неизвестный iss');
@@ -93,21 +94,4 @@ function isAuthoritative(
   if (!email || !emailVerified) return false;
   if (AUTHORITATIVE_DOMAINS.some((domain) => email.endsWith(`@${domain}`))) return true;
   return typeof hd === 'string' && email.endsWith(`@${hd.toLowerCase()}`);
-}
-
-function decodePayload(idToken: string): Record<string, unknown> {
-  const parts = idToken.split('.');
-  if (parts.length !== 3) throw new Error('id_token: не похож на JWT');
-  const payloadPart = parts[1];
-  if (!payloadPart) throw new Error('id_token: пустой payload');
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
-  } catch {
-    throw new Error('id_token: payload не JSON');
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('id_token: payload не объект');
-  }
-  return parsed as Record<string, unknown>;
 }

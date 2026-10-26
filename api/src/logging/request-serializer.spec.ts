@@ -109,6 +109,23 @@ describe('redactRequestSerializer', () => {
     expect(resumeUrl).toBe(`/api/auth/native/continue?attempt=${REDACTED_VALUE}`);
   });
 
+  // Вход через Telegram по OIDC (ADR-0187): Telegram возвращает вкладку на
+  // /login/telegram?code=…&state=…, и это обычный GET, который логируется.
+  // Проверка идёт через настоящий сериализатор, а не через явный список
+  // параметров: редакция по имени `code`/`state` общая с Google, и тест
+  // ловит случай, когда кто-то уберёт её для обоих входов.
+  it('вход Telegram: code и state из /login/telegram в url не остаются (ADR-0187)', () => {
+    const code = 't'.repeat(32);
+    const state = 'u'.repeat(43);
+    const url = `/login/telegram?code=${code}&state=${state}&x=1`;
+
+    const serialized = redactRequestSerializer(buildIncomingMessage(url));
+
+    expect(serialized.url).toBe(
+      `/login/telegram?code=${REDACTED_VALUE}&state=${REDACTED_VALUE}&x=1`,
+    );
+  });
+
   // Ключевой критерий ревью: строка лога с ?join=<код> не содержит сам код —
   // ни в url, ни в разобранном req.query (его редактирует REDACT_PATHS).
   it('в реальном логе pino код приглашения не встречается нигде в строке', () => {
@@ -137,5 +154,47 @@ describe('redactRequestSerializer', () => {
     const line = stream.chunks.join('');
     expect(line).not.toContain(code);
     expect(line).toContain(`join=${REDACTED_VALUE}`);
+  });
+
+  // Вход через Telegram по OIDC (ADR-0187): в строку лога запроса не попадает ни
+  // одно значение потока — адрес возврата, тело POST, cookie заявки, Location
+  // старта (там state и code_challenge) и Set-Cookie ответа.
+  it('в реальном логе pino ничего из потока входа через Telegram не остаётся', () => {
+    const secrets = {
+      code: 't'.repeat(32),
+      state: 'u'.repeat(43),
+      challenge: 'v'.repeat(43),
+      cookie: 'w'.repeat(40),
+    };
+    const stream = new MemoryStream();
+    const logger = pino(
+      {
+        redact: { paths: REDACT_PATHS, censor: REDACTED_VALUE },
+        serializers: { req: redactRequestSerializer },
+      },
+      stream,
+    );
+
+    logger.info(
+      {
+        req: {
+          method: 'POST',
+          url: `/login/telegram?code=${secrets.code}&state=${secrets.state}`,
+          headers: { cookie: `telegram_oauth=${secrets.cookie}` },
+          query: { code: secrets.code, state: secrets.state },
+          body: { code: secrets.code, state: secrets.state },
+        },
+        res: {
+          headers: {
+            location: `https://oauth.telegram.org/auth?state=${secrets.state}&code_challenge=${secrets.challenge}`,
+            'set-cookie': `telegram_oauth=${secrets.cookie}; HttpOnly`,
+          },
+        },
+      },
+      'проверка редакции входа Telegram',
+    );
+
+    const line = stream.chunks.join('');
+    for (const secret of Object.values(secrets)) expect(line).not.toContain(secret);
   });
 });

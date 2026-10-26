@@ -1,7 +1,8 @@
 // /auth/me — под глобальным AuthGuard; /auth/logout и /auth/telegram — @Public():
 // выход обязан чистить cookie даже без сессии, вход — способ её получить (CSRF
-// по x-requested-with действует и тут, auth.guard.ts). Google/join/link/code —
-// отдельными файлами рядом: этот у потолка 150 строк (file-size-ratchet).
+// по x-requested-with действует и тут, auth.guard.ts). Google/Telegram OIDC/join/
+// link/code и конфигурация экрана входа (AuthConfigService) — отдельными файлами
+// рядом: этот у потолка 150 строк (file-size-ratchet).
 import {
   Body,
   Controller,
@@ -13,22 +14,17 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import { INVITE_QUERY_PARAM, type AuthConfigDto, type MeDto } from '@xuanxue/shared';
 import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
-import { SettingsService } from '../settings/settings.service';
-import { FileStoreService } from '../storage/file-store.service';
 import { PersonalChats } from '../telegram/personal-chats';
-import { TelegramBotService } from '../telegram/telegram-bot.service';
-import { botIdFromToken } from './bot-id-from-token';
 import { CurrentUser, Public } from './auth.decorators';
+import { AuthConfigService } from './auth-config.service';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { EmailAuthService } from './email-auth.service';
-import { GoogleAuthService } from './google-auth.service';
 import { EMAIL_LOGIN_THROTTLE, TELEGRAM_LOGIN_THROTTLE } from './login-throttle';
 import { parseTelegramLoginBody } from './parse-telegram-login-body';
 import { RequestEmailLoginDto } from './request-email-login.dto';
@@ -42,32 +38,17 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly telegramAuthService: TelegramAuthService,
     private readonly emailAuthService: EmailAuthService,
-    private readonly googleAuthService: GoogleAuthService,
-    private readonly configService: ConfigService,
-    private readonly fileStore: FileStoreService,
-    private readonly settingsService: SettingsService,
-    private readonly telegramBotService: TelegramBotService,
+    private readonly authConfigService: AuthConfigService,
     private readonly personalChats: PersonalChats,
   ) {}
 
   // Без сессии: экран входа спрашивает конфигурацию до появления роли. Поля —
-  // тсдок AuthConfigDto (shared/src/auth.ts); *Enabled — те же проверки, что
-  // перед самим действием (isEnabled() сервисов), один метод на оба места.
+  // тсдок AuthConfigDto (shared/src/auth.ts), сборка — AuthConfigService.
   @Public()
   @ApiRoute('GET /auth/config')
   @Get('config')
-  async getConfig(): Promise<AuthConfigDto> {
-    const settings = await this.settingsService.get();
-    return {
-      telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
-      telegramBotUsername: this.telegramBotService.botUsername(),
-      schoolSiteUrl: settings.schoolSiteUrl,
-      dataControllerName: settings.dataControllerName,
-      dataControllerContact: settings.dataControllerContact,
-      emailLoginEnabled: this.emailAuthService.isEnabled(),
-      googleLoginEnabled: this.googleAuthService.isEnabled(),
-      fileStorageEnabled: this.fileStore.isEnabled,
-    };
+  getConfig(): Promise<AuthConfigDto> {
+    return this.authConfigService.get();
   }
 
   @ApiRoute('GET /auth/me')

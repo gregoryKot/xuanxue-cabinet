@@ -136,6 +136,15 @@ export {
   GOOGLE_LINK_SESSION_MESSAGE,
   GOOGLE_NOT_LINKED_MESSAGE,
 } from './google-login';
+export type { TelegramOidcLoginInput } from './telegram-oidc';
+export {
+  TELEGRAM_OIDC_START_PATH,
+  TELEGRAM_LOGIN_CALLBACK_PATH,
+  TELEGRAM_OIDC_STATE_RE,
+  TELEGRAM_OIDC_CODE_RE,
+  TELEGRAM_LOGIN_FAILED_MESSAGE,
+  TELEGRAM_OIDC_NOT_AVAILABLE_MESSAGE,
+} from './telegram-oidc';
 export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
 export {
   EMAIL_CONFIRM_TOKEN_RE,

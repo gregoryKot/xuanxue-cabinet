@@ -20,10 +20,11 @@ export const REDACT_PATHS: string[] = [
   // же уровень секретности, что email/hash.
   'req.body.code',
   'req.body.inviteCode',
-  // Вход через Google (ADR-0145): страница /login/google шлёт code/state
-  // POST-ом (req.body), но сама страница отдаётся Nest по адресу
-  // /login/google?code=…&state=… — тот же GET, что логируется по пути;
-  // req.query покрывает этот случай, req.url — redactRequestSerializer ниже.
+  // Вход через Google (ADR-0145) и Telegram OIDC (ADR-0187): страницы
+  // /login/google и /login/telegram шлют code/state POST-ом (req.body), но сами
+  // отдаются Nest по адресу /login/…?code=…&state=… — тот же GET, что
+  // логируется по пути; req.query покрывает этот случай, req.url —
+  // redactRequestSerializer ниже. Редакция по имени поля, общая для обоих.
   'req.body.state',
   // Нативный Daychi (ADR-0181): форма POST /auth/native/revoke несёт bearer
   // полем `token`. `*.token` ниже достаёт только `<ключ>.token`, а bearer в

@@ -145,4 +145,6 @@ export interface AuthConfigDto {
   fileStorageEnabled: boolean;
   /** Заданы `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` и `PUBLIC_URL` (ADR-0145). */
   googleLoginEnabled: boolean;
+  /** Задан `TELEGRAM_LOGIN_CLIENT_SECRET` — вход по OIDC, иначе по-старому (ADR-0187). */
+  telegramOidcEnabled: boolean;
 }
