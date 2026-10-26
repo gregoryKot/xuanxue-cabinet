@@ -32,6 +32,7 @@ const BASE_CONFIG: AuthConfigDto = {
   emailLoginEnabled: false,
   fileStorageEnabled: false,
   googleLoginEnabled: false,
+  telegramOidcEnabled: false,
 };
 
 describe('OtherLoginMethods', () => {

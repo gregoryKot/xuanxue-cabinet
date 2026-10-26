@@ -155,6 +155,16 @@ describe('App', () => {
     expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
   });
 
+  it('гость на /login/telegram без code/state — маршрут открывает TelegramLoginCallbackScreen (ADR-0187)', async () => {
+    mockRoute(null);
+
+    renderAt('/login/telegram');
+
+    expect(
+      await screen.findByText('Ссылка не подошла. Начните вход через Telegram заново.'),
+    ).toBeInTheDocument();
+  });
+
   it('гость на /privacy — маршрут открывает PrivacyScreen, без входа', async () => {
     mockRoute(null);
 

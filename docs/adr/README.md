@@ -221,3 +221,4 @@
 | [0184](0184-native-me-budget-per-grant.md)                       | Бюджет `GET /api/auth/native/me` — 60 проверок в скользящую минуту на грант, невалидный трафик по IP      |
 | [0185](0185-reminder-sync-dual-credential.md)                    | Настройки напоминаний: один маршрут для веба и Daychi, bearer только с @AllowNativeBearer()               |
 | [0186](0186-stale-pr-alert.md)                                   | Забытые PR (старше 7 дней) ловит плановый прогон и алерт в Telegram                                       |
+| [0187](0187-telegram-login-oidc.md)                              | Вход через Telegram по OpenID Connect: code + PKCE вместо перехода с `#tgAuthResult`                      |

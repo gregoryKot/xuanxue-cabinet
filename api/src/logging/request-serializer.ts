@@ -15,10 +15,10 @@ import { INVITE_QUERY_PARAM, NATIVE_ATTEMPT_PARAM } from '@xuanxue/shared';
 // ?token=, просто читает её фронт, не API) — редактировать задним числом,
 // когда утечка уже в логах Railway, поздно.
 const LOGIN_TOKEN_QUERY_PARAM = 'token';
-// Вход через Google (ADR-0145): Nest сам отдаёт страницу
-// /login/google?code=…&state=… (SPA), и её адрес — GET-запрос, который
-// логируется как любой другой; code/state в теле POST /auth/google
-// редактирует REDACT_PATHS.
+// Вход через Google (ADR-0145) и Telegram OIDC (ADR-0187): Nest сам отдаёт
+// страницы /login/google и /login/telegram?code=…&state=… (SPA), и их адрес —
+// GET-запрос, который логируется как любой другой; code/state в теле POST
+// редактирует REDACT_PATHS. Параметры называются одинаково, поэтому список один.
 const GOOGLE_CODE_QUERY_PARAM = 'code';
 const GOOGLE_STATE_QUERY_PARAM = 'state';
 // Вход нативного Daychi (ADR-0181): `GET /auth/native/authorize` несёт

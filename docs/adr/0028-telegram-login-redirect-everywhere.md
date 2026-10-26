@@ -1,6 +1,9 @@
 # 0028. Вход через Telegram — переходом вкладки на любом устройстве
 
 Дата: 2026-09-15. Статус: принято. Дополняет [0020](0020-telegram-login-redirect-on-touch.md).
+Дополнено [0187](0187-telegram-login-oidc.md): после подтверждения Telegram стал закрывать
+страницу, вход идёт по OpenID Connect; переход с `#tgAuthResult` остаётся, пока не
+задан `TELEGRAM_LOGIN_CLIENT_SECRET`, и удаляется отдельным PR.
 
 ## Контекст
 

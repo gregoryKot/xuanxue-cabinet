@@ -31,6 +31,7 @@ const ENV_RECIPIENT: Record<string, PrivacyRecipientId> = {
   RAILWAY_GIT_COMMIT_SHA: 'railway',
   BOT_TOKEN: 'telegram',
   TELEGRAM_WEBHOOK_SECRET: 'telegram',
+  TELEGRAM_LOGIN_CLIENT_SECRET: 'telegram',
   RESEND_API_KEY: 'resend',
   MAIL_FROM: 'resend',
   GOOGLE_CLIENT_ID: 'google',

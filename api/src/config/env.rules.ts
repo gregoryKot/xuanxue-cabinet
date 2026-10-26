@@ -84,6 +84,8 @@ export const GOOGLE_CLIENT_ID_MESSAGE =
   'GOOGLE_CLIENT_ID должен заканчиваться на .apps.googleusercontent.com';
 export const GOOGLE_CLIENT_SECRET_MESSAGE =
   'GOOGLE_CLIENT_SECRET должен быть не короче 16 символов';
+export const TELEGRAM_LOGIN_CLIENT_SECRET_MESSAGE =
+  'TELEGRAM_LOGIN_CLIENT_SECRET не должен быть пустым — Client Secret из BotFather («Login Widget»)';
 
 // Четыре переменные Cloudflare R2 (ADR-0057). Значения попадают в адрес
 // запроса: R2_ACCOUNT_ID — в имя хоста, R2_BUCKET — в путь. Поэтому регэкспы

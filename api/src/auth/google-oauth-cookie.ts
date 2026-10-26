@@ -1,15 +1,21 @@
 // Cookie `google_oauth` — переносит state/verifier/nonce/join через переход
-// на Google и обратно (ADR-0145). Без cookie-parser, тем же приёмом, что
-// session-cookie.ts: формат простой, внешняя зависимость не оправдана.
+// на Google и обратно (ADR-0145). Сборка, гашение и чтение JSON — общие с
+// Telegram (oauth-state-cookie.ts); здесь только имя, Path и поля Google.
 // Path=/api/auth/google — cookie видна только двум эндпоинтам самого потока
-// (start/POST), не всему API. Max-Age=600 (10 минут) — с запасом на то, чтобы
-// человек успел выбрать аккаунт Google, но короче TTL заявки email-входа.
+// (start/POST), не всему API.
 import { GOOGLE_LINK_INTENT } from '@xuanxue/shared';
-import { readCookie } from './session-cookie';
+import {
+  buildOAuthCookie,
+  clearOAuthCookie,
+  readOAuthCookie,
+  type OAuthCookieSpec,
+} from './oauth-state-cookie';
 
 export const GOOGLE_OAUTH_COOKIE = 'google_oauth';
-const COOKIE_PATH = 'Path=/api/auth/google';
-const MAX_AGE_SEC = 600;
+const GOOGLE_COOKIE: OAuthCookieSpec = {
+  name: GOOGLE_OAUTH_COOKIE,
+  path: '/api/auth/google',
+};
 
 export interface GoogleOAuthCookiePayload {
   state: string;
@@ -30,33 +36,15 @@ export interface GoogleOAuthCookiePayload {
 
 export function buildGoogleOAuthCookie(
   payload: GoogleOAuthCookiePayload,
-  { secure }: { secure: boolean },
+  options: { secure: boolean },
 ): string {
-  const value = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const attrs = [
-    `${GOOGLE_OAUTH_COOKIE}=${value}`,
-    'HttpOnly',
-    'SameSite=Lax',
-    COOKIE_PATH,
-    `Max-Age=${MAX_AGE_SEC}`,
-  ];
-  if (secure) attrs.push('Secure');
-  return attrs.join('; ');
+  return buildOAuthCookie(GOOGLE_COOKIE, payload, options);
 }
 
-/** Max-Age=0 гасит cookie независимо от Secure — тот же приём, что
- * browserLogoutCookies() (session-cookie.ts). Ставится ПЕРЕД любым кодом,
- * который может бросить (GoogleAuthController): заявка одноразовая, второй
- * попытке нечего в ней искать, даже если первая упала на середине. */
+/** Ставится ПЕРЕД любым кодом, который может бросить (GoogleAuthController):
+ * заявка одноразовая (oauth-state-cookie.ts). */
 export function clearGoogleOAuthCookie(): string {
-  const attrs = [
-    `${GOOGLE_OAUTH_COOKIE}=`,
-    'HttpOnly',
-    'SameSite=Lax',
-    COOKIE_PATH,
-    'Max-Age=0',
-  ];
-  return attrs.join('; ');
+  return clearOAuthCookie(GOOGLE_COOKIE);
 }
 
 /** `null` — cookie нет, битый base64url/JSON или не хватает обязательного
@@ -64,19 +52,9 @@ export function clearGoogleOAuthCookie(): string {
 export function readGoogleOAuthCookie(
   cookieHeader: string | undefined,
 ): GoogleOAuthCookiePayload | null {
-  const raw = readCookie(cookieHeader, GOOGLE_OAUTH_COOKIE);
-  if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const { state, verifier, nonce, join, intent, userId } = parsed as Record<
-    string,
-    unknown
-  >;
+  const parsed = readOAuthCookie(GOOGLE_COOKIE, cookieHeader);
+  if (!parsed) return null;
+  const { state, verifier, nonce, join, intent, userId } = parsed;
   if (typeof state !== 'string' || typeof verifier !== 'string') return null;
   if (typeof nonce !== 'string') return null;
   if (join !== undefined && typeof join !== 'string') return null;

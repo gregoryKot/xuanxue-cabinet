@@ -54,6 +54,7 @@ describe('GET /auth/config (e2e), с BOT_TOKEN', () => {
       'telegramBotId',
       'emailLoginEnabled',
       'googleLoginEnabled',
+      'telegramOidcEnabled',
       'fileStorageEnabled',
     ]);
   });
@@ -95,6 +96,7 @@ describe('GET /auth/config (e2e), с BOT_TOKEN', () => {
       'dataControllerContact',
       'emailLoginEnabled',
       'googleLoginEnabled',
+      'telegramOidcEnabled',
       'fileStorageEnabled',
     ]);
     expect(JSON.stringify(body)).not.toContain('Маше');

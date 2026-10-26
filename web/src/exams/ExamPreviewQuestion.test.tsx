@@ -14,6 +14,7 @@ const FULL_CONFIG: AuthConfigDto = {
   emailLoginEnabled: true,
   fileStorageEnabled: true,
   googleLoginEnabled: false,
+  telegramOidcEnabled: false,
   telegramBotUsername: 'xuanxue_bot',
 };
 const FULL_VIDEO = previewVideoControls(FULL_CONFIG);

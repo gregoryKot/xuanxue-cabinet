@@ -216,6 +216,7 @@ describe('ROUTE_MODULES', () => {
       '/login/email',
       '/login/google',
       '/login/native',
+      '/login/telegram',
       '/logout',
       '/privacy',
       '/welcome',

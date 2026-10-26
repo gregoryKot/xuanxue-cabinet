@@ -460,7 +460,12 @@ Railway — дальше роли назначаются на экране «У�
 `curl https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo` — `url` должен
 быть `https://xuanxue.su/api/telegram/webhook`, `last_error_message` пуст.
 
-Вход через Telegram (`redirectToTelegramAuth`, LoginScreen.tsx, ADR-0028) уводит
+Прежний вход через Telegram (`redirectToTelegramAuth`, LoginScreen.tsx, ADR-0028)
+действует, только пока не задан `TELEGRAM_LOGIN_CLIENT_SECRET`: с октября 2026
+Telegram после подтверждения закрывает страницу вместо возврата на `return_to`
+(стейджинг, 2026-10-22), и у уже вошедшего в Telegram такой вход не завершается.
+Подключение нового входа по OpenID Connect — ниже, после этих двух абзацев. Прежний
+вход уводит
 текущую вкладку на `oauth.telegram.org` на любом устройстве и требует, чтобы домен
 кабинета был указан в BotFather (`/setdomain`) для этого бота — иначе переход
 вернёт ошибку домена. Проверить один раз после мержа: зайти на
@@ -475,6 +480,53 @@ Telegram после подтверждения возвращает вкладк
 домен в BotFather (`/setdomain`) должен совпадать с адресом кабинета буква в
 букву, `www.xuanxue.su` и `xuanxue.su` — разные домены для Telegram, и вернёт
 ошибку или неверный `return_to`.
+
+Вход через Telegram по OpenID Connect: как подключить (ADR-0187). Без
+`TELEGRAM_LOGIN_CLIENT_SECRET` `GET /api/auth/config` отдаёт
+`telegramOidcEnabled: false`, кнопка ведёт по прежнему пути (абзацы выше), а
+`GET /api/auth/telegram/oidc/start` отвечает 503. Настройка — на каждое окружение
+отдельно, у его бота (у стейджинга и прода разные боты и разные секреты):
+
+1. BotFather → бот этого окружения → «Login Widget» → «Allowed URLs»: добавить
+   origin кабинета и адрес страницы возврата **буква в букву** с
+   `${PUBLIC_URL}/login/telegram`. Стейджинг: `https://staging.xuanxue.su` и
+   `https://staging.xuanxue.su/login/telegram`; прод: `https://xuanxue.su` и
+   `https://xuanxue.su/login/telegram`. Для разработки — `${PUBLIC_URL}` из
+   своего `.env`, у отдельного тестового бота.
+2. Там же скопировать Client Secret → `TELEGRAM_LOGIN_CLIENT_SECRET` в Railway →
+   Variables этого окружения. Client ID — числовой префикс `BOT_TOKEN`, отдельно
+   его задавать не нужно. Секрет — как `BOT_TOKEN`: в репозиторий и в чаты не
+   кладут. Перезапуск после Variables обязателен (§2).
+3. Проверить: `curl -sI https://staging.xuanxue.su/api/auth/telegram/oidc/start`
+   → `302`, `location: https://oauth.telegram.org/auth?client_id=…&redirect_uri=…`
+   и `set-cookie: telegram_oauth=…`; `curl -s https://staging.xuanxue.su/api/auth/config`
+   содержит `"telegramOidcEnabled":true`. `503` — секрет, `BOT_TOKEN` или
+   `PUBLIC_URL` не подхватились.
+4. Руками — **войти, выйти, войти снова** (на этом шаге сломался прежний вход,
+   2026-10-22, и в CI он не воспроизводится: граница с Telegram там подменена
+   фейком, ADR-0187). В браузере, где вы уже вошли в Telegram, с аккаунтом, который
+   есть в кабинете: `/login` → «Войти через Telegram» → подтвердить → кабинет с
+   вашей сессией → «Выйти» → снова «Войти через Telegram» → снова кабинет, а не
+   закрытая страница. Вошли в **свой** аккаунт, не отказ «нужна ссылка-приглашение»
+   (403): иначе claim `id` из `id_token` не совпал с `users.telegramId`. Повторить
+   с телефона и из приложения на экране «Домой». Затем в приватном окне — по
+   ссылке-приглашению (проверка из списка «Email-вход», п.6): новый человек получает «Как вас зовут?» с
+   именем из Telegram.
+5. Включили на обоих окружениях и убедились в п.4 — прежний вход удаляется
+   отдельным PR (ADR-0187, CLAUDE.md правило 6).
+
+Симптомы. Экран Telegram жалуется на адрес или домен — «Allowed URLs» (п.1) не
+совпали с `${PUBLIC_URL}/login/telegram` (слэш на конце, `www`, http/https).
+«Не получилось войти через Telegram» после подтверждения — смотреть логи по
+`requestId`: «Вход через Telegram отклонён: cookie telegram_oauth нет» —
+cookie заявки потерялась (другой браузер или приложение «Домой», прошло больше
+10 минут); «state не совпал с cookie» — вторая вкладка перезаписала заявку;
+`Telegram token endpoint ответил …` — статус обмена кода (формат ошибок Telegram
+не описывает; по OAuth 2.0 `401` — неверный Client Secret или секрет другого
+бота, `400` — код уже потрачен или `redirect_uri` в обмене не тот);
+«id_token не прошёл проверку: …» — причина названа в строке: `aud` не равен id
+бота (секрет или бот другого окружения), нет claim `id` (в запросе не было
+scope `profile`), `iss`, `exp`.
 
 Email-вход: как подключить (ADR-0029). Без переменных ниже
 `POST /auth/email/request` отвечает 503 «Вход по почте пока не подключён» —
@@ -586,6 +638,12 @@ Telegram работает и без них.
 BotFather → `/revoke` → новый токен в Railway → перезапуск. При старте приложение само
 вызывает `setWebhook` с новым `secret_token`. Проверить: `getWebhookInfo` без ошибок
 (`curl https://api.telegram.org/bot<token>/getWebhookInfo`).
+
+Вход через Telegram по OIDC (ADR-0187) использует Client Secret из BotFather
+(«Login Widget») — отдельное значение от `BOT_TOKEN`. После `/revoke` открыть тот же
+экран BotFather и сверить Client Secret с `TELEGRAM_LOGIN_CLIENT_SECRET`: если он
+сменился, обновить переменную в Railway в том же перезапуске и пройти проверку
+«войти, выйти, войти снова» (§5).
 
 ### 6.3 `JWT_SECRET`
 

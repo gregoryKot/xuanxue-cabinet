@@ -469,6 +469,35 @@ describe('validateEnv: Google (ADR-0145)', () => {
   });
 });
 
+// Вход через Telegram по OIDC (ADR-0187). Главное — первый тест: без секрета
+// кабинет поднимается как прежде и остаётся на входе через виджет (ADR-0028).
+describe('validateEnv: TELEGRAM_LOGIN_CLIENT_SECRET (ADR-0187)', () => {
+  it('без секрета конфигурация валидна — OIDC-вход просто выключен', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.TELEGRAM_LOGIN_CLIENT_SECRET).toBeUndefined();
+  });
+
+  it('production без секрета тоже поднимается — легаси-вход остаётся', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('пустая строка в .env считается отсутствием', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      TELEGRAM_LOGIN_CLIENT_SECRET: '',
+    });
+    expect(env.TELEGRAM_LOGIN_CLIENT_SECRET).toBeUndefined();
+  });
+
+  it('заданный секрет доходит до конфигурации как есть', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      TELEGRAM_LOGIN_CLIENT_SECRET: 'client-secret-value',
+    });
+    expect(env.TELEGRAM_LOGIN_CLIENT_SECRET).toBe('client-secret-value');
+  });
+});
+
 // PostHog (ADR-0143). Главное — первый тест: без ключа кабинет поднимается
 // как прежде, аналитика просто выключена (CLAUDE.md «Рискованная фича —
 // за флагом»).

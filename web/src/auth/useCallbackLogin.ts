@@ -1,4 +1,4 @@
-// Общий механизм экранов возврата (email-ссылка, Google): POST уходит сам,
+// Общий механизм экранов возврата (email-ссылка, Google, Telegram): POST уходит сам,
 // из JS, сразу при открытии страницы, ровно один раз (React 19 StrictMode
 // вызывает эффект дважды — startedRef тот же приём, что у
 // useTelegramAuthResultLogin.ts) → refresh() сессии → сохранённый адрес или
@@ -15,12 +15,13 @@ import { postLoginPath } from './returnTo';
 
 type CallbackLoginStatus = 'pending' | 'error';
 
-/** Запрос возврата — ключ карты и тело к нему: сегодня письмо и Google, оба
- * отвечают `MeDto`, но экран возврата его не читает — сессию перечитывает
- * `refresh()`. */
+/** Запрос возврата — ключ карты и тело к нему: сегодня письмо, Google и
+ * Telegram (OpenID Connect, ADR-0187), все отвечают `MeDto`, но экран возврата
+ * его не читает — сессию перечитывает `refresh()`. */
 export type CallbackLoginRequest =
   | { key: 'POST /auth/email/verify'; body: ApiRouteBody<'POST /auth/email/verify'> }
-  | { key: 'POST /auth/google'; body: ApiRouteBody<'POST /auth/google'> };
+  | { key: 'POST /auth/google'; body: ApiRouteBody<'POST /auth/google'> }
+  | { key: 'POST /auth/telegram/oidc'; body: ApiRouteBody<'POST /auth/telegram/oidc'> };
 
 // switch, а не `apiRoute(request.key, …)`: TS не сужает обобщённый ключ по
 // дискриминанту, и тело сверялось бы с объединением обоих.
@@ -29,6 +30,8 @@ function callbackLoginCall(request: CallbackLoginRequest): Promise<unknown> {
     case 'POST /auth/email/verify':
       return apiRoute(request.key, { body: request.body });
     case 'POST /auth/google':
+      return apiRoute(request.key, { body: request.body });
+    case 'POST /auth/telegram/oidc':
       return apiRoute(request.key, { body: request.body });
   }
 }

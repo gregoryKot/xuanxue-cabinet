@@ -120,7 +120,8 @@ xuanxue-cabinet/
 Три способа входа, все ведут в один аккаунт по совпадению email или Telegram ID:
 
 - **Email-ссылка** без пароля (основной для учеников без Telegram и для админа).
-- **Telegram**: виджет входа на сайте и `/start` в боте.
+- **Telegram**: вход на сайте по OpenID Connect (ADR-0187; прежний переход с
+  `#tgAuthResult` живёт, пока не задан `TELEGRAM_LOGIN_CLIENT_SECRET`) и `/start` в боте.
 - **Google**: OAuth, для тех, кому так удобнее. Узнаёт человека по почте, если
   Google за неё ручается (Gmail, Google Workspace, ADR-0145).
 
@@ -343,6 +344,10 @@ api: валидация env, логи с requestId и редакцией, кон
    ненадёжный из-за блокировки попапов и третьесторонних cookie):
    `GET /auth/config` отдаёт `telegramBotId` (числовой префикс `BOT_TOKEN`),
    без него — «Вход через Telegram не настроен»; `web/src/auth/LoginScreen.tsx`.
+   С ADR-0187 при заданном `TELEGRAM_LOGIN_CLIENT_SECRET` вход идёт по OpenID
+   Connect (code + PKCE, как у Google): `GET /auth/telegram/oidc/start`, страница
+   возврата `/login/telegram`, `GET /auth/config` отдаёт `telegramOidcEnabled`
+   (RUNBOOK §5); прежний переход остаётся, пока секрет не задан.
    Email-ссылка (ADR-0029) — форма «Нет Telegram? Войдите по почте» под
    кнопкой Telegram, видна только когда `GET /auth/config` отдаёт
    `emailLoginEnabled: true` (заданы `RESEND_API_KEY`, `MAIL_FROM`,

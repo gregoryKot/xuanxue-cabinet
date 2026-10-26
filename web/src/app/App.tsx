@@ -19,6 +19,7 @@ import { ROUTE_MODULES } from './routeModules';
 const LoginScreen = lazyRoute(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
 const GoogleLoginCallbackScreen = lazyRoute(ROUTE_MODULES.googleLogin.load);
+const TelegramLoginCallbackScreen = lazyRoute(ROUTE_MODULES.telegramLogin.load);
 const NativeLoginScreen = lazyRoute(ROUTE_MODULES.nativeLogin.load);
 const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
 const PrivacyScreen = lazyRoute(ROUTE_MODULES.privacy.load);
@@ -57,6 +58,11 @@ export default function App() {
             <Route
               path={ROUTE_MODULES.googleLogin.path}
               element={<GoogleLoginCallbackScreen />}
+            />
+            {/* Возврат из Telegram (ADR-0187) — там же и по той же причине. */}
+            <Route
+              path={ROUTE_MODULES.telegramLogin.path}
+              element={<TelegramLoginCallbackScreen />}
             />
             {/* Вход для приложения Daychi (ADR-0181) — публичный маршрут:
                 гость входит здесь же, вошедшего экран сам уводит в Daychi. */}
