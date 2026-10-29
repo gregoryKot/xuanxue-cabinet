@@ -72,27 +72,36 @@ describe('examVideoTransport — маршруты', () => {
     });
   });
 
-  it('complete: POST /exam-videos/:id/complete с кадром-превью в теле', async () => {
+  it('complete: POST /exam-videos/:id/complete с кадром-превью и кодеком в теле', async () => {
     mockedApiFetch.mockResolvedValue(VIDEO);
 
-    await expect(transport.complete('u1', 'QkFTRTY0', { signal })).resolves.toEqual(
-      VIDEO,
-    );
+    await expect(
+      transport.complete('u1', { poster: 'QkFTRTY0', codec: 'avc' }, { signal }),
+    ).resolves.toEqual(VIDEO);
 
     expect(mockedApiFetch).toHaveBeenCalledWith(completePath('u1'), {
       method: 'POST',
-      body: { poster: 'QkFTRTY0' },
+      body: { poster: 'QkFTRTY0', codec: 'avc' },
       signal,
     });
   });
 
-  it('complete без кадра: в теле нет poster, видео завершается так же', async () => {
+  it('complete без кадра и кодека: в теле пусто, видео завершается так же', async () => {
     mockedApiFetch.mockResolvedValue(VIDEO);
 
-    await transport.complete('u1', undefined, { signal });
+    await transport.complete('u1', {}, { signal });
 
     const [, init] = mockedApiFetch.mock.calls[0] ?? [];
     expect(JSON.stringify(init?.body)).toBe('{}');
+  });
+
+  it('complete с кодеком без кадра: в теле только codec (ADR-0189)', async () => {
+    mockedApiFetch.mockResolvedValue(VIDEO);
+
+    await transport.complete('u1', { poster: undefined, codec: 'hevc' }, { signal });
+
+    const [, init] = mockedApiFetch.mock.calls[0] ?? [];
+    expect(JSON.stringify(init?.body)).toBe('{"codec":"hevc"}');
   });
 });
 

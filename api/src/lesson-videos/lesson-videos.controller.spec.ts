@@ -78,7 +78,13 @@ describe('LessonVideosController', () => {
     await expect(controller.complete('v1', { poster: 'abc' }, USER)).resolves.toBe(
       VIDEO_DTO,
     );
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.anything(), 'abc');
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.anything(),
+      'abc',
+      undefined,
+    );
   });
 
   it('get() редиректит на подписанную ссылку сервиса с no-store', async () => {

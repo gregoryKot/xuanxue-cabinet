@@ -3,7 +3,9 @@
 // сервера это ведёт — решает транспорт вида видео (ответ ученика —
 // attempt/answerVideoTransport.ts, видео вопроса учителя подключится так же).
 // Только типы: форму ответа старта описываем здесь структурно, а не берём из
-// shared/, чтобы загрузчик не зависел от DTO одного вида видео.
+// shared/, чтобы загрузчик не зависел от DTO одного вида видео. Тело `complete`
+// общее у всех видов (CompleteVideoUploadInput), его берём из shared/ как есть.
+import type { CompleteVideoUploadInput } from '@xuanxue/shared';
 
 /** Ответ сервера на старт и на каждую принятую часть (для ответа ученика —
  * `AnswerVideoUploadDto`, он совместим по структуре). */
@@ -37,11 +39,12 @@ export interface VideoUploadTransport<TResult extends object> {
   ) => Promise<VideoUploadSession>;
   /** Завершает загрузку; `TResult` — то, что вид видео кладёт на экран.
    * Объект, не пустое значение: `undefined` у прогона значит «шаг не удался».
-   * `poster` — JPEG кадра в base64, если браузер успел его снять (ADR-0165);
-   * без него видео сохраняется так же. */
+   * `input.poster` — JPEG кадра в base64, если браузер успел его снять
+   * (ADR-0165); `input.codec` — кодек отправленного файла, если известен
+   * (ADR-0189). Без них видео сохраняется так же. */
   complete: (
     uploadId: string,
-    poster: string | undefined,
+    input: CompleteVideoUploadInput,
     request: VideoUploadRequest,
   ) => Promise<TResult>;
 }

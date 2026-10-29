@@ -11,12 +11,33 @@ export interface VideoUploadDto {
   receivedParts: number[];
 }
 
+/** Кодек видеодорожки, как его называет Mediabunny (`track.getCodec()`) в
+ * браузере (ADR-0188, ADR-0189). H.264 (`avc`) открывает любой браузер, прочие —
+ * не любой: старые ролики не в H.264 перегоняет кнопка «Перегнать видео». */
+export const VIDEO_CODECS = ['avc', 'hevc', 'vp9', 'av1', 'vp8'] as const;
+export type VideoCodec = (typeof VIDEO_CODECS)[number];
+export const H264_VIDEO_CODEC: VideoCodec = 'avc';
+
 /** Тело `POST …/complete` (ADR-0165): кадр-превью — необязательный, видео
  * сохраняется и без него. */
 export interface CompleteVideoUploadInput {
   /** JPEG кадра в base64, без префикса `data:`. */
   poster?: string;
+  /** Кодек отправленного файла со слов браузера (ADR-0189): после перегона —
+   * `avc`, исходник — его кодек, не прочитан — поля нет. Ошибись браузер,
+   * видео просто не попадёт в «Перегнать видео» — права это не даёт. */
+  codec?: VideoCodec;
 }
+
+/** Тело `PUT /exam-videos/:id/codec` (ADR-0189): кодек старого видео, прочитанный
+ * браузером штата из байтов через кабинет. */
+export interface SetVideoCodecInput {
+  codec: VideoCodec;
+}
+
+/** Сколько видео отдаёт `GET /exam-videos/codec-pending` за раз (ADR-0189) —
+ * тот же приём пачками, что у кадров (CLAUDE.md «API»: список всегда с лимитом). */
+export const VIDEOS_CODEC_PENDING_BATCH = 50;
 
 /** Тело `PUT …/:id/poster` (ADR-0182): кадр-превью для видео, загруженного до
  * того, как браузер стал снимать его при загрузке (ADR-0165). Снимает его

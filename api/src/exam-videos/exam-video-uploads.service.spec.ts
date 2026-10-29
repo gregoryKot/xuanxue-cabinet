@@ -328,6 +328,39 @@ describe('ExamVideoUploadsService', () => {
     });
   });
 
+  // ADR-0189: кодек файла со слов браузера приходит в теле complete и ложится в запись.
+  describe('complete с кодеком', () => {
+    it('кодек записан в ту же запись, что и готовность; ответ его не несёт', async () => {
+      const started = await uploaded();
+
+      const dto = await service.complete(started.id, TEACHER, NOW, undefined, 'avc');
+
+      expect(await model.findById(started.id).lean()).toMatchObject({
+        status: 'ready',
+        videoCodec: 'avc',
+      });
+      expect(dto).not.toHaveProperty('videoCodec');
+    });
+
+    it('без кодека поле не появляется: видео остаётся «не известно, что H.264»', async () => {
+      const started = await uploaded();
+
+      await service.complete(started.id, TEACHER, NOW);
+
+      expect(await model.findById(started.id).lean()).not.toHaveProperty('videoCodec');
+    });
+
+    it('исходный кодек не avc записывается как есть: видео останется в списке «Перегнать видео»', async () => {
+      const started = await uploaded();
+
+      await service.complete(started.id, TEACHER, NOW, undefined, 'hevc');
+
+      expect(await model.findById(started.id).lean()).toMatchObject({
+        videoCodec: 'hevc',
+      });
+    });
+  });
+
   // ADR-0165: кадр-превью приходит в теле complete и ложится в запись видео.
   describe('complete с кадром-превью', () => {
     const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);

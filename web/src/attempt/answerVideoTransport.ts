@@ -22,10 +22,10 @@ export function answerVideoTransport(
         body,
         ...request,
       }),
-    complete: (uploadId, poster, request) =>
+    complete: (uploadId, input, request) =>
       apiRoute('POST /answer-videos/:id/complete', {
         params: { id: uploadId },
-        body: { poster },
+        body: input,
         ...request,
       }),
   };

@@ -147,6 +147,31 @@ describe('runVideoUpload — happy path напрямую', () => {
     expect(transport.complete.mock.calls[0]?.[2]).toEqual({ signal: controller.signal });
   });
 
+  it('кодек файла уходит в complete вместе с кадром (ADR-0189)', async () => {
+    const transport = makeFakeTransport();
+
+    await runVideoUpload(
+      baseParams({
+        transport,
+        codec: 'hevc',
+        capturePoster: () => Promise.resolve('QQ=='),
+      }),
+    );
+
+    expect(transport.complete.mock.calls[0]?.[1]).toEqual({
+      poster: 'QQ==',
+      codec: 'hevc',
+    });
+  });
+
+  it('без известного кодека в complete его нет', async () => {
+    const transport = makeFakeTransport();
+
+    await runVideoUpload(baseParams({ transport }));
+
+    expect(transport.complete.mock.calls[0]?.[1].codec).toBeUndefined();
+  });
+
   it('продолжение: части, уже принятые сервером, не шлёт заново', async () => {
     const transport = makeFakeTransport({
       start: () => Promise.resolve(fakeSession([1, 2])),
@@ -242,7 +267,7 @@ describe('runVideoUpload — кадр-превью', () => {
 
     await runVideoUpload(baseParams({ transport, capturePoster }));
 
-    expect(transport.complete.mock.calls[0]?.[1]).toBe('QkFTRTY0');
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBe('QkFTRTY0');
     expect(capturePoster).toHaveBeenCalledTimes(1);
     expect(capturePoster.mock.invocationCallOrder[0]).toBeLessThan(
       transport.start.mock.invocationCallOrder[0] ?? 0,
@@ -263,7 +288,7 @@ describe('runVideoUpload — кадр-превью', () => {
     finishCapture('QkFTRTY0');
     await run;
 
-    expect(transport.complete.mock.calls[0]?.[1]).toBe('QkFTRTY0');
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBe('QkFTRTY0');
   });
 
   it.each([
@@ -275,7 +300,7 @@ describe('runVideoUpload — кадр-превью', () => {
 
     await runVideoUpload(baseParams({ transport, capturePoster, onDone }));
 
-    expect(transport.complete.mock.calls[0]?.[1]).toBeUndefined();
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBeUndefined();
     expect(onDone).toHaveBeenCalledWith(FAKE_UPLOAD_RESULT);
   });
 
@@ -284,7 +309,7 @@ describe('runVideoUpload — кадр-превью', () => {
 
     await runVideoUpload(baseParams({ transport }));
 
-    expect(transport.complete.mock.calls[0]?.[1]).toBeUndefined();
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBeUndefined();
   });
 
   it('отмена, пока ждали кадр, — complete не зовётся', async () => {
@@ -305,5 +330,21 @@ describe('runVideoUpload — кадр-превью', () => {
     await run;
 
     expect(transport.complete).not.toHaveBeenCalled();
+  });
+
+  it('отмена во время complete — onDone не зовётся, видео не показывается', async () => {
+    let cancelled = false;
+    const onDone = vi.fn();
+    const transport = makeFakeTransport({
+      complete: () => {
+        cancelled = true;
+        return Promise.resolve(FAKE_UPLOAD_RESULT);
+      },
+    });
+
+    await runVideoUpload(baseParams({ transport, onDone, isCancelled: () => cancelled }));
+
+    expect(transport.complete).toHaveBeenCalledTimes(1);
+    expect(onDone).not.toHaveBeenCalled();
   });
 });

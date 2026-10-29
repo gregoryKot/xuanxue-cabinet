@@ -3,6 +3,7 @@
 // файлом дальше (уведомление, запись в `media_assets`), решает домен по ответу.
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
+import type { VideoCodec } from '@xuanxue/shared';
 import { setPosterIfAbsent } from './video-poster';
 import type { VideoUploadRecord } from './video-upload.schema';
 
@@ -10,6 +11,10 @@ export interface MarkReadyInput {
   now: DateTime;
   /** Разобранный кадр из тела `complete` (parseVideoPoster) или `undefined`. */
   poster: Buffer | undefined;
+  /** Кодек отправленного файла со слов браузера или `undefined` — не прочитан
+   * (ADR-0189). Пишется тем же переходом, что `ready`: видео не бывает готовым
+   * с кодеком, который ещё не записан. */
+  codec?: VideoCodec;
 }
 
 /** Переход делает один из параллельных `complete`: `true` — этот вызов, ему и
@@ -18,7 +23,7 @@ export interface MarkReadyInput {
 export async function markVideoReady<T extends VideoUploadRecord>(
   model: Model<T>,
   id: Types.ObjectId,
-  { now, poster }: MarkReadyInput,
+  { now, poster, codec }: MarkReadyInput,
 ): Promise<boolean> {
   const moved = await model.updateOne(
     { _id: id, status: 'uploading' },
@@ -28,6 +33,7 @@ export async function markVideoReady<T extends VideoUploadRecord>(
         completedAt: now.toJSDate(),
         parts: [],
         ...(poster ? { poster } : {}),
+        ...(codec ? { videoCodec: codec } : {}),
       },
       $unset: { uploadId: 1, r2CompletedAt: 1 },
     },

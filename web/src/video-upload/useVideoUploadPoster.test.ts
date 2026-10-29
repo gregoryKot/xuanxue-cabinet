@@ -40,7 +40,7 @@ describe('useVideoUpload — кадр-превью', () => {
 
     await waitFor(() => expect(result.current.state.phase).toBe('done'));
     expect(mockedCapture.mock.calls[0]?.[0]).toBe(FILE);
-    expect(transport.complete.mock.calls[0]?.[1]).toBe('QkFTRTY0');
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBe('QkFTRTY0');
   });
 
   it('снять не вышло — видео всё равно готово, complete без кадра', async () => {
@@ -50,7 +50,7 @@ describe('useVideoUpload — кадр-превью', () => {
     act(() => result.current.selectFile(FILE));
 
     await waitFor(() => expect(result.current.state.phase).toBe('done'));
-    expect(transport.complete.mock.calls[0]?.[1]).toBeUndefined();
+    expect(transport.complete.mock.calls[0]?.[1].poster).toBeUndefined();
   });
 
   it('«Отменить» отдаёт снимку отменённый сигнал', async () => {

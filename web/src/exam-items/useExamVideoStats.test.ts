@@ -19,6 +19,7 @@ describe('useExamVideoStats', () => {
         count: 2,
         totalBytes: 90_000_000,
         withoutPosterCount: 0,
+        codecPendingCount: 4,
       },
     });
 
@@ -29,6 +30,7 @@ describe('useExamVideoStats', () => {
       count: 2,
       totalBytes: 90_000_000,
       withoutPosterCount: 0,
+      codecPendingCount: 4,
     });
   });
 

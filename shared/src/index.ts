@@ -314,15 +314,21 @@ export type {
   ExamVideoContentType,
   ExamVideoDto,
   ExamVideoStatsDto,
+  ReplaceExamVideoInput,
   VideoDownloadQuery,
   StartExamVideoInput,
 } from './exam-videos';
 export type {
   CompleteVideoUploadInput,
+  SetVideoCodecInput,
   SetVideoPosterInput,
+  VideoCodec,
   VideoUploadDto,
 } from './video-uploads';
 export {
+  H264_VIDEO_CODEC,
+  VIDEO_CODECS,
+  VIDEOS_CODEC_PENDING_BATCH,
   VIDEO_POSTER_LIMITS,
   VIDEO_POSTER_NOT_JPEG_MESSAGE,
   VIDEO_POSTER_TOO_LARGE_MESSAGE,

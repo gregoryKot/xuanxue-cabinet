@@ -10,12 +10,21 @@ import type { VideoUploadRecord } from './video-upload.schema';
 export interface OrphanCandidate {
   _id: Types.ObjectId;
   key: string;
+  /** Исходный файл видео, которое перегнали в H.264 (ADR-0189, только у видео
+   * вопросов). Это второй объект R2 того же документа: его владелец — документ, не
+   * журнал. Убирается ровно здесь, вместе с документом, — иначе утёк бы в R2. */
+  originalKey?: string;
 }
 
 /** Удаляет кандидатов, чьих id нет в `referenced`; возвращает, сколько убрано.
  * `removeNow` (ADR-0079) сама кладёт ключ в журнал перед удалением из R2 — отказ
  * хранилища не теряет ключ молча, следующий тик StorageOrphansService.sweep доберёт
- * его сам, даже если запись видео удалена уже сейчас. */
+ * его сам, даже если запись видео удалена уже сейчас.
+ *
+ * Исходный файл (`originalKey`, ADR-0189) уходит только отсюда: видео, на которое
+ * ссылается вопрос, сюда не попадает (его нет среди `orphans`), а у сироты исходник
+ * уже никому не нужен. Объект, на который указывает один `originalKey`, не сирота
+ * ни для журнала, ни для уборщика — их ключи берутся из `key` документа. */
 export async function removeUnreferencedVideos<T extends VideoUploadRecord>(
   deps: { model: Model<T>; orphans: StorageOrphansService },
   candidates: readonly OrphanCandidate[],
@@ -26,6 +35,7 @@ export async function removeUnreferencedVideos<T extends VideoUploadRecord>(
   if (orphans.length === 0) return 0;
   for (const orphan of orphans) {
     await deps.orphans.removeNow(orphan.key, now);
+    if (orphan.originalKey) await deps.orphans.removeNow(orphan.originalKey, now);
   }
   await deps.model.deleteMany({ _id: { $in: orphans.map((doc) => doc._id) } });
   return orphans.length;

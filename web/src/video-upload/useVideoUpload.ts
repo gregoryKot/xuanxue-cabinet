@@ -1,7 +1,6 @@
-// Загрузка видео частями (ADR-0137, ADR-0165) — состояние одного экземпляра:
-// экран заводит свой хук на каждое видео, два видео прогрессируют независимо.
-// Прогон — videoUploadRunner.ts, маршруты — транспорт вида видео; здесь React state
-// machine: idle → compressing (ADR-0165) → uploading → waiting → done | failed | cancelled.
+// Загрузка видео частями (ADR-0137, ADR-0165): состояние одного экземпляра, экран заводит
+// хук на каждое видео. Прогон — videoUploadRunner.ts, маршруты — транспорт вида видео; здесь
+// React state machine: idle → compressing → uploading → waiting → done | failed | cancelled.
 import { useCallback, useRef, useState } from 'react';
 import {
   IDLE_VIDEO_UPLOAD_STATE,
@@ -10,7 +9,7 @@ import {
 } from './videoUploadState';
 import type { VideoUploadTransport } from './videoUploadTypes';
 import { beginVideoUpload } from './beginVideoUpload';
-import { compressThenUpload } from './compressThenUpload';
+import { compressThenUpload, type CompressThenUploadParams } from './compressThenUpload';
 import { useWarnBeforeUnload } from '../hooks/useWarnBeforeUnload';
 import { canCompressVideo, compressVideo } from './compressVideo';
 import { useScreenWakeLock } from './useScreenWakeLock';
@@ -100,9 +99,10 @@ export function useVideoUpload<TResult extends object>({
       controllerRef.current = controller;
       const isCancelled = () => runIdRef.current !== thisRun || controller.signal.aborted;
 
-      const upload = (prepared: Blob) =>
+      const upload: CompressThenUploadParams['upload'] = (prepared, codec) =>
         beginVideoUpload({
           prepared,
+          codec,
           transport: createTransport(),
           signal: controller.signal,
           isCancelled,

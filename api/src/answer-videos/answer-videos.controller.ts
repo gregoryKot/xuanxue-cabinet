@@ -68,7 +68,8 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
     @Body() body: CompleteVideoUploadDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamMediaDto> {
-    return this.completeService.complete(id, user.id, DateTime.utc(), body.poster);
+    const { poster, codec } = body;
+    return this.completeService.complete(id, user.id, DateTime.utc(), poster, codec);
   }
 
   // Литеральный путь ДО `:id` — иначе Nest отдаст его хендлеру `get` с

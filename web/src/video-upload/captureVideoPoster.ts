@@ -8,6 +8,7 @@ import { combineAbortSignals } from '../api/abortSignals';
 import type { MediabunnyLibrary } from './compressVideo';
 import { encodePoster, type PosterCanvas } from './posterEncode';
 import { posterFromLibrary } from './posterFromLibrary';
+import { untilAborted } from './untilAborted';
 import {
   canCaptureFromVideoElement,
   posterFromVideoElement,
@@ -22,26 +23,6 @@ export interface CapturePosterOptions {
   /** Потолок на весь снимок; по умолчанию — как при загрузке
    * (POSTER_TIMEOUT_MS), из адреса — POSTER_FROM_URL_TIMEOUT_MS (ADR-0182). */
   timeoutMs?: number;
-}
-
-/** Промис отказывает, когда сигнал отменён, — на нём «ограничиваем по времени»
- * шаги, которые сами отменять не умеют (декодер библиотеки). Брошенный шаг
- * доработает в фоне и сам освободит ресурсы в своём `finally`. */
-function untilAborted<T>(step: Promise<T>, signal: AbortSignal): Promise<T> {
-  // Брошенный шаг может отказать уже после нас — его поздний отказ никому не
-  // нужен и не должен остаться необработанным.
-  step.catch(() => undefined);
-  return new Promise((resolve, reject) => {
-    const onAbort = () => reject(new Error('снимок кадра прерван'));
-    if (signal.aborted) {
-      onAbort();
-      return;
-    }
-    signal.addEventListener('abort', onAbort, { once: true });
-    step
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', onAbort));
-  });
 }
 
 async function findFrame(

@@ -17,6 +17,7 @@ import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
   type ExamMediaDto,
+  type VideoCodec,
 } from '@xuanxue/shared';
 import { assertObjectId } from '../common/object-id';
 import { ConflictError, NotFoundError } from '../common/errors';
@@ -51,6 +52,7 @@ export class AnswerVideoCompleteService {
     userId: string,
     now: DateTime,
     posterBase64?: string,
+    codec?: VideoCodec,
   ): Promise<ExamMediaDto> {
     assertObjectId(id, ANSWER_VIDEO_NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanAnswerVideo | null>();
@@ -83,7 +85,7 @@ export class AnswerVideoCompleteService {
 
     // Из двух параллельных `complete` переход делает один, он же и уведомляет —
     // уведомление не должно уйти дважды.
-    if (await markVideoReady(this.model, doc._id, { now, poster })) {
+    if (await markVideoReady(this.model, doc._id, { now, poster, codec })) {
       notifyVideoAdded(this.notifiers, attemptId, owner, userId, itemId, now, 'file');
     }
     return media;

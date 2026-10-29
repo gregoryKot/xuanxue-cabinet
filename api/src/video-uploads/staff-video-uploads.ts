@@ -5,7 +5,7 @@
 // (CLAUDE.md «Одна механика — один компонент»).
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import type { VideoUploadDto } from '@xuanxue/shared';
+import type { VideoCodec, VideoUploadDto } from '@xuanxue/shared';
 import type { RawLeanVideoUpload } from './video-upload.mapper';
 import type { VideoUploadRecord } from './video-upload.schema';
 import type { VideoUploadsService } from './video-uploads.service';
@@ -37,8 +37,9 @@ export abstract class StaffVideoUploads<
     userId: string,
     now: DateTime,
     posterBase64: string | undefined,
+    codec?: VideoCodec,
   ): Promise<L> {
     const doc = await this.loadOwn(id, userId);
-    return this.uploads.complete(this.model, doc, { posterBase64, now });
+    return this.uploads.complete(this.model, doc, { posterBase64, codec, now });
   }
 }

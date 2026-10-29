@@ -7,11 +7,13 @@
 // (`exam_attempts.videoIds`, SECURITY §3) — решает ExamVideosService, не схема.
 // Срок хранения: пока на видео ссылается вопрос банка (`exam_items.videoIds`)
 // или снимок попытки (`exam_attempts.videoIds`); видео-сирота старше суток —
-// ExamVideoSweepService; брошенная загрузка (`uploading`) — он же, по сроку
+// ExamVideoSweepService, вместе с исходным файлом, если видео перегоняли
+// (`originalKey`, ADR-0189); брошенная загрузка (`uploading`) — он же, по сроку
 // из video-uploads/.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import { enc, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
+import { EXAM_VIDEO_CONTENT_TYPES, type ExamVideoContentType } from '@xuanxue/shared';
+import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 import {
   VIDEO_UPLOAD_FIELD_POLICY,
@@ -31,6 +33,27 @@ export class ExamVideoRecord extends VideoUploadRecord {
   // (ADR-0035): следующий показ вопроса шлёт файл строкой, не байтами.
   @Prop({ type: String, required: false })
   telegramFileId?: string;
+
+  // Исходный файл, из которого «Перегнать видео» (ADR-0189) сделало H.264. Файл
+  // не удаляется никогда (требование владельца): после первой замены `key` и
+  // остальные поля указывают на H.264, а прежние значения лежат здесь, и вернуть
+  // исходник можно руками по RUNBOOK. Пишутся ровно один раз — тем же
+  // обновлением, что ставит новый `key` (exam-video-replace.ts), — и не
+  // перезаписываются: второй перегон отвергается, иначе первый оригинал заменил
+  // бы промежуточный H.264. Ключ тут держит объект в R2: уборщик сирот убирает его
+  // только вместе с документом целиком (video-orphans-remove.ts), никогда по
+  // отдельности и не через журнал.
+  @Prop({ type: String, required: false })
+  originalKey?: string;
+
+  @Prop({ type: String, enum: EXAM_VIDEO_CONTENT_TYPES, required: false })
+  originalContentType?: ExamVideoContentType;
+
+  @Prop({ type: Number, required: false })
+  originalSizeBytes?: number;
+
+  @Prop({ type: String, required: false })
+  originalFingerprint?: string;
 }
 
 export const ExamVideoSchema = SchemaFactory.createForClass(ExamVideoRecord);
@@ -51,6 +74,12 @@ ExamVideoSchema.index({ status: 1, updatedAt: 1 });
 export const EXAM_VIDEO_FIELD_POLICY: FieldPolicy = {
   ...VIDEO_UPLOAD_FIELD_POLICY,
   telegramFileId: enc,
+  originalKey: plain(
+    'случайный ключ объекта R2 с исходным файлом, не персональные данные — без подписанной ссылки не открыть',
+  ),
+  originalFingerprint: plain(
+    'размер и хэш первого и последнего мегабайта исходного файла — числа, не текст о человеке',
+  ),
 };
 
 /** Схема шифрования — та же роль, что EXAM_IMAGE_ENCRYPT_SCHEMA

@@ -44,7 +44,12 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
 const NO_IMAGES = { '/exam-images/stats-summary': { count: 0, totalBytes: 0 } };
 const NO_VIDEOS = {
-  '/exam-videos/stats-summary': { count: 0, totalBytes: 0, withoutPosterCount: 0 },
+  '/exam-videos/stats-summary': {
+    count: 0,
+    totalBytes: 0,
+    withoutPosterCount: 0,
+    codecPendingCount: 0,
+  },
 };
 // /answer-videos/stats-summary — ключ раньше общего /answer-videos ниже не
 // нужен: у экрана нет других запросов на этот префикс.
@@ -283,6 +288,46 @@ describe('ExamsScreen — вход в картинки вариантов отв
     renderScreen();
 
     expect(await screen.findByText(/Видео к вопросам: 2 — 85,8 МБ/)).toBeInTheDocument();
+  });
+});
+
+// ADR-0189: часть старых видео снята на iPhone в HEVC — число в сводке раздела
+// и кнопка «Перегнать видео» под ней, только пока есть что перегонять.
+describe('ExamsScreen — «Перегнать видео»', () => {
+  const withPending = (codecPendingCount: number) => ({
+    ...NO_STRUGGLING,
+    ...NO_IMAGES,
+    '/exam-videos/stats-summary': {
+      count: 7,
+      totalBytes: 90_000_000,
+      withoutPosterCount: 0,
+      codecPendingCount,
+    },
+    ...NO_ANSWER_VIDEOS,
+    '/exams': [],
+    '/attempts': [],
+  });
+
+  it('есть видео не в H.264 — число в сводке и кнопка с объяснением', async () => {
+    mockApiByPath(withPending(5));
+
+    renderScreen();
+
+    expect(await screen.findByText(/ждут перегона: 5/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Перегнать видео' })).toBeEnabled();
+    expect(screen.getByText('5 видео').tagName).toBe('STRONG');
+  });
+
+  it('все видео открываются везде — ни числа, ни кнопки', async () => {
+    mockApiByPath(withPending(0));
+
+    renderScreen();
+
+    await screen.findByText(/Видео к вопросам: 7/);
+    expect(screen.queryByText(/ждут перегона/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Перегнать видео' }),
+    ).not.toBeInTheDocument();
   });
 });
 

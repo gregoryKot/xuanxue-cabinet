@@ -83,6 +83,7 @@ describe('ExamVideosController', () => {
       count: 2,
       totalBytes: 4000,
       withoutPosterCount: 1,
+      codecPendingCount: 2,
     };
     const getSummary = jest.fn().mockResolvedValue(stats);
     const controller = await buildController({}, { getSummary });
@@ -176,7 +177,13 @@ describe('ExamVideosController', () => {
     const controller = await buildController({}, {}, { complete });
 
     await expect(controller.complete('v1', {}, USER)).resolves.toEqual(VIDEO_DTO);
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), undefined);
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      undefined,
+      undefined,
+    );
   });
 
   // ADR-0165: кадр-превью приходит в теле complete и уходит сервису как есть.
@@ -186,7 +193,29 @@ describe('ExamVideosController', () => {
 
     await controller.complete('v1', { poster: '/9j/4AAQ' }, USER);
 
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), '/9j/4AAQ');
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      '/9j/4AAQ',
+      undefined,
+    );
+  });
+
+  // ADR-0189: кодек файла со слов браузера уходит сервису загрузки как есть.
+  it('complete() передаёт кодек из тела сервису загрузки', async () => {
+    const complete = jest.fn().mockResolvedValue(VIDEO_DTO);
+    const controller = await buildController({}, {}, { complete });
+
+    await controller.complete('v1', { codec: 'hevc' }, USER);
+
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      undefined,
+      'hevc',
+    );
   });
 
   it('GET poster спрашивает кадр у сервиса видео с пользователем сессии', async () => {

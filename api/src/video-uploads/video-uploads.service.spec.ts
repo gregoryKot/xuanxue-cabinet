@@ -249,6 +249,22 @@ describe('VideoUploadsService на тестовой модели', () => {
       expect(doc && readPoster(doc)).toBeNull();
     });
 
+    // ADR-0189: кодек, названный браузером в complete, пишется тем же переходом.
+    it('кодек из complete записан вместе с переходом; без него поля нет', async () => {
+      const withCodec = await seedUploading();
+      const withoutCodec = await seedUploading();
+
+      await markVideoReady(model, withCodec, {
+        now: NOW,
+        poster: undefined,
+        codec: 'avc',
+      });
+      await markVideoReady(model, withoutCodec, { now: NOW, poster: undefined });
+
+      expect(await model.findById(withCodec).lean()).toMatchObject({ videoCodec: 'avc' });
+      expect(await model.findById(withoutCodec).lean()).not.toHaveProperty('videoCodec');
+    });
+
     it('готовое видео не трогает: false, дата и кадр прежние; пропущенный кадр ставится', async () => {
       const id = await seedUploading();
       await markVideoReady(model, id, { now: NOW, poster: undefined });

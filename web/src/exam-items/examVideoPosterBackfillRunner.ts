@@ -4,15 +4,13 @@
 // videoUploadRunner.ts. Ошибка одного видео не останавливает остальные: кадр —
 // украшение, а не условие просмотра; останавливает только отказ в доступе, потому
 // что остальные запросы получат тот же отказ.
-import { ApiError } from '../api/http';
+import { isNoAccess, nextPendingBatch } from './examVideoBackfillBatch';
 
 const NO_ACCESS_MESSAGE =
   'Нет доступа. Войдите заново под учётной записью **учителя или админа** и нажмите «Снять кадры» ещё раз.';
 const LIST_FAILED_MESSAGE =
   'Список видео не загрузился. Проверьте связь и нажмите «Снять кадры» ещё раз: **снятые кадры сохранены**.';
-
-const HTTP_UNAUTHORIZED = 401;
-const HTTP_FORBIDDEN = 403;
+const FAILURE_MESSAGES = { noAccess: NO_ACCESS_MESSAGE, listFailed: LIST_FAILED_MESSAGE };
 
 export interface PosterBackfillProgress {
   /** Кадров снято и записано. */
@@ -43,13 +41,6 @@ export interface RunPosterBackfillParams {
   onProgress: (progress: PosterBackfillProgress) => void;
 }
 
-function isNoAccess(error: unknown): boolean {
-  return (
-    error instanceof ApiError &&
-    (error.status === HTTP_UNAUTHORIZED || error.status === HTTP_FORBIDDEN)
-  );
-}
-
 export async function runPosterBackfill(
   params: RunPosterBackfillParams,
 ): Promise<PosterBackfillRunResult> {
@@ -71,20 +62,20 @@ export async function runPosterBackfill(
   });
 
   while (!signal.aborted) {
-    let batch: { id: string }[];
-    try {
-      batch = await listWithoutPoster(signal);
-    } catch (error) {
-      if (signal.aborted) break;
-      return finish(isNoAccess(error) ? NO_ACCESS_MESSAGE : LIST_FAILED_MESSAGE);
-    }
-    const pending = batch.filter((video) => !handled.has(video.id));
-    if (pending.length === 0) return finish(null);
-    total ??= pending.length;
+    const next = await nextPendingBatch(
+      listWithoutPoster,
+      handled,
+      signal,
+      FAILURE_MESSAGES,
+    );
+    if (next.status === 'cancelled') break;
+    if (next.status === 'done') return finish(null);
+    if (next.status === 'failed') return finish(next.message);
+    total ??= next.ids.length;
 
     // Отмена проверяется после каждого шага, который её ждал (снимок, запись):
     // между шагами она прийти не может, прогресс отдаётся синхронно.
-    for (const { id } of pending) {
+    for (const id of next.ids) {
       handled.add(id);
       const poster = await capture(id, signal);
       if (signal.aborted) return finish(null, true);
