@@ -114,7 +114,7 @@ export function useVideoUpload<TResult extends object>({
         });
 
       // Без сжатия: beginVideoUpload сам ставит `uploading` или отказ по размеру.
-      if (!canCompress || !canCompressVideo(file.size)) {
+      if (!canCompress || !canCompressVideo()) {
         upload(file);
         return;
       }

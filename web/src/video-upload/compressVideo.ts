@@ -1,12 +1,15 @@
 // Сжатие видео в браузере перед загрузкой (ADR-0165): MP4 с H.264, кадр до
-// 1280×720, около 2 Мбит/с, индекс в начале файла. Библиотека Mediabunny
+// 1280×720, около 2 Мбит/с, индекс в начале файла. Видео не в H.264 (HEVC с
+// iPhone и т. п.) перегоняется всегда, каким бы маленьким оно ни было, —
+// иначе у части зрителей оно не откроется (ADR-0188). Библиотека Mediabunny
 // (WebCodecs + разбор и сборка MP4) грузится отдельным куском только здесь —
-// на стартовую страницу она не попадает. Сжатие — оптимизация, а не условие:
-// что бы ни пошло не так, уходит исходный файл.
+// на стартовую страницу она не попадает. Перегон — оптимизация и забота о
+// совместимости, а не условие: что бы ни пошло не так, уходит исходный файл.
 import type * as Mediabunny from 'mediabunny';
 import {
-  isWorthCompressing,
+  canSkipConversion,
   planVideoCompression,
+  shouldConvertSource,
   shouldUseCompressed,
   type VideoCompressionTarget,
 } from './videoCompressionPlan';
@@ -23,15 +26,20 @@ export interface CompressVideoOptions {
   signal: AbortSignal;
   /** Доля готовности 0..1. */
   onProgress: (fraction: number) => void;
+  /** Кодек прочитан и перегон решено делать (маленький H.264 до этого не
+   * доходит). `canSkip: false` — исходник отдавать нельзя: он не H.264 и у части
+   * зрителей не откроется, поэтому «Отправить без сжатия» не предлагается
+   * (ADR-0188). */
+  onConversionStart?: (info: { canSkip: boolean }) => void;
   /** Подмена в тестах; по умолчанию — ленивый кусок с библиотекой. */
   loadLibrary?: () => Promise<MediabunnyLibrary>;
 }
 
-/** Стоит ли вообще браться за файл: в браузере есть кодировщик WebCodecs и файл
- * не такой маленький, чтобы уйти одной частью. Решается до загрузки библиотеки,
- * поэтому не стоит ни байта трафика, и экран не мигает «Сжимаем». */
-export function canCompressVideo(sizeBytes: number): boolean {
-  return typeof VideoEncoder !== 'undefined' && isWorthCompressing(sizeBytes);
+/** Есть ли в браузере кодировщик WebCodecs. Размер файла здесь не смотрим:
+ * маленькому HEVC перегон нужен ради совместимости, а кодек узнаётся только
+ * библиотекой (ADR-0188). Без кодировщика библиотеку не грузим вовсе. */
+export function canCompressVideo(): boolean {
+  return typeof VideoEncoder !== 'undefined';
 }
 
 // Отмена — не ошибка: хук по ней молча выходит. Текст человеку не показывается.
@@ -40,11 +48,9 @@ function abortError(): DOMException {
 }
 
 async function probeTarget(
-  input: InstanceType<MediabunnyLibrary['Input']>,
+  track: Mediabunny.InputVideoTrack,
   sizeBytes: number,
 ): Promise<VideoCompressionTarget | null> {
-  const track = await input.getPrimaryVideoTrack();
-  if (!track) return null;
   const [displayWidth, displayHeight, stats] = await Promise.all([
     track.getDisplayWidth(),
     track.getDisplayHeight(),
@@ -58,19 +64,27 @@ async function probeTarget(
   });
 }
 
+/** Результат перегона, который стоит взять вместо исходника, или `null` —
+ * отдавать исходник: сжимать нечем или незачем, либо результат хуже. */
 async function convert(
   file: File,
-  options: Required<Omit<CompressVideoOptions, 'loadLibrary'>>,
+  options: Omit<CompressVideoOptions, 'loadLibrary'>,
   lib: MediabunnyLibrary,
 ): Promise<Blob | null> {
-  const { signal, onProgress } = options;
+  const { signal, onProgress, onConversionStart } = options;
   signal.throwIfAborted();
   const input = new lib.Input({
     source: new lib.BlobSource(file),
     formats: lib.ALL_FORMATS,
   });
   try {
-    const target = await probeTarget(input, file.size);
+    const track = await input.getPrimaryVideoTrack();
+    if (!track) return null;
+    const codec = await track.getCodec();
+    // Маленький H.264 остаётся как есть: он уходит одной частью (ADR-0165).
+    if (!shouldConvertSource(file.size, codec)) return null;
+    onConversionStart?.({ canSkip: canSkipConversion(codec) });
+    const target = await probeTarget(track, file.size);
     if (!target) return null;
 
     const bufferTarget = new lib.BufferTarget();
@@ -105,7 +119,9 @@ async function convert(
       signal.removeEventListener('abort', cancel);
     }
     const { buffer } = bufferTarget;
-    return buffer ? new Blob([buffer], { type: OUTPUT_MIME_TYPE }) : null;
+    if (!buffer) return null;
+    const converted = new Blob([buffer], { type: OUTPUT_MIME_TYPE });
+    return shouldUseCompressed(file.size, converted.size, codec) ? converted : null;
   } finally {
     input.dispose();
   }
@@ -116,15 +132,12 @@ export async function compressVideo(
   file: File,
   options: CompressVideoOptions,
 ): Promise<Blob> {
-  const { signal, onProgress, loadLibrary = () => import('mediabunny') } = options;
-  if (!canCompressVideo(file.size)) return file;
+  const { loadLibrary = () => import('mediabunny'), ...rest } = options;
+  if (!canCompressVideo()) return file;
   try {
-    const compressed = await convert(file, { signal, onProgress }, await loadLibrary());
-    return compressed && shouldUseCompressed(file.size, compressed.size)
-      ? compressed
-      : file;
+    return (await convert(file, rest, await loadLibrary())) ?? file;
   } catch {
-    if (signal.aborted) throw abortError();
+    if (rest.signal.aborted) throw abortError();
     return file;
   }
 }

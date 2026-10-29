@@ -1,12 +1,17 @@
-// План сжатия видео в браузере (ADR-0165): чистая арифметика без библиотеки и
-// без DOM — что делать с выбранным файлом и до какого кадра и битрейта
-// перегнать. Сам перегон — compressVideo.ts.
+// План сжатия видео в браузере (ADR-0165, ADR-0188): чистая арифметика без
+// библиотеки и без DOM — что делать с выбранным файлом и до какого кадра и
+// битрейта перегнать. Сам перегон — compressVideo.ts.
 
 const BYTES_PER_MIB = 1024 * 1024;
 
-/** Файл не больше этого не сжимаем: он и так уходит одной частью (8 МиБ,
- * ANSWER_VIDEO_LIMITS.partBytes), а секунды ожидания сжатия съели бы выигрыш. */
+/** H.264-файл не больше этого не сжимаем: он и так уходит одной частью (8 МиБ,
+ * ANSWER_VIDEO_LIMITS.partBytes), а секунды ожидания сжатия съели бы выигрыш.
+ * Видео в другом кодеке этот порог не касается (ADR-0188). */
 const COMPRESSION_MIN_BYTES = 8 * BYTES_PER_MIB;
+
+/** Имя H.264 в Mediabunny (`track.getCodec()`). Его открывает любой браузер; HEVC,
+ * VP9, AV1 и всё остальное — не любой (ADR-0188). */
+const H264_CODEC = 'avc';
 
 /** Длинная и короткая сторона кадра: 1280×720 хватает, чтобы учитель разобрал
  * движение, а 1080p и 4K с телефона в 5–10 раз тяжелее (ADR-0165). Две границы,
@@ -43,10 +48,30 @@ export interface VideoCompressionTarget {
   frameRate?: number;
 }
 
-/** Есть ли смысл браузеру браться за файл такого размера — до загрузки
- * библиотеки и до чтения самого видео. */
+/** Окупится ли сжатие H.264-файла такого размера. */
 export function isWorthCompressing(sizeBytes: number): boolean {
   return sizeBytes > COMPRESSION_MIN_BYTES;
+}
+
+/** Нужен ли перегон ради совместимости, а не ради размера: первая дорожка не
+ * H.264 (iPhone пишет HEVC, он не открывается в Firefox и в части Chromium без
+ * аппаратного HEVC — MIUI Browser; ADR-0188). Кодек не опознан (`null`) — тоже
+ * «не H.264»: что он откроется у каждого, сказать нельзя. */
+export function needsCompatibilityTranscode(codec: string | null): boolean {
+  return codec !== H264_CODEC;
+}
+
+/** Браться ли за перегон: файл не H.264 — всегда, H.264 — только если размер
+ * окупает сжатие. Так маленький HEVC-ролик вопроса (он и есть маленький)
+ * больше не уходит в хранилище как снят (ADR-0188). */
+export function shouldConvertSource(sizeBytes: number, codec: string | null): boolean {
+  return needsCompatibilityTranscode(codec) || isWorthCompressing(sizeBytes);
+}
+
+/** Можно ли человеку отказаться от перегона и отправить исходник: у не-H.264
+ * файла нельзя, иначе часть зрителей снова получит чёрный прямоугольник. */
+export function canSkipConversion(codec: string | null): boolean {
+  return !needsCompatibilityTranscode(codec);
 }
 
 function evenFloor(value: number): number {
@@ -73,10 +98,15 @@ export function planVideoCompression(
   };
 }
 
-/** Брать ли сжатый результат вместо исходника. */
+/** Брать ли результат перегона вместо исходника. Не-H.264 исходник заменяется
+ * всегда, даже если H.264 вышел не меньше: HEVC сам по себе компактнее, а цель
+ * здесь — чтобы файл открылся (ADR-0188). У H.264 действует правило 80%. */
 export function shouldUseCompressed(
   originalBytes: number,
   compressedBytes: number,
+  sourceCodec: string | null,
 ): boolean {
-  return compressedBytes > 0 && compressedBytes < originalBytes * MAX_COMPRESSED_SHARE;
+  if (!(compressedBytes > 0)) return false;
+  if (needsCompatibilityTranscode(sourceCodec)) return true;
+  return compressedBytes < originalBytes * MAX_COMPRESSED_SHARE;
 }
