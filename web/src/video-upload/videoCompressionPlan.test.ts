@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   TARGET_VIDEO_BITRATE,
+  canSkipConversion,
   isWorthCompressing,
+  needsCompatibilityTranscode,
   planVideoCompression,
+  shouldConvertSource,
   shouldUseCompressed,
 } from './videoCompressionPlan';
 
@@ -98,14 +101,67 @@ describe('planVideoCompression — битрейт и частота кадров
   });
 });
 
-describe('shouldUseCompressed', () => {
-  it('берёт результат, только если он меньше 80% исходника', () => {
-    expect(shouldUseCompressed(100, 79)).toBe(true);
-    expect(shouldUseCompressed(100, 80)).toBe(false);
-    expect(shouldUseCompressed(100, 120)).toBe(false);
+// Кодеки, как их называет Mediabunny (ADR-0188). 2026-10-29 ученик на Android в MIUI
+// Browser не увидел видео вопроса контрольной: HEVC с iPhone дошёл до хранилища
+// нетронутым, потому что правило сжатия смотрело только на размер.
+describe('needsCompatibilityTranscode', () => {
+  it('H.264 открывается везде — перегон ради совместимости не нужен', () => {
+    expect(needsCompatibilityTranscode('avc')).toBe(false);
   });
 
-  it('пустой результат не берёт', () => {
-    expect(shouldUseCompressed(100, 0)).toBe(false);
+  it.each(['hevc', 'vp9', 'av1', 'vp8'])('%s перегоняется в H.264', (codec) => {
+    expect(needsCompatibilityTranscode(codec)).toBe(true);
+  });
+
+  it('кодек не опознан — тоже перегоняется: что он откроется всем, сказать нельзя', () => {
+    expect(needsCompatibilityTranscode(null)).toBe(true);
+  });
+});
+
+describe('shouldConvertSource', () => {
+  it('маленький HEVC перегоняется: ролик вопроса и есть маленький', () => {
+    expect(shouldConvertSource(MIB, 'hevc')).toBe(true);
+    expect(shouldConvertSource(1, 'hevc')).toBe(true);
+  });
+
+  it('большой HEVC перегоняется', () => {
+    expect(shouldConvertSource(100 * MIB, 'hevc')).toBe(true);
+  });
+
+  it('маленький H.264 остаётся как есть (до 8 МиБ включительно)', () => {
+    expect(shouldConvertSource(MIB, 'avc')).toBe(false);
+    expect(shouldConvertSource(8 * MIB, 'avc')).toBe(false);
+  });
+
+  it('H.264 крупнее 8 МиБ сжимается ради размера', () => {
+    expect(shouldConvertSource(8 * MIB + 1, 'avc')).toBe(true);
+  });
+});
+
+describe('canSkipConversion', () => {
+  it('«Отправить без сжатия» предлагается только для H.264', () => {
+    expect(canSkipConversion('avc')).toBe(true);
+    expect(canSkipConversion('hevc')).toBe(false);
+    expect(canSkipConversion('av1')).toBe(false);
+    expect(canSkipConversion(null)).toBe(false);
+  });
+});
+
+describe('shouldUseCompressed', () => {
+  it('H.264: берёт результат, только если он меньше 80% исходника', () => {
+    expect(shouldUseCompressed(100, 79, 'avc')).toBe(true);
+    expect(shouldUseCompressed(100, 80, 'avc')).toBe(false);
+    expect(shouldUseCompressed(100, 120, 'avc')).toBe(false);
+  });
+
+  it('HEVC: берёт результат, даже если он не меньше 80% исходника и даже больше него', () => {
+    expect(shouldUseCompressed(100, 79, 'hevc')).toBe(true);
+    expect(shouldUseCompressed(100, 80, 'hevc')).toBe(true);
+    expect(shouldUseCompressed(100, 120, 'hevc')).toBe(true);
+  });
+
+  it('пустой результат не берёт ни у какого кодека', () => {
+    expect(shouldUseCompressed(100, 0, 'avc')).toBe(false);
+    expect(shouldUseCompressed(100, 0, 'hevc')).toBe(false);
   });
 });

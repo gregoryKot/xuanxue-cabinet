@@ -2,7 +2,9 @@
 
 Дата: 2026-10-02. Статус: принято. Уточняет
 [ADR-0133](0133-question-video-r2-or-link.md) и
-[ADR-0137](0137-answer-video-file-upload-in-parts.md).
+[ADR-0137](0137-answer-video-file-upload-in-parts.md). Уточнено
+[ADR-0188](0188-non-h264-video-always-transcoded.md): видео не в H.264 перегоняется
+всегда, правила размера в этом разделе относятся к H.264.
 
 ## Контекст
 

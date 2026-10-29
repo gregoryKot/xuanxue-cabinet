@@ -3,7 +3,7 @@
 // связи сжатие только тратит время, а исходное качество нужно не всем). Вынесено
 // из useVideoUpload.ts (файловый лимит, CLAUDE.md «Храповики»): хук ведёт выбор
 // файла и отмену, а этот шаг знает, чем кончается сжатие — сжатым файлом или
-// исходником.
+// исходником. Видео не в H.264 перегоняется всегда и без отказа (ADR-0188).
 import type { Dispatch, SetStateAction } from 'react';
 import { combineAbortSignals } from '../api/abortSignals';
 import type { compressVideo } from './compressVideo';
@@ -24,19 +24,22 @@ export interface CompressThenUploadParams {
 }
 
 /** Запускает сжатие и по его итогу — загрузку. Возвращает «пропустить сжатие»:
- * оборвать его и грузить исходник; после конца сжатия, отмены и для файла
- * больше потолка ничего не делает. */
+ * оборвать его и грузить исходник; до того, как библиотека прочитала кодек, после
+ * конца сжатия, отмены, для файла больше потолка и для видео не в H.264 ничего
+ * не делает. */
 export function compressThenUpload(params: CompressThenUploadParams): () => void {
   const { file, signal, isCancelled, compress, maxBytes, setState, upload } = params;
-  const canSkip = file.size <= maxBytes;
+  const isUnderLimit = file.size <= maxBytes;
   const skip = new AbortController();
   let isSettled = false;
+  // Кнопка появляется, только когда кодек прочитан и это H.264: пока он неизвестен,
+  // нажатие могло бы отправить HEVC, который у части зрителей не откроется.
+  let canSkip = false;
 
   setState({
     ...IDLE_VIDEO_UPLOAD_STATE,
     phase: 'compressing',
     totalBytes: file.size,
-    canSkipCompression: canSkip,
   });
   // Отвергается сжатие только отменой (сигнал прогона или пропуск) — любой
   // другой сбой compress уже превратил в исходный файл. Если сжатие успело
@@ -46,6 +49,11 @@ export function compressThenUpload(params: CompressThenUploadParams): () => void
     signal: combineAbortSignals([signal, skip.signal]),
     onProgress: (fraction) =>
       setState((prev) => ({ ...prev, compressProgress: fraction })),
+    onConversionStart: (info) => {
+      canSkip = isUnderLimit && info.canSkip;
+      if (!canSkip || isSettled || isCancelled()) return;
+      setState((prev) => ({ ...prev, canSkipCompression: true }));
+    },
   }).then(
     (prepared) => {
       isSettled = true;

@@ -329,6 +329,9 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
       finish: (blob: Blob) => finish(blob),
       fail: (error: unknown) => fail(error),
       options: () => options,
+      /** Библиотека прочла кодек и решила перегонять (compressVideo.ts). */
+      conversionStart: (canSkip: boolean) =>
+        act(() => options?.onConversionStart?.({ canSkip })),
     };
   }
 
@@ -359,6 +362,7 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
 
     act(() => options()?.onProgress(0.4));
     expect(result.current.state.compressProgress).toBe(0.4);
+    expect(result.current.state.canSkipCompression).toBe(false);
 
     finish(new Blob([new Uint8Array(20)], { type: 'video/mp4' }));
 
@@ -444,8 +448,9 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     it('сжатие оборвано, грузится исходник: start получает его размер', async () => {
       // Подменное сжатие отвергается отменой, как настоящее (compressVideo.ts).
       const compress = vi.fn<typeof compressVideo>(
-        (_file, { signal }) =>
+        (_file, { signal, onConversionStart }) =>
           new Promise<Blob>((_resolve, reject) => {
+            onConversionStart?.({ canSkip: true });
             signal.addEventListener('abort', () =>
               reject(new DOMException('Сжатие отменено.', 'AbortError')),
             );
@@ -467,13 +472,14 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     });
 
     it('после пропуска фаза — uploading, а не compressing', async () => {
-      const { compress, fail } = controlledCompress();
+      const { compress, fail, conversionStart } = controlledCompress();
       const { result } = renderUpload(
         makeFakeTransport({ start: () => new Promise(() => {}) }),
         { compress },
       );
 
       act(() => result.current.selectFile(bigFile()));
+      conversionStart(true);
       act(() => result.current.skipCompression());
       fail(new DOMException('Сжатие отменено.', 'AbortError'));
 
@@ -485,11 +491,12 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     });
 
     it('«Отменить» во время сжатия: загрузка не стартует, пропуск уже ничего не даёт', async () => {
-      const { compress, fail } = controlledCompress();
+      const { compress, fail, conversionStart } = controlledCompress();
       const transport = makeFakeTransport();
       const { result } = renderUpload(transport, { compress });
 
       act(() => result.current.selectFile(bigFile()));
+      conversionStart(true);
       act(() => result.current.cancel());
       expect(result.current.state.canSkipCompression).toBe(false);
       act(() => result.current.skipCompression());
@@ -506,20 +513,22 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
       ['не больше потолка', ANSWER_VIDEO_LIMITS.maxBytes, true],
       ['больше потолка', ANSWER_VIDEO_LIMITS.maxBytes + 1, false],
     ])('исходник %s: кнопка доступна — %s', (_title, size, canSkip) => {
-      const { compress } = controlledCompress();
+      const { compress, conversionStart } = controlledCompress();
       const { result } = renderUpload(makeFakeTransport(), { compress });
 
       act(() => result.current.selectFile(bigFile(size)));
+      conversionStart(true);
 
       expect(result.current.state.phase).toBe('compressing');
       expect(result.current.state.canSkipCompression).toBe(canSkip);
     });
 
     it('исходник больше потолка: пропуск не рвёт сжатие', () => {
-      const { compress, options } = controlledCompress();
+      const { compress, options, conversionStart } = controlledCompress();
       const { result } = renderUpload(makeFakeTransport(), { compress });
 
       act(() => result.current.selectFile(bigFile(ANSWER_VIDEO_LIMITS.maxBytes + 1)));
+      conversionStart(true);
       act(() => result.current.skipCompression());
 
       expect(options()?.signal.aborted).toBe(false);
@@ -527,11 +536,12 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     });
 
     it('сжатие уже отдало файл, а пропуск дошёл следом — одна загрузка, сжатого', async () => {
-      const { compress, finish } = controlledCompress();
+      const { compress, finish, conversionStart } = controlledCompress();
       const transport = makeFakeTransport();
       const { result } = renderUpload(transport, { compress });
 
       act(() => result.current.selectFile(bigFile()));
+      conversionStart(true);
       finish(new Blob([new Uint8Array(20)], { type: 'video/mp4' }));
       act(() => result.current.skipCompression());
 
@@ -542,7 +552,7 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
 
     it('вне сжатия (идёт загрузка, покой) пропуск ничего не делает', async () => {
       const transport = makeFakeTransport({ start: () => new Promise(() => {}) });
-      const { result } = renderUpload(transport);
+      const { result } = renderUpload(transport, { canCompress: false });
 
       act(() => result.current.skipCompression());
       expect(result.current.state.phase).toBe('idle');
@@ -555,12 +565,13 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     });
 
     it('пропуск относится к последнему выбранному файлу, а не к первому', async () => {
-      const { compress, fail, options } = controlledCompress();
+      const { compress, fail, options, conversionStart } = controlledCompress();
       const transport = makeFakeTransport();
       const { result } = renderUpload(transport, { compress });
 
       act(() => result.current.selectFile(bigFile(BIG_BYTES)));
       act(() => result.current.selectFile(bigFile(BIG_BYTES + 1)));
+      conversionStart(true);
       act(() => result.current.skipCompression());
       expect(options()?.signal.aborted).toBe(true);
       fail(new DOMException('Сжатие отменено.', 'AbortError'));
@@ -571,15 +582,113 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
     });
   });
 
-  it('маленький файл не сжимается и сразу грузится', async () => {
-    const { compress } = controlledCompress();
-    const { result } = renderUpload(makeFakeTransport(), { compress });
+  // ADR-0188: кодек узнаёт только библиотека, поэтому и маленький файл сначала
+  // проходит через сжатие. Маленький H.264 библиотека отдаёт нетронутым, и он
+  // уходит дальше без кнопки и без ожидания.
+  it('маленький H.264: сжатие вернуло исходник — он и грузится, без кнопки отказа', async () => {
+    const { compress, finish } = controlledCompress();
+    const transport = makeFakeTransport();
+    const { result } = renderUpload(transport, { compress });
+    const file = makeFile(20);
 
-    act(() => result.current.selectFile(makeFile(20)));
+    act(() => result.current.selectFile(file));
 
-    expect(result.current.state.phase).toBe('uploading');
+    expect(compress).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toMatchObject({
+      phase: 'compressing',
+      canSkipCompression: false,
+    });
+    finish(file);
+
     await waitFor(() => expect(result.current.state.phase).toBe('done'));
-    expect(compress).not.toHaveBeenCalled();
+    expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(20);
+  });
+
+  describe('видео не в H.264 (ADR-0188)', () => {
+    // 2026-10-29: HEVC с iPhone не открылся у ученика в MIUI Browser.
+    it('маленький HEVC: уходит перегнанный файл, даже если он больше исходника', async () => {
+      const { compress, finish, conversionStart } = controlledCompress();
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { compress });
+
+      act(() => result.current.selectFile(makeFile(20)));
+      conversionStart(false);
+      finish(new Blob([new Uint8Array(30)], { type: 'video/mp4' }));
+
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+      expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(30);
+    });
+
+    it('«Отправить без сжатия» не предлагается', () => {
+      const { compress, conversionStart } = controlledCompress();
+      const { result } = renderUpload(makeFakeTransport(), { compress });
+
+      act(() => result.current.selectFile(bigFile()));
+      conversionStart(false);
+
+      expect(result.current.state).toMatchObject({
+        phase: 'compressing',
+        canSkipCompression: false,
+      });
+    });
+
+    it('пропуск не рвёт перегон и не отправляет исходник', async () => {
+      const { compress, finish, options, conversionStart } = controlledCompress();
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { compress });
+
+      act(() => result.current.selectFile(bigFile()));
+      conversionStart(false);
+      act(() => result.current.skipCompression());
+
+      expect(options()?.signal.aborted).toBe(false);
+      expect(result.current.state.phase).toBe('compressing');
+      finish(new Blob([new Uint8Array(40)], { type: 'video/mp4' }));
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+      expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(40);
+    });
+
+    it('перегнать не вышло (в браузере нет декодера) — уходит исходник', async () => {
+      const { compress, finish, conversionStart } = controlledCompress();
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { compress });
+      const file = makeFile(20);
+
+      act(() => result.current.selectFile(file));
+      conversionStart(false);
+      finish(file);
+
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+      expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(20);
+    });
+  });
+
+  describe('кнопка «Отправить без сжатия» до чтения кодека', () => {
+    it('пока кодек не прочитан, кнопки нет и пропуск ничего не делает', () => {
+      const { compress, options } = controlledCompress();
+      const { result } = renderUpload(makeFakeTransport(), { compress });
+
+      act(() => result.current.selectFile(bigFile()));
+      expect(result.current.state.canSkipCompression).toBe(false);
+      act(() => result.current.skipCompression());
+
+      expect(options()?.signal.aborted).toBe(false);
+      expect(result.current.state.phase).toBe('compressing');
+    });
+
+    it('кодек прочитан уже после «Отменить» — кнопка не появляется', () => {
+      const { compress, conversionStart } = controlledCompress();
+      const { result } = renderUpload(makeFakeTransport(), { compress });
+
+      act(() => result.current.selectFile(bigFile()));
+      act(() => result.current.cancel());
+      conversionStart(true);
+
+      expect(result.current.state).toMatchObject({
+        phase: 'cancelled',
+        canSkipCompression: false,
+      });
+    });
   });
 
   // ADR-0180: запись занятия — смонтированный файл до 2000 МБ, сжатие часа видео

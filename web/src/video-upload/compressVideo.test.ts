@@ -13,6 +13,8 @@ const SOURCE_BYTES = 9 * MIB;
 
 interface Scenario {
   track?: { width: number; height: number; frameRate: number } | null;
+  /** Кодек первой дорожки, как его называет Mediabunny; по умолчанию H.264. */
+  codec?: string | null;
   isValid?: boolean;
   discardedTracks?: unknown[];
   /** `null` — библиотека закончила, но буфер так и не отдала. */
@@ -31,6 +33,7 @@ type InitOptions = {
 function makeLibrary(scenario: Scenario = {}) {
   const {
     track = { width: 1920, height: 1080, frameRate: 30 },
+    codec = 'avc',
     isValid = true,
     discardedTracks = [],
     outputBytes = 2 * MIB,
@@ -51,6 +54,7 @@ function makeLibrary(scenario: Scenario = {}) {
     getPrimaryVideoTrack() {
       return Promise.resolve(
         track && {
+          getCodec: () => Promise.resolve(codec),
           getDisplayWidth: () => Promise.resolve(track.width),
           getDisplayHeight: () => Promise.resolve(track.height),
           computePacketStats: () =>
@@ -129,7 +133,11 @@ function makeFile(size = SOURCE_BYTES): File {
 function compress(
   file: File,
   scenario: Scenario | Error = {},
-  overrides: { signal?: AbortSignal; onProgress?: (fraction: number) => void } = {},
+  overrides: {
+    signal?: AbortSignal;
+    onProgress?: (fraction: number) => void;
+    onConversionStart?: (info: { canSkip: boolean }) => void;
+  } = {},
 ) {
   const library = scenario instanceof Error ? undefined : makeLibrary(scenario);
   const loadLibrary = vi.fn(() =>
@@ -276,12 +284,122 @@ describe('compressVideo — уходит исходник', () => {
     expect(loadLibrary).not.toHaveBeenCalled();
   });
 
-  it('маленький файл — одна часть, сжимать нет смысла', async () => {
+  it('маленький H.264 — одна часть, сжимать нет смысла: библиотека читает кодек и отдаёт файл', async () => {
     const file = makeFile(MIB);
-    const { run, loadLibrary } = compress(file);
+    const onConversionStart = vi.fn();
+    const { run, loadLibrary, record } = compress(file, {}, { onConversionStart });
+
+    expect(await run).toBe(file);
+    expect(loadLibrary).toHaveBeenCalledTimes(1);
+    expect(record?.initOptions).toBeUndefined();
+    expect(record?.execute).not.toHaveBeenCalled();
+    expect(record?.disposed).toBe(1);
+    expect(onConversionStart).not.toHaveBeenCalled();
+  });
+});
+
+// ADR-0188. Инцидент 2026-10-29: iPhone снимает HEVC, MIUI Browser (Chromium без
+// аппаратного HEVC) его не открывает. Короткий ролик вопроса укладывался в 8 МиБ
+// и уходил в хранилище как снят, а выигрыш H.264 над HEVC редко достигал 20%.
+describe('compressVideo — видео не в H.264', () => {
+  it.each(['hevc', 'vp9', 'av1'])(
+    'маленький файл в %s перегоняется в H.264 и отдаётся результат',
+    async (codec) => {
+      const file = makeFile(MIB);
+      const { run, record } = compress(file, { codec, outputBytes: MIB / 2 });
+
+      const result = await run;
+
+      expect(result).not.toBe(file);
+      expect(result.type).toBe('video/mp4');
+      expect(result.size).toBe(MIB / 2);
+      expect(record?.initOptions?.video).toMatchObject({ codec: 'avc' });
+    },
+  );
+
+  it('H.264 вышел не меньше 80% исходника и даже больше — всё равно берётся', async () => {
+    const file = makeFile();
+    const { run } = compress(file, { codec: 'hevc', outputBytes: 12 * MIB });
+
+    const result = await run;
+
+    expect(result).not.toBe(file);
+    expect(result.size).toBe(12 * MIB);
+  });
+
+  it('кодек не опознан (null) — тоже перегоняется', async () => {
+    const file = makeFile(MIB);
+    const { run, record } = compress(file, { codec: null });
+
+    expect(await run).not.toBe(file);
+    expect(record?.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('нет декодера (библиотека не считает перегон возможным) — уходит исходник', async () => {
+    const file = makeFile(MIB);
+    const { run, record } = compress(file, { codec: 'hevc', isValid: false });
+
+    expect(await run).toBe(file);
+    expect(record?.execute).not.toHaveBeenCalled();
+  });
+
+  it('звук нечем сохранить — уходит исходник, а не файл без голоса', async () => {
+    const file = makeFile(MIB);
+    const { run } = compress(file, {
+      codec: 'hevc',
+      discardedTracks: [{ reason: 'cannot_copy' }],
+    });
+
+    expect(await run).toBe(file);
+  });
+
+  it('кодировщик упал посреди перегона — уходит исходник', async () => {
+    const file = makeFile(MIB);
+    const { run } = compress(file, { codec: 'hevc', execute: 'fail' });
+
+    expect(await run).toBe(file);
+  });
+
+  it('в браузере нет WebCodecs — библиотеку не грузим, исходник остаётся', async () => {
+    vi.unstubAllGlobals();
+    const file = makeFile(MIB);
+    const { run, loadLibrary } = compress(file, { codec: 'hevc' });
 
     expect(await run).toBe(file);
     expect(loadLibrary).not.toHaveBeenCalled();
+  });
+
+  it('сообщает экрану, что отказаться от перегона нельзя', async () => {
+    const onConversionStart = vi.fn();
+    const { run } = compress(makeFile(MIB), { codec: 'hevc' }, { onConversionStart });
+
+    await run;
+
+    expect(onConversionStart).toHaveBeenCalledTimes(1);
+    expect(onConversionStart).toHaveBeenCalledWith({ canSkip: false });
+  });
+
+  it('у крупного H.264 перегон решён, отказаться от него можно', async () => {
+    const onConversionStart = vi.fn();
+    const { run } = compress(makeFile(), {}, { onConversionStart });
+
+    await run;
+
+    expect(onConversionStart).toHaveBeenCalledWith({ canSkip: true });
+  });
+
+  it('отмена посреди перегона маленького HEVC отвергает промис как отмену', async () => {
+    const controller = new AbortController();
+    const { run, record } = compress(
+      makeFile(MIB),
+      { codec: 'hevc', execute: 'hang' },
+      { signal: controller.signal },
+    );
+    await vi.waitFor(() => expect(record?.execute).toHaveBeenCalled());
+
+    controller.abort();
+
+    await expect(run).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 
@@ -328,10 +446,9 @@ describe('compressVideo — отмена', () => {
 });
 
 describe('canCompressVideo', () => {
-  it('нужен кодировщик WebCodecs и файл крупнее одной части', () => {
-    expect(canCompressVideo(SOURCE_BYTES)).toBe(true);
-    expect(canCompressVideo(MIB)).toBe(false);
+  it('нужен кодировщик WebCodecs; размер файла не важен — маленькому HEVC перегон нужен', () => {
+    expect(canCompressVideo()).toBe(true);
     vi.unstubAllGlobals();
-    expect(canCompressVideo(SOURCE_BYTES)).toBe(false);
+    expect(canCompressVideo()).toBe(false);
   });
 });
