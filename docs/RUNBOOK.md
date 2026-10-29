@@ -498,10 +498,13 @@ Telegram после подтверждения возвращает вкладк
    его задавать не нужно. Секрет — как `BOT_TOKEN`: в репозиторий и в чаты не
    кладут. Перезапуск после Variables обязателен (§2).
 3. Проверить: `curl -sI https://staging.xuanxue.su/api/auth/telegram/oidc/start`
-   → `302`, `location: https://oauth.telegram.org/auth?client_id=…&redirect_uri=…`
+   → `302`, `location: https://oauth.telegram.org/auth?client_id=…&redirect_uri=…&…&origin=…`
    и `set-cookie: telegram_oauth=…`; `curl -s https://staging.xuanxue.su/api/auth/config`
    содержит `"telegramOidcEnabled":true`. `503` — секрет, `BOT_TOKEN` или
-   `PUBLIC_URL` не подхватились.
+   `PUBLIC_URL` не подхватились. Одного `302` мало: адрес из `location` откройте
+   тоже (`curl -s '<location>'`, адрес целиком, в кавычках) — в ответе должна быть
+   страница входа Telegram (HTML, длинный), а не короткий текст вроде `origin required`
+   (2026-10-29: `302` был, а сервер Telegram без `origin` страницу не отдавал).
 4. Руками — **войти, выйти, войти снова** (на этом шаге сломался прежний вход,
    2026-10-22, и в CI он не воспроизводится: граница с Telegram там подменена
    фейком, ADR-0187). В браузере, где вы уже вошли в Telegram, с аккаунтом, который

@@ -79,7 +79,7 @@ describe('Telegram login по OIDC: вход (e2e)', () => {
     const { start } = await loginFlow(newAgent(), { id: 555_000_001 });
 
     const stored = readTelegramOAuthCookie(oauthCookieFrom(start).split(';')[0]);
-    expect(harness.lastExchange()).toEqual({
+    expect(harness.lastExchange()).toMatchObject({
       code: 'authorization-code-value',
       verifier: stored?.verifier,
       config: {

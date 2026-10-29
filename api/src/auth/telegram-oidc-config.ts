@@ -14,6 +14,9 @@ export interface TelegramOidcConfig {
   clientSecret: string;
   /** `${PUBLIC_URL}/login/telegram` — записан в BotFather («Allowed URLs»). */
   redirectUri: string;
+  /** Схема + хост (+ порт) из PUBLIC_URL, без пути — то, что в BotFather записано
+   * как origin, и что oauth.telegram.org/auth требует параметром `origin`. */
+  origin: string;
 }
 
 /** `null`, если хоть одного значения нет: пока секрет не заведён, кабинет
@@ -29,5 +32,8 @@ export function telegramOidcConfig(config: ConfigService): TelegramOidcConfig | 
     clientId: String(botId),
     clientSecret,
     redirectUri: `${publicUrl}${TELEGRAM_LOGIN_CALLBACK_PATH}`,
+    // PUBLIC_URL уже прошёл IsUrl в env.validation.ts, поэтому new URL не бросит;
+    // `.origin` отбрасывает путь, если PUBLIC_URL с ним.
+    origin: new URL(publicUrl).origin,
   };
 }

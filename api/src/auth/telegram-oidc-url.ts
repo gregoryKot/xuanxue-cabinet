@@ -33,6 +33,10 @@ export function buildTelegramAuthUrl(
     state,
     code_challenge: challenge,
     code_challenge_method: 'S256',
+    // Документация Telegram про `origin` в адресной форме молчит, а сервер без
+    // него отвечает 200 «origin required» (проверено вживую 2026-10-29): первый
+    // же переход по кнопке вёл бы на пустую страницу с этим текстом.
+    origin: config.origin,
   });
   // Пробелы в scope — %20, как в примере документации Telegram, а не «+» от
   // URLSearchParams: настоящий «+» параметры кодируют как %2B, замена безопасна.

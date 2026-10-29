@@ -18,6 +18,18 @@ describe('telegramOidcConfig', () => {
       clientId: '123456',
       clientSecret: 'client-secret-value',
       redirectUri: 'https://cabinet.example/login/telegram',
+      origin: 'https://cabinet.example',
+    });
+  });
+
+  it('PUBLIC_URL с путём и портом — origin без пути, redirect_uri с путём', () => {
+    expect(
+      telegramOidcConfig(
+        fakeConfig({ ...ENV, PUBLIC_URL: 'http://localhost:3000/cabinet' }),
+      ),
+    ).toMatchObject({
+      redirectUri: 'http://localhost:3000/cabinet/login/telegram',
+      origin: 'http://localhost:3000',
     });
   });
 
