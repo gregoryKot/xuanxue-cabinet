@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TARGET_VIDEO_BITRATE,
   canSkipConversion,
+  isDurationPreserved,
   isWorthCompressing,
   needsCompatibilityTranscode,
   planVideoCompression,
@@ -163,5 +164,42 @@ describe('shouldUseCompressed', () => {
   it('пустой результат не берёт ни у какого кодека', () => {
     expect(shouldUseCompressed(100, 0, 'avc')).toBe(false);
     expect(shouldUseCompressed(100, 0, 'hevc')).toBe(false);
+  });
+});
+
+// Оригинал заменяется копией (ADR-0189): обрезанный перегон пропустить нельзя.
+describe('isDurationPreserved', () => {
+  it('короткий ролик: допуск полсекунды, граница включена', () => {
+    expect(isDurationPreserved(10, 10)).toBe(true);
+    expect(isDurationPreserved(10, 9.5)).toBe(true);
+    expect(isDurationPreserved(10, 10.5)).toBe(true);
+    expect(isDurationPreserved(10, 9.4)).toBe(false);
+    expect(isDurationPreserved(10, 10.6)).toBe(false);
+  });
+
+  it('длинный ролик: допуск 2% от длины, а не полсекунды', () => {
+    expect(isDurationPreserved(100, 98)).toBe(true);
+    expect(isDurationPreserved(100, 102)).toBe(true);
+    expect(isDurationPreserved(100, 97.9)).toBe(false);
+    expect(isDurationPreserved(100, 102.1)).toBe(false);
+  });
+
+  it('копия вдвое короче или вдвое длиннее — отказ', () => {
+    expect(isDurationPreserved(60, 30)).toBe(false);
+    expect(isDurationPreserved(60, 120)).toBe(false);
+  });
+
+  it.each([
+    [0, 0],
+    [0, 5],
+    [NaN, 5],
+    [Infinity, Infinity],
+    [-1, 5],
+  ])('длительность исходника %s: сравнивать не с чем — отказ', (source, output) => {
+    expect(isDurationPreserved(source, output)).toBe(false);
+  });
+
+  it.each([0, NaN, Infinity, -2])('пустая или кривая копия (%s) — отказ', (output) => {
+    expect(isDurationPreserved(10, output)).toBe(false);
   });
 });

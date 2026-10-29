@@ -22,7 +22,7 @@ import { VideoUploadsService } from '../video-uploads/video-uploads.service';
 import { EXAM_VIDEO_READY_FILTER } from './exam-video.mapper';
 import { ExamVideoRecord } from './exam-video.schema';
 
-const ORPHAN_AGE_HOURS = 24;
+export const ORPHAN_AGE_HOURS = 24;
 // Не «дай всё» (CLAUDE.md «API») — следующий тик (раз в минуту) доберёт
 // остаток, тот же приём, что у SWEEP_BATCH_LIMIT соседнего шага
 // (exam-image-sweep.service.ts).
@@ -65,7 +65,7 @@ export class ExamVideoSweepService {
     const candidates = await this.model
       .find(
         { ...EXAM_VIDEO_READY_FILTER, createdAt: { $lt: boundary }, _id: { $nin: used } },
-        { _id: 1, key: 1 },
+        { _id: 1, key: 1, originalKey: 1 },
       )
       .sort({ createdAt: 1 })
       .limit(SWEEP_BATCH_LIMIT)

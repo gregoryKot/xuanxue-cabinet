@@ -5,22 +5,19 @@
 // (WebCodecs + разбор и сборка MP4) грузится отдельным куском только здесь —
 // на стартовую страницу она не попадает. Перегон — оптимизация и забота о
 // совместимости, а не условие: что бы ни пошло не так, уходит исходный файл.
+import { H264_VIDEO_CODEC, type VideoCodec } from '@xuanxue/shared';
 import type * as Mediabunny from 'mediabunny';
+import { toVideoCodec } from './videoCodec';
+import { probeTarget } from './probeVideoTarget';
 import {
   canSkipConversion,
-  planVideoCompression,
   shouldConvertSource,
   shouldUseCompressed,
-  type VideoCompressionTarget,
 } from './videoCompressionPlan';
 
 export type MediabunnyLibrary = typeof Mediabunny;
 
 const OUTPUT_MIME_TYPE = 'video/mp4';
-const OUTPUT_VIDEO_CODEC = 'avc';
-/** Сколько пакетов читаем, чтобы прикинуть частоту кадров: хватает на оценку,
- * а весь файл просматривать незачем. */
-const FRAME_RATE_SAMPLE_PACKETS = 60;
 
 export interface CompressVideoOptions {
   signal: AbortSignal;
@@ -35,6 +32,16 @@ export interface CompressVideoOptions {
   loadLibrary?: () => Promise<MediabunnyLibrary>;
 }
 
+/** Что получилось: файл и кодек, который о нём сообщаем серверу (ADR-0189). */
+export interface CompressedVideo {
+  /** Перегнанный файл или исходник. */
+  file: Blob;
+  /** Кодек `file`: `avc` после перегона, у исходника — прочитанный библиотекой;
+   * `undefined`, если библиотека не грузилась, дорожки нет или кодека нет в
+   * VIDEO_CODECS. */
+  codec: VideoCodec | undefined;
+}
+
 /** Есть ли в браузере кодировщик WebCodecs. Размер файла здесь не смотрим:
  * маленькому HEVC перегон нужен ради совместимости, а кодек узнаётся только
  * библиотекой (ADR-0188). Без кодировщика библиотеку не грузим вовсе. */
@@ -47,31 +54,17 @@ function abortError(): DOMException {
   return new DOMException('Сжатие отменено.', 'AbortError');
 }
 
-async function probeTarget(
-  track: Mediabunny.InputVideoTrack,
-  sizeBytes: number,
-): Promise<VideoCompressionTarget | null> {
-  const [displayWidth, displayHeight, stats] = await Promise.all([
-    track.getDisplayWidth(),
-    track.getDisplayHeight(),
-    track.computePacketStats(FRAME_RATE_SAMPLE_PACKETS),
-  ]);
-  return planVideoCompression({
-    sizeBytes,
-    displayWidth,
-    displayHeight,
-    frameRate: stats.averagePacketRate,
-  });
-}
-
 /** Результат перегона, который стоит взять вместо исходника, или `null` —
  * отдавать исходник: сжимать нечем или незачем, либо результат хуже. */
 async function convert(
-  file: File,
-  options: Omit<CompressVideoOptions, 'loadLibrary'>,
+  file: Blob,
+  options: Omit<CompressVideoOptions, 'loadLibrary'> & {
+    /** Кодек исходника сразу, как прочитан: нужен и когда перегон не вышел. */
+    onSourceCodec: (codec: VideoCodec | undefined) => void;
+  },
   lib: MediabunnyLibrary,
 ): Promise<Blob | null> {
-  const { signal, onProgress, onConversionStart } = options;
+  const { signal, onProgress, onConversionStart, onSourceCodec } = options;
   signal.throwIfAborted();
   const input = new lib.Input({
     source: new lib.BlobSource(file),
@@ -81,6 +74,7 @@ async function convert(
     const track = await input.getPrimaryVideoTrack();
     if (!track) return null;
     const codec = await track.getCodec();
+    onSourceCodec(toVideoCodec(codec));
     // Маленький H.264 остаётся как есть: он уходит одной частью (ADR-0165).
     if (!shouldConvertSource(file.size, codec)) return null;
     onConversionStart?.({ canSkip: canSkipConversion(codec) });
@@ -99,7 +93,7 @@ async function convert(
       input,
       output,
       video: {
-        codec: OUTPUT_VIDEO_CODEC,
+        codec: H264_VIDEO_CODEC,
         width: target.width,
         height: target.height,
         fit: 'fill',
@@ -127,17 +121,27 @@ async function convert(
   }
 }
 
-/** Сжатый файл или исходник; промис отвергается только отменой (`AbortError`). */
+/** Сжатый файл или исходник и его кодек; промис отвергается только отменой
+ * (`AbortError`). Принимает и `File` выбора, и `Blob` байтов старого видео
+ * (кнопка «Перегнать видео», ADR-0189). */
 export async function compressVideo(
-  file: File,
+  file: Blob,
   options: CompressVideoOptions,
-): Promise<Blob> {
+): Promise<CompressedVideo> {
   const { loadLibrary = () => import('mediabunny'), ...rest } = options;
-  if (!canCompressVideo()) return file;
+  if (!canCompressVideo()) return { file, codec: undefined };
+  // Объект, а не `let`: TS не видит присваивания в колбэке и сузил бы переменную
+  // до `undefined` в обоих выходах ниже.
+  const source: { codec?: VideoCodec } = {};
   try {
-    return (await convert(file, rest, await loadLibrary())) ?? file;
+    const converted = await convert(
+      file,
+      { ...rest, onSourceCodec: (codec) => (source.codec = codec) },
+      await loadLibrary(),
+    );
+    if (converted) return { file: converted, codec: H264_VIDEO_CODEC };
   } catch {
     if (rest.signal.aborted) throw abortError();
-    return file;
   }
+  return { file, codec: source.codec };
 }

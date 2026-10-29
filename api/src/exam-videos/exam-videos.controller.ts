@@ -94,7 +94,8 @@ export class ExamVideosController extends VideoRedirectController<UserLean> {
     @Body() body: CompleteVideoUploadDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamVideoDto> {
-    return this.uploadsService.complete(id, user.id, DateTime.utc(), body.poster);
+    const { poster, codec } = body;
+    return this.uploadsService.complete(id, user.id, DateTime.utc(), poster, codec);
   }
 
   // Литеральный путь ДО `:id` (тот же приём, что ExamImagesController) —

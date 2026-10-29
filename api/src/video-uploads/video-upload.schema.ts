@@ -9,8 +9,8 @@
 // прототипов и подбирает свойства родителей, у которых есть `@Schema()`. Опции
 // (`timestamps`, `collection`) и индексы объявляет схема-наследник.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { EXAM_VIDEO_CONTENT_TYPES } from '@xuanxue/shared';
-import type { ExamVideoContentType } from '@xuanxue/shared';
+import { EXAM_VIDEO_CONTENT_TYPES, VIDEO_CODECS } from '@xuanxue/shared';
+import type { ExamVideoContentType, VideoCodec } from '@xuanxue/shared';
 import { plain, type FieldPolicy } from '../common/field-policy';
 
 const VIDEO_UPLOAD_STATUSES = ['uploading', 'ready'] as const;
@@ -50,6 +50,14 @@ export abstract class VideoUploadRecord {
   // размер каждой части.
   @Prop({ type: Number, required: true })
   sizeBytes!: number;
+
+  // Кодек видеодорожки со слов браузера (ADR-0189): его называет `complete`
+  // (после перегона — `avc`) или штат, когда читает старое видео («Перегнать
+  // видео»). Нет поля — кодек не известен: видео загружено до ADR-0189. «Не H.264»
+  // и «не известно» для выборок одно и то же (video-codec.ts), поэтому миграции
+  // нет и не нужна. Перечисление, не текст о человеке.
+  @Prop({ type: String, enum: VIDEO_CODECS, required: false })
+  videoCodec?: VideoCodec;
 
   // Размер и SHA-256 первого и последнего МиБ файла, без имени и даты
   // (ADR-0137, ADR-0165) — не персональные данные (хэш байтов видео), по нему
@@ -106,6 +114,9 @@ export const VIDEO_UPLOAD_FIELD_POLICY: FieldPolicy = {
     'размер и хэш первого и последнего мегабайта файла — числа, не текст о человеке',
   ),
   status: plain('перечисление, нужно для выборок'),
+  videoCodec: plain(
+    'перечисление: кодек видеодорожки, технический признак файла; нужно для выборки «не H.264»',
+  ),
   poster: plain(
     'кадр-превью JPEG, байты — тот же класс данных, что сам файл видео, который приложением не шифруется',
   ),

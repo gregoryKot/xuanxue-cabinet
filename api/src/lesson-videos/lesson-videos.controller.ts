@@ -74,6 +74,7 @@ export class LessonVideosController extends VideoRedirectController<UserLean> {
     @Body() body: CompleteVideoUploadDto,
     @CurrentUser() user: UserLean,
   ): Promise<LessonVideoDto> {
-    return this.uploads.complete(id, user.id, DateTime.utc(), body.poster);
+    const { poster, codec } = body;
+    return this.uploads.complete(id, user.id, DateTime.utc(), poster, codec);
   }
 }

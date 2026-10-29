@@ -1,6 +1,7 @@
 // План сжатия видео в браузере (ADR-0165, ADR-0188): чистая арифметика без
 // библиотеки и без DOM — что делать с выбранным файлом и до какого кадра и
 // битрейта перегнать. Сам перегон — compressVideo.ts.
+import { H264_VIDEO_CODEC } from '@xuanxue/shared';
 
 const BYTES_PER_MIB = 1024 * 1024;
 
@@ -8,10 +9,6 @@ const BYTES_PER_MIB = 1024 * 1024;
  * ANSWER_VIDEO_LIMITS.partBytes), а секунды ожидания сжатия съели бы выигрыш.
  * Видео в другом кодеке этот порог не касается (ADR-0188). */
 const COMPRESSION_MIN_BYTES = 8 * BYTES_PER_MIB;
-
-/** Имя H.264 в Mediabunny (`track.getCodec()`). Его открывает любой браузер; HEVC,
- * VP9, AV1 и всё остальное — не любой (ADR-0188). */
-const H264_CODEC = 'avc';
 
 /** Длинная и короткая сторона кадра: 1280×720 хватает, чтобы учитель разобрал
  * движение, а 1080p и 4K с телефона в 5–10 раз тяжелее (ADR-0165). Две границы,
@@ -58,7 +55,7 @@ export function isWorthCompressing(sizeBytes: number): boolean {
  * аппаратного HEVC — MIUI Browser; ADR-0188). Кодек не опознан (`null`) — тоже
  * «не H.264»: что он откроется у каждого, сказать нельзя. */
 export function needsCompatibilityTranscode(codec: string | null): boolean {
-  return codec !== H264_CODEC;
+  return codec !== H264_VIDEO_CODEC;
 }
 
 /** Браться ли за перегон: файл не H.264 — всегда, H.264 — только если размер
@@ -66,6 +63,29 @@ export function needsCompatibilityTranscode(codec: string | null): boolean {
  * больше не уходит в хранилище как снят (ADR-0188). */
 export function shouldConvertSource(sizeBytes: number, codec: string | null): boolean {
   return needsCompatibilityTranscode(codec) || isWorthCompressing(sizeBytes);
+}
+
+/** Допуск длительности при проверке перегнанной копии: полсекунды или 2% —
+ * что больше. Перегон в другой кодек сдвигает конец дорожки на кадр-другой, но
+ * не на секунды (ADR-0189). */
+const DURATION_TOLERANCE_SECONDS = 0.5;
+const DURATION_TOLERANCE_SHARE = 0.02;
+
+/** Та же ли длина у перегнанной копии (секунды): оригинал заменяется копией,
+ * поэтому обрезанный на середине перегон нельзя пропустить. Длительность
+ * исходника не прочиталась (не число или не больше нуля) — копию не принимаем:
+ * сравнивать не с чем (ADR-0189). */
+export function isDurationPreserved(
+  sourceSeconds: number,
+  outputSeconds: number,
+): boolean {
+  if (!Number.isFinite(sourceSeconds) || !(sourceSeconds > 0)) return false;
+  if (!Number.isFinite(outputSeconds) || !(outputSeconds > 0)) return false;
+  const tolerance = Math.max(
+    DURATION_TOLERANCE_SECONDS,
+    sourceSeconds * DURATION_TOLERANCE_SHARE,
+  );
+  return Math.abs(sourceSeconds - outputSeconds) <= tolerance;
 }
 
 /** Можно ли человеку отказаться от перегона и отправить исходник: у не-H.264

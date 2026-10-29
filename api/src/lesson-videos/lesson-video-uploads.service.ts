@@ -17,6 +17,7 @@ import {
   LESSON_VIDEO_TOO_LARGE_MESSAGE,
   type LessonVideoDto,
   type StartLessonVideoInput,
+  type VideoCodec,
   type VideoUploadDto,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotAvailableError, NotFoundError } from '../common/errors';
@@ -75,8 +76,9 @@ export class LessonVideoUploadsService extends StaffVideoUploads<
     userId: string,
     now: DateTime,
     posterBase64?: string,
+    codec?: VideoCodec,
   ): Promise<LessonVideoDto> {
-    return toLessonVideoDto(await this.completeOwn(id, userId, now, posterBase64));
+    return toLessonVideoDto(await this.completeOwn(id, userId, now, posterBase64, codec));
   }
 
   /** Своя загрузка или 404: чужая и несуществующая отвечают одинаково

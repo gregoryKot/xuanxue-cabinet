@@ -3,6 +3,7 @@
 // колбэков прогона (videoUploadRunner.ts) в состояние экрана. Вынесено из
 // useVideoUpload.ts (файловый лимит, CLAUDE.md «Храповики»): хук ведёт выбор
 // файла и сжатие, а этот шаг одинаков для сжатого и исходного файла.
+import type { VideoCodec } from '@xuanxue/shared';
 import type { Dispatch, SetStateAction } from 'react';
 import { captureVideoPoster } from './captureVideoPoster';
 import { checkVideoFileSize } from './videoUploadParts';
@@ -13,6 +14,8 @@ import type { VideoUploadTransport } from './videoUploadTypes';
 export interface BeginVideoUploadParams<TResult extends object> {
   /** То, что уходит: сжатый результат или исходный файл. */
   prepared: Blob;
+  /** Кодек `prepared`, если известен (compressVideo.ts): уходит в `complete`. */
+  codec?: VideoCodec;
   transport: VideoUploadTransport<TResult>;
   signal: AbortSignal;
   isCancelled: () => boolean;
@@ -45,6 +48,7 @@ export function beginVideoUpload<TResult extends object>(
   // а мёртвая ветка только путает читателя (CLAUDE.md «Дубли и мёртвый код»).
   void runVideoUpload({
     file: prepared,
+    codec: params.codec,
     transport: params.transport,
     signal: params.signal,
     isCancelled: params.isCancelled,

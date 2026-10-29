@@ -41,6 +41,7 @@ describe('ExamVideoStatsService', () => {
       count: 0,
       totalBytes: 0,
       withoutPosterCount: 0,
+      codecPendingCount: 0,
     });
   });
 
@@ -53,6 +54,7 @@ describe('ExamVideoStatsService', () => {
       count: 1,
       totalBytes: 1_000_000,
       withoutPosterCount: 1,
+      codecPendingCount: 1,
     });
   });
 
@@ -67,6 +69,7 @@ describe('ExamVideoStatsService', () => {
       count: 1,
       totalBytes: 700,
       withoutPosterCount: 1,
+      codecPendingCount: 1,
     });
   });
 
@@ -78,6 +81,7 @@ describe('ExamVideoStatsService', () => {
       count: 2,
       totalBytes: 3_500_000,
       withoutPosterCount: 2,
+      codecPendingCount: 2,
     });
   });
 
@@ -93,6 +97,32 @@ describe('ExamVideoStatsService', () => {
       count: 3,
       totalBytes: 6_000,
       withoutPosterCount: 2,
+      codecPendingCount: 3,
+    });
+  });
+
+  // ADR-0189: число для кнопки «Перегнать видео» — готовые видео не в H.264, в том
+  // числе те, у которых кодек ещё не записан (загружены до ADR-0189).
+  it('codecPendingCount: считает HEVC и видео без кодека, но не avc и не недогруженное', async () => {
+    await videoModel.create({ ...seedDoc(1_000), videoCodec: 'avc' });
+    await videoModel.create({ ...seedDoc(2_000), videoCodec: 'hevc' });
+    await videoModel.create({ ...seedDoc(3_000), videoCodec: 'vp9' });
+    await videoModel.create(seedDoc(4_000));
+    await videoModel.create({ ...seedDoc(9_000), status: 'uploading' });
+
+    await expect(service.getSummary()).resolves.toMatchObject({
+      count: 4,
+      codecPendingCount: 3,
+    });
+  });
+
+  it('codecPendingCount: все видео в H.264 — честный ноль, не NaN и не пропуск', async () => {
+    await videoModel.create({ ...seedDoc(1_000), videoCodec: 'avc' });
+    await videoModel.create({ ...seedDoc(2_000), videoCodec: 'avc' });
+
+    await expect(service.getSummary()).resolves.toMatchObject({
+      count: 2,
+      codecPendingCount: 0,
     });
   });
 });

@@ -88,7 +88,13 @@ describe('AnswerVideosController', () => {
     const controller = await buildController({ completeService: { complete } });
 
     await expect(controller.complete('v1', {}, USER)).resolves.toEqual(media);
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), undefined);
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      undefined,
+      undefined,
+    );
   });
 
   // ADR-0165: кадр-превью приходит в теле complete и уходит сервису как есть.
@@ -98,7 +104,29 @@ describe('AnswerVideosController', () => {
 
     await controller.complete('v1', { poster: '/9j/4AAQ' }, USER);
 
-    expect(complete).toHaveBeenCalledWith('v1', 'u1', expect.any(DateTime), '/9j/4AAQ');
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      '/9j/4AAQ',
+      undefined,
+    );
+  });
+
+  // ADR-0189: кодек файла со слов браузера уходит сервису как есть.
+  it('complete() передаёт кодек из тела сервису', async () => {
+    const complete = jest.fn().mockResolvedValue({});
+    const controller = await buildController({ completeService: { complete } });
+
+    await controller.complete('v1', { codec: 'avc' }, USER);
+
+    expect(complete).toHaveBeenCalledWith(
+      'v1',
+      'u1',
+      expect.any(DateTime),
+      undefined,
+      'avc',
+    );
   });
 
   it('GET poster спрашивает кадр у сервиса с пользователем сессии', async () => {

@@ -354,6 +354,28 @@ describe('AnswerVideoCompleteService: повтор complete', () => {
     expect(multipart.uploadPart).not.toHaveBeenCalled();
   });
 
+  // ADR-0189: кодек файла со слов браузера ложится в запись видео-ответа тем же
+  // переходом в `ready`; в `media_assets` и в ответ он не попадает.
+  it('кодек из complete записан в запись видео-ответа', async () => {
+    const { id } = await seedUpload();
+
+    const media = await service.complete(id, OWNER, NOW, undefined, 'avc');
+
+    expect(await videoModel.findById(id).lean()).toMatchObject({
+      status: 'ready',
+      videoCodec: 'avc',
+    });
+    expect(media).not.toHaveProperty('videoCodec');
+  });
+
+  it('без кодека поле не появляется', async () => {
+    const { id } = await seedUpload();
+
+    await service.complete(id, OWNER, NOW);
+
+    expect(await videoModel.findById(id).lean()).not.toHaveProperty('videoCodec');
+  });
+
   // ADR-0165: кадр-превью приходит в теле complete и ложится в запись видео.
   describe('кадр-превью', () => {
     const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);

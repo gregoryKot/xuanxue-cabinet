@@ -3,6 +3,7 @@
 // сервера и остановкой на отказе сервера. Не React и не знает маршрутов:
 // сеть — транспорт вида видео (videoUploadTypes.ts). Переиспользуется
 // хуком через колбэки (useVideoUpload.ts), тестируется без DOM.
+import type { VideoCodec } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
 import { computeVideoFingerprint } from './videoFingerprint';
 import { nextMissingVideoPart, sliceVideoPart } from './videoUploadParts';
@@ -40,6 +41,8 @@ export interface RunVideoUploadParams<TResult extends object> {
    * Запускается сразу, параллельно частям, и ждётся только перед `complete`;
    * `null` и любой сбой — видео завершается без кадра. */
   capturePoster?: () => Promise<string | null>;
+  /** Кодек файла, который уходит, если известен: едет в `complete` (ADR-0189). */
+  codec?: VideoCodec;
 }
 
 function toProgress(session: VideoUploadSession): VideoUploadProgressUpdate {
@@ -54,7 +57,7 @@ export async function runVideoUpload<TResult extends object>(
   params: RunVideoUploadParams<TResult>,
 ): Promise<void> {
   const { file, transport, signal, isCancelled, onProgress, waitForResume } = params;
-  const { onFailed, onDone, capturePoster } = params;
+  const { onFailed, onDone, capturePoster, codec } = params;
   const fingerprint = await computeVideoFingerprint(file).catch(() => null);
   if (isCancelled()) return;
   if (fingerprint === null) {
@@ -93,7 +96,7 @@ export async function runVideoUpload<TResult extends object>(
   const posterBase64 = (await poster) ?? undefined;
   if (isCancelled()) return;
   const result = await retry(() =>
-    transport.complete(current.id, posterBase64, { signal }),
+    transport.complete(current.id, { poster: posterBase64, codec }, { signal }),
   );
   if (!result || isCancelled()) return;
   onDone(result);

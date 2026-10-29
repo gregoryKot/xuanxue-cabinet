@@ -3,7 +3,7 @@
 // отдать клиенту — решает он же по возвращённой записи (свой DTO).
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import { ANSWER_VIDEO_PART_INVALID_MESSAGE } from '@xuanxue/shared';
+import { ANSWER_VIDEO_PART_INVALID_MESSAGE, type VideoCodec } from '@xuanxue/shared';
 import { ConflictError } from '../common/errors';
 import { parseVideoPoster, setPosterIfAbsent } from './video-poster';
 import { assertAllPartsReceived } from './video-upload-assemble';
@@ -20,6 +20,8 @@ export interface CompleteDeps<T extends VideoUploadRecord> {
 export interface CompleteInput {
   /** Кадр-превью из тела запроса, base64, или `undefined`. */
   posterBase64: string | undefined;
+  /** Кодек файла со слов браузера (ADR-0189) или `undefined`. */
+  codec?: VideoCodec;
   now: DateTime;
 }
 
@@ -31,7 +33,7 @@ export async function completeVideoUpload<
 >(
   { model, assemble }: CompleteDeps<T>,
   doc: L,
-  { posterBase64, now }: CompleteInput,
+  { posterBase64, codec, now }: CompleteInput,
 ): Promise<L> {
   // Неверный кадр — 400 до сборки в R2: видео остаётся незавершённым, и его
   // завершает повтор без кадра (ADR-0165).
@@ -47,7 +49,7 @@ export async function completeVideoUpload<
   await assemble(doc, doc.uploadId, now);
   // Из двух параллельных `complete` переход делает один; ответ оба строят из
   // одной записи.
-  await markVideoReady(model, doc._id, { now, poster });
+  await markVideoReady(model, doc._id, { now, poster, codec });
   const ready = await model.findById(doc._id).lean<L | null>();
   if (!ready) throw new Error('completeVideoUpload: запись пропала во время завершения');
   return ready;

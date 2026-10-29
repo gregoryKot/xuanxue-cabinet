@@ -25,7 +25,7 @@ import { ListScreenBody } from '../components/ListScreenBody';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { formatExamImagesSummary } from '../exam-items/examImagesSummaryText';
-import { ExamVideoPosterBackfillCard } from '../exam-items/ExamVideoPosterBackfillCard';
+import { ExamVideoBackfillCards } from '../exam-items/ExamVideoBackfillCards';
 import { formatExamVideosSummary } from '../exam-items/examVideosSummaryText';
 import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
@@ -139,10 +139,7 @@ export default function ExamsScreen() {
         answerVideosSummary={formatAnswerVideosSummary(answerVideoStats.stats)}
       />
 
-      <ExamVideoPosterBackfillCard
-        withoutPosterCount={videoStats.stats?.withoutPosterCount ?? null}
-        onFinished={videoStats.reload}
-      />
+      <ExamVideoBackfillCards stats={videoStats.stats} onFinished={videoStats.reload} />
     </section>
   );
 }

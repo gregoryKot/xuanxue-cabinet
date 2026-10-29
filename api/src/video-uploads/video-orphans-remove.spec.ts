@@ -36,15 +36,18 @@ describe('removeUnreferencedVideos', () => {
     await model.deleteMany({});
   });
 
-  async function makeVideo(): Promise<{ _id: Types.ObjectId; key: string }> {
+  async function makeVideo(
+    originalKey?: string,
+  ): Promise<{ _id: Types.ObjectId; key: string; originalKey?: string }> {
     const key = `exam-videos/${new Types.ObjectId().toString()}`;
     const doc = await model.create({
       key,
       sizeBytes: 1,
       fingerprint: 'x',
       status: 'ready',
+      ...(originalKey ? { originalKey } : {}),
     });
-    return { _id: doc._id, key };
+    return { _id: doc._id, key, originalKey };
   }
 
   it('убирает тех, на кого никто не ссылается, и только их', async () => {
@@ -72,6 +75,35 @@ describe('removeUnreferencedVideos', () => {
       { model, orphans },
       [used],
       new Set([used._id.toString()]),
+      NOW,
+    );
+
+    expect(removed).toBe(0);
+    expect(removeNow).not.toHaveBeenCalled();
+    await expect(model.countDocuments({})).resolves.toBe(1);
+  });
+
+  // ADR-0189: у перегнанного видео два объекта R2, и владеет обоими документ. Удаляя
+  // документ целиком, убираем оба; иначе исходный файл остался бы в R2 навсегда.
+  it('сирота с исходным файлом: убираются и ключ, и originalKey', async () => {
+    const replaced = await makeVideo('exam-videos/original-hevc');
+
+    await removeUnreferencedVideos({ model, orphans }, [replaced], new Set(), NOW);
+
+    expect(removeNow.mock.calls).toEqual([
+      [replaced.key, NOW],
+      ['exam-videos/original-hevc', NOW],
+    ]);
+    await expect(model.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('используемое видео с исходным файлом не трогается: ни ключ, ни originalKey', async () => {
+    const replaced = await makeVideo('exam-videos/original-hevc');
+
+    const removed = await removeUnreferencedVideos(
+      { model, orphans },
+      [replaced],
+      new Set([replaced._id.toString()]),
       NOW,
     );
 

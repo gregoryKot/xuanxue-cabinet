@@ -20,10 +20,10 @@ export function lessonVideoTransport(): VideoUploadTransport<LessonVideoDto> {
         body,
         ...request,
       }),
-    complete: (uploadId, poster, request) =>
+    complete: (uploadId, input, request) =>
       apiRoute('POST /lesson-videos/:id/complete', {
         params: { id: uploadId },
-        body: { poster },
+        body: input,
         ...request,
       }),
   };

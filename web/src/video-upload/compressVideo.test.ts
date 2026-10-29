@@ -131,7 +131,7 @@ function makeFile(size = SOURCE_BYTES): File {
 }
 
 function compress(
-  file: File,
+  file: Blob,
   scenario: Scenario | Error = {},
   overrides: {
     signal?: AbortSignal;
@@ -164,7 +164,7 @@ describe('compressVideo — получилось', () => {
   it('отдаёт MP4 меньшего размера и просит у библиотеки H.264 720p около 2 Мбит/с', async () => {
     const { run, record } = compress(makeFile());
 
-    const result = await run;
+    const { file: result } = await run;
 
     expect(result.type).toBe('video/mp4');
     expect(result.size).toBe(2 * MIB);
@@ -215,14 +215,14 @@ describe('compressVideo — уходит исходник', () => {
     const file = makeFile();
     const { run } = compress(file, { outputBytes: 8 * MIB });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('библиотека считает преобразование невозможным (isValid: false)', async () => {
     const file = makeFile();
     const { run, record } = compress(file, { isValid: false });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(record?.execute).not.toHaveBeenCalled();
   });
 
@@ -232,7 +232,7 @@ describe('compressVideo — уходит исходник', () => {
       discardedTracks: [{ reason: 'cannot_copy' }],
     });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(record?.execute).not.toHaveBeenCalled();
   });
 
@@ -240,14 +240,14 @@ describe('compressVideo — уходит исходник', () => {
     const file = makeFile();
     const { run } = compress(file, { outputBytes: null });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('кодировщик упал посреди сжатия', async () => {
     const file = makeFile();
     const { run, record } = compress(file, { execute: 'fail' });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(record?.disposed).toBe(1);
   });
 
@@ -258,21 +258,21 @@ describe('compressVideo — уходит исходник', () => {
       new Error('Failed to fetch dynamically imported module'),
     );
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('в файле нет видеодорожки', async () => {
     const file = makeFile();
     const { run } = compress(file, { track: null });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('размер кадра не прочитался', async () => {
     const file = makeFile();
     const { run } = compress(file, { track: { width: 0, height: 0, frameRate: 30 } });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('в браузере нет WebCodecs — библиотеку даже не загружаем', async () => {
@@ -280,7 +280,7 @@ describe('compressVideo — уходит исходник', () => {
     const file = makeFile();
     const { run, loadLibrary } = compress(file);
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(loadLibrary).not.toHaveBeenCalled();
   });
 
@@ -289,7 +289,7 @@ describe('compressVideo — уходит исходник', () => {
     const onConversionStart = vi.fn();
     const { run, loadLibrary, record } = compress(file, {}, { onConversionStart });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(loadLibrary).toHaveBeenCalledTimes(1);
     expect(record?.initOptions).toBeUndefined();
     expect(record?.execute).not.toHaveBeenCalled();
@@ -308,7 +308,7 @@ describe('compressVideo — видео не в H.264', () => {
       const file = makeFile(MIB);
       const { run, record } = compress(file, { codec, outputBytes: MIB / 2 });
 
-      const result = await run;
+      const { file: result } = await run;
 
       expect(result).not.toBe(file);
       expect(result.type).toBe('video/mp4');
@@ -321,7 +321,7 @@ describe('compressVideo — видео не в H.264', () => {
     const file = makeFile();
     const { run } = compress(file, { codec: 'hevc', outputBytes: 12 * MIB });
 
-    const result = await run;
+    const { file: result } = await run;
 
     expect(result).not.toBe(file);
     expect(result.size).toBe(12 * MIB);
@@ -331,7 +331,7 @@ describe('compressVideo — видео не в H.264', () => {
     const file = makeFile(MIB);
     const { run, record } = compress(file, { codec: null });
 
-    expect(await run).not.toBe(file);
+    expect((await run).file).not.toBe(file);
     expect(record?.execute).toHaveBeenCalledTimes(1);
   });
 
@@ -339,7 +339,7 @@ describe('compressVideo — видео не в H.264', () => {
     const file = makeFile(MIB);
     const { run, record } = compress(file, { codec: 'hevc', isValid: false });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(record?.execute).not.toHaveBeenCalled();
   });
 
@@ -350,14 +350,14 @@ describe('compressVideo — видео не в H.264', () => {
       discardedTracks: [{ reason: 'cannot_copy' }],
     });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('кодировщик упал посреди перегона — уходит исходник', async () => {
     const file = makeFile(MIB);
     const { run } = compress(file, { codec: 'hevc', execute: 'fail' });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
   });
 
   it('в браузере нет WebCodecs — библиотеку не грузим, исходник остаётся', async () => {
@@ -365,7 +365,7 @@ describe('compressVideo — видео не в H.264', () => {
     const file = makeFile(MIB);
     const { run, loadLibrary } = compress(file, { codec: 'hevc' });
 
-    expect(await run).toBe(file);
+    expect((await run).file).toBe(file);
     expect(loadLibrary).not.toHaveBeenCalled();
   });
 
@@ -403,6 +403,79 @@ describe('compressVideo — видео не в H.264', () => {
   });
 });
 
+// ADR-0189: загрузка сообщает серверу кодек того, что реально уходит. Ошибись
+// мы в большую сторону (скажем `avc` про HEVC), видео пропало бы из «Перегнать
+// видео» и осталось бы нечитаемым, поэтому неизвестное не сообщается вовсе.
+describe('compressVideo — кодек для сервера', () => {
+  it('перегнанный файл — avc, какой бы кодек был у исходника', async () => {
+    const { run } = compress(makeFile(MIB), { codec: 'hevc' });
+
+    expect((await run).codec).toBe('avc');
+  });
+
+  it('сжатый крупный H.264 — тоже avc', async () => {
+    const { run } = compress(makeFile());
+
+    expect((await run).codec).toBe('avc');
+  });
+
+  it('маленький H.264 уходит как есть и сообщается как avc', async () => {
+    const file = makeFile(MIB);
+    const { run } = compress(file, { codec: 'avc' });
+
+    expect(await run).toEqual({ file, codec: 'avc' });
+  });
+
+  it.each(['hevc', 'vp9', 'av1', 'vp8'])(
+    'перегнать не вышло (%s) — уходит исходник со своим кодеком',
+    async (codec) => {
+      const file = makeFile(MIB);
+      const { run } = compress(file, { codec, isValid: false });
+
+      expect(await run).toEqual({ file, codec });
+    },
+  );
+
+  it('кодировщик упал после чтения кодека — кодек исходника всё равно сообщается', async () => {
+    const file = makeFile(MIB);
+    const { run } = compress(file, { codec: 'hevc', execute: 'fail' });
+
+    expect(await run).toEqual({ file, codec: 'hevc' });
+  });
+
+  it.each([null, 'prores'])(
+    'кодек %j вне списка сервера — не сообщается',
+    async (codec) => {
+      const file = makeFile(MIB);
+      const { run } = compress(file, { codec, isValid: false });
+
+      expect(await run).toEqual({ file, codec: undefined });
+    },
+  );
+
+  it('нет видеодорожки или WebCodecs — кодека нет', async () => {
+    const file = makeFile();
+    const noTrack = compress(file, { track: null });
+    expect(await noTrack.run).toEqual({ file, codec: undefined });
+
+    vi.unstubAllGlobals();
+    const noEncoder = compress(file);
+    expect(await noEncoder.run).toEqual({ file, codec: undefined });
+  });
+
+  it('принимает Blob байтов, а не только File выбора (ADR-0189)', async () => {
+    const blob = new Blob([new Uint8Array(1)]);
+    Object.defineProperty(blob, 'size', { value: MIB });
+    const { run, record } = compress(blob, { codec: 'hevc' });
+
+    const { file, codec } = await run;
+
+    expect(file).not.toBe(blob);
+    expect(codec).toBe('avc');
+    expect(record?.execute).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('compressVideo — настоящая библиотека', () => {
   it('ленивый кусок грузится, а файл, который не видео, уходит как есть', async () => {
     // Настоящие байты нужной длины: библиотека читает Blob по-настоящему, а
@@ -414,7 +487,7 @@ describe('compressVideo — настоящая библиотека', () => {
       onProgress: vi.fn(),
     });
 
-    expect(result).toBe(file);
+    expect(result).toEqual({ file, codec: undefined });
   });
 });
 

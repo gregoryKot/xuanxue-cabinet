@@ -3,10 +3,16 @@
 // (ADR-0165: старт → части → complete, как у видео-ответа). Загрузки одним
 // сырым телом (`POST /exam-videos`) больше нет; `GET /exam-videos/:id` — 302
 // для `<video src>` — в карту не входит.
-import type { ExamVideoDto, ExamVideoStatsDto, StartExamVideoInput } from './exam-videos';
+import type {
+  ExamVideoDto,
+  ExamVideoStatsDto,
+  ReplaceExamVideoInput,
+  StartExamVideoInput,
+} from './exam-videos';
 import type { RawBody } from './raw-body';
 import type {
   CompleteVideoUploadInput,
+  SetVideoCodecInput,
   SetVideoPosterInput,
   VideoUploadDto,
 } from './video-uploads';
@@ -48,6 +54,26 @@ export interface ExamVideosRoutes {
     body: SetVideoPosterInput;
     response: ExamVideoDto;
   };
+  /** Готовые видео, не известные как H.264, не больше VIDEOS_CODEC_PENDING_BATCH
+   * за раз (ADR-0189); штат. Байты — тот же `GET /exam-videos/:id/bytes`. */
+  'GET /exam-videos/codec-pending': {
+    query: undefined;
+    body: undefined;
+    response: ExamVideoDto[];
+  };
+  /** Кодек старого видео, прочитанный браузером штата (ADR-0189). */
+  'PUT /exam-videos/:id/codec': {
+    query: undefined;
+    body: SetVideoCodecInput;
+    response: ExamVideoDto;
+  };
+  /** Подменить файл видео перегнанным в H.264 (ADR-0189); штат. Ответ — то же
+   * видео с новым файлом. */
+  'POST /exam-videos/:id/replace': {
+    query: undefined;
+    body: ReplaceExamVideoInput;
+    response: ExamVideoDto;
+  };
 }
 
 export const EXAM_VIDEOS_ROUTE_KEYS: Record<keyof ExamVideosRoutes, true> = {
@@ -57,4 +83,7 @@ export const EXAM_VIDEOS_ROUTE_KEYS: Record<keyof ExamVideosRoutes, true> = {
   'POST /exam-videos/:id/complete': true,
   'GET /exam-videos/without-poster': true,
   'PUT /exam-videos/:id/poster': true,
+  'GET /exam-videos/codec-pending': true,
+  'PUT /exam-videos/:id/codec': true,
+  'POST /exam-videos/:id/replace': true,
 };

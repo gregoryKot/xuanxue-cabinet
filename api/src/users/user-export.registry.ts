@@ -150,6 +150,7 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
       fingerprint: 'служебный отпечаток файла для продолжения загрузки',
       r2CompletedAt: 'служебная отметка, что хранилище файлов уже собрало загрузку',
       poster: 'кадр из видео: сам снимок не входит в выгрузку, как и видео',
+      videoCodec: 'служебная отметка кодека видео: человеку она ничего не говорит',
     },
   },
   PaymentRecord: {

@@ -9,6 +9,7 @@ import {
   ANSWER_VIDEO_LIMITS,
   ANSWER_VIDEO_PART_INVALID_MESSAGE,
   ANSWER_VIDEO_TOO_LARGE_MESSAGE,
+  type VideoCodec,
 } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import {
@@ -22,7 +23,7 @@ import {
   makeFakeTransport,
   type FakeUploadResult,
 } from '../test-support/fakeVideoTransport';
-import type { compressVideo } from './compressVideo';
+import type { CompressedVideo, compressVideo } from './compressVideo';
 import { useVideoUpload, type UseVideoUploadOptions } from './useVideoUpload';
 import type { VideoUploadSession } from './videoUploadTypes';
 
@@ -315,18 +316,19 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
 
   function controlledCompress() {
     let options: Parameters<typeof compressVideo>[1] | undefined;
-    let finish!: (blob: Blob) => void;
+    let finish!: (result: CompressedVideo) => void;
     let fail!: (error: unknown) => void;
     const compress = vi.fn<typeof compressVideo>((_file, given) => {
       options = given;
-      return new Promise<Blob>((resolve, reject) => {
+      return new Promise<CompressedVideo>((resolve, reject) => {
         finish = resolve;
         fail = reject;
       });
     });
     return {
       compress,
-      finish: (blob: Blob) => finish(blob),
+      /** Сжатие кончилось: что уходит и с каким кодеком (ADR-0189). */
+      finish: (file: Blob, codec?: VideoCodec) => finish({ file, codec }),
       fail: (error: unknown) => fail(error),
       options: () => options,
       /** Библиотека прочла кодек и решила перегонять (compressVideo.ts). */
@@ -384,6 +386,69 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
 
     await waitFor(() => expect(result.current.state.phase).toBe('done'));
     expect(transport.start.mock.calls[0]?.[0].sizeBytes).toBe(BIG_BYTES);
+  });
+
+  // ADR-0189: `complete` сообщает кодек того, что реально ушло на сервер.
+  describe('кодек в complete', () => {
+    async function uploadWith(
+      outcome: (finish: (file: Blob, codec?: VideoCodec) => void, file: File) => void,
+    ) {
+      const { compress, finish } = controlledCompress();
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { compress });
+      const file = bigFile();
+
+      act(() => result.current.selectFile(file));
+      outcome(finish, file);
+
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+      return transport.complete.mock.calls[0]?.[1];
+    }
+
+    it('перегнанный файл уходит с avc', async () => {
+      const input = await uploadWith((finish) =>
+        finish(new Blob([new Uint8Array(20)]), 'avc'),
+      );
+
+      expect(input?.codec).toBe('avc');
+    });
+
+    it('перегнать не вышло — уходит кодек исходника', async () => {
+      const input = await uploadWith((finish, file) => finish(file, 'hevc'));
+
+      expect(input?.codec).toBe('hevc');
+    });
+
+    it('кодек не известен — поля нет, видео завершается так же', async () => {
+      const input = await uploadWith((finish, file) => finish(file));
+
+      expect(input).not.toHaveProperty('codec', expect.anything());
+      expect(input?.codec).toBeUndefined();
+    });
+
+    it('без сжатия вовсе (canCompress: false) кодек не сообщается', async () => {
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { canCompress: false });
+
+      act(() => result.current.selectFile(makeFile()));
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+
+      expect(transport.complete.mock.calls[0]?.[1].codec).toBeUndefined();
+    });
+
+    it('«Отправить без сжатия» — исходник H.264, уходит с avc', async () => {
+      const { compress, fail, conversionStart } = controlledCompress();
+      const transport = makeFakeTransport();
+      const { result } = renderUpload(transport, { compress });
+
+      act(() => result.current.selectFile(bigFile()));
+      conversionStart(true);
+      act(() => result.current.skipCompression());
+      fail(new DOMException('Сжатие отменено.', 'AbortError'));
+
+      await waitFor(() => expect(result.current.state.phase).toBe('done'));
+      expect(transport.complete.mock.calls[0]?.[1].codec).toBe('avc');
+    });
   });
 
   it('исходник больше потолка, но сжатый проходит — принимается', async () => {
@@ -449,7 +514,7 @@ describe('useVideoUpload — сжатие перед загрузкой', () => 
       // Подменное сжатие отвергается отменой, как настоящее (compressVideo.ts).
       const compress = vi.fn<typeof compressVideo>(
         (_file, { signal, onConversionStart }) =>
-          new Promise<Blob>((_resolve, reject) => {
+          new Promise<CompressedVideo>((_resolve, reject) => {
             onConversionStart?.({ canSkip: true });
             signal.addEventListener('abort', () =>
               reject(new DOMException('Сжатие отменено.', 'AbortError')),

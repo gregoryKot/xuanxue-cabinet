@@ -5,7 +5,11 @@
 // нужен файл видео (CLAUDE.md «Дубли»).
 import { randomUUID } from 'crypto';
 import request from 'supertest';
-import type { ExamVideoDto, VideoUploadDto } from '@xuanxue/shared';
+import type {
+  CompleteVideoUploadInput,
+  ExamVideoDto,
+  VideoUploadDto,
+} from '@xuanxue/shared';
 import type { TestApp } from './create-app';
 import { withCsrf } from './http';
 
@@ -26,11 +30,13 @@ function assertOk(step: string, res: request.Response): void {
 
 /** Видео вопроса тремя шагами — единственный путь загрузки (ADR-0165): старт,
  * единственная часть, complete. Для файла не больше одной части (8 МиБ);
- * многочастные и отказные случаи — exam-videos-parts.e2e-spec.ts. */
+ * многочастные и отказные случаи — exam-videos-parts.e2e-spec.ts. `completeBody` —
+ * кодек и кадр, которые браузер несёт в `complete` (ADR-0165, ADR-0189). */
 export async function uploadExamVideo(
   server: ReturnType<TestApp['app']['getHttpServer']>,
   cookie: string,
   bytes: Buffer = mp4Bytes(),
+  completeBody: CompleteVideoUploadInput = {},
 ): Promise<ExamVideoDto> {
   const started = await withCsrf(request(server).post('/api/exam-videos/uploads'))
     .set('Cookie', cookie)
@@ -42,9 +48,9 @@ export async function uploadExamVideo(
     .set('Content-Type', 'application/octet-stream')
     .send(bytes);
   assertOk('часть', part);
-  const done = await withCsrf(
-    request(server).post(`/api/exam-videos/${id}/complete`),
-  ).set('Cookie', cookie);
+  const done = await withCsrf(request(server).post(`/api/exam-videos/${id}/complete`))
+    .set('Cookie', cookie)
+    .send(completeBody);
   assertOk('complete', done);
   return done.body as ExamVideoDto;
 }

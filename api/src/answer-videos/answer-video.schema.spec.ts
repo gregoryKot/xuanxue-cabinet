@@ -24,6 +24,7 @@ describe('AnswerVideoSchema', () => {
         'updatedAt',
         'uploadId',
         'userId',
+        'videoCodec',
       ].sort(),
     );
   });
@@ -92,7 +93,15 @@ describe('AnswerVideoSchema', () => {
 
   it('политика шифрования несёт решения для общих полей', () => {
     expect(Object.keys(ANSWER_VIDEO_FIELD_POLICY).sort()).toEqual(
-      ['fingerprint', 'key', 'parts.etag', 'poster', 'status', 'uploadId'].sort(),
+      [
+        'fingerprint',
+        'key',
+        'parts.etag',
+        'poster',
+        'status',
+        'uploadId',
+        'videoCodec',
+      ].sort(),
     );
   });
 });

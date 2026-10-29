@@ -4,6 +4,7 @@
 // из useVideoUpload.ts (файловый лимит, CLAUDE.md «Храповики»): хук ведёт выбор
 // файла и отмену, а этот шаг знает, чем кончается сжатие — сжатым файлом или
 // исходником. Видео не в H.264 перегоняется всегда и без отказа (ADR-0188).
+import { H264_VIDEO_CODEC, type VideoCodec } from '@xuanxue/shared';
 import type { Dispatch, SetStateAction } from 'react';
 import { combineAbortSignals } from '../api/abortSignals';
 import type { compressVideo } from './compressVideo';
@@ -19,8 +20,9 @@ export interface CompressThenUploadParams {
    * отказаться от сжатия такому файлу нельзя. */
   maxBytes: number;
   setState: Dispatch<SetStateAction<VideoUploadState>>;
-  /** Грузит то, что получилось: сжатый файл или исходник. */
-  upload: (prepared: Blob) => void;
+  /** Грузит то, что получилось: сжатый файл или исходник, с кодеком, если он
+   * известен (ADR-0189). */
+  upload: (prepared: Blob, codec?: VideoCodec) => void;
 }
 
 /** Запускает сжатие и по его итогу — загрузку. Возвращает «пропустить сжатие»:
@@ -55,13 +57,14 @@ export function compressThenUpload(params: CompressThenUploadParams): () => void
       setState((prev) => ({ ...prev, canSkipCompression: true }));
     },
   }).then(
-    (prepared) => {
+    ({ file: prepared, codec }) => {
       isSettled = true;
-      if (!isCancelled()) upload(prepared);
+      if (!isCancelled()) upload(prepared, codec);
     },
     () => {
       isSettled = true;
-      if (!isCancelled() && skip.signal.aborted) upload(file);
+      // Кнопка пропуска есть только у H.264, так что исходник — avc (ADR-0189).
+      if (!isCancelled() && skip.signal.aborted) upload(file, H264_VIDEO_CODEC);
     },
   );
 

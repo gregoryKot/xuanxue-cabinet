@@ -59,9 +59,9 @@ describe('lessonVideoTransport — маршруты', () => {
   it('complete: POST /lesson-videos/:id/complete с кадром-превью, ответ — видео', async () => {
     mockedApiFetch.mockResolvedValue(VIDEO);
 
-    await expect(transport.complete('u1', 'QkFTRTY0', { signal })).resolves.toEqual(
-      VIDEO,
-    );
+    await expect(
+      transport.complete('u1', { poster: 'QkFTRTY0' }, { signal }),
+    ).resolves.toEqual(VIDEO);
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       apiRoutePath('POST /lesson-videos/:id/complete', { params: { id: 'u1' } }),

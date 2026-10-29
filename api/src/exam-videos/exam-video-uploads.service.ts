@@ -19,6 +19,7 @@ import {
   FILE_STORAGE_OFF_MESSAGE,
   type ExamVideoDto,
   type StartExamVideoInput,
+  type VideoCodec,
   type VideoUploadDto,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotAvailableError, NotFoundError } from '../common/errors';
@@ -81,8 +82,9 @@ export class ExamVideoUploadsService extends StaffVideoUploads<
     userId: string,
     now: DateTime,
     posterBase64?: string,
+    codec?: VideoCodec,
   ): Promise<ExamVideoDto> {
-    return toExamVideoDto(await this.completeOwn(id, userId, now, posterBase64));
+    return toExamVideoDto(await this.completeOwn(id, userId, now, posterBase64, codec));
   }
 
   /** Своя загрузка или 404: чужая и несуществующая отвечают одинаково
