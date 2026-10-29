@@ -57,15 +57,15 @@ describe('Telegram login по OIDC: старт и отказы (e2e)', () => {
 
     expect(res.status).toBe(302);
     const location = new URL(res.headers.location as string);
-    expect(`${location.origin}${location.pathname}`).toBe(
-      'https://oauth.telegram.org/auth',
-    );
+    expect(location.origin + location.pathname).toBe('https://oauth.telegram.org/auth');
     const params = location.searchParams;
     expect(params.get('client_id')).toBe(OIDC_CLIENT_ID);
     expect(params.get('redirect_uri')).toBe('http://localhost:3000/login/telegram');
     expect(params.get('response_type')).toBe('code');
     expect(params.get('scope')).toBe('openid profile telegram:bot_access');
     expect(params.get('code_challenge_method')).toBe('S256');
+    // Регрессия 2026-10-29: без origin Telegram отвечает «origin required».
+    expect(params.get('origin')).toBe('http://localhost:3000');
 
     const cookie = oauthCookieFrom(res);
     expect(cookie).toContain('HttpOnly');

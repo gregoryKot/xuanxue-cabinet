@@ -8,6 +8,7 @@ const CONFIG: TelegramOidcConfig = {
   clientId: '123456',
   clientSecret: 'client-secret-value',
   redirectUri: 'https://cabinet.example/login/telegram',
+  origin: 'https://cabinet.example',
 };
 
 describe('TelegramOidcTokenClient.exchange', () => {

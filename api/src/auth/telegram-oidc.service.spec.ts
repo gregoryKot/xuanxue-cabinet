@@ -272,6 +272,7 @@ describe('TelegramOidcService.login — успех', () => {
         clientId: CLIENT_ID,
         clientSecret: 'client-secret-value',
         redirectUri: 'https://cabinet.example/login/telegram',
+        origin: 'https://cabinet.example',
       },
     });
   });

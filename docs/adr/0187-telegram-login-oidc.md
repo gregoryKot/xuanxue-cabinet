@@ -29,7 +29,10 @@ as a full-page redirect». Документация Telegram
 приглашения; `Path=/api/auth/telegram/oidc`, 10 минут, `SameSite=Lax`) и отвечает
 302 на `oauth.telegram.org/auth` с `client_id` (числовой id бота),
 `redirect_uri=${PUBLIC_URL}/login/telegram`, `response_type=code`,
-`scope=openid profile telegram:bot_access`, `state`, `code_challenge` (S256).
+`scope=openid profile telegram:bot_access`, `state`, `code_challenge` (S256),
+`origin` (схема и хост из `PUBLIC_URL`, без пути): документация Telegram про него
+в адресной форме молчит, но без него сервер отвечает `200` с текстом
+`origin required` вместо страницы входа (проверено вживую 2026-10-29).
 `telegram:bot_access` — прежний `request_access=write`: бот может писать человеку.
 `phone` не просим — телефон кабинету не нужен. Telegram возвращает вкладку на
 `/login/telegram?code=…&state=…`, страница шлёт пару `POST /api/auth/telegram/oidc`

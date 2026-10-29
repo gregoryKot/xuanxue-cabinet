@@ -5,6 +5,7 @@ const CONFIG = {
   clientId: '123456',
   clientSecret: 'client-secret-value',
   redirectUri: 'https://cabinet.example/login/telegram',
+  origin: 'https://cabinet.example',
 };
 const STATE = 's'.repeat(43);
 const CHALLENGE = 'c'.repeat(43);
@@ -27,7 +28,16 @@ describe('buildTelegramAuthUrl', () => {
       state: STATE,
       code_challenge: CHALLENGE,
       code_challenge_method: 'S256',
+      origin: 'https://cabinet.example',
     });
+  });
+
+  // Регрессия 2026-10-29 (ADR-0187): адрес без `origin` oauth.telegram.org
+  // отвечает 200 с текстом «origin required», а не страницей входа. Документация
+  // про параметр молчит, так что узнали только живой проверкой.
+  it('origin передан и закодирован — без него Telegram отвечает «origin required»', () => {
+    expect(url.searchParams.get('origin')).toBe('https://cabinet.example');
+    expect(url.search).toContain('origin=https%3A%2F%2Fcabinet.example');
   });
 
   it('nonce не отправляется — для кода он необязателен (OIDC Core §3.1.2.1)', () => {
