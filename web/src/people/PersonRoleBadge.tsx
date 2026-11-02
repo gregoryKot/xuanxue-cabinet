@@ -19,7 +19,7 @@ import { ROLE_LABELS, USER_ROLES, type UserDto, type UserRole } from '@xuanxue/s
 
 // VOICE.md: подсказка объясняет запрет, не просто «нельзя» (полный текст
 // ошибки сервиса — SELF_DEMOTE_MESSAGE в shared/src/users.ts).
-const SELF_ADMIN_HINT = 'Роль администратора у себя снимает другой администратор';
+const SELF_ADMIN_HINT = 'Роль разработчика у себя снимает другой разработчик';
 // VOICE.md: без общих слов — что значит пустой набор ролей, видно только
 // тому, у кого он сейчас пуст.
 const NO_ROLE_HINT =

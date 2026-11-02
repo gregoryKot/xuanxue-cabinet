@@ -112,7 +112,7 @@ describe('StudentModeSection — режим выключен', () => {
     const user = userEvent.setup();
     renderSection(STAFF_ME, {
       '/me/student-mode': new ApiError(
-        'Режим ученика есть только у учителей, помощников и администратора.',
+        'Режим ученика есть только у учителей, помощников и разработчика.',
         403,
         'forbidden',
       ),
@@ -122,7 +122,7 @@ describe('StudentModeSection — режим выключен', () => {
     await user.click(button);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Режим ученика есть только у учителей, помощников и администратора.',
+      'Режим ученика есть только у учителей, помощников и разработчика.',
     );
     expect(button).toBeEnabled();
     expect(screen.getByTestId('path')).toHaveTextContent('/profile');

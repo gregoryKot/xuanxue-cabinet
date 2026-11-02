@@ -152,7 +152,7 @@ describe('PersonRow — пилюли ролей', () => {
     expect(screen.getByRole('button', { name: 'Разработчик' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Учитель' })).not.toBeDisabled();
     expect(
-      screen.getByText('Роль администратора у себя снимает другой администратор'),
+      screen.getByText('Роль разработчика у себя снимает другой разработчик'),
     ).toBeInTheDocument();
   });
 

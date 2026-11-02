@@ -41,7 +41,7 @@ describe('Users status limits (e2e)', () => {
     expect((res.body as ApiErrorBody).message).toBe(SELF_BLOCK_MESSAGE);
   });
 
-  // «Последний активный администратор» (LAST_ADMIN_BLOCK_MESSAGE) не
+  // «Последний активный разработчик» (LAST_ADMIN_BLOCK_MESSAGE) не
   // проверяется здесь отдельным HTTP-кейсом — тот же приём, что и у
   // updateRoles в users.e2e-spec.ts: чтобы вызвать PATCH .../status, нужен
   // свой admin-cookie, и вызывающий сам остаётся активным админом после

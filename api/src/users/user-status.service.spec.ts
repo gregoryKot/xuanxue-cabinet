@@ -98,7 +98,7 @@ describe('UserStatusService', () => {
 
     await expect(
       soloStatus.updateStatus(onlyAdmin.id, 'blocked', 'кто-то-другой'),
-    ).rejects.toThrow('последний администратор');
+    ).rejects.toThrow('последний разработчик');
 
     await solo.stop();
   }, 30_000);
@@ -147,7 +147,7 @@ describe('UserStatusService', () => {
 
     await expect(
       soloStatus.updateStatus(first.id, 'blocked', 'кто-то-другой'),
-    ).rejects.toThrow('последний администратор');
+    ).rejects.toThrow('последний разработчик');
 
     await solo.stop();
   }, 30_000);

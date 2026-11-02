@@ -179,7 +179,8 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-jscpd-ratchet.mjs` — дубли ≥70 токенов не растут. Повторяешь блок — в модуль,
   хук или `shared/`.
 - `check-coverage-ratchet.mjs` — покрытие api не падает, жёсткий пол на `api/src/utils`.
-- `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
+- `check-robot-phrases.mjs` — в user-facing тексте: канцелярит, «это не X, это Y» и слово
+  «администратор» как название роли (на экране она «Разработчик», docs/VOICE.md).
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
 - `check-card-list-gap.mjs` — список карточек объявляет промежуток между строками
   (`gap` или обёртка «одной карточкой»), иначе плашки слипаются (ADR-0088).

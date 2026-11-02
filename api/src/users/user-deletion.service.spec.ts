@@ -161,7 +161,7 @@ describe('UserDeletionService', () => {
 
     await expect(
       deletion.deleteAllUserData(onlyAdmin.id, 'кто-то-другой'),
-    ).rejects.toThrow('последний администратор');
+    ).rejects.toThrow('последний разработчик');
   });
 
   it('гонка удаления и снятия роли: конкурент теряет admin между резервированием и перепроверкой — откат, ForbiddenError, admin остаётся (аудит M11)', async () => {
@@ -198,7 +198,7 @@ describe('UserDeletionService', () => {
       }) as never);
 
     await expect(deletion.deleteAllUserData(admin1.id, 'кто-то-третий')).rejects.toThrow(
-      'последний администратор',
+      'последний разработчик',
     );
 
     // Резервирование откатилось, до удаления данных дело не дошло — admin1
