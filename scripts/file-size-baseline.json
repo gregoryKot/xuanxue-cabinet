@@ -1126,7 +1126,7 @@
   "scripts/check-prod-health.mjs": 253,
   "scripts/check-prod-health.test.mjs": 249,
   "scripts/check-pwa.mjs": 142,
-  "scripts/check-robot-phrases.mjs": 166,
+  "scripts/check-robot-phrases.mjs": 136,
   "scripts/check-route-collisions.mjs": 123,
   "scripts/check-route-collisions.test.mjs": 146,
   "scripts/check-shared-exports.mjs": 151,

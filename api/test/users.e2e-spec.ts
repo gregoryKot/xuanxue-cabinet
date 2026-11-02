@@ -101,7 +101,7 @@ describe('Users (e2e)', () => {
     expect(got?.roles).toEqual(['teacher']);
   });
 
-  it('снять admin у себя — 403 с текстом «снимает другой администратор»', async () => {
+  it('снять admin у себя — 403 с текстом «снимает другой разработчик»', async () => {
     const { userId, cookie } = await createUserWithSession(testApp.app, {
       name: 'Маша',
       roles: ['admin'],
@@ -111,10 +111,10 @@ describe('Users (e2e)', () => {
     const res = await patchUser(cookie, userId, { roles: [] });
 
     expect(res.status).toBe(403);
-    expect((res.body as ApiErrorBody).message).toContain('снимает другой администратор');
+    expect((res.body as ApiErrorBody).message).toContain('снимает другой разработчик');
   });
 
-  // «Последний администратор» (UserRolesService.isLastAdmin) не проверяется
+  // «Последний разработчик» (UserRolesService.isLastAdmin) не проверяется
   // здесь отдельным HTTP-кейсом: чтобы вызвать PATCH, нужен свой admin-cookie —
   // значит вызывающий сам остаётся админом после чужого снятия роли, и
   // единственный способ довести общее число админов до нуля одним запросом —

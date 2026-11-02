@@ -131,7 +131,7 @@ describe('UserRolesService', () => {
       });
 
       await expect(roles.updateRoles(admin.id, [], admin.id)).rejects.toThrow(
-        'снимает другой администратор',
+        'снимает другой разработчик',
       );
     });
 
@@ -151,7 +151,7 @@ describe('UserRolesService', () => {
 
       await expect(
         soloRoles.updateRoles(onlyAdmin.id, ['teacher'], 'кто-то-другой'),
-      ).rejects.toThrow('последний администратор');
+      ).rejects.toThrow('последний разработчик');
 
       await solo.stop();
     }, 30_000);
@@ -219,7 +219,7 @@ describe('UserRolesService', () => {
         }) as never);
 
       await expect(soloRoles.updateRoles(first.id, [], 'кто-то-третий')).rejects.toThrow(
-        'последний администратор',
+        'последний разработчик',
       );
 
       // Откат вернул admin тому, у кого его сняли последней записью,
