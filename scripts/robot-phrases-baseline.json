@@ -2,6 +2,5 @@
   "api/src/auth/telegram-auth.service.ts": 1,
   "api/src/channels/telegram-errors.ts": 1,
   "shared/src/telegram-oidc.ts": 1,
-  "web/src/channels/ChannelFormFields.tsx": 1,
-  "web/src/privacy/privacyPolicyText.ts": 1
+  "web/src/channels/ChannelFormFields.tsx": 1
 }
