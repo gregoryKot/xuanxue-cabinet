@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChannelDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -31,6 +31,24 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'ВК школы',
     active: true,
     target: '777',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
+  return {
+    id: 'c1',
+    title: 'Тайцзи',
+    groupLabel: '',
+    format: 'online',
+    rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
+    tz: 'Asia/Jerusalem',
+    channelIds: [],
+    leadMinutes: 30,
+    active: true,
     tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -104,5 +122,49 @@ describe('ChannelsScreen — список', () => {
     await user.click(await screen.findByRole('button', { name: 'Добавить канал' }));
 
     expect(screen.getByText(NEW_MARKER)).toBeInTheDocument();
+  });
+});
+
+describe('ChannelsScreen — какие занятия кормят канал', () => {
+  it('строка канала говорит, какие занятия сюда уходят', async () => {
+    mockApiByPath({
+      '/channels': [makeChannel()],
+      '/classes': [makeClass({ channelIds: ['ch1'] }), makeClass({ id: 'c2' })],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Тайцзи вт 19:00', { exact: false }),
+    ).toHaveTextContent('1 занятие: Тайцзи вт 19:00');
+  });
+
+  it('канал без занятий — предупреждение вместо пустоты', async () => {
+    mockApiByPath({ '/channels': [makeChannel()], '/classes': [makeClass()] });
+
+    renderScreen();
+
+    expect(await screen.findByText(/Ни одного занятия/)).toBeInTheDocument();
+  });
+
+  it('пока занятия грузятся — не «ни одного»', async () => {
+    mockApiByPath({ '/channels': [makeChannel()], '/classes': new Promise(() => {}) });
+
+    renderScreen();
+    await screen.findByText('ВК · ВК школы');
+
+    expect(screen.queryByText(/Ни одного занятия/)).not.toBeInTheDocument();
+  });
+
+  it('занятия не загрузились — строки нет, список каналов цел', async () => {
+    mockApiByPath({
+      '/channels': [makeChannel()],
+      '/classes': new Error('сеть'),
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('ВК · ВК школы')).toBeInTheDocument();
+    expect(screen.queryByText(/Ни одного занятия/)).not.toBeInTheDocument();
   });
 });

@@ -38,10 +38,10 @@ describe('ClassChannelsField', () => {
     renderField([]);
 
     expect(screen.getByText(/Каналов пока нет/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '«Каналы»' })).toHaveAttribute(
-      'href',
-      '/channels',
-    );
+    // Две ссылки: подсказка «все каналы — на экране» и пустое состояние.
+    for (const link of screen.getAllByRole('link', { name: '«Каналы»' })) {
+      expect(link).toHaveAttribute('href', '/channels');
+    }
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 

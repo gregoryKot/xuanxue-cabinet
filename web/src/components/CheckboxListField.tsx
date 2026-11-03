@@ -35,11 +35,13 @@ interface CheckboxListFieldProps {
   hint?: ReactNode;
   emptyMessage: ReactNode;
   error?: string;
+  /** Строки, занятые запросом: галочку нельзя нажать, пока он в пути. */
+  disabledIds?: readonly string[];
 }
 
 export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFieldProps>(
   function CheckboxListField(
-    { legend, options, selectedIds, onChange, hint, emptyMessage, error },
+    { legend, options, selectedIds, onChange, hint, emptyMessage, error, disabledIds },
     ref,
   ) {
     function toggle(id: string, checked: boolean) {
@@ -59,6 +61,7 @@ export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFie
               key={option.id}
               label={option.label}
               checked={selectedIds.includes(option.id)}
+              disabled={disabledIds?.includes(option.id)}
               onChange={(checked) => toggle(option.id, checked)}
             />
           ))

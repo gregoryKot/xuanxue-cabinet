@@ -50,8 +50,15 @@ function renderAt(path: string) {
   );
 }
 
+/** Страница канала сама читает занятия школы (ChannelClassesSection.tsx);
+ * их секция проверяется в своём файле, здесь — пустое расписание, чтобы
+ * чужой GET не падал и не рисовал свой alert поверх проверяемых. */
+function mockApi(handlers: Record<string, unknown>) {
+  mockApiByPath({ '/classes': [], ...handlers });
+}
+
 function mockChannel(channel: ChannelDto) {
-  mockApiByPath({ '/channels/ch1': channel, '/channels': channel });
+  mockApi({ '/channels/ch1': channel, '/channels': channel });
 }
 
 /** Канал пришёл с сервера, форма на экране. Подсказку тегов (useTagOptions.ts)
@@ -73,7 +80,7 @@ function callsWithMethod(method: string) {
 
 describe('ChannelEditorScreen — загрузка', () => {
   it('канал ещё грузится — скелетон, а не пустой экран', () => {
-    mockApiByPath({ '/channels/ch1': new Promise(() => {}) });
+    mockApi({ '/channels/ch1': new Promise(() => {}) });
 
     const { container } = renderAt('/channels/ch1');
 
@@ -83,7 +90,7 @@ describe('ChannelEditorScreen — загрузка', () => {
   it('сбой загрузки — текст ошибки и повтор', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockApiByPath({ '/channels/ch1': new ApiError('Сервис недоступен', 503, 'unknown') });
+    mockApi({ '/channels/ch1': new ApiError('Сервис недоступен', 503, 'unknown') });
 
     renderAt('/channels/ch1');
 
@@ -96,7 +103,7 @@ describe('ChannelEditorScreen — загрузка', () => {
   });
 
   it('/channels/new — заголовок «Новый канал», запроса за каналом нет', async () => {
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
 
@@ -124,7 +131,7 @@ describe('ChannelEditorScreen — загрузка', () => {
 describe('ChannelEditorScreen — создание', () => {
   it('telegram — адрес уходит в config, страница возвращается к списку', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await user.selectOptions(await screen.findByLabelText('Тип канала'), 'telegram');
@@ -145,7 +152,7 @@ describe('ChannelEditorScreen — создание', () => {
 
   it('vk (тип по умолчанию) — токен и ID беседы уходят в config', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await user.type(await screen.findByLabelText('Название'), 'ВК школы');
@@ -165,7 +172,7 @@ describe('ChannelEditorScreen — создание', () => {
 
   it('теги — набранное через запятую уходит массивом в тело запроса (ADR-0108)', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await user.type(await screen.findByLabelText('Название'), 'ВК школы');
@@ -181,7 +188,7 @@ describe('ChannelEditorScreen — создание', () => {
 
   it('пустое название — ошибка формы, запроса нет', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await user.click(await screen.findByRole('button', { name: 'Сохранить' }));
@@ -191,7 +198,7 @@ describe('ChannelEditorScreen — создание', () => {
   });
 
   it('новый канал — ни выключателя, ни удаления, ни проверки', async () => {
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await waitForMounted();
@@ -204,7 +211,7 @@ describe('ChannelEditorScreen — создание', () => {
   });
 
   it('vk — токен: type=password, автозаполнение выключено, подсказка где взять (ревью п.6)', async () => {
-    mockApiByPath({ '/channels': makeChannel() });
+    mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
 
@@ -302,7 +309,7 @@ describe('ChannelEditorScreen — правка', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockApiByPath({
+    mockApi({
       '/channels/ch1': new ApiError('Проверьте поля.', 400, 'invalid_input', [
         'title: занято',
       ]),
@@ -358,7 +365,7 @@ describe('ChannelEditorScreen — удаление', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockApiByPath({
+    mockApi({
       '/channels/ch1': new ApiError('Канал используется в рассылке.', 409, 'conflict'),
     });
     await user.click(screen.getByRole('button', { name: 'Удалить канал' }));
@@ -376,7 +383,7 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockApiByPath({ '/channels/ch1/test': { status: 'sent' } });
+    mockApi({ '/channels/ch1/test': { status: 'sent' } });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent('Тест доставлен');
@@ -388,7 +395,7 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockApiByPath({
+    mockApi({
       '/channels/ch1/test': { status: 'failed', error: 'Бот не в группе' },
     });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));
@@ -405,7 +412,7 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockApiByPath({
+    mockApi({
       '/channels/ch1/test': new ApiError('Бот не в группе.', 502, 'unknown'),
     });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));

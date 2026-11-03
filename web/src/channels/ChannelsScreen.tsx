@@ -16,6 +16,7 @@ import { oneCardListStyle } from '../components/listCardStyles';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { ChannelCard } from './ChannelCard';
+import { useClasses } from '../schedule/useClasses';
 import { useChannels } from './useChannels';
 
 const TITLE = 'Каналы';
@@ -26,6 +27,10 @@ const CHANNELS_PATH = '/channels';
 
 export default function ChannelsScreen() {
   const { channels, loading, error, reload } = useChannels();
+  // Какие занятия кормят канал, видно в строке (отзыв владельца 2026-11-03).
+  // Сбой загрузки занятий строку прячет, а не врёт «ни одного».
+  const classesState = useClasses();
+  const classes = classesState.error ? undefined : classesState.classes;
   const navigate = useNavigate();
 
   return (
@@ -58,6 +63,7 @@ export default function ChannelsScreen() {
             channel={channel}
             onSelect={() => void navigate(`${CHANNELS_PATH}/${channel.id}`)}
             isLast={index === all.length - 1}
+            classes={classes}
           />
         )}
       />

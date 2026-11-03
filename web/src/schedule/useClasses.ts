@@ -16,13 +16,17 @@ export interface UseClassesResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Принять свежий ClassDto из ответа PATCH без перечитывания списка. */
+  applyData: (
+    next: ClassDto[] | ((prev: ClassDto[] | null) => ClassDto[] | null),
+  ) => void;
 }
 
 export function useClasses(): UseClassesResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiRoute('GET /classes', { query: CLASSES_LIST_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
 
-  return { classes: data, loading, error, reload };
+  return { classes: data, loading, error, reload, applyData };
 }
