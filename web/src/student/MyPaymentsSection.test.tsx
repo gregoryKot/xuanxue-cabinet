@@ -39,7 +39,9 @@ const ME_NO_TELEGRAM: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 const ME_TELEGRAM: MeDto = { ...ME_NO_TELEGRAM, telegramLinked: true };

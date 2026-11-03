@@ -25,6 +25,7 @@ const TEACHER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 const STUDENT: UserLean = {
   id: 'u2',
@@ -32,6 +33,7 @@ const STUDENT: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function fakePrefs(enabled: NotificationKind[]): {

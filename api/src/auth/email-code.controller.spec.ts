@@ -21,6 +21,7 @@ const USER: UserLean = {
   status: 'active',
   email: 'maria@example.com',
   studentMode: false,
+  teacherMode: false,
 };
 
 const COOKIES = ['session=; Max-Age=0', 'session=token; HttpOnly; Path=/'];
@@ -131,7 +132,9 @@ describe('EmailCodeController.verifyEmailCode', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     });
   });

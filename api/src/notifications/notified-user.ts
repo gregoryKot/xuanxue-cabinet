@@ -6,7 +6,7 @@
 // (CLAUDE.md «Дубли»: повторяешь блок — в модуль).
 import type { NotificationKind } from '@xuanxue/shared';
 import type { NotificationPrefsService } from './notification-prefs.service';
-import { actingUser } from '../users/student-mode';
+import { actingUser } from '../users/acting-mode';
 import type { UserLean, UsersService } from '../users/users.service';
 
 export interface NotifiedUserDeps {

@@ -20,6 +20,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 const BYTES = Buffer.from([1, 2, 3]);
 

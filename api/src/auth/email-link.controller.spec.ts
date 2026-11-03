@@ -18,6 +18,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 interface LinkCall {
@@ -91,7 +92,9 @@ describe('EmailLinkController.link', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     });
   });

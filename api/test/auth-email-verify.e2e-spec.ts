@@ -75,15 +75,14 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     expect(body.status).toBe('active');
     expect(body.roles).toEqual([]);
     expect(body.telegramLinked).toBe(false); // инцидент 2026-09-16, RUNBOOK §8.17
-    // Новый email — без telegramId, боту тем более некуда писать (ADR-0042).
-    expect(body.botChatActive).toBe(false);
-    // Только поля MeDto — tokenHash и чужих адресов в ответе нет (SECURITY §2,
-    // CLAUDE.md «API»). `email` — свой адрес владельцу сессии (ADR-0059, баг
-    // 2026-09-29); `pendingEmail` не приходит: ждать подтверждения нечего.
+    expect(body.botChatActive).toBe(false); // без telegramId боту некуда писать (ADR-0042)
+    // Только поля MeDto — tokenHash и чужих адресов нет (SECURITY §2, CLAUDE.md
+    // «API»); `email` — свой адрес (ADR-0059), `pendingEmail` не приходит.
     expect(Object.keys(body).sort()).toEqual(
       [
         'botChatActive',
         'canUseStudentMode',
+        'canUseTeacherMode',
         'email',
         'googleLinked',
         'hasEmail',
@@ -95,6 +94,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
         'roles',
         'status',
         'studentMode',
+        'teacherMode',
         'telegramLinked',
       ].sort(),
     );

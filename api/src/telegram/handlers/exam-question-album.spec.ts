@@ -23,6 +23,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 const IMAGE = { bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' as const };
 // Байты видео — лениво (аудит 2026-10-01, F02), здесь только порядок отправки.

@@ -273,6 +273,7 @@ describe('«Настроить главную» — штат', () => {
       ...STAFF_ME,
       roles: [],
       studentMode: true,
+      teacherMode: false,
       homeHiddenTiles: ['grading' as const],
     };
     renderHome(inMode);

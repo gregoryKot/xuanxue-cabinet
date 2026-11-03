@@ -85,6 +85,7 @@ describe('PaymentScreenshotsService: доставка бухгалтеру (ADR-
     id: new Types.ObjectId().toString(),
     name: 'Ученик Иванов',
     studentMode: false,
+    teacherMode: false,
   });
 
   it('после загрузки порт получает имя, месяц, тип и байты; первая загрузка — replaced: false', async () => {

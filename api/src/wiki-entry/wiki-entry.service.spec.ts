@@ -22,7 +22,14 @@ const WIKI = 'https://wiki.xuanxue.su';
 const QUERY = 'returnTo=%2Fa%3Fx%3D1';
 
 function user(status: UserLean['status'] = 'active'): UserLean {
-  return { id: 'u1', name: 'Мария', roles: [], status, studentMode: false };
+  return {
+    id: 'u1',
+    name: 'Мария',
+    roles: [],
+    status,
+    studentMode: false,
+    teacherMode: false,
+  };
 }
 
 function build(

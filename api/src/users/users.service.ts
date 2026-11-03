@@ -17,7 +17,7 @@ import {
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { normalizeUserStatus } from './normalize-user-status';
-import { isStudentModeOn } from './student-mode';
+import { isStudentModeOn, isTeacherModeOn } from './acting-mode';
 import { upsertUserByKey } from './upsert-user-by-key';
 
 /** Внутреннее представление пользователя — шире MeDto (toMeDto в auth/user.mapper.ts). */
@@ -34,8 +34,9 @@ export interface UserLean {
   joinedViaInviteAt?: Date;
   profileNamedAt?: Date;
   noTelegramAt?: Date;
-  /** Режим ученика включён (ADR-0163, student-mode.ts). `roles` при этом настоящие. */
+  /** Режим ученика (ADR-0163) и учителя (ADR-0190), acting-mode.ts. `roles` настоящие. */
   studentMode: boolean;
+  teacherMode: boolean;
   homeHiddenTiles?: UserRecord['homeHiddenTiles']; // ADR-0179, нет поля — всё видно
 }
 
@@ -49,7 +50,7 @@ export interface NewTelegramUser {
   status: UserStatus;
 }
 
-/** Единственный маппер документа в UserLean, роли не маскирует (student-mode.ts). status —
+/** Единственный маппер документа в UserLean, роли не маскирует (acting-mode.ts). status —
  * через normalizeUserStatus.ts (expand→contract после миграции 0007, ADR-0036). */
 export function toLean(doc: UserDoc): UserLean {
   return {
@@ -66,6 +67,7 @@ export function toLean(doc: UserDoc): UserLean {
     profileNamedAt: doc.profileNamedAt,
     noTelegramAt: doc.noTelegramAt,
     studentMode: isStudentModeOn(doc.studentModeAt, doc.roles),
+    teacherMode: isTeacherModeOn(doc.teacherModeAt, doc.roles),
     homeHiddenTiles: doc.homeHiddenTiles,
   };
 }
@@ -114,11 +116,8 @@ export class UsersService {
     const doc =
       (await this.upsertByTelegramId(input)) ??
       (await this.findByTelegramId(input.telegramId));
-    if (!doc) {
-      // upsert либо вернул документ, либо упал на дубликате — и тогда конкурент
-      // его уже записал; пустой ответ здесь означает сбой базы, не гонку.
-      throw new Error('createFromTelegram: пользователь не найден после upsert');
-    }
+    // Пусто и после перечитывания — сбой базы, не гонка: конкурент уже записал.
+    if (!doc) throw new Error('createFromTelegram: пользователь не найден после upsert');
     return doc;
   }
 

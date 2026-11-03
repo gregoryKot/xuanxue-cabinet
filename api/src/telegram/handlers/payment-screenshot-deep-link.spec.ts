@@ -79,6 +79,7 @@ describe('handlePaymentScreenshotDeepLink', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
     });
 
@@ -98,6 +99,7 @@ describe('handlePaymentScreenshotDeepLink', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
     });
 

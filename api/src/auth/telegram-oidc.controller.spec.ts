@@ -22,6 +22,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const OAUTH_COOKIE = 'telegram_oauth=abc; HttpOnly; Path=/api/auth/telegram/oidc';
@@ -139,7 +140,9 @@ describe('TelegramOidcController.login', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     });
   });

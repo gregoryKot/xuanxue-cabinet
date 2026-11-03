@@ -239,7 +239,9 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     needsProfile: false,
     googleLinked: false,
     studentMode: false,
+    teacherMode: false,
     canUseStudentMode: false,
+    canUseTeacherMode: false,
     homeHiddenTiles: [],
   };
   const FORBIDDEN_TEXT_PATTERNS = [

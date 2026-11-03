@@ -16,6 +16,7 @@ const TEACHER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function fakeUsersService(user: UserLean | null): UsersService {

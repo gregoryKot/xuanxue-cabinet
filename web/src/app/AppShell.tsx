@@ -54,7 +54,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
 import { SkipLink, mainLandmarkProps } from '../components/SkipLink';
 import { MyExamsProvider } from '../student/MyExamsProvider';
-import { StudentModeBanner } from '../studentMode/StudentModeBanner';
+import { ActingModeBanner } from '../actingMode/ActingModeBanner';
 import { AppNav } from './AppNav';
 import {
   APP_SHELL_CLASS,
@@ -106,7 +106,7 @@ export function AppShell() {
           <SkipLink />
           {/* Режим ученика у штата (ADR-0163): плашка над всем, видна на любом
               экране, пока режим включён; сама решает, показываться ли. */}
-          <StudentModeBanner />
+          <ActingModeBanner />
           <div style={shellRowStyle}>
             {hasSideNav && (
               <AppNav

@@ -57,6 +57,7 @@ const BASE_USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 interface UsersFakeOptions {

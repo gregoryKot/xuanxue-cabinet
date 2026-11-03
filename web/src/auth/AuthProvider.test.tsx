@@ -40,7 +40,9 @@ describe('AuthProvider — статусы', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -106,7 +108,9 @@ describe('AuthProvider — статусы', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -141,7 +145,9 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
 
@@ -172,7 +178,9 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     let resolveRefresh: ((value: MeDto) => void) | undefined;

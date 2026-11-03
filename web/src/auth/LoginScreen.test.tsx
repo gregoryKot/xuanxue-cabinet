@@ -219,7 +219,9 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockImplementation((path: string) => {
@@ -323,7 +325,9 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
@@ -350,7 +354,9 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockImplementation((path: string) => {

@@ -22,6 +22,7 @@ const STAFF: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const NOW = DateTime.utc(2026, 9, 27, 12, 0, 0);
@@ -72,6 +73,7 @@ describe('Мягкое удаление экзамена и вопроса (ADR-
       roles: [],
       status: 'active',
       studentMode: false,
+      teacherMode: false,
     };
     await ctx.service.start(examId, USER_A, NOW);
 

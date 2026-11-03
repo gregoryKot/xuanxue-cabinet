@@ -124,6 +124,7 @@ describe('handleTelegramLinkDeepLink', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
     });
 
@@ -143,6 +144,7 @@ describe('handleTelegramLinkDeepLink', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
     });
 
@@ -165,6 +167,7 @@ describe('handleTelegramLinkDeepLink', () => {
         roles: ['teacher'],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
     });
 

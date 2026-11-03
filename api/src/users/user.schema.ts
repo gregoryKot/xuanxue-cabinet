@@ -18,9 +18,9 @@
 // noTelegramAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
 // (не свободный текст): момент, когда человек сказал, что Telegram у него
 // нет (ADR-0067, PUT /me/no-telegram, UserNoTelegramService.setNoTelegram).
-// studentModeAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY:
-// момент, когда сотрудник школы включил себе режим ученика (ADR-0163,
-// PUT /me/student-mode, UserStudentModeService.setStudentMode).
+// studentModeAt, teacherModeAt — тоже Date, та же причина не попасть в
+// USER_FIELD_POLICY: момент, когда человек включил себе режим ученика (ADR-0163)
+// или учителя (ADR-0190); PUT /me/student-mode|teacher-mode, UserActingModeService.
 // homeHiddenTiles — enum ключей плиток (ADR-0179), не свободный текст: не в policy.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
@@ -106,17 +106,17 @@ export class UserRecord {
   @Prop({ type: Date, required: false })
   noTelegramAt?: Date;
 
-  // Сотрудник школы включил себе режим ученика (ADR-0163, PUT
-  // /me/student-mode). Date, не Boolean — та же пара «момент → булево», что у
-  // noTelegramAt (UserLean.studentMode). Роли в `roles` НЕ меняются: «Люди»,
-  // защита последнего админа и бот видят настоящие, а AuthGuard кладёт в
-  // request.user пустые (users/student-mode.ts). Поле только убавляет права —
-  // прибавить через него нечего. Ставит и снимает только сам человек
-  // ($set — только при настоящей роли штата, $unset — всегда), не через
-  // UsersController. Выключение — $unset, не запись null: «поля нет» читается
-  // однозначно как «режима нет».
+  // Режим вместо роли: ученика — штату (ADR-0163), учителя — админу (ADR-0190).
+  // Date, не Boolean — пара «момент → булево», как noTelegramAt (UserLean.studentMode
+  // / teacherMode). Роли в `roles` НЕ меняются: «Люди», защита последнего админа и
+  // бот видят настоящие, AuthGuard кладёт в request.user действующие
+  // (users/acting-mode.ts) — режим только убавляет права. Ставит и снимает только сам
+  // человек ($set — по настоящей роли, $unset — всегда, не null: «поля нет» = «режима
+  // нет»). Режимы взаимоисключающие: $set одного в том же апдейте снимает другой.
   @Prop({ type: Date, required: false })
   studentModeAt?: Date;
+  @Prop({ type: Date, required: false })
+  teacherModeAt?: Date;
 
   // Скрытые плитки «Главной» (ADR-0179, PUT /me/home-tiles), форма как у `roles`.
   // `default: undefined`: нет поля — показываем всё; пустой выбор — $unset.

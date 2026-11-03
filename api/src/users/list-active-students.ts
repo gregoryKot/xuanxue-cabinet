@@ -9,7 +9,7 @@
 // поле у документа всегда есть (схема), просто пустое у ученика.
 import type { Model, Types } from 'mongoose';
 import { LIST_LIMIT_MAX } from '@xuanxue/shared';
-import { STAFF_ROLE_LIST } from './student-mode';
+import { STAFF_ROLE_LIST } from './acting-mode';
 import type { UserRecord } from './user.schema';
 
 export interface ActiveStudent {

@@ -10,6 +10,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 describe('markUserJoined', () => {

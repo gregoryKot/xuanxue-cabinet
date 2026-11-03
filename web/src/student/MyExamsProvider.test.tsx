@@ -48,7 +48,9 @@ const STUDENT: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 

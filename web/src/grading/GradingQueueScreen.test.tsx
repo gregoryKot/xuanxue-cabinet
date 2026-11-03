@@ -30,7 +30,9 @@ const TEACHER: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 const ADMIN: MeDto = {
@@ -45,7 +47,9 @@ const ADMIN: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 

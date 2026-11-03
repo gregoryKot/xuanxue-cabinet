@@ -13,6 +13,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function fakeAuth(verify: AuthService['verifyCookieHeader']): AuthService {

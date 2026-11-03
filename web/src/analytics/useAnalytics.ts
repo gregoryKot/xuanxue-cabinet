@@ -15,10 +15,16 @@ const ANALYTICS_START_FAILED_MESSAGE =
   'PostHog: аналитика не запущена (сеть, конфигурация или загрузка модуля)';
 
 function personPropsFor(me: MeDto): PosthogClientModule.AnalyticsPersonProps {
-  // Только роль(и), статус и признак режима ученика — ни имени, ни email, ни
+  // Только роль(и), статус и признаки режимов — ни имени, ни email, ни
   // telegram (ADR-0143). В режиме ученика `roles` пустые (ADR-0163), без
-  // `studentMode` штат в аналитике был бы неотличим от настоящего ученика.
-  return { roles: me.roles, status: me.status, studentMode: me.studentMode };
+  // `studentMode` штат в аналитике был бы неотличим от настоящего ученика; так же
+  // `teacherMode` отделяет разработчика от учителя (ADR-0190).
+  return {
+    roles: me.roles,
+    status: me.status,
+    studentMode: me.studentMode,
+    teacherMode: me.teacherMode,
+  };
 }
 
 export function useAnalytics(): void {

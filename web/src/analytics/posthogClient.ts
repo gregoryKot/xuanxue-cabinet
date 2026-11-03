@@ -19,6 +19,8 @@ export interface AnalyticsPersonProps {
   status: string;
   /** Штат в режиме ученика (ADR-0163): `roles` тогда пустые. */
   studentMode: boolean;
+  /** Разработчик в режиме учителя (ADR-0190): `roles` тогда `['teacher']`. */
+  teacherMode: boolean;
 }
 
 /** Один раз на сессию вкладки — повторный вызов (например, смена пути при

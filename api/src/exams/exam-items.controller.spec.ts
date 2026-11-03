@@ -19,6 +19,7 @@ const USER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const ITEM_DTO: ExamItemDto = {

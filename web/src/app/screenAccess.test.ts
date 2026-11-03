@@ -21,7 +21,9 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     needsProfile: false,
     googleLinked: false,
     studentMode: false,
+    teacherMode: false,
     canUseStudentMode: false,
+    canUseTeacherMode: false,
     homeHiddenTiles: [],
     ...overrides,
   };

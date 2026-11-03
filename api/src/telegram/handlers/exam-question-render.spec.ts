@@ -23,6 +23,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function question(overrides: Partial<AttemptQuestionDto> = {}): AttemptQuestionDto {

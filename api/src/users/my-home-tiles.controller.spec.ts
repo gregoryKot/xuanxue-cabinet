@@ -14,6 +14,7 @@ const SESSION_USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 async function buildController(setHidden: jest.Mock): Promise<MyHomeTilesController> {
