@@ -6,10 +6,13 @@
 //
 // Переключатель «Включён» стоит полем формы, а не отдельной кнопкой в списке:
 // в списке строка канала осталась строкой (ChannelCard.tsx), а здесь он
-// уезжает на сервер тем же PATCH, что название и настройки.
+// уезжает на сервер тем же PATCH, что название и настройки. После подвала —
+// две отдельные секции со своим сохранением: занятия канала
+// (ChannelClassesSection.tsx) и тестовое сообщение.
 import type { ChannelDto } from '@xuanxue/shared';
 import { SimpleEditorForm } from '../components/SimpleEditorForm';
 import { ChannelFormFields } from './ChannelFormFields';
+import { ChannelClassesSection } from './ChannelClassesSection';
 import { ChannelTestSection } from './ChannelTestSection';
 import { useChannelForm } from './useChannelForm';
 import type { UseChannelEditorResult } from './useChannelEditor';
@@ -48,7 +51,14 @@ export function ChannelEditorForm({ channel, editor }: ChannelEditorFormProps) {
             }
           : undefined
       }
-      afterFooter={channel && <ChannelTestSection channel={channel} />}
+      afterFooter={
+        channel && (
+          <>
+            <ChannelClassesSection channel={channel} />
+            <ChannelTestSection channel={channel} />
+          </>
+        )
+      }
     >
       <ChannelFormFields
         state={form.state}

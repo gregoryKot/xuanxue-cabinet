@@ -37,7 +37,11 @@ export function ClassChannelsField({
       onChange={onChange}
       hint={
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-          <RichText text={EXPLANATION} />
+          <RichText text={EXPLANATION} /> Все каналы и их занятия — на экране{' '}
+          <Link to="/channels" style={textLinkStyle}>
+            «Каналы»
+          </Link>
+          .
         </p>
       }
       emptyMessage={

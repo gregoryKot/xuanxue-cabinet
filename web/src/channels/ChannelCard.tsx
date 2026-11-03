@@ -13,8 +13,11 @@
 // ломали её как список, а тест уходит в живой канал — такое нажимают
 // осознанно, а не мимоходом.
 import type { CSSProperties, ReactNode } from 'react';
-import type { ChannelDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
+import { RichText } from '../components/RichText';
+import { Skeleton } from '../components/Skeleton';
+import { formatChannelClasses } from './channelClassesText';
 import { CHANNEL_TYPE_LABELS_RU } from './channelTypeLabels';
 
 const OFF_LABEL = 'Выключен';
@@ -45,9 +48,18 @@ interface ChannelCardProps {
   /** Последняя строка общей карточки списка — без нижней волосяной линии
    * (ChannelsScreen.tsx, docs/adr/0043). */
   isLast?: boolean;
+  /** Занятия школы: по ним строка говорит, какие из них шлют сюда посты.
+   * `null` — ещё грузятся (скелетон, не «ни одного»); не передано — строки
+   * нет (занятия не загрузились, лучше молчать, чем соврать). */
+  classes?: ClassDto[] | null;
 }
 
-export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardProps) {
+export function ChannelCard({
+  channel,
+  onSelect,
+  isLast = false,
+  classes,
+}: ChannelCardProps) {
   const content: ReactNode = (
     <>
       <div style={listCardTitleStyle}>
@@ -58,6 +70,7 @@ export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardPr
         {!channel.active && ` · ${OFF_LABEL}`}
         {channel.tags.length > 0 && ` · ${TAGS_PREFIX}: ${channel.tags.join(', ')}`}
       </div>
+      <ClassesLine channelId={channel.id} classes={classes} />
     </>
   );
 
@@ -67,5 +80,27 @@ export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardPr
         {content}
       </button>
     </li>
+  );
+}
+
+function ClassesLine({
+  channelId,
+  classes,
+}: {
+  channelId: string;
+  classes: ClassDto[] | null | undefined;
+}) {
+  if (classes === undefined) return null;
+  if (classes === null) return <Skeleton w="60%" h={13} style={{ marginTop: 6 }} />;
+  const line = formatChannelClasses(channelId, classes);
+  return (
+    <div
+      style={{
+        ...listCardMetaStyle,
+        color: line.isWarning ? 'var(--danger)' : 'var(--ink-soft)',
+      }}
+    >
+      <RichText text={line.text} />
+    </div>
   );
 }
