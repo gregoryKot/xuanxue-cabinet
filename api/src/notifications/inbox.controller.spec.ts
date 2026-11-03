@@ -17,6 +17,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const PAGE_DTO: InboxPageDto = { items: [], unreadCount: 0 };

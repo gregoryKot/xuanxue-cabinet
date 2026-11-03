@@ -21,6 +21,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 const VIDEO = {
   loadBytes: () => Promise.resolve(Buffer.from([1])),

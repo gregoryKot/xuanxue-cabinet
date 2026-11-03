@@ -33,13 +33,19 @@
 // `studentMode` / `canUseStudentMode` (ADR-0163): `roles` в ответе — действующие
 // (в режиме ученика пустые), а «режим доступен» по ним не вывести, поэтому
 // `canUseStudentMode` считается здесь: режим включён (а он бывает только у
-// штата — `UserLean.studentMode` требует настоящую роль штата, student-mode.ts)
+// штата — `UserLean.studentMode` требует настоящую роль штата, acting-mode.ts)
 // или настоящие роли штата на месте. Через ответ ничего не включить — это
 // подпись для экрана; сервер проверяет роли заново при каждом включении.
+// `teacherMode` / `canUseTeacherMode` (ADR-0190) — та же пара для админа
+// («Разработчик»): `roles` в режиме `['teacher']`, поэтому «режим доступен» — это
+// режим включён или `admin` среди действующих ролей. Считаем по действующим, а не по
+// настоящим: тогда ответ PUT (человек из БД) и GET /auth/me (замаскированный) совпадают.
+// Цена — из режима ученика переключатель учителя не виден (роли пустые): сначала выход
+// из режима ученика. Режимы взаимоисключающие, в ответе включён не больше одного.
 // `homeHiddenTiles` (ADR-0179): нет поля в базе — `[]`, неизвестные ключи прежних
 // версий отсеивает normalizeHomeHiddenTiles.
 import { isStaffRole, normalizeHomeHiddenTiles, type MeDto } from '@xuanxue/shared';
-import { actingUser } from '../users/student-mode';
+import { activeMode, actingUser } from '../users/acting-mode';
 import type { UserLean } from '../users/users.service';
 
 export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
@@ -47,6 +53,7 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
   // замаскированного AuthGuard — actingUser идемпотентна, ответ в обоих случаях
   // одинаков: `roles` — действующие, как в сессии (ADR-0163).
   const acting = actingUser(user);
+  const mode = activeMode(user);
   return {
     id: user.id,
     name: user.name,
@@ -60,8 +67,10 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     pendingEmail: user.pendingEmail,
     noTelegram: user.noTelegramAt != null,
     needsProfile: user.profileNamedAt == null,
-    studentMode: user.studentMode,
-    canUseStudentMode: user.studentMode || isStaffRole(user.roles),
+    studentMode: mode === 'student',
+    canUseStudentMode: mode === 'student' || isStaffRole(user.roles),
+    teacherMode: mode === 'teacher',
+    canUseTeacherMode: mode === 'teacher' || acting.roles.includes('admin'),
     homeHiddenTiles: normalizeHomeHiddenTiles(user.homeHiddenTiles),
   };
 }

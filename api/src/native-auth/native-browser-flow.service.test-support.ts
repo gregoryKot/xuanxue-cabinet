@@ -62,6 +62,7 @@ export function buildFlow(
     roles: [],
     status: options.status ?? 'active',
     studentMode: false,
+    teacherMode: false,
   };
   const authorizations = {
     create: jest.fn().mockResolvedValue(ATTEMPT),

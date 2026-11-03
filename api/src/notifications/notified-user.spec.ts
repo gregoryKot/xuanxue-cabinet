@@ -7,7 +7,14 @@ import type { NotificationPrefsService } from './notification-prefs.service';
 import { findNotifiedUser } from './notified-user';
 
 function person(roles: UserRole[], studentMode: boolean): UserLean {
-  return { id: 'u1', name: 'Мария', roles, status: 'active', studentMode };
+  return {
+    id: 'u1',
+    name: 'Мария',
+    roles,
+    status: 'active',
+    studentMode,
+    teacherMode: false,
+  };
 }
 
 // Фейк повторяет суть NotificationPrefsService.get: дефолт по переданным ролям.

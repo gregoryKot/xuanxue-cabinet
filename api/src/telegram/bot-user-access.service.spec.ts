@@ -13,7 +13,14 @@ function fakeUsersService(user: UserLean | null): UsersService {
 }
 
 function user(status: UserLean['status']): UserLean {
-  return { id: 'u1', name: 'Ольга', roles: [], status, studentMode: false };
+  return {
+    id: 'u1',
+    name: 'Ольга',
+    roles: [],
+    status,
+    studentMode: false,
+    teacherMode: false,
+  };
 }
 
 describe('BotUserAccessService.resolve', () => {

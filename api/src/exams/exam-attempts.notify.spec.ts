@@ -23,6 +23,7 @@ const STAFF_USER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 describe('ExamAttemptsService — уведомление attempt_submitted', () => {

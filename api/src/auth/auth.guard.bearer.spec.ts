@@ -33,6 +33,7 @@ function user(overrides: Partial<UserLean> = {}): UserLean {
     roles: [],
     status: 'active',
     studentMode: false,
+    teacherMode: false,
     ...overrides,
   };
 }
@@ -226,6 +227,7 @@ describe('AuthGuard — bearer на маршруте с @AllowNativeBearer()', (
     expect(requestOf(student.context).user).toMatchObject({
       roles: [],
       studentMode: true,
+      teacherMode: false,
     });
   });
 });

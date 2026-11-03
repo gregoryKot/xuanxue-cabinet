@@ -107,6 +107,7 @@ describe('UserRolesService', () => {
         roles: ['admin'],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       });
 
       await expect(

@@ -17,7 +17,9 @@ const BASE: MeDto = {
   noTelegram: false,
   needsProfile: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 

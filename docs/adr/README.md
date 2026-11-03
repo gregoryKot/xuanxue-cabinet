@@ -224,3 +224,4 @@
 | [0187](0187-telegram-login-oidc.md)                              | Вход через Telegram по OpenID Connect: code + PKCE вместо перехода с `#tgAuthResult`                      |
 | [0188](0188-non-h264-video-always-transcoded.md)                 | Видео не в H.264 (HEVC с iPhone) всегда перегоняется в H.264, отказ от сжатия скрыт                       |
 | [0189](0189-old-videos-transcoded-by-staff-browser.md)           | Старые видео вопросов перегоняет в H.264 браузер штата; исходный файл не удаляется (`originalKey`)        |
+| [0190](0190-teacher-mode-for-developer.md)                       | Режим учителя для разработчика: действующие роли `['teacher']`, роль `admin` в базе та же                 |

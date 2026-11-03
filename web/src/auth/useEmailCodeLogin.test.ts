@@ -40,7 +40,9 @@ const ME: MeDto = {
   googleLinked: false,
   hasEmail: true,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 

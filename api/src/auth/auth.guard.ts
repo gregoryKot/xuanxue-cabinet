@@ -33,7 +33,7 @@ import {
   type ResponseLike,
 } from '../common/http-headers';
 import { NativeGrantsService } from '../native-auth/native-grants.service';
-import { actingUser } from '../users/student-mode';
+import { actingUser } from '../users/acting-mode';
 import { UsersService, type UserLean } from '../users/users.service';
 import {
   ALLOW_NATIVE_BEARER_KEY,

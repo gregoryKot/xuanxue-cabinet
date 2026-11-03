@@ -37,7 +37,9 @@ describe('hiddenTilePaths', () => {
     const me = makeMe({
       roles: [],
       studentMode: true,
+      teacherMode: false,
       canUseStudentMode: true,
+      canUseTeacherMode: false,
       homeHiddenTiles: ['grading', 'payment'],
     });
 

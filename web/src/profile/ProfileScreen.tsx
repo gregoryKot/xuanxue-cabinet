@@ -31,7 +31,7 @@ import {
   isMyPaymentsVisible,
   isPaymentContactVisible,
 } from '../student/myPaymentsVisibility';
-import { StudentModeSection } from '../studentMode/StudentModeSection';
+import { ActingModeSection } from '../actingMode/ActingModeSection';
 import { isStandalone } from '../pwa/installEnvironment';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NotificationSettingsCard } from './NotificationSettingsCard';
@@ -115,12 +115,17 @@ export default function ProfileScreen() {
         </div>
       )}
 
-      {/* Режим ученика (ADR-0163) — только штату: проверить кабинет глазами
-          ученика, не заводя второй аккаунт. Над «Выйти», тем же отбитым
-          блоком: инструмент проверки, не личная настройка. */}
+      {/* Режимы (ADR-0163, ADR-0190) — проверить кабинет глазами ученика (штату)
+          или учителя (разработчику), не заводя второй аккаунт. Над «Выйти», тем
+          же отбитым блоком: инструмент проверки, не личная настройка. */}
+      {me?.canUseTeacherMode && (
+        <div style={dividerRowStyle}>
+          <ActingModeSection me={me} mode="teacher" />
+        </div>
+      )}
       {me?.canUseStudentMode && (
         <div style={dividerRowStyle}>
-          <StudentModeSection me={me} />
+          <ActingModeSection me={me} mode="student" />
         </div>
       )}
 

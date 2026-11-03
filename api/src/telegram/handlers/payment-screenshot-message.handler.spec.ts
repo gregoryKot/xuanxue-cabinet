@@ -74,6 +74,7 @@ function buildHandler(overrides: {
             roles: [],
             status: 'active',
             studentMode: false,
+            teacherMode: false,
           })
         : { kind: 'unknown' },
     );

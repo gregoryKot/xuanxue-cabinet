@@ -41,7 +41,9 @@ const TEACHER: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 const ACCOUNTANT: MeDto = {
@@ -56,7 +58,9 @@ const ACCOUNTANT: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 const ADMIN: MeDto = {
@@ -71,7 +75,9 @@ const ADMIN: MeDto = {
   needsProfile: false,
   googleLinked: false,
   studentMode: false,
+  teacherMode: false,
   canUseStudentMode: false,
+  canUseTeacherMode: false,
   homeHiddenTiles: [],
 };
 
@@ -445,7 +451,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
@@ -498,7 +506,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
@@ -543,7 +553,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, STUDENT_BOARD_DATA);
@@ -582,7 +594,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, { '/me/exams': [] });
@@ -608,7 +622,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, { '/me/lessons': [] });
@@ -644,7 +660,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student);
@@ -692,7 +710,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockRoute(student, {
@@ -736,7 +756,9 @@ describe('App', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     // Своя попытка своим адресом, не список (ADR-0126).

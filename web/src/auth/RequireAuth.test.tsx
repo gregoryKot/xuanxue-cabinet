@@ -55,7 +55,9 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     needsProfile,
     googleLinked: false,
     studentMode: false,
+    teacherMode: false,
     canUseStudentMode: false,
+    canUseTeacherMode: false,
     homeHiddenTiles: [],
   };
 }
@@ -91,7 +93,9 @@ describe('RequireAuth', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -117,7 +121,9 @@ describe('RequireAuth', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(student);
@@ -166,7 +172,9 @@ describe('RequireAuth', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -191,7 +199,9 @@ describe('RequireAuth', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValueOnce(me);

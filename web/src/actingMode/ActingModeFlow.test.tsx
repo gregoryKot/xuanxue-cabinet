@@ -1,9 +1,9 @@
-// Режим ученика целиком, в настоящей оболочке (ADR-0163): секция в «Профиле»
-// только у штата, включение перестраивает меню и открывает «Главную», плашка
-// стоит на каждом экране, выход возвращает штатное меню и «Главную» штата
-// (ADR-0174: корень у обеих ролей общий, различает их состав меню), оплат в
-// режиме нет. Сеть — по пути; ответ PUT применяется как есть, второго
-// `GET /auth/me` нет (ADR-0087).
+// Режимы ученика (ADR-0163) и учителя (ADR-0190) целиком, в настоящей оболочке:
+// секция в «Профиле» только у тех, кому режим доступен, включение перестраивает
+// меню и открывает «Главную», плашка стоит на каждом экране, выход возвращает
+// прежнее меню и «Главную» (ADR-0174: корень у ролей общий, различает их состав
+// меню), оплат в режиме ученика нет. Сеть — по пути; ответ PUT применяется как
+// есть, второго `GET /auth/me` нет (ADR-0087).
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -19,6 +19,8 @@ import {
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
 import {
+  ADMIN_IN_TEACHER_MODE_ME,
+  ADMIN_ME,
   STAFF_IN_STUDENT_MODE_ME,
   STAFF_ME,
   STUDENT_ME,
@@ -43,6 +45,7 @@ function renderCabinet(me: MeDto, afterPut: MeDto, initialPath = '/profile') {
     '/auth/me': me,
     '/auth/config': {},
     '/me/student-mode': afterPut,
+    '/me/teacher-mode': afterPut,
     '/me/payments': MY_PAYMENTS_PAGE,
     '/me/inbox': { items: [], unreadCount: 0 },
     // Пункт «Задания» в панели ученика — только при наличии экзамена (ADR-0178).
@@ -189,5 +192,95 @@ describe('Деньги не входят в режим (ADR-0163)', () => {
       String(path).startsWith('/me/payments'),
     );
     expect(paymentCalls).toHaveLength(0);
+  });
+});
+
+describe('Режим учителя: «Профиль» — кому виден переключатель (ADR-0190)', () => {
+  it('разработчику — обе секции, «Режим учителя» над «Режимом ученика»', async () => {
+    renderCabinet(ADMIN_ME, ADMIN_ME);
+
+    const teacher = await screen.findByRole('button', { name: 'Включить режим учителя' });
+    const student = screen.getByRole('button', { name: 'Включить режим ученика' });
+
+    expect(
+      teacher.compareDocumentPosition(student) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it.each([
+    ['учителю', STAFF_ME],
+    ['ученику', STUDENT_ME],
+    [
+      'разработчику в режиме ученика (по пустым ролям админа не прочесть)',
+      makeMe({ roles: [], studentMode: true, canUseStudentMode: true }),
+    ],
+  ])('%s — секции учителя нет', async (_label, me) => {
+    renderCabinet(me, me);
+
+    expect(await screen.findByText(`Вы вошли как ${me.name}`)).toBeInTheDocument();
+    expect(screen.queryByText('Режим учителя')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /режим учителя/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('карточка «Сбои» есть у разработчика и пропадает в режиме учителя', async () => {
+    renderCabinet(ADMIN_ME, ADMIN_ME);
+    expect(await screen.findByRole('link', { name: /Сбои/ })).toBeInTheDocument();
+  });
+
+  it('в режиме учителя «Профиль» без «Сбоев», секция предлагает вернуться к роли', async () => {
+    renderCabinet(ADMIN_IN_TEACHER_MODE_ME, ADMIN_ME);
+
+    expect(
+      await screen.findByRole('button', { name: 'Вернуться к своей роли' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Сбои/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Режим учителя в оболочке (ADR-0190)', () => {
+  it('включение: открывается «Главная», появляется плашка, профиль не перечитывается', async () => {
+    const user = userEvent.setup();
+    renderCabinet(ADMIN_ME, ADMIN_IN_TEACHER_MODE_ME);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Включить режим учителя' }),
+    );
+
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Вы в режиме учителя');
+    expect(
+      within(navigation()).getByRole('link', { name: 'Экзамены' }),
+    ).toBeInTheDocument();
+    const authMeCalls = mockedApiFetch.mock.calls.filter(([path]) => path === '/auth/me');
+    expect(authMeCalls).toHaveLength(1);
+  });
+
+  it('плашка стоит на любом экране режима, «Вернуться к роли» её убирает и ведёт на «Главную»', async () => {
+    const user = userEvent.setup();
+    renderCabinet(ADMIN_IN_TEACHER_MODE_ME, ADMIN_ME, '/exams');
+    expect(await screen.findByText('Экран экзаменов')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Вы в режиме учителя');
+
+    await user.click(screen.getByRole('button', { name: 'Вернуться к роли' }));
+
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('из режима учителя можно включить режим ученика: плашка меняется, меню ученическое', async () => {
+    const user = userEvent.setup();
+    renderCabinet(ADMIN_IN_TEACHER_MODE_ME, STAFF_IN_STUDENT_MODE_ME);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Включить режим ученика' }),
+    );
+
+    expect(await screen.findByText('Экран доски')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Вы в режиме ученика');
+    expect(
+      await within(navigation()).findByRole('link', { name: 'Задания' }),
+    ).toBeInTheDocument();
   });
 });

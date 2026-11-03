@@ -35,6 +35,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function jwt(claims: Record<string, unknown>): string {

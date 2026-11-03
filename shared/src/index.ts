@@ -72,8 +72,12 @@ export type {
   VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
-export type { MeDto, SetNoTelegramInput, SetStudentModeInput } from './me';
-export { STUDENT_MODE_PAYMENT_MESSAGE, STUDENT_MODE_STAFF_ONLY_MESSAGE } from './me';
+export type { MeDto, SetActingModeInput, SetNoTelegramInput } from './me';
+export {
+  STUDENT_MODE_PAYMENT_MESSAGE,
+  STUDENT_MODE_STAFF_ONLY_MESSAGE,
+  TEACHER_MODE_ADMIN_ONLY_MESSAGE,
+} from './me';
 export type {
   NativeAccountResponse,
   NativeCallbackErrorCode,

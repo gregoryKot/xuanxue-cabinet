@@ -56,7 +56,9 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     googleLinked: false,
     needsProfile: false,
     studentMode: false,
+    teacherMode: false,
     canUseStudentMode: false,
+    canUseTeacherMode: false,
     homeHiddenTiles: [],
     ...overrides,
   };
@@ -110,6 +112,25 @@ describe('useAnalytics', () => {
       roles: ['admin'],
       status: 'active',
       studentMode: false,
+      teacherMode: false,
+    });
+  });
+
+  it('разработчик в режиме учителя — признак teacherMode уходит рядом с ролью учителя (ADR-0190)', async () => {
+    authStatus = 'ok';
+    authMe = makeMe({ id: 'u42', roles: ['teacher'], teacherMode: true });
+    mockedApiFetch.mockResolvedValue({
+      posthogKey: 'phc_example',
+    } satisfies AnalyticsConfigDto);
+
+    renderHook(() => useAnalytics(), { wrapper: wrapperAt('/exams') });
+
+    await waitFor(() => expect(startAnalytics).toHaveBeenCalledTimes(1));
+    expect(startAnalytics).toHaveBeenCalledWith('phc_example', 'u42', {
+      roles: ['teacher'],
+      status: 'active',
+      studentMode: false,
+      teacherMode: true,
     });
   });
 

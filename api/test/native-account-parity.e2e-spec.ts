@@ -110,6 +110,11 @@ describe('N01: account нативного me совпадает с GET /auth/me 
       { roles: [], studentMode: true, canUseStudentMode: true },
     ],
     [
+      'разработчик в режиме учителя: роль admin скрыта за teacher',
+      { name: 'Дима', roles: ['admin'], raw: { teacherModeAt: PROFILE_NAMED } },
+      { roles: ['teacher'], teacherMode: true, canUseTeacherMode: true },
+    ],
+    [
       'Telegram и Google, без чата бота',
       { name: 'Лена', telegramId: 800_101, raw: { googleId: 'g-800101' } },
       { telegramLinked: true, googleLinked: true, botChatActive: false },

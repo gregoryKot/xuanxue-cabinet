@@ -1,7 +1,7 @@
-// Плашка «Вы в режиме ученика» над всей оболочкой кабинета, пока режим включён
-// (ADR-0163): человек с ролью штата видит кабинет без ролей и не должен
-// гадать, почему пропали его экраны. Не закрывается: выход из режима — кнопка
-// в ней же, на любом экране, а не только в «Профиле».
+// Плашка «Вы в режиме ученика» / «Вы в режиме учителя» над всей оболочкой кабинета,
+// пока режим включён (ADR-0163, ADR-0190): человек видит кабинет с урезанными
+// ролями и не должен гадать, почему пропали его экраны. Не закрывается: выход
+// из режима — кнопка в ней же, на любом экране, а не только в «Профиле».
 //
 // Стоит в потоке над боковой колонкой и содержимым, не `position: fixed`:
 // оболочка ровно в высоту экрана, плашка отнимает свою строку у содержимого,
@@ -12,9 +12,9 @@
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { TextLinkButton } from '../components/TextLinkButton';
-import { useStudentMode } from './useStudentMode';
+import { ACTING_MODES, activeActingMode, type ActingMode } from './actingModes';
+import { useActingMode } from './useActingMode';
 
-const MESSAGE = 'Вы в режиме ученика';
 const BACK_LABEL = 'Вернуться к роли';
 
 // Та же рамка макета, что у `shellRowStyle` (appShellStyles.ts): текст плашки
@@ -43,16 +43,21 @@ const errorStyle: CSSProperties = {
   flexBasis: '100%',
 };
 
-export function StudentModeBanner() {
+export function ActingModeBanner() {
   const { me } = useAuth();
-  const { pending, error, set } = useStudentMode();
+  const mode = activeActingMode(me);
+  return mode && <ModeBar mode={mode} />;
+}
 
-  if (!me?.studentMode) return null;
+// Отдельный компонент: хук режима нельзя звать условно, а режим известен
+// только после того, как пришёл профиль.
+function ModeBar({ mode }: { mode: ActingMode }) {
+  const { pending, error, set } = useActingMode(mode);
 
   return (
     <div role="status" style={barStyle}>
       <div style={rowStyle}>
-        <p style={messageStyle}>{MESSAGE}</p>
+        <p style={messageStyle}>{ACTING_MODES[mode].bannerMessage}</p>
         <TextLinkButton disabled={pending} onClick={() => void set(false)}>
           {BACK_LABEL}
         </TextLinkButton>

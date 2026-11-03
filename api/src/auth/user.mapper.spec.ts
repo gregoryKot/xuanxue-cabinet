@@ -12,6 +12,7 @@ function fullUser(): UserLean {
     status: 'active',
     lastLoginAt: new Date('2026-09-05T00:00:00Z'),
     studentMode: false,
+    teacherMode: false,
   };
 }
 
@@ -31,7 +32,9 @@ describe('toMeDto', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: true,
+      canUseTeacherMode: true,
       homeHiddenTiles: [],
     });
   });
@@ -46,7 +49,9 @@ describe('toMeDto', () => {
       expect(dto).toMatchObject({
         roles: ['admin'],
         studentMode: false,
+        teacherMode: false,
         canUseStudentMode: true,
+        canUseTeacherMode: true,
       });
     });
 
@@ -56,7 +61,9 @@ describe('toMeDto', () => {
       expect(dto).toMatchObject({
         roles: [],
         studentMode: true,
+        teacherMode: false,
         canUseStudentMode: true,
+        canUseTeacherMode: false,
       });
     });
 
@@ -70,7 +77,9 @@ describe('toMeDto', () => {
       expect(toMeDto({ ...fullUser(), roles: [] }, true)).toMatchObject({
         roles: [],
         studentMode: false,
+        teacherMode: false,
         canUseStudentMode: false,
+        canUseTeacherMode: false,
         homeHiddenTiles: [],
       });
     });
@@ -79,9 +88,74 @@ describe('toMeDto', () => {
       expect(toMeDto({ ...fullUser(), roles: ['accountant'] }, true)).toMatchObject({
         roles: ['accountant'],
         studentMode: false,
+        teacherMode: false,
         canUseStudentMode: false,
+        canUseTeacherMode: false,
         homeHiddenTiles: [],
       });
+    });
+  });
+
+  // ADR-0190: `roles` в режиме учителя — `['teacher']`, и по ним «режим доступен»
+  // не вывести — canUseTeacherMode считается по настоящей роли admin.
+  describe('режим учителя', () => {
+    it('админ без режима: роли целые, режим доступен, но не включён', () => {
+      expect(toMeDto(fullUser(), true)).toMatchObject({
+        roles: ['admin'],
+        teacherMode: false,
+        canUseTeacherMode: true,
+      });
+    });
+
+    it('админ в режиме: роли [teacher], режим включён и доступен (чтобы выключить)', () => {
+      const dto = toMeDto({ ...fullUser(), teacherMode: true }, true);
+
+      expect(dto).toMatchObject({
+        roles: ['teacher'],
+        teacherMode: true,
+        canUseTeacherMode: true,
+        studentMode: false,
+        // учителю режим ученика по-прежнему доступен: у `teacher` роль штата
+        canUseStudentMode: true,
+      });
+    });
+
+    it('замаскированный AuthGuard человек и человек из БД дают один ответ', () => {
+      const real: UserLean = { ...fullUser(), teacherMode: true };
+
+      expect(toMeDto({ ...real, roles: ['teacher'] }, true)).toEqual(toMeDto(real, true));
+    });
+
+    it.each([
+      ['учитель', ['teacher']],
+      ['помощник', ['assistant']],
+      ['бухгалтер', ['accountant']],
+      ['ученик', []],
+    ] as const)('%s: режим учителя недоступен и не включён', (_, roles) => {
+      expect(toMeDto({ ...fullUser(), roles: [...roles] }, true)).toMatchObject({
+        teacherMode: false,
+        canUseTeacherMode: false,
+      });
+    });
+
+    it('в режиме ученика переключатель учителя не показывается — и у человека из БД, и у замаскированного', () => {
+      const real: UserLean = { ...fullUser(), studentMode: true };
+
+      const fromDb = toMeDto(real, true);
+
+      expect(fromDb).toMatchObject({
+        roles: [],
+        studentMode: true,
+        teacherMode: false,
+        canUseTeacherMode: false,
+      });
+      expect(toMeDto({ ...real, roles: [] }, true)).toEqual(fromDb);
+    });
+
+    it('оба флага (правка в Atlas) — в ответе включён один, ученик: пустые роли', () => {
+      const dto = toMeDto({ ...fullUser(), studentMode: true, teacherMode: true }, true);
+
+      expect(dto).toMatchObject({ roles: [], studentMode: true, teacherMode: false });
     });
   });
 
@@ -143,6 +217,7 @@ describe('toMeDto', () => {
     expect(Object.keys(dto).sort()).toEqual([
       'botChatActive',
       'canUseStudentMode',
+      'canUseTeacherMode',
       'email',
       'googleLinked',
       'hasEmail',
@@ -155,6 +230,7 @@ describe('toMeDto', () => {
       'roles',
       'status',
       'studentMode',
+      'teacherMode',
       'telegramLinked',
     ]);
   });

@@ -42,6 +42,7 @@ const BASE_USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 /** Ловит отказ одним вызовом вместо `.rejects.toBeInstanceOf` +

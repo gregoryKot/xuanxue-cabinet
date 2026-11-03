@@ -25,6 +25,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const SESSION = { id: 'g1', expires_in: 100, renew_after: 50 };

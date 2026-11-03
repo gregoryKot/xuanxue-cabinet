@@ -15,6 +15,7 @@ const USER: UserLean = {
   roles: [],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const PREFS_DTO: NotificationPrefsDto = { enabled: ['exam_result', 'post_draft'] };

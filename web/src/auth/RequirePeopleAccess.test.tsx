@@ -54,7 +54,9 @@ describe('RequirePeopleAccess', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -77,7 +79,9 @@ describe('RequirePeopleAccess', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -120,7 +124,9 @@ describe('RequirePeopleAccess', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -143,7 +149,9 @@ describe('RequirePeopleAccess', () => {
       needsProfile: false,
       googleLinked: false,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: false,
+      canUseTeacherMode: false,
       homeHiddenTiles: [],
     };
     mockedApiFetch.mockResolvedValue(me);

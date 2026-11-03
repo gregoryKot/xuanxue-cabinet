@@ -12,7 +12,12 @@ const posthog = vi.hoisted(() => ({
 vi.mock('posthog-js', () => ({ default: posthog }));
 vi.mock('posthog-js/dist/recorder', () => ({}));
 
-const PERSON = { roles: ['student'], status: 'active', studentMode: false };
+const PERSON = {
+  roles: ['student'],
+  status: 'active',
+  studentMode: false,
+  teacherMode: false,
+};
 
 // Модуль держит флаг «уже запущен» — каждый тест берёт свежую копию.
 async function loadClient() {

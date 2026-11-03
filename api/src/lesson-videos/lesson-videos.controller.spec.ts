@@ -18,6 +18,7 @@ const USER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 const UPLOAD_DTO: VideoUploadDto = {
   id: 'v1',

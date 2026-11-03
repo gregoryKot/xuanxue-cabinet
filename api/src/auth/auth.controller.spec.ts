@@ -22,6 +22,7 @@ const USER: UserLean = {
   roles: ['admin'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 const CONFIG: AuthConfigDto = {
@@ -87,7 +88,9 @@ describe('AuthController.me', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: true,
+      canUseTeacherMode: true,
       homeHiddenTiles: [],
     });
   });
@@ -182,7 +185,9 @@ describe('AuthController.verifyEmailLogin', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: true,
+      canUseTeacherMode: true,
       homeHiddenTiles: [],
     });
   });
@@ -235,7 +240,9 @@ describe('AuthController.loginWithTelegram', () => {
       noTelegram: false,
       needsProfile: true,
       studentMode: false,
+      teacherMode: false,
       canUseStudentMode: true,
+      canUseTeacherMode: true,
       homeHiddenTiles: [],
     });
   });

@@ -16,7 +16,14 @@ function identity(sub: string): GoogleIdentity {
 }
 
 function asUser(id: string, name: string): UserLean {
-  return { id, name, roles: [], status: 'active', studentMode: false };
+  return {
+    id,
+    name,
+    roles: [],
+    status: 'active',
+    studentMode: false,
+    teacherMode: false,
+  };
 }
 
 describe('GoogleLinkService', () => {
@@ -51,6 +58,7 @@ describe('GoogleLinkService', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
       identity('sub-1'),
     );
@@ -76,6 +84,7 @@ describe('GoogleLinkService', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       },
       identity('sub-2'),
     );
@@ -100,6 +109,7 @@ describe('GoogleLinkService', () => {
           roles: [],
           status: 'active',
           studentMode: false,
+          teacherMode: false,
         },
         identity('sub-new'),
       ),
@@ -126,6 +136,7 @@ describe('GoogleLinkService', () => {
           roles: [],
           status: 'active',
           studentMode: false,
+          teacherMode: false,
         },
         identity('sub-taken'),
       ),

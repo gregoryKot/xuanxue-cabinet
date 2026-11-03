@@ -20,6 +20,7 @@ const EXISTING: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 function fakeConfig(values: Record<string, unknown> = {}): ConfigService {

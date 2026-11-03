@@ -29,6 +29,7 @@ const TEACHER: UserLean = {
   roles: ['teacher'],
   status: 'active',
   studentMode: false,
+  teacherMode: false,
 };
 
 async function buildController(

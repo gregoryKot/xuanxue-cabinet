@@ -87,6 +87,7 @@ function buildHandler(overrides: {
             roles: [],
             status: 'active',
             studentMode: false,
+            teacherMode: false,
           })
         : { kind: 'unknown' },
     );
@@ -136,7 +137,14 @@ describe('ExamTextAnswerHandler', () => {
 
     expect(port.saveAnswer).toHaveBeenCalledWith(
       ATTEMPT_ID,
-      { id: 'u1', name: 'Ученик', roles: [], status: 'active', studentMode: false },
+      {
+        id: 'u1',
+        name: 'Ученик',
+        roles: [],
+        status: 'active',
+        studentMode: false,
+        teacherMode: false,
+      },
       { itemId: 'i1', text: 'мой ответ' },
       NOW,
     );
@@ -189,6 +197,7 @@ describe('ExamTextAnswerHandler', () => {
         roles: [],
         status: 'active',
         studentMode: false,
+        teacherMode: false,
       }),
     );
     const registry = new ExamBotPortRegistry();
@@ -259,7 +268,14 @@ describe('ExamTextAnswerHandler', () => {
 
       expect(port.saveAnswer).toHaveBeenCalledWith(
         ATTEMPT_ID,
-        { id: 'u1', name: 'Ученик', roles: [], status: 'active', studentMode: false },
+        {
+          id: 'u1',
+          name: 'Ученик',
+          roles: [],
+          status: 'active',
+          studentMode: false,
+          teacherMode: false,
+        },
         { itemId: 'i1', text: 'потому что так', optionIds: ['o1'] },
         NOW,
       );
