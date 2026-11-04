@@ -6,7 +6,7 @@ import { LIST_LIMIT_MAX } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
 import { apiRoutePath } from './apiRoute';
 import {
-  channelsListPath,
+  CHANNELS_LIST_PATH,
   CLASSES_LIST_PATH,
   examImageSrc,
   EXAM_EDITOR_ITEMS_PATH,
@@ -64,13 +64,9 @@ describe('examItemsListPath', () => {
   });
 });
 
-describe('channelsListPath', () => {
-  it('без activeOnly — все каналы', () => {
-    expect(channelsListPath(false)).toBe(`/channels?limit=${LIST_LIMIT_MAX}`);
-  });
-
-  it('activeOnly — только активные', () => {
-    expect(channelsListPath(true)).toBe(`/channels?active=true&limit=${LIST_LIMIT_MAX}`);
+describe('CHANNELS_LIST_PATH', () => {
+  it('все каналы школы, без фильтра по включённости', () => {
+    expect(CHANNELS_LIST_PATH).toBe(`/channels?limit=${LIST_LIMIT_MAX}`);
   });
 });
 

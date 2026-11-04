@@ -12,7 +12,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'vk',
     title: 'ВК школы',
-    active: true,
     target: '777',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -47,13 +46,9 @@ describe('ChannelCard', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('выключенный канал подписан в строке', () => {
-    renderCard({ active: false });
-    expect(screen.getByText('777 · Выключен')).toBeInTheDocument();
-  });
-
-  it('включённый канал подписи «Выключен» не несёт', () => {
-    renderCard({ active: true });
+  it('у канала нет пометки «Выключен»: выключателя нет, строка — только адрес (ADR-0194)', () => {
+    renderCard({});
+    expect(screen.getByText('777')).toBeInTheDocument();
     expect(screen.queryByText(/Выключен/)).not.toBeInTheDocument();
   });
 

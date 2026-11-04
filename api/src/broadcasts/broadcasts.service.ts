@@ -134,7 +134,7 @@ export class BroadcastsService {
       if (!doc) throw new InvalidInputError(CHANNEL_DELETED_MESSAGE);
       if (!doc.active) {
         throw new InvalidInputError(
-          `Канал «${doc.title}» выключен. Включите его или уберите из списка.`,
+          `Бота нет в канале «${doc.title}». Добавьте его туда или уберите канал из списка.`,
         );
       }
     }

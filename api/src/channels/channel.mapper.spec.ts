@@ -42,7 +42,6 @@ describe('toChannelDto', () => {
       id: doc._id.toString(),
       type: 'telegram',
       title: 'Основной канал',
-      active: true,
       target: '@school',
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-01T00:00:00.000Z',

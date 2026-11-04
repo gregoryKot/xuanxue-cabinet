@@ -210,7 +210,7 @@ describe('ChannelConfigService', () => {
     });
 
     expect(revived.id).toBe(created.id);
-    expect(revived.active).toBe(true);
+    expect((await model.findById(revived.id).lean())?.active).toBe(true);
     expect(revived.title).toBe('Новое название');
   });
 
@@ -255,7 +255,7 @@ describe('ChannelConfigService', () => {
         title: 'Личные сообщения: Ольга',
       });
 
-      expect(created.active).toBe(true);
+      expect((await model.findById(created.id).lean())?.active).toBe(true);
       const doc = await model.findById(created.id).lean<{ broadcastEligible: boolean }>();
       expect(doc?.broadcastEligible).toBe(false);
       const activeAfter = await classModel.findById(active._id).lean<{
@@ -277,7 +277,7 @@ describe('ChannelConfigService', () => {
       });
 
       expect(second.id).toBe(first.id);
-      expect(second.active).toBe(true);
+      expect((await model.findById(second.id).lean())?.active).toBe(true);
       expect(await model.countDocuments({ type: 'telegram', target: '555' })).toBe(1);
     });
   });

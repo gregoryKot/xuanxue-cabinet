@@ -55,11 +55,11 @@ export interface ClassFormState {
 }
 
 /** Каналы, которые сервер подставит новому занятию по умолчанию
- * (ClassesService.create — активные Telegram-каналы, docs/adr/0015): форма
+ * (ClassesService.create — Telegram-каналы, docs/adr/0015): форма
  * отмечает их заранее, чтобы список чекбоксов не расходился с тем, что
  * реально уйдёт в POST (учитель видит и может снять отметку до сохранения). */
 function defaultChannelIds(channels: ChannelDto[]): string[] {
-  return channels.filter((c) => c.type === 'telegram' && c.active).map((c) => c.id);
+  return channels.filter((c) => c.type === 'telegram').map((c) => c.id);
 }
 
 export function initialClassFormState(

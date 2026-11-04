@@ -18,6 +18,9 @@ export class ChannelRecord {
   @Prop({ type: String, required: true })
   config!: string;
 
+  // Внутреннее: «в чат можно писать». У личного чата ученика — false, пока он
+  // заблокировал бота; у канала школы — true всегда, выключателя у учителя
+  // нет, куда идёт занятие, решают только classes.channelIds (ADR-0194).
   @Prop({ type: Boolean, default: true })
   active!: boolean;
 

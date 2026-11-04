@@ -29,7 +29,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'vk',
     title: 'ВК школы',
-    active: true,
     target: '777',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -171,13 +170,12 @@ describe('ChannelEditorScreen — создание', () => {
     expect(callsWithMethod('POST')).toHaveLength(0);
   });
 
-  it('новый канал — ни выключателя, ни удаления, ни проверки', async () => {
+  it('новый канал — ни удаления, ни проверки', async () => {
     mockApi({ '/channels': makeChannel() });
 
     renderAt('/channels/new');
     await waitForMounted();
 
-    expect(screen.queryByLabelText('Включён')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Удалить канал' }),
     ).not.toBeInTheDocument();
@@ -207,7 +205,7 @@ describe('ChannelEditorScreen — правка', () => {
     expect(screen.queryByLabelText('Тип канала')).not.toBeInTheDocument();
   });
 
-  it('пустой токен ВК — config не отправляется, `active` уходит как есть', async () => {
+  it('пустой токен ВК — config не отправляется', async () => {
     const user = userEvent.setup();
     mockChannel(makeChannel());
 
@@ -217,7 +215,7 @@ describe('ChannelEditorScreen — правка', () => {
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
-    expect(body.body).toEqual({ title: 'ВК школы', active: true });
+    expect(body.body).toEqual({ title: 'ВК школы' });
   });
 
   it('заполненный токен — config уходит целиком', async () => {
@@ -232,31 +230,18 @@ describe('ChannelEditorScreen — правка', () => {
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
     expect(body.body).toEqual({
       title: 'ВК школы',
-      active: true,
       config: { token: 'newsecret', peerId: 777 },
     });
   });
 
-  it('«Включён» снят — PATCH с active: false', async () => {
-    const user = userEvent.setup();
-    mockChannel(makeChannel({ active: true }));
-
-    renderAt('/channels/ch1');
-    await user.click(await screen.findByLabelText('Включён'));
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
-    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { active: boolean } };
-    expect(body.body.active).toBe(false);
-  });
-
-  it('выключенный канал — переключатель снят, объяснение рядом', async () => {
-    mockChannel(makeChannel({ active: false }));
+  it('у канала нет выключателя «Включён» (ADR-0194)', async () => {
+    mockChannel(makeChannel());
 
     renderAt('/channels/ch1');
 
-    expect(await screen.findByLabelText('Включён')).not.toBeChecked();
-    expect(screen.getByText(/рассылки в него не уходят/)).toBeInTheDocument();
+    await screen.findByLabelText('Название');
+    expect(screen.queryByLabelText('Включён')).not.toBeInTheDocument();
+    expect(screen.queryByText(/рассылки в него не уходят/)).not.toBeInTheDocument();
   });
 
   it('ошибка сервера с details — список под формой, страница остаётся', async () => {

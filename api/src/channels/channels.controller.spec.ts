@@ -9,7 +9,6 @@ const CHANNEL_DTO: ChannelDto = {
   id: 'c1',
   type: 'telegram',
   title: 'Основной канал',
-  active: true,
   target: '@school',
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
@@ -30,10 +29,8 @@ describe('ChannelsController', () => {
     const list = jest.fn().mockResolvedValue([CHANNEL_DTO]);
     const controller = await buildController({ list });
 
-    await expect(controller.list({ active: true, limit: 10 })).resolves.toEqual([
-      CHANNEL_DTO,
-    ]);
-    expect(list).toHaveBeenCalledWith({ active: true, limit: 10 });
+    await expect(controller.list({ limit: 10 })).resolves.toEqual([CHANNEL_DTO]);
+    expect(list).toHaveBeenCalledWith({ limit: 10 });
   });
 
   it('getById() передаёт id в сервис', async () => {

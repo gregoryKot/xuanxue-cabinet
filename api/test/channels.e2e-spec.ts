@@ -138,36 +138,34 @@ describe('Channels (e2e)', () => {
       expect(got.body as Record<string, unknown>).not.toHaveProperty('config');
     });
 
-    it('GET /channels?active=false — только выключенные каналы', async () => {
+    // ADR-0194: старая вкладка с `active` получает 400, канал не меняется.
+    it('PATCH с active и GET ?active= — 400 (ADR-0194)', async () => {
       const cookie = await sessionFor(['teacher']);
-      const created = await postChannel(cookie, MANUAL_BODY);
-      const dto = created.body as ChannelDto;
-      await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
-        .set('Cookie', cookie)
-        .send({ active: false });
+      const dto = (await postChannel(cookie, MANUAL_BODY)).body as ChannelDto;
 
-      const res = await request(server())
+      const patched = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
+        .set('Cookie', cookie)
+        .send({ title: 'Boosty', active: false });
+      const listed = await request(server())
         .get('/api/channels')
         .query({ active: false })
         .set('Cookie', cookie);
 
-      expect(res.status).toBe(200);
-      expect((res.body as ChannelDto[]).some((c) => c.id === dto.id)).toBe(true);
-      expect((res.body as ChannelDto[]).every((c) => !c.active)).toBe(true);
+      expect([patched.status, listed.status]).toEqual([400, 400]);
     });
 
-    it('PATCH title/active — применяется', async () => {
+    it('PATCH title — применяется', async () => {
       const cookie = await sessionFor(['teacher']);
       const created = await postChannel(cookie, MANUAL_BODY);
       const dto = created.body as ChannelDto;
 
       const patched = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
         .set('Cookie', cookie)
-        .send({ title: 'Boosty', active: false });
+        .send({ title: 'Boosty' });
 
       expect(patched.status).toBe(200);
       expect((patched.body as ChannelDto).title).toBe('Boosty');
-      expect((patched.body as ChannelDto).active).toBe(false);
+      expect(patched.body).not.toHaveProperty('active');
     });
 
     it('PATCH config целиком — target и шифротекст меняются', async () => {

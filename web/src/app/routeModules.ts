@@ -32,7 +32,7 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
-  channelsListPath,
+  CHANNELS_LIST_PATH,
   examItemsListPath,
   examsListPath,
   lessonsListPath,
@@ -155,7 +155,7 @@ export const ROUTE_MODULES = {
     load: () => import('../schedule/ScheduleScreen'),
     warm: true,
     // ScheduleScreen.tsx грузит и классы, и активные каналы сразу на монтировании.
-    prefetch: () => [CLASSES_LIST_PATH, channelsListPath(true)],
+    prefetch: () => [CLASSES_LIST_PATH, CHANNELS_LIST_PATH],
   },
   classNew: {
     path: '/schedule/new',
@@ -165,7 +165,7 @@ export const ROUTE_MODULES = {
     // но форма всё равно ждёт активные каналы (ClassEditorScreen.tsx), а
     // список учителей форма запрашивает уже после них (ClassEditorForm.tsx
     // монтируется за LoadedPage) — третий шаг цепочки, греем и его.
-    prefetch: () => [channelsListPath(true), TEACHERS_PATH],
+    prefetch: () => [CHANNELS_LIST_PATH, TEACHERS_PATH],
   },
   classEditor: {
     path: '/schedule/:classId',
@@ -173,7 +173,7 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [
       apiRoutePath('GET /classes/:id', recordOf(pathname)),
-      channelsListPath(true),
+      CHANNELS_LIST_PATH,
       TEACHERS_PATH,
     ],
   },
@@ -207,7 +207,7 @@ export const ROUTE_MODULES = {
     path: '/channels',
     load: () => import('../channels/ChannelsScreen'),
     warm: true,
-    prefetch: () => [channelsListPath(false)],
+    prefetch: () => [CHANNELS_LIST_PATH],
   },
   // Новому каналу читать нечего, и других данных на монтировании форма не
   // ждёт (ChannelEditorForm.tsx) — prefetch не нужен.

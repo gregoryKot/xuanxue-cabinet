@@ -20,7 +20,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'telegram',
     title: 'Группа учеников',
-    active: true,
     target: '@group',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',

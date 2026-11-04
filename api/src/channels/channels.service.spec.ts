@@ -78,20 +78,6 @@ describe('ChannelsService', () => {
     expect(list.map((c) => c.title)).toEqual(['Boosty', 'Facebook']);
   });
 
-  it('list: active: false отдаёт только выключенные каналы', async () => {
-    const active = await service.create({
-      type: 'manual',
-      title: 'Включённый',
-      config: {},
-    });
-    await service.update(active.id, { active: false });
-    await service.create({ type: 'manual', title: 'И так активный', config: {} });
-
-    const list = await service.list({ active: false });
-
-    expect(list.map((c) => c.title)).toEqual(['Включённый']);
-  });
-
   it('list: лимит ограничивает количество результатов', async () => {
     await service.create({ type: 'manual', title: 'А', config: {} });
     await service.create({ type: 'manual', title: 'Б', config: {} });
@@ -190,11 +176,9 @@ describe('ChannelsService', () => {
 
     const updated = await service.update(created.id, {
       title: 'Новое название',
-      active: false,
     });
 
     expect(updated.title).toBe('Новое название');
-    expect(updated.active).toBe(false);
     expect(updated.target).toBe('@school');
   });
 
