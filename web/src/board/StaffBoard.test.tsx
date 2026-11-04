@@ -123,7 +123,7 @@ describe('StaffBoard — шапка и плитки', () => {
     expect(screen.queryByText('Доска')).not.toBeInTheDocument();
   });
 
-  it('плитки по порядку: объявление, «Проверка», события, входы в разделы; ученических нет', async () => {
+  it('плитки по порядку: «Расписание и рассылки», объявление, «Проверка», события, входы в разделы; ученических нет', async () => {
     renderStaffBoard({
       events: [makeSchoolEvent({ id: 'ev1', startsAt: '2026-11-14T08:00:00.000Z' })],
     });
@@ -132,11 +132,11 @@ describe('StaffBoard — шапка и плитки', () => {
 
     const order = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
     expect(order).toEqual([
+      '/schedule',
       '/grading',
       '/events/ev1',
       '/events/new',
       '/planning',
-      '/schedule',
       '/materials',
       '/school',
     ]);
@@ -191,7 +191,7 @@ describe('StaffBoard — карточка «Проверка»', () => {
 });
 
 describe('StaffBoard — входы в разделы', () => {
-  it('четыре карточки-входа: занятия, рассылки, материалы, школа (ADR-0176)', async () => {
+  it('четыре карточки-входа: расписание и рассылки, занятия, материалы, школа (ADR-0176, ADR-0191)', async () => {
     renderStaffBoard();
     await screen.findByRole('link', { name: /Школа/ });
 
@@ -199,7 +199,21 @@ describe('StaffBoard — входы в разделы', () => {
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'))
       .filter((href) => href !== '/grading' && href !== '/events/new');
-    expect(hrefs).toEqual(['/planning', '/schedule', '/materials', '/school']);
+    expect(hrefs).toEqual(['/schedule', '/planning', '/materials', '/school']);
+  });
+
+  // Владелец 2026-11-04: «Расписание и рассылки» — первым на главной штата,
+  // над объявлением. Порядок в DOM = порядок на экране.
+  it('«Расписание и рассылки» — первая плитка, стоит над объявлением', async () => {
+    renderStaffBoard();
+    await screen.findByText('Пока нечего проверять.');
+
+    const schedule = screen.getByRole('link', { name: /Расписание и рассылки/ });
+    const addNotice = screen.getByRole('button', { name: /Добавить объявление/ });
+    expect(screen.getAllByRole('link')[0]).toBe(schedule);
+    expect(
+      schedule.compareDocumentPosition(addNotice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   // ADR-0191: постоянное расписание и рассылки — одна плитка «Расписание и
