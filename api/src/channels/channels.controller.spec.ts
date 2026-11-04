@@ -11,7 +11,6 @@ const CHANNEL_DTO: ChannelDto = {
   title: 'Основной канал',
   active: true,
   target: '@school',
-  tags: [],
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };

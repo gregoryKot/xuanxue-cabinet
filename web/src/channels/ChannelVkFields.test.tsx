@@ -1,5 +1,5 @@
 // Поля ВК-канала — вынесены из ChannelFormFields.tsx (CLAUDE.md «Файлы»).
-// ChannelFormFields.test.tsx и полный ChannelEditorScreen.test.tsx проверяют
+// Полный ChannelEditorScreen.test.tsx проверяет
 // эти поля только с error === null или с ошибкой другого поля («title») —
 // сообщение именно у 'token'/'peerIdText' нигде не проверено, хотя обе ветки
 // errorFor существуют для этого не просто так (клиентская валидация

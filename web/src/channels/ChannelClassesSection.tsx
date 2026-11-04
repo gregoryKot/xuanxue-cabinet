@@ -15,7 +15,7 @@ import { formatClassOptionLabel } from './channelClassesText';
 import { useChannelClasses } from './useChannelClasses';
 
 const EXPLANATION =
-  'Ссылка на занятие и запись **каждого отмеченного занятия** уйдут в этот канал. Новая Telegram-группа с ботом подключается ко всем занятиям сама. Теги канала выше сужают выбор ещё сильнее.';
+  'Ссылка на занятие и запись **каждого отмеченного занятия** уйдут в этот канал. Новая Telegram-группа с ботом подключается ко всем занятиям сама.';
 const EMPTY_MESSAGE = 'Занятий в расписании пока нет — сначала добавьте их.';
 
 const sectionStyle: CSSProperties = {

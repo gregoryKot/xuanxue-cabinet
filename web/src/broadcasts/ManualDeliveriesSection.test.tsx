@@ -23,7 +23,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'Facebook',
     active: true,
     target: '',
-    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,

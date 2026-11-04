@@ -6,9 +6,7 @@ import { ListTagsDto } from './dto/list-tags.dto';
 import { TagsController } from './tags.controller';
 import { TagsService } from './tags.service';
 
-const TAGS: TagSummaryDto[] = [
-  { tag: 'дракон', lessonCount: 3, materialCount: 1, channelCount: 0 },
-];
+const TAGS: TagSummaryDto[] = [{ tag: 'дракон', lessonCount: 3, materialCount: 1 }];
 
 async function buildController(
   service: Partial<TagsService> = {},

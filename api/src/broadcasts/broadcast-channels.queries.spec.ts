@@ -1,12 +1,12 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты» — не мок модели): `$in` + `active`
-// в одном запросе, отбор по тегу — уже поверх настоящих документов, не мока.
+// в одном запросе. Теги канала в отборе не участвуют (ADR-0192).
 import { Types } from 'mongoose';
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import { findChannelsForLesson } from './broadcast-channels.queries';
+import { findActiveChannelIds } from './broadcast-channels.queries';
 
-describe('findChannelsForLesson', () => {
+describe('findActiveChannelIds', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let channelModel: Model<ChannelRecord>;
@@ -36,79 +36,44 @@ describe('findChannelsForLesson', () => {
     });
   }
 
-  it('в документе канала совсем нет поля tags (запись до ADR-0108) — как явный [], принимает всё', async () => {
-    const channel = await createChannel();
-    // default: [] подставляет Mongoose только при создании — симулируем
-    // документ, заведённый до появления поля: его в базе нет вовсе.
-    await channelModel.collection.updateOne(
-      { _id: channel._id },
-      { $unset: { tags: '' } },
-    );
-
-    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
-
-    expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
-  });
-
-  it('канал без тегов — активный и подходит под любой тег занятия', async () => {
+  it('активный канал из списка занятия — находится', async () => {
     const channel = await createChannel();
 
-    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
+    const result = await findActiveChannelIds(channelModel, [channel._id]);
 
-    expect(result.activeChannelIds.map(String)).toEqual([channel._id.toString()]);
-    expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
+    expect(result.map(String)).toEqual([channel._id.toString()]);
   });
 
-  it('канал с общим тегом занятия — активный и подходит', async () => {
-    const channel = await createChannel({ tags: ['новички'] });
+  it('выключенный канал — не находится', async () => {
+    const channel = await createChannel({ active: false });
 
-    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
-
-    expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
+    await expect(findActiveChannelIds(channelModel, [channel._id])).resolves.toEqual([]);
   });
 
-  it('канал с чужим тегом — активный, но не подходит', async () => {
-    const channel = await createChannel({ tags: ['средние'] });
+  it('канал вне списка занятия — не находится, даже активный', async () => {
+    const inList = await createChannel();
+    await createChannel();
 
-    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
+    const result = await findActiveChannelIds(channelModel, [inList._id]);
 
-    expect(result.activeChannelIds.map(String)).toEqual([channel._id.toString()]);
-    expect(result.matchingChannelIds).toEqual([]);
-  });
-
-  it('выключенный канал — ни активным, ни подходящим, даже с общим тегом', async () => {
-    const channel = await createChannel({ active: false, tags: ['новички'] });
-
-    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
-
-    expect(result.activeChannelIds).toEqual([]);
-    expect(result.matchingChannelIds).toEqual([]);
+    expect(result.map(String)).toEqual([inList._id.toString()]);
   });
 
   it('несуществующий id в списке — просто не находится, не бросает', async () => {
-    const result = await findChannelsForLesson(
-      channelModel,
-      [new Types.ObjectId()],
-      ['новички'],
-    );
-
-    expect(result.activeChannelIds).toEqual([]);
-    expect(result.matchingChannelIds).toEqual([]);
+    await expect(
+      findActiveChannelIds(channelModel, [new Types.ObjectId()]),
+    ).resolves.toEqual([]);
   });
 
-  it('два канала занятия: один без тегов, другой с чужим — принимает только первый', async () => {
-    const openChannel = await createChannel();
-    const strictChannel = await createChannel({ tags: ['средние'] });
-
-    const result = await findChannelsForLesson(
-      channelModel,
-      [openChannel._id, strictChannel._id],
-      ['новички'],
+  it('остаток старого поля tags в документе канала ничего не отсеивает (ADR-0192)', async () => {
+    const channel = await createChannel();
+    await channelModel.collection.updateOne(
+      { _id: channel._id },
+      { $set: { tags: ['средние'] } },
     );
 
-    expect(result.activeChannelIds.map(String).sort()).toEqual(
-      [openChannel._id.toString(), strictChannel._id.toString()].sort(),
-    );
-    expect(result.matchingChannelIds.map(String)).toEqual([openChannel._id.toString()]);
+    const result = await findActiveChannelIds(channelModel, [channel._id]);
+
+    expect(result.map(String)).toEqual([channel._id.toString()]);
   });
 });

@@ -3,36 +3,13 @@
 import { buildChannelCreatePayload, buildChannelUpdateSet } from './channel-write';
 
 describe('buildChannelCreatePayload', () => {
-  it('tags не прислали — нормализованный пустой массив (канал получает всё)', () => {
-    const payload = buildChannelCreatePayload(
-      { type: 'manual', title: 'Facebook', config: {} },
-      '',
-    );
-
-    expect(payload.tags).toEqual([]);
-  });
-
-  it('tags нормализуются: обрезка пробелов и дедуп без учёта регистра', () => {
-    const payload = buildChannelCreatePayload(
-      {
-        type: 'manual',
-        title: 'Facebook',
-        config: {},
-        tags: [' Новички ', 'новички'],
-      },
-      '',
-    );
-
-    expect(payload.tags).toEqual(['Новички']);
-  });
-
-  it('остальные поля — из CreateChannelInput, active: true по умолчанию', () => {
+  it('поля из CreateChannelInput, active: true по умолчанию, тегов нет (ADR-0192)', () => {
     const payload = buildChannelCreatePayload(
       { type: 'telegram', title: 'Канал', config: { chatId: '@x' } },
       '@x',
     );
 
-    expect(payload).toMatchObject({
+    expect(payload).toEqual({
       type: 'telegram',
       title: 'Канал',
       config: { chatId: '@x' },
@@ -43,21 +20,9 @@ describe('buildChannelCreatePayload', () => {
 });
 
 describe('buildChannelUpdateSet', () => {
-  it('tags не прислали — поля нет в $set (PATCH их не трогает)', () => {
-    const $set = buildChannelUpdateSet({ title: 'Новое имя' });
+  it('переданные поля попадают в $set как есть, остальных нет', () => {
+    const $set = buildChannelUpdateSet({ title: 'Новое имя', active: false });
 
-    expect($set).not.toHaveProperty('tags');
-  });
-
-  it('tags прислали пустым массивом — сбрасывает', () => {
-    const $set = buildChannelUpdateSet({ tags: [] });
-
-    expect($set.tags).toEqual([]);
-  });
-
-  it('tags нормализуются при обновлении', () => {
-    const $set = buildChannelUpdateSet({ tags: [' средние ', 'средние'] });
-
-    expect($set.tags).toEqual(['средние']);
+    expect($set).toEqual({ title: 'Новое имя', active: false });
   });
 });

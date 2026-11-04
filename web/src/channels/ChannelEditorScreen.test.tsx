@@ -31,7 +31,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'ВК школы',
     active: true,
     target: '777',
-    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -61,13 +60,7 @@ function mockChannel(channel: ChannelDto) {
   mockApi({ '/channels/ch1': channel, '/channels': channel });
 }
 
-/** Канал пришёл с сервера, форма на экране. Подсказку тегов (useTagOptions.ts)
- * поле заказывает само, и её GET /tags уходит в тот же миг — до или после
- * этого ожидания, как решит планировщик React, поэтому ответ на действие
- * ниже ставится вторым вызовом `mockApiByPath` по своему пути, не очередью
- * `…Once` (та ловит СЛЕДУЮЩИЙ вызов вообще, будь то сохранение или эта
- * подсказка — тот же флейк, что уже был у AttemptReviewScreen.test.tsx,
- * apiFetchMock.ts). */
+/** Канал пришёл с сервера, форма на экране. */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -110,8 +103,7 @@ describe('ChannelEditorScreen — загрузка', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новый канал' }),
     ).toBeInTheDocument();
-    // Подсказка тегов (useTagOptions.ts) всё равно уходит в сеть — не должно
-    // быть только запроса за конкретным (несуществующим) каналом.
+    // Не должно быть запроса за конкретным (несуществующим) каналом.
     expect(
       mockedApiFetch.mock.calls.some(([path]) => /^\/channels\/[^?]/.test(String(path))),
     ).toBe(false);
@@ -145,7 +137,6 @@ describe('ChannelEditorScreen — создание', () => {
       type: 'telegram',
       title: 'Канал школы',
       config: { chatId: '@school_channel' },
-      tags: [],
     });
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
@@ -166,24 +157,7 @@ describe('ChannelEditorScreen — создание', () => {
       type: 'vk',
       title: 'ВК школы',
       config: { token: 'secret', peerId: 42 },
-      tags: [],
     });
-  });
-
-  it('теги — набранное через запятую уходит массивом в тело запроса (ADR-0108)', async () => {
-    const user = userEvent.setup();
-    mockApi({ '/channels': makeChannel() });
-
-    renderAt('/channels/new');
-    await user.type(await screen.findByLabelText('Название'), 'ВК школы');
-    await user.type(screen.getByLabelText('Токен сообщества'), 'secret');
-    await user.type(screen.getByLabelText('ID беседы'), '42');
-    await user.type(screen.getByLabelText('Теги'), 'новички, средние');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
-    const body = callsWithMethod('POST')[0]?.[1] as { body: { tags: string[] } };
-    expect(body.body.tags).toEqual(['новички', 'средние']);
   });
 
   it('пустое название — ошибка формы, запроса нет', async () => {
@@ -243,7 +217,7 @@ describe('ChannelEditorScreen — правка', () => {
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
-    expect(body.body).toEqual({ title: 'ВК школы', active: true, tags: [] });
+    expect(body.body).toEqual({ title: 'ВК школы', active: true });
   });
 
   it('заполненный токен — config уходит целиком', async () => {
@@ -260,24 +234,7 @@ describe('ChannelEditorScreen — правка', () => {
       title: 'ВК школы',
       active: true,
       config: { token: 'newsecret', peerId: 777 },
-      tags: [],
     });
-  });
-
-  it('теги предзаполнены из канала, правка уходит массивом (ADR-0108)', async () => {
-    const user = userEvent.setup();
-    mockChannel(makeChannel({ tags: ['новички'] }));
-
-    renderAt('/channels/ch1');
-    const tagsField = await screen.findByLabelText('Теги');
-    expect(tagsField).toHaveValue('новички');
-
-    await user.type(tagsField, ', средние');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
-    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { tags: string[] } };
-    expect(body.body.tags).toEqual(['новички', 'средние']);
   });
 
   it('«Включён» снят — PATCH с active: false', async () => {
