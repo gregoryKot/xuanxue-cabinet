@@ -40,7 +40,6 @@ export interface ChannelDto {
   id: string;
   type: ChannelType;
   title: string;
-  active: boolean;
   /** Что показать учителю без секрета: `chatId`/`peerId`/`''` — `config`
    * целиком в DTO не входит никогда (SECURITY §3). */
   target: string;
@@ -60,7 +59,6 @@ export interface CreateChannelInput {
  * нет смысла «сбросить». */
 export interface UpdateChannelInput {
   title?: string;
-  active?: boolean;
   config?: ChannelConfig;
 }
 
@@ -71,7 +69,6 @@ export interface ChannelTestResult {
 }
 
 export interface ListChannelsQuery {
-  active?: boolean;
   limit?: number;
 }
 

@@ -4,7 +4,7 @@
 // (ADR-0033) — списку осталось только чтение. Гонка запросов и разбор ошибки —
 // в общем hooks/useAbortableFetch.ts.
 import type { ChannelDto } from '@xuanxue/shared';
-import { channelsListQuery } from '../api/listQueries';
+import { CHANNELS_LIST_QUERY } from '../api/listQueries';
 import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -17,13 +17,11 @@ export interface UseChannelsResult {
   reload: () => Promise<void>;
 }
 
-/** `activeOnly` — экран «Каналы» показывает все каналы (по умолчанию);
- * «Расписание» выбирает только активные для рассылки занятия (ревью п.1,
- * docs/PLAN.md §6 п.1) — тот же хук, без второй реализации списка. */
-export function useChannels(activeOnly = false): UseChannelsResult {
+/** Все каналы школы: выключателя у канала нет (ADR-0194), один список на
+ * «Каналы», «Расписание» и «Рассылки». */
+export function useChannels(): UseChannelsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) =>
-      apiRoute('GET /channels', { query: channelsListQuery(activeOnly), signal }),
+    (signal) => apiRoute('GET /channels', { query: CHANNELS_LIST_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
 

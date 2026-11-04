@@ -14,8 +14,8 @@ import { Toggle } from '../components/Toggle';
 import { ChannelPicker } from '../channels/ChannelPicker';
 import type { BroadcastFormError, BroadcastFormState } from './broadcastFormInput';
 
-const NO_ACTIVE_CHANNELS_MESSAGE =
-  'Нет ни одного включённого канала — включите канал на экране «Каналы».';
+const NO_CHANNELS_MESSAGE =
+  'Пока нет ни одного канала — добавьте его на экране «Каналы».';
 
 interface BroadcastFormFieldsProps {
   state: BroadcastFormState;
@@ -65,7 +65,7 @@ export function BroadcastFormFields({
         channels={channels}
         selectedIds={state.channelIds}
         onChange={(ids) => setField('channelIds', ids)}
-        emptyMessage={NO_ACTIVE_CHANNELS_MESSAGE}
+        emptyMessage={NO_CHANNELS_MESSAGE}
         error={error?.field === 'channelIds' ? error.message : undefined}
       />
 

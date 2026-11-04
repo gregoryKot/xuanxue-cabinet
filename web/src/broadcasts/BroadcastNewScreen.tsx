@@ -2,15 +2,13 @@
 // адрес вместо листа поверх журнала). Каналы грузятся здесь, а не в форме:
 // выбирать не из чего, пока список не пришёл, и форма не должна собираться
 // на пустом списке (LoadedPage отдаёт содержимое только после ответа).
-//
-// Только активные каналы: в выключенный рассылка не уйдёт, сервер откажет
-// (BroadcastsService.createManual).
+
 import { LoadedPage } from '../components/LoadedPage';
 import { useChannels } from '../channels/useChannels';
 import { BroadcastNewForm } from './BroadcastNewForm';
 
 export default function BroadcastNewScreen() {
-  const { channels, loading, error, reload } = useChannels(true);
+  const { channels, loading, error, reload } = useChannels();
 
   return (
     <LoadedPage

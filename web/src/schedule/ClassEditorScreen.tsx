@@ -17,7 +17,7 @@ export default function ClassEditorScreen() {
   // Адреса два: у `/schedule/new` параметра нет вовсе — это новое занятие.
   const { classId } = useParams<{ classId: string }>();
   const editor = useClassEditor(classId);
-  const channelsState = useChannels(true);
+  const channelsState = useChannels();
   const groupsState = useGroups();
 
   return (

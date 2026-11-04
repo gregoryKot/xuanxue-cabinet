@@ -24,9 +24,5 @@ export function examItemsListQuery(status: ExamItemStatus | '') {
 /** Редактор и предпросмотр экзамена — с удалёнными из списка вопросов (ADR-0140). */
 export const EXAM_EDITOR_ITEMS_QUERY = { limit: LIST_LIMIT_MAX, includeDeleted: true };
 
-/** `activeOnly` — «Каналы» показывает все (по умолчанию); «Расписание» и
- * страница занятия расписания выбирают только активные Telegram-каналы для
- * рассылки (docs/PLAN.md §6 п.1). */
-export function channelsListQuery(activeOnly: boolean) {
-  return { active: activeOnly || undefined, limit: LIST_LIMIT_MAX };
-}
+/** Все каналы школы: выключателя у канала нет (ADR-0194), фильтровать нечего. */
+export const CHANNELS_LIST_QUERY = { limit: LIST_LIMIT_MAX };

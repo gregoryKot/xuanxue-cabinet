@@ -21,8 +21,8 @@ describe('buildChannelCreatePayload', () => {
 
 describe('buildChannelUpdateSet', () => {
   it('переданные поля попадают в $set как есть, остальных нет', () => {
-    const $set = buildChannelUpdateSet({ title: 'Новое имя', active: false });
+    const $set = buildChannelUpdateSet({ title: 'Новое имя' });
 
-    expect($set).toEqual({ title: 'Новое имя', active: false });
+    expect($set).toEqual({ title: 'Новое имя' });
   });
 });

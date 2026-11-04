@@ -5,7 +5,6 @@
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
-import { Toggle } from '../components/Toggle';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
 import { ChannelVkFields } from './ChannelVkFields';
@@ -56,17 +55,6 @@ export function ChannelFormFields({
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
           Тип: {CHANNEL_TYPE_LABELS_RU[state.type]}
         </p>
-      )}
-
-      {/* Новый канал включён с рождения — `CreateChannelInput` поля `active`
-          не принимает, выключать нечего до первого сохранения. */}
-      {!isCreate && (
-        <Toggle
-          label="Включён"
-          hint="Выключенный канал остаётся в списке, но рассылки в него не уходят."
-          checked={state.active}
-          onChange={(active) => setField('active', active)}
-        />
       )}
 
       <Field label="Название" error={errorFor(error, 'title')}>

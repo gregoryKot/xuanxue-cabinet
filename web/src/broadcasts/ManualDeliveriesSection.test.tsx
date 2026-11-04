@@ -21,7 +21,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'manual',
     title: 'Facebook',
-    active: true,
     target: '',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',

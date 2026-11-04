@@ -25,7 +25,6 @@ const CHANNEL: ChannelDto = {
   id: 'ch1',
   type: 'telegram',
   title: 'Группа',
-  active: true,
   target: '-100',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',

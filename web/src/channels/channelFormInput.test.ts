@@ -12,7 +12,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'vk',
     title: 'ВК школы',
-    active: true,
     target: '777',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -179,14 +178,6 @@ describe('toCreateInput', () => {
 });
 
 describe('toUpdateInput', () => {
-  it('выключенный канал — active: false уходит вместе с названием', () => {
-    const state = { ...initialChannelFormState(makeChannel()), active: false };
-    expect(toUpdateInput(state, 'vk')).toEqual({
-      title: 'ВК школы',
-      active: false,
-    });
-  });
-
   it('telegram — config всегда отправляется (не секрет)', () => {
     const state = {
       ...initialChannelFormState(null),
@@ -195,16 +186,14 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'telegram')).toEqual({
       title: 'Канал',
-      active: true,
       config: { chatId: '-100123' },
     });
   });
 
-  it('vk без токена — config отсутствует', () => {
+  it('vk без токена — только название: ни config, ни active (ADR-0194)', () => {
     const state = { ...initialChannelFormState(null), title: 'ВК', peerIdText: '5' };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
-      active: true,
     });
   });
 
@@ -217,7 +206,6 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
-      active: true,
       config: { token: 'newsecret', peerId: 5 },
     });
   });
@@ -226,7 +214,6 @@ describe('toUpdateInput', () => {
     const state = { ...initialChannelFormState(null), title: 'FB' };
     expect(toUpdateInput(state, 'manual')).toEqual({
       title: 'FB',
-      active: true,
     });
   });
 });

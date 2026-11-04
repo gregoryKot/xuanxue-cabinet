@@ -20,12 +20,6 @@ import {
 export interface ChannelFormState {
   type: ChannelType;
   title: string;
-  /** Выключенный канал остаётся в списке, но рассылки в него не уходят.
-   * Поле формы, а не отдельная мутация с переключателем в списке: одно
-   * сохранение страницы канала — один PATCH (ADR-0033, «Каналы»). Создание
-   * его не знает — `CreateChannelInput` поля `active` не принимает, новый
-   * канал включён с рождения. */
-  active: boolean;
   chatId: string;
   token: string;
   peerIdText: string;
@@ -42,7 +36,6 @@ export function initialChannelFormState(channelDto: ChannelDto | null): ChannelF
   return {
     type: channelDto ? channelDto.type : 'vk',
     title: channelDto?.title ?? '',
-    active: channelDto?.active ?? true,
     chatId: channelDto?.type === 'telegram' ? channelDto.target : '',
     token: '',
     peerIdText: channelDto?.type === 'vk' ? channelDto.target : '',
@@ -120,7 +113,6 @@ export function toUpdateInput(
 ): UpdateChannelInput {
   const input: UpdateChannelInput = {
     title: state.title.trim(),
-    active: state.active,
   };
   if (existingType === 'telegram') {
     input.config = { chatId: state.chatId.trim() };

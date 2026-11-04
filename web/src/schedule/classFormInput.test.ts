@@ -13,7 +13,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'telegram',
     title: 'Группа учеников',
-    active: true,
     target: '@group',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -130,11 +129,11 @@ describe('initialClassFormState', () => {
     expect(state.channelIds).toEqual(['ch1', 'ch2']);
   });
 
-  it('создание: активные Telegram-каналы отмечены заранее — совпадает с тем, что уйдёт в POST', () => {
+  it('создание: Telegram-каналы отмечены заранее — совпадает с тем, что уйдёт в POST', () => {
     const channels = [
       makeChannel({ id: 'ch1' }),
-      makeChannel({ id: 'ch2', active: false }),
-      makeChannel({ id: 'ch3', type: 'vk' }),
+      makeChannel({ id: 'ch2', type: 'vk' }),
+      makeChannel({ id: 'ch3', type: 'manual' }),
     ];
     const state = initialClassFormState(null, channels);
     expect(state.channelIds).toEqual(['ch1']);

@@ -15,7 +15,7 @@ import { apiRoutePath } from './apiRoute';
 import {
   CLASSES_LIST_QUERY,
   EXAM_EDITOR_ITEMS_QUERY,
-  channelsListQuery,
+  CHANNELS_LIST_QUERY,
   examItemsListQuery,
   examsListQuery,
   type ExamListFilters,
@@ -76,12 +76,9 @@ export const EXAM_EDITOR_ITEMS_PATH = apiRoutePath('GET /exam-items', {
 
 export const CHANNELS_PATH = '/channels';
 
-/** `activeOnly` — «Каналы» показывает все (по умолчанию); «Расписание» и
- * страница занятия расписания выбирают только активные Telegram-каналы для
- * рассылки (docs/PLAN.md §6 п.1). */
-export function channelsListPath(activeOnly: boolean): string {
-  return apiRoutePath('GET /channels', { query: channelsListQuery(activeOnly) });
-}
+export const CHANNELS_LIST_PATH = apiRoutePath('GET /channels', {
+  query: CHANNELS_LIST_QUERY,
+});
 
 export const MATERIALS_PATH = '/materials';
 

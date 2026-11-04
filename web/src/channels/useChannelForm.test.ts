@@ -9,7 +9,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'vk',
     title: 'ВК школы',
-    active: true,
     target: '777',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -89,7 +88,6 @@ describe('useChannelForm — submit()', () => {
 
     expect(onUpdate).toHaveBeenCalledWith('ch1', {
       title: 'ВК школы',
-      active: true,
     });
   });
 

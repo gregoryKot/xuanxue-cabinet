@@ -15,7 +15,7 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
-  channelsListPath,
+  CHANNELS_LIST_PATH,
   EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
   examsListPath,
@@ -63,11 +63,11 @@ describe('RouteModule.prefetch — маршруты без параметра', 
   });
 
   it('/schedule — классы и активные каналы (оба грузит ScheduleScreen.tsx)', () => {
-    expect(prefetchAt('/schedule')).toEqual([CLASSES_LIST_PATH, channelsListPath(true)]);
+    expect(prefetchAt('/schedule')).toEqual([CLASSES_LIST_PATH, CHANNELS_LIST_PATH]);
   });
 
   it('/channels — список всех каналов', () => {
-    expect(prefetchAt('/channels')).toEqual([channelsListPath(false)]);
+    expect(prefetchAt('/channels')).toEqual([CHANNELS_LIST_PATH]);
   });
 
   it('/materials — список без фильтра и классы (рубрикация строки)', () => {
@@ -182,7 +182,7 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
 describe('RouteModule.prefetch — «новая запись»: своего id нет, читать нечего', () => {
   it('/schedule/new — активные каналы и учителя (форма ждёт их и для новой записи)', () => {
-    expect(prefetchAt('/schedule/new')).toEqual([channelsListPath(true), TEACHERS_PATH]);
+    expect(prefetchAt('/schedule/new')).toEqual([CHANNELS_LIST_PATH, TEACHERS_PATH]);
   });
 
   it('/planning/new — список классов и учителя', () => {
@@ -208,7 +208,7 @@ describe('RouteModule.prefetch — редактор существующей з�
   it('/schedule/:id — карточка занятия расписания, активные каналы, учителя', () => {
     expect(prefetchAt('/schedule/652f00000000000000000004')).toEqual([
       '/classes/652f00000000000000000004',
-      channelsListPath(true),
+      CHANNELS_LIST_PATH,
       TEACHERS_PATH,
     ]);
   });

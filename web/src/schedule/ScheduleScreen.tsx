@@ -39,7 +39,7 @@ export default function ScheduleScreen() {
   const { classes, loading, error, reload } = useClasses();
   // Активные каналы нужны самой неделе: SlotRow по ним видит, что ссылку
   // некому разослать (ревью п.4).
-  const { channels: activeChannels } = useChannels(true);
+  const { channels: activeChannels } = useChannels();
   const navigate = useNavigate();
 
   const grid = useMemo(

@@ -28,7 +28,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     id: 'ch1',
     type: 'vk',
     title: 'ВК школы',
-    active: true,
     target: '1',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -94,12 +93,12 @@ describe('BroadcastNewScreen — загрузка каналов', () => {
     expect(await screen.findByLabelText('Текст')).toBeInTheDocument();
   });
 
-  it('просит только включённые каналы — в выключенный рассылка не уйдёт', async () => {
+  it('просит все каналы школы, без фильтра по включённости (ADR-0194)', async () => {
     renderScreen();
     await waitForMounted();
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      expect.stringContaining('active=true'),
+      expect.not.stringContaining('active='),
       expect.anything(),
     );
   });
@@ -107,9 +106,7 @@ describe('BroadcastNewScreen — загрузка каналов', () => {
   it('включённых каналов нет — честное сообщение вместо списка чекбоксов', async () => {
     renderScreen([]);
 
-    expect(
-      await screen.findByText(/Нет ни одного включённого канала/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Пока нет ни одного канала/)).toBeInTheDocument();
   });
 
   it('ответ без списка — страница не падает, каналов просто нет', async () => {
@@ -121,9 +118,7 @@ describe('BroadcastNewScreen — загрузка каналов', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByText(/Нет ни одного включённого канала/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Пока нет ни одного канала/)).toBeInTheDocument();
   });
 });
 

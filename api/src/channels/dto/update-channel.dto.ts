@@ -2,7 +2,7 @@
 // не «сбрасывают» частично, меняют целиком новым `config` (SECURITY §3) —
 // поэтому везде `OptionalNotNull()`, а не `@IsOptional()` (channels — в
 // отличие от classes — не несёт nullable-полей вовсе, splitUpdate не нужен).
-import { IsBoolean, IsNotEmpty, IsObject, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsObject, IsString, MaxLength } from 'class-validator';
 import { CHANNEL_LIMITS, type ChannelConfig, type ApiRouteBody } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
@@ -13,10 +13,6 @@ export class UpdateChannelDto implements ApiRouteBody<'PATCH /channels/:id'> {
   @IsNotEmpty()
   @MaxLength(CHANNEL_LIMITS.title)
   title?: string;
-
-  @OptionalNotNull()
-  @IsBoolean()
-  active?: boolean;
 
   @OptionalNotNull()
   @IsObject()
