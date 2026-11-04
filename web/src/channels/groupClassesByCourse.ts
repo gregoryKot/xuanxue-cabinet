@@ -6,7 +6,7 @@
 // порождают — в список не попадают совсем.
 import { WEEKDAY_LABELS_RU, classDisplayName, type ClassDto } from '@xuanxue/shared';
 
-export type CourseLinkState = 'all' | 'some' | 'none';
+type CourseLinkState = 'all' | 'some' | 'none';
 
 export interface CourseRow {
   /** Ключ строки — отображаемое имя курса. */
