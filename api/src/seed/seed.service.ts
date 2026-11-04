@@ -106,7 +106,17 @@ export class SeedService {
     const ids =
       names.length === 1 && groupNameKey(label) === ALL_GROUPS_SEED_LABEL
         ? (await this.groupsService.list()).map((group) => group.id)
-        : await Promise.all(names.map((name) => this.groupsService.ensureByName(name)));
+        : await this.ensureGroupsInOrder(names);
     return [...new Set(ids)].sort();
+  }
+
+  /** Группы заводятся строго по очереди, не `Promise.all`: подпись занятия идёт
+   * в порядке создания групп (`_id`), а при параллельном создании первой
+   * записывалась та, чей запрос к базе вернулся раньше — «Старшие, Средние»
+   * вместо «Средние, Старшие» (красный `main` 2026-11-04, прогон CI 1591). */
+  private async ensureGroupsInOrder(names: readonly string[]): Promise<string[]> {
+    const ids: string[] = [];
+    for (const name of names) ids.push(await this.groupsService.ensureByName(name));
+    return ids;
   }
 }
