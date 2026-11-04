@@ -65,8 +65,6 @@ function mockByPath(handlers: Record<string, unknown>) {
 }
 
 const NEW_MARKER = 'Здесь новая рассылка';
-const CHANNELS_MARKER = 'Здесь каналы';
-const TEMPLATES_MARKER = 'Здесь шаблоны';
 
 function renderScreen(initialEntries: string[] = ['/broadcasts']) {
   return render(
@@ -74,8 +72,6 @@ function renderScreen(initialEntries: string[] = ['/broadcasts']) {
       <Routes>
         <Route path="/broadcasts" element={<BroadcastsScreen />} />
         <Route path="/broadcasts/new" element={<p>{NEW_MARKER}</p>} />
-        <Route path="/channels" element={<p>{CHANNELS_MARKER}</p>} />
-        <Route path="/templates" element={<p>{TEMPLATES_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -212,58 +208,46 @@ describe('BroadcastsScreen — журнал', () => {
   });
 });
 
-// ADR-0025, дополнение 2026-10-08: входы в «Каналы» и «Шаблоны» подняты в
-// шапку, внизу под журналом их больше нет.
-describe('BroadcastsScreen — «Каналы» и «Шаблоны» в шапке', () => {
-  it('три кнопки шапки по порядку: «Каналы», «Шаблоны», «Новая рассылка»', async () => {
+// ADR-0191: «Каналы» и «Шаблоны» живут в шапке раздела «Расписание и рассылки»
+// (ScheduleScreen), на журнале остаётся одно действие.
+describe('BroadcastsScreen — подэкран «Журнал отправок» (ADR-0191)', () => {
+  it('заголовок «Журнал отправок», единственная кнопка шапки — «Новая рассылка»', async () => {
     mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
 
     renderScreen();
     await screen.findByRole('button', { name: 'Новая рассылка' });
 
-    const heading = screen.getByRole('heading', { level: 1, name: 'Рассылки' });
+    const heading = screen.getByRole('heading', { level: 1, name: 'Журнал отправок' });
     const row = heading.parentElement?.parentElement;
     expect(row).not.toBeNull();
     const labels = within(row as HTMLElement)
       .getAllByRole('button')
       .map((button) => button.textContent);
-    expect(labels).toEqual(['Каналы', 'Шаблоны', 'Новая рассылка']);
+    expect(labels).toEqual(['Новая рассылка']);
+    expect(screen.queryByRole('heading', { name: 'Рассылки' })).toBeNull();
   });
 
-  it.each([
-    ['Каналы', CHANNELS_MARKER],
-    ['Шаблоны', TEMPLATES_MARKER],
-  ])('«%s» в шапке ведёт на свой экран', async (name, marker) => {
-    const user = userEvent.setup();
-    mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
-
-    renderScreen();
-    await user.click(await screen.findByRole('button', { name }));
-
-    expect(screen.getByText(marker)).toBeInTheDocument();
-  });
-
-  it('вход в «Каналы» есть, пока журнал грузится; «Новая рассылка» появляется после', async () => {
-    mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
-
-    renderScreen();
-
-    expect(screen.getByRole('button', { name: 'Каналы' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Шаблоны' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Новая рассылка' })).toBeNull();
-    expect(
-      await screen.findByRole('button', { name: 'Новая рассылка' }),
-    ).toBeInTheDocument();
-  });
-
-  it('внизу экрана ссылок на «Каналы» и «Шаблоны» больше нет', async () => {
+  it('кнопок «Каналы» и «Шаблоны» нет ни в шапке, ни внизу', async () => {
     mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
 
     renderScreen();
     await screen.findByRole('button', { name: 'Новая рассылка' });
 
-    expect(screen.queryByRole('link', { name: /Каналы/ })).toBeNull();
-    expect(screen.queryByRole('link', { name: /Шаблоны/ })).toBeNull();
+    for (const name of ['Каналы', 'Шаблоны']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+      expect(screen.queryByRole('link', { name })).toBeNull();
+    }
+  });
+
+  it('«Новая рассылка» появляется после загрузки журнала', async () => {
+    mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
+
+    renderScreen();
+
+    expect(screen.queryByRole('button', { name: 'Новая рассылка' })).toBeNull();
+    expect(
+      await screen.findByRole('button', { name: 'Новая рассылка' }),
+    ).toBeInTheDocument();
   });
 });
 

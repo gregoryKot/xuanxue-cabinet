@@ -98,14 +98,13 @@ describe('TodayLessonCard', () => {
     expect(screen.getByText('Ошибка отправки')).toBeInTheDocument();
   });
 
-  it('cancelled — «Отменена» и ссылка на «Рассылки»', () => {
+  it('cancelled — «Отменена» и ссылка на «Журнал отправок»', () => {
     renderCard(makeLesson({ broadcast: { status: 'cancelled', kind: 'lesson_link' } }));
 
     expect(screen.getByText('Отменена')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /почему.*Рассылках/ })).toHaveAttribute(
-      'href',
-      '/broadcasts',
-    );
+    expect(
+      screen.getByRole('link', { name: /почему.*Журнале отправок/ }),
+    ).toHaveAttribute('href', '/broadcasts');
   });
 
   it('тема не задана — заглушка; отменённое занятие — пометка «Отменено»', () => {

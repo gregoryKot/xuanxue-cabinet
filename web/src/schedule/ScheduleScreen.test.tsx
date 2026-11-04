@@ -54,6 +54,9 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
 }
 
 const NEW_MARKER = 'Здесь страница нового занятия';
+const CHANNELS_MARKER = 'Здесь каналы';
+const TEMPLATES_MARKER = 'Здесь шаблоны';
+const JOURNAL_MARKER = 'Здесь журнал отправок';
 const EDITOR_MARKER = 'Здесь страница занятия расписания';
 
 function renderScreen() {
@@ -62,6 +65,9 @@ function renderScreen() {
       <Routes>
         <Route path="/schedule" element={<ScheduleScreen />} />
         <Route path="/schedule/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/channels" element={<p>{CHANNELS_MARKER}</p>} />
+        <Route path="/templates" element={<p>{TEMPLATES_MARKER}</p>} />
+        <Route path="/broadcasts" element={<p>{JOURNAL_MARKER}</p>} />
         <Route path="/schedule/:classId" element={<p>{EDITOR_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
@@ -116,7 +122,7 @@ describe('ScheduleScreen — пустая база', () => {
 
     expect(await screen.findByText(/Пока в расписании нет занятий/)).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Расписание' }),
+      screen.getByRole('heading', { level: 1, name: 'Расписание и рассылки' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Постоянные занятия недели/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Добавить занятие' })).toBeInTheDocument();
@@ -267,28 +273,91 @@ describe('ScheduleScreen — пояс и ссылки (отзыв владель
   });
 });
 
-// Пометка «без каналов» считает только АКТИВНЫЕ каналы кабинета (ревью п.4):
-// экран грузит их отдельным запросом, и без него выключенный канал в channelIds
-// занятия гасил бы пометку.
-describe('ScheduleScreen — каналы рассылки (ревью п.4)', () => {
-  it('онлайн без активных каналов — «без каналов»', async () => {
-    mockApiByPath({ '/classes': [makeClass({ channelIds: ['gone'] })], '/channels': [] });
-
-    renderScreen();
-
-    expect(await screen.findByText('без каналов')).toBeInTheDocument();
-  });
-
-  it('у занятия есть активный канал — пометки нет, числа каналов тоже', async () => {
+// Под занятием стоит «куда оно уходит» (ADR-0191); считаются только АКТИВНЫЕ
+// каналы кабинета (ревью п.4): экран грузит их отдельным запросом, и выключенный
+// канал в channelIds занятия строку не кормит.
+describe('ScheduleScreen — куда уходит занятие (ADR-0191)', () => {
+  it('есть каналы — «→ названия» активных каналов', async () => {
     mockApiByPath({
-      '/classes': [makeClass({ channelIds: ['ch1'] })],
-      '/channels': [makeChannel({ id: 'ch1' })],
+      '/classes': [makeClass({ channelIds: ['ch1', 'ch2', 'off'] })],
+      '/channels': [
+        makeChannel({ id: 'ch1', title: 'Тайцзи вечер' }),
+        makeChannel({ id: 'ch2', title: 'Ученики' }),
+      ],
     });
 
     renderScreen();
 
-    await screen.findByText('19:00');
+    expect(await screen.findByText('→ Тайцзи вечер, Ученики')).toBeInTheDocument();
+    expect(screen.queryByText(/Никуда не уходит/)).not.toBeInTheDocument();
+  });
+
+  it('онлайн без активных каналов — предупреждение, пометки «без каналов» нет', async () => {
+    mockApiByPath({ '/classes': [makeClass({ channelIds: ['gone'] })], '/channels': [] });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Никуда не уходит — выберите канал'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('без каналов')).not.toBeInTheDocument();
-    expect(screen.queryByText(/1 канал/)).not.toBeInTheDocument();
+  });
+
+  it('выключенное занятие без каналов — без предупреждения', async () => {
+    mockApiByPath({ '/classes': [makeClass({ active: false })], '/channels': [] });
+
+    renderScreen();
+
+    await screen.findByText('выключено');
+    expect(screen.queryByText(/Никуда не уходит/)).not.toBeInTheDocument();
+  });
+
+  it('каналы ещё грузятся — строки нет, ложного предупреждения тоже', async () => {
+    mockApiByPath({ '/classes': [makeClass()], '/channels': new Promise(() => {}) });
+
+    renderScreen();
+
+    await screen.findByText('19:00');
+    expect(screen.queryByText(/Никуда не уходит|→/)).not.toBeInTheDocument();
+  });
+});
+
+describe('ScheduleScreen — вход в подэкраны раздела (ADR-0191)', () => {
+  it('в шапке «Каналы», «Шаблоны», «Журнал отправок» и главная «Добавить занятие»', async () => {
+    mockApiByPath({ '/classes': [], '/channels': [] });
+
+    renderScreen();
+    await screen.findByRole('button', { name: 'Добавить занятие' });
+
+    const heading = screen.getByRole('heading', { level: 1 });
+    const labels = within(heading.parentElement?.parentElement as HTMLElement)
+      .getAllByRole('button')
+      .map((button) => button.textContent);
+    expect(labels).toEqual(['Каналы', 'Шаблоны', 'Журнал отправок', 'Добавить занятие']);
+  });
+
+  it('входы видны, пока занятия грузятся; «Добавить занятие» — после', () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+
+    renderScreen();
+
+    for (const name of ['Каналы', 'Шаблоны', 'Журнал отправок']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: 'Добавить занятие' })).toBeNull();
+  });
+
+  it.each([
+    ['Каналы', CHANNELS_MARKER],
+    ['Шаблоны', TEMPLATES_MARKER],
+    ['Журнал отправок', JOURNAL_MARKER],
+  ])('«%s» ведёт на свой экран', async (name, marker) => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/classes': [], '/channels': [] });
+
+    renderScreen();
+    await user.click(await screen.findByRole('button', { name }));
+
+    expect(screen.getByText(marker)).toBeInTheDocument();
   });
 });

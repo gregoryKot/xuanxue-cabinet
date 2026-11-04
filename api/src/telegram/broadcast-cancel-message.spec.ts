@@ -36,12 +36,12 @@ describe('cancelledBroadcastMessage', () => {
     expect(text).toContain('«Расписании»');
   });
 
-  it('тик опоздал — прошедшее время, действие «Рассылки»', () => {
+  it('тик опоздал — прошедшее время, действие «Журнал отправок»', () => {
     const text = cancelledBroadcastMessage(TOO_LATE_REASON, NAME);
 
     expect(text).toContain('не ушла');
     expect(text).toContain('занятие уже началось');
-    expect(text).toContain('«Рассылках»');
+    expect(text).toContain('«Журнал отправок»');
   });
 
   it('класс выключен — осознанное решение учителя, текста нет', () => {

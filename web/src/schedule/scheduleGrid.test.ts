@@ -167,18 +167,27 @@ describe('buildScheduleGrid', () => {
     expect(grid[1][0]?.linkMissing).toBe(false);
   });
 
-  it('слот несёт число активных каналов рассылки занятия (ревью п.1)', () => {
+  it('слот несёт строку «→ каналы» по активным каналам занятия (ADR-0191)', () => {
     const cls = makeClass({
       channelIds: ['ch1', 'ch2'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
-    const grid = buildScheduleGrid([cls], new Set(['ch1', 'ch2']));
+    const grid = buildScheduleGrid(
+      [cls],
+      [
+        { id: 'ch1', title: 'Тайцзи вечер' },
+        { id: 'ch2', title: 'Ученики' },
+      ],
+    );
 
-    expect(grid[1][0]?.channelCount).toBe(2);
+    expect(grid[1][0]?.destination).toEqual({
+      text: '→ Тайцзи вечер, Ученики',
+      isWarning: false,
+    });
   });
 
-  it('без списка активных каналов — channelCount 0, а не channelIds.length (ревью п.4)', () => {
+  it('каналы ещё грузятся (null) — строки нет, а не ложное предупреждение', () => {
     const cls = makeClass({
       channelIds: ['ch1'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
@@ -186,18 +195,18 @@ describe('buildScheduleGrid', () => {
 
     const grid = buildScheduleGrid([cls]);
 
-    expect(grid[1][0]?.channelCount).toBe(0);
+    expect(grid[1][0]?.destination).toBeNull();
   });
 
-  it('выключенный канал в channelIds не считается активным (ревью п.4)', () => {
+  it('выключенный канал в channelIds в строку не попадает (ревью п.4)', () => {
     const cls = makeClass({
       channelIds: ['ch1', 'ch2'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
-    const grid = buildScheduleGrid([cls], new Set(['ch1']));
+    const grid = buildScheduleGrid([cls], [{ id: 'ch1', title: 'Ученики' }]);
 
-    expect(grid[1][0]?.channelCount).toBe(1);
+    expect(grid[1][0]?.destination?.text).toBe('→ Ученики');
   });
 
   it('теги курса переносятся в слот как есть (ADR-0072)', () => {

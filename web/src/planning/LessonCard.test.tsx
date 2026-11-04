@@ -103,7 +103,7 @@ describe('LessonCard', () => {
     expect(screen.getByRole('link', { name: 'начинающие' })).toBeInTheDocument();
   });
 
-  it('cancelled — «Отменена» и ссылка на «Рассылки», клик по ссылке не всплывает до кнопки', () => {
+  it('cancelled — «Отменена» и ссылка на «Журнал отправок», клик по ссылке не всплывает до кнопки', () => {
     const onSelect = vi.fn();
     render(
       <MemoryRouter>
@@ -115,7 +115,7 @@ describe('LessonCard', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Отменена')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /почему.*Рассылках/ });
+    const link = screen.getByRole('link', { name: /почему.*Журнале отправок/ });
     expect(link).toHaveAttribute('href', '/broadcasts');
     expect(onSelect).not.toHaveBeenCalled();
   });

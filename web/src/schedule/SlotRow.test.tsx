@@ -20,7 +20,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     isBiweekly: false,
     active: true,
     linkMissing: false,
-    channelCount: 1,
+    destination: null,
     tags: [],
     ...overrides,
   };
@@ -147,50 +147,38 @@ describe('SlotRow — пометки', () => {
     expect(screen.queryByText('без ссылки')).not.toBeInTheDocument();
   });
 
-  it('онлайн без каналов — «без каналов»: ссылку некому разослать', () => {
-    renderRow({ format: 'online', channelCount: 0 });
-
-    expect(screen.getByText('без каналов')).toBeInTheDocument();
-  });
-
-  it('«офлайн + онлайн» без каналов — тоже «без каналов»', () => {
-    renderRow({ format: 'both', location: 'Аркави 3', channelCount: 0 });
-
-    expect(screen.getByText('без каналов')).toBeInTheDocument();
-  });
-
-  it('офлайн без каналов — пометки нет: рассылать там нечего', () => {
-    renderRow({ format: 'offline', location: 'Аркави 3', channelCount: 0 });
-
-    expect(screen.queryByText('без каналов')).not.toBeInTheDocument();
-  });
-
-  it('онлайн с каналами — пометки нет', () => {
-    renderRow({ format: 'online', channelCount: 2 });
-
-    expect(screen.queryByText('без каналов')).not.toBeInTheDocument();
-  });
-
-  it('число каналов строка не печатает — ни «1 канал», ни «2 канала»', () => {
-    const { unmount } = renderRow({ channelCount: 1 });
-    expect(screen.queryByText(/канал/)).not.toBeInTheDocument();
+  it('«→ каналы» печатается тихой строкой, предупреждение — цветом опасности (ADR-0191)', () => {
+    const { unmount } = renderRow({
+      destination: { text: '→ Тайцзи вечер, Ученики', isWarning: false },
+    });
+    expect(screen.getByText('→ Тайцзи вечер, Ученики')).not.toHaveStyle({
+      color: 'var(--danger)',
+    });
     unmount();
 
-    renderRow({ channelCount: 2 });
-    expect(screen.queryByText(/канал/)).not.toBeInTheDocument();
+    renderRow({
+      destination: { text: 'Никуда не уходит — выберите канал', isWarning: true },
+    });
+    expect(screen.getByText('Никуда не уходит — выберите канал')).toHaveStyle({
+      color: 'var(--danger)',
+    });
   });
 
-  it('все три беды сразу — все три пометки, и пустой строки пометок без причины нет', () => {
+  it('строки назначения нет — ничего лишнего, пометки «без каналов» тоже нет', () => {
+    renderRow({ destination: null });
+
+    expect(screen.queryByText(/→|Никуда|без каналов/)).not.toBeInTheDocument();
+  });
+
+  it('обе беды сразу — обе пометки, и пустой строки пометок без причины нет', () => {
     const { container, rerender } = renderRow({
       active: false,
       linkMissing: true,
-      channelCount: 0,
     });
 
     expect(screen.getByText('выключено')).toBeInTheDocument();
     expect(screen.getByText('без ссылки')).toBeInTheDocument();
-    expect(screen.getByText('без каналов')).toBeInTheDocument();
-    expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(3);
+    expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(2);
 
     rerender(<SlotRow slot={makeSlot()} onSelect={vi.fn()} />);
     expect(container.querySelectorAll('.xuanxue-status-label')).toHaveLength(0);
