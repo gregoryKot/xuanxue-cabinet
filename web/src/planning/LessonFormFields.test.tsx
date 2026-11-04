@@ -21,7 +21,6 @@ function makeTagSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
     tag: 'дракон',
     lessonCount: 0,
     materialCount: 0,
-    channelCount: 0,
     ...overrides,
   };
 }

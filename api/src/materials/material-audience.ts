@@ -7,11 +7,18 @@
 // Набор занятий материала — объединение трёх источников: прямая привязка
 // (`classIds`), занятия, к которым относятся привязанные даты (`lessonIds`,
 // ADR-0056), и АКТИВНЫЕ занятия расписания с общим тегом (ADR-0072) — тем же
-// сравнением, что у канала (`channelAcceptsLessonTags`, ADR-0108). Пустой набор —
+// сравнением без учёта регистра (`tagsOverlap`). Пустой набор —
 // «общий» материал: он не про занятие, и выбор «о каких занятиях» его не
 // фильтрует.
 import { isLessonInScope, type LessonScope } from '@xuanxue/shared';
-import { channelAcceptsLessonTags } from '../channels/channel-tag-match';
+
+/** Есть ли общий тег. Без учёта регистра — тем же способом, что normalizeTags
+ * схлопывает дубли (shared/src/tags.ts): цена ошибки здесь — молча не дошедшее
+ * уведомление, а не пустой список, поэтому точное совпадение не годится. */
+function tagsOverlap(left: readonly string[], right: readonly string[]): boolean {
+  const rightLower = new Set(right.map((tag) => tag.toLowerCase()));
+  return left.some((tag) => rightLower.has(tag.toLowerCase()));
+}
 
 /** Занятие расписания глазами сверки по тегам. */
 export interface AudienceClass {
@@ -38,11 +45,10 @@ export interface MaterialAudienceInput {
  * набор не расширяет и не сужает: «книга», «статья» — рубрика, а не маршрут. */
 export function materialAudienceClassIds(input: MaterialAudienceInput): Set<string> {
   const audience = new Set([...input.classIds, ...input.lessonClassIds]);
-  // Пустой список тегов у `channelAcceptsLessonTags` значит «принимает всё» — у
-  // материала это «тегов нет», и по тегам он никого не выбирает.
+  // Нет тегов — по тегам материал никого не выбирает.
   if (input.tags.length === 0) return audience;
   for (const cls of input.activeClasses) {
-    if (channelAcceptsLessonTags(input.tags, cls.tags)) audience.add(cls.id);
+    if (tagsOverlap(input.tags, cls.tags)) audience.add(cls.id);
   }
   return audience;
 }

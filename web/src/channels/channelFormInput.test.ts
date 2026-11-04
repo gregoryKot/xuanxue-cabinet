@@ -14,7 +14,6 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'ВК школы',
     active: true,
     target: '777',
-    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -27,17 +26,6 @@ describe('initialChannelFormState', () => {
     expect(state.type).toBe('vk');
     expect(state.title).toBe('');
     expect(state.token).toBe('');
-    expect(state.tagsText).toBe('');
-  });
-
-  it('правка канала без тегов — tagsText пустой', () => {
-    const state = initialChannelFormState(makeChannel({ tags: [] }));
-    expect(state.tagsText).toBe('');
-  });
-
-  it('правка канала с тегами — tagsText собран через запятую с пробелом', () => {
-    const state = initialChannelFormState(makeChannel({ tags: ['новички', 'средние'] }));
-    expect(state.tagsText).toBe('новички, средние');
   });
 
   it('правка telegram — chatId предзаполнен из target, secret-полей нет', () => {
@@ -135,18 +123,6 @@ describe('validateChannelForm', () => {
     const state = { ...initialChannelFormState(null), title: 'Facebook' };
     expect(validateChannelForm({ ...state, type: 'manual' }, true)).toBeNull();
   });
-
-  it('слишком длинный тег — ошибка на поле tagsText (общая проверка lib/longTagError.ts)', () => {
-    const state = {
-      ...initialChannelFormState(null),
-      type: 'manual' as const,
-      title: 'FB',
-      tagsText: 'а'.repeat(41),
-    };
-    const error = validateChannelForm(state, true);
-    expect(error?.field).toBe('tagsText');
-    expect(error?.message).toMatch(/длиннее/);
-  });
 });
 
 describe('toCreateInput', () => {
@@ -161,7 +137,6 @@ describe('toCreateInput', () => {
       type: 'telegram',
       title: 'Канал',
       config: { chatId: '@school' },
-      tags: [],
     });
   });
 
@@ -176,7 +151,6 @@ describe('toCreateInput', () => {
       type: 'vk',
       title: 'ВК',
       config: { token: 'secret', peerId: 42 },
-      tags: [],
     });
   });
 
@@ -190,18 +164,7 @@ describe('toCreateInput', () => {
       type: 'manual',
       title: 'FB',
       config: {},
-      tags: [],
     });
-  });
-
-  it('теги — нормализованный массив из tagsText (новички/средние, ADR-0108)', () => {
-    const state = {
-      ...initialChannelFormState(null),
-      type: 'manual' as const,
-      title: 'FB',
-      tagsText: 'новички, новички, средние',
-    };
-    expect(toCreateInput(state).tags).toEqual(['новички', 'средние']);
   });
 
   it('название не режется молча — сохраняется как есть, ограничение только на инпуте (ревью п.15)', () => {
@@ -221,7 +184,6 @@ describe('toUpdateInput', () => {
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК школы',
       active: false,
-      tags: [],
     });
   });
 
@@ -235,7 +197,6 @@ describe('toUpdateInput', () => {
       title: 'Канал',
       active: true,
       config: { chatId: '-100123' },
-      tags: [],
     });
   });
 
@@ -244,7 +205,6 @@ describe('toUpdateInput', () => {
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
       active: true,
-      tags: [],
     });
   });
 
@@ -259,7 +219,6 @@ describe('toUpdateInput', () => {
       title: 'ВК',
       active: true,
       config: { token: 'newsecret', peerId: 5 },
-      tags: [],
     });
   });
 
@@ -268,19 +227,6 @@ describe('toUpdateInput', () => {
     expect(toUpdateInput(state, 'manual')).toEqual({
       title: 'FB',
       active: true,
-      tags: [],
     });
-  });
-
-  it('правка канала с тегами — предзаполненный tagsText уходит массивом', () => {
-    const channel = makeChannel({ tags: ['новички'] });
-    const state = initialChannelFormState(channel);
-    expect(toUpdateInput(state, 'vk').tags).toEqual(['новички']);
-  });
-
-  it('сброс тегов пустой строкой — уходит пустой массив, не undefined (ADR-0108)', () => {
-    const channel = makeChannel({ tags: ['новички'] });
-    const state = { ...initialChannelFormState(channel), tagsText: '' };
-    expect(toUpdateInput(state, 'vk').tags).toEqual([]);
   });
 });

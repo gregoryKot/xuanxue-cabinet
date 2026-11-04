@@ -35,7 +35,7 @@ describe('materialAudienceClassIds', () => {
     expect([...audience({ tags: ['Цигун'] })]).toEqual(['c-qigong']);
   });
 
-  // Тем же сравнением, что у канала (ADR-0108): регистр и пробелы не важны.
+  // Регистр не важен.
   it('теги сравниваются без учёта регистра', () => {
     expect([...audience({ tags: ['НОВИЧКИ'] })]).toEqual(['c-taichi']);
     expect([...audience({ tags: ['цигун'] })]).toEqual(['c-qigong']);

@@ -8,7 +8,6 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import request from 'supertest';
 import type { TagSummaryDto } from '@xuanxue/shared';
-import { ChannelRecord } from '../src/channels/channel.schema';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { MaterialRecord } from '../src/materials/material.schema';
@@ -20,7 +19,6 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
   let materialModel: Model<MaterialRecord>;
-  let channelModel: Model<ChannelRecord>;
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -34,10 +32,6 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       getModelToken(MaterialRecord.name),
       { strict: false },
     );
-    channelModel = testApp.app.get<Model<ChannelRecord>>(
-      getModelToken(ChannelRecord.name),
-      { strict: false },
-    );
   }, 60_000);
 
   afterAll(async () => {
@@ -49,7 +43,6 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       lessonModel.deleteMany({}),
       classModel.deleteMany({}),
       materialModel.deleteMany({}),
-      channelModel.deleteMany({}),
     ]);
   });
 
@@ -77,7 +70,7 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
     }
   });
 
-  it('материал, дата занятия и канал с тегом — сводка считает все три источника через реально подключённый модуль (ADR-0108, ADR-0116)', async () => {
+  it('материал и дата занятия с тегом — сводка считает оба источника через реально подключённый модуль', async () => {
     const cls = await classModel.create({ title: 'Курс', format: 'online' });
     await lessonModel.create({
       classId: cls._id,
@@ -92,14 +85,6 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       createdBy: new Types.ObjectId(),
       tags: ['дракон'],
     });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'Канал школы',
-      config: '{}',
-      target: new Types.ObjectId().toString(),
-      active: true,
-      tags: ['дракон'],
-    });
 
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
     const res = await request(server()).get('/api/tags').set('Cookie', cookie);
@@ -110,7 +95,6 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       tag: 'дракон',
       lessonCount: 1,
       materialCount: 1,
-      channelCount: 1,
     });
   });
 });

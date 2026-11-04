@@ -1,10 +1,9 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): агрегация в MongoDB — не JS-код, мок пропустил бы ошибку в самом
 // `$lookup`/`$setUnion`/`$match`. Read-after-write: пишем в lessons/classes/
-// materials/channels напрямую, считаем сводкой (тот же приём, что
+// materials напрямую, считаем сводкой (тот же приём, что
 // summary.service.spec.ts).
 import { Types, type Connection, type Model } from 'mongoose';
-import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
@@ -17,7 +16,6 @@ describe('TagsService.list', () => {
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
   let materialModel: Model<MaterialRecord>;
-  let channelModel: Model<ChannelRecord>;
   let service: TagsService;
 
   beforeAll(async () => {
@@ -26,8 +24,7 @@ describe('TagsService.list', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
-    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    service = new TagsService(lessonModel, classModel, materialModel, channelModel);
+    service = new TagsService(lessonModel, classModel, materialModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -39,7 +36,6 @@ describe('TagsService.list', () => {
       lessonModel.deleteMany({}),
       classModel.deleteMany({}),
       materialModel.deleteMany({}),
-      channelModel.deleteMany({}),
     ]);
   });
 
@@ -70,18 +66,6 @@ describe('TagsService.list', () => {
     });
   }
 
-  function createChannel(tags: string[], broadcastEligible = true) {
-    return channelModel.create({
-      type: 'telegram',
-      title: 'Канал школы',
-      config: '{}',
-      target: new Types.ObjectId().toString(),
-      active: true,
-      tags,
-      broadcastEligible,
-    });
-  }
-
   it('пустая база — пустой список, не ошибка и не мусор', async () => {
     await expect(service.list({})).resolves.toEqual([]);
   });
@@ -91,9 +75,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 0, materialCount: 1, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'дракон', lessonCount: 0, materialCount: 1 }]);
   });
 
   it('тег только в датах занятий — остальные источники 0', async () => {
@@ -102,46 +84,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
-    ]);
-  });
-
-  // ADR-0108/ADR-0116: тег ставят и у канала — без этой агрегации форма
-  // подсказала бы только материалы и занятия, написание тега канала
-  // разъехалось бы с остальными.
-  it('тег только у канала школы — channelCount 1, у занятий и материалов нули', async () => {
-    await createChannel(['дракон']);
-
-    const result = await service.list({});
-
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 0, materialCount: 0, channelCount: 1 },
-    ]);
-  });
-
-  // ADR-0027: личный канал ученика — не канал школы, тот же фильтр, что
-  // ChannelsService.list; иначе сводка предложила бы тег, который на самом
-  // деле относится к одному ученику.
-  it('личный канал ученика (broadcastEligible: false) в счёт не идёт, тег вовсе не появляется', async () => {
-    await createChannel(['личный'], false);
-
-    const result = await service.list({});
-
-    expect(result).toEqual([]);
-  });
-
-  it('тег встречается во всех источниках — каждый посчитан отдельно', async () => {
-    const classId = await createClass();
-    await createLesson(classId, ['дракон']);
-    await createMaterial(['дракон']);
-    await createChannel(['дракон']);
-
-    const result = await service.list({});
-
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 1, materialCount: 1, channelCount: 1 },
-    ]);
+    expect(result).toEqual([{ tag: 'начинающие', lessonCount: 1, materialCount: 0 }]);
   });
 
   it('тег в обеих коллекциях — оба источника посчитаны', async () => {
@@ -151,9 +94,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 1, materialCount: 1, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'дракон', lessonCount: 1, materialCount: 1 }]);
   });
 
   // ADR-0072: дата без своего тега наследует тег курса при подсчёте — иначе
@@ -165,9 +106,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'начинающие', lessonCount: 1, materialCount: 0 }]);
   });
 
   // ADR-0078: свой тег даты совпадает с тегом курса — считается один раз,
@@ -178,9 +117,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 1, materialCount: 0, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'дракон', lessonCount: 1, materialCount: 0 }]);
   });
 
   it('две даты одного курса без своих тегов — обе считаются по тегу курса', async () => {
@@ -190,9 +127,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 2, materialCount: 0, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'дракон', lessonCount: 2, materialCount: 0 }]);
   });
 
   it('своя дата и тег курса разные — оба тега в сводке, без смешивания (ADR-0072)', async () => {
@@ -203,8 +138,8 @@ describe('TagsService.list', () => {
 
     expect(result).toEqual(
       expect.arrayContaining([
-        { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
-        { tag: 'дракон', lessonCount: 1, materialCount: 0, channelCount: 0 },
+        { tag: 'начинающие', lessonCount: 1, materialCount: 0 },
+        { tag: 'дракон', lessonCount: 1, materialCount: 0 },
       ]),
     );
     expect(result).toHaveLength(2);
@@ -216,9 +151,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({});
 
-    expect(result).toEqual([
-      { tag: 'Дракон', lessonCount: 0, materialCount: 2, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'Дракон', lessonCount: 0, materialCount: 2 }]);
   });
 
   it('лимит режет наименее используемые теги, не первые по алфавиту', async () => {
@@ -229,9 +162,7 @@ describe('TagsService.list', () => {
 
     const result = await service.list({ limit: 1 });
 
-    expect(result).toEqual([
-      { tag: 'частый', lessonCount: 0, materialCount: 3, channelCount: 0 },
-    ]);
+    expect(result).toEqual([{ tag: 'частый', lessonCount: 0, materialCount: 3 }]);
   });
 
   // Сортировка по суммарной использованности (все три источника), не по

@@ -16,9 +16,6 @@ import { LESSON_ENCRYPT_SCHEMA, type LessonRecord } from '../lessons/lesson.sche
 import { decryptRecord } from '../utils/encryption';
 
 // type, не interface: decryptRecord требует индексную сигнатуру (как LeanLesson).
-// `tags` — честно опционален: у класса, заведённого до ADR-0072, поля в
-// документе нет, `.lean()` не подставляет default при чтении (тот же приём,
-// что у LeanClass/class.mapper.ts).
 export type PlannerClass = {
   _id: Types.ObjectId;
   title: string;
@@ -31,7 +28,6 @@ export type PlannerClass = {
   leadMinutes: number;
   active: boolean;
   leaderId?: Types.ObjectId;
-  tags?: string[];
 };
 
 const CLASS_PROJECTION = {
@@ -45,10 +41,8 @@ const CLASS_PROJECTION = {
   leadMinutes: 1,
   active: 1,
   leaderId: 1,
-  tags: 1,
 } as const;
 
-// `tags` — та же оговорка, что у PlannerClass выше (запись до ADR-0075).
 export type PlannerLesson = {
   _id: Types.ObjectId;
   classId: Types.ObjectId;
@@ -59,7 +53,6 @@ export type PlannerLesson = {
   zoomLinkOverride?: string;
   zoomPasswordOverride?: string;
   leaderId?: Types.ObjectId;
-  tags?: string[];
 };
 
 const LESSON_PROJECTION = {
@@ -71,7 +64,6 @@ const LESSON_PROJECTION = {
   zoomLinkOverride: 1,
   zoomPasswordOverride: 1,
   leaderId: 1,
-  tags: 1,
 } as const;
 
 // Ссылка и пароль класса лежат шифротекстом (CLASS_FIELD_POLICY): без

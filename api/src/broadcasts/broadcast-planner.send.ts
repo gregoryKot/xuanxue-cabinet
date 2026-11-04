@@ -1,5 +1,5 @@
-// Отправка одной даты занятия: активные и подходящие по тегу каналы
-// (ADR-0108) → текст поста → insert broadcast+deliveries — вынесено из
+// Отправка одной даты занятия: активные каналы
+// (ADR-0192) → текст поста → insert broadcast+deliveries — вынесено из
 // broadcast-planner.service.ts (файл-лимит 150 строк, CLAUDE.md «Храповики»).
 import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
@@ -10,7 +10,7 @@ import type { DeliveryRecord } from '../deliveries/delivery.schema';
 import type { UsersService } from '../users/users.service';
 import { insertBroadcastWithDeliveries } from './broadcast.inserts';
 import { computeBroadcastSendTiming } from './broadcast-send-timing';
-import { findChannelsForLesson } from './broadcast-channels.queries';
+import { findActiveChannelIds } from './broadcast-channels.queries';
 import { CANCEL_REASON } from './broadcast-cancel-reasons';
 import { cancelPlanningWithLog } from './broadcast-planner.log';
 import type { PlannerClass, PlannerLesson } from './broadcast-planner.queries';
@@ -25,9 +25,8 @@ export interface SendLessonDeps {
   logger: Logger;
 }
 
-/** Активные и подходящие по тегу каналы (ADR-0108) → текст поста-ссылки →
- * broadcast+deliveries. Пустой список активных каналов и пустой список
- * подошедших по тегу — разные cancelled-плейсхолдеры, не одна причина
+/** Активные каналы занятия (ADR-0192) → текст поста-ссылки →
+ * broadcast+deliveries. Пустой список активных — cancelled-плейсхолдер
  * (docs/PLAN.md §6). */
 export async function sendLessonBroadcast(
   deps: SendLessonDeps,
@@ -36,30 +35,13 @@ export async function sendLessonBroadcast(
   now: DateTime,
   templates: Record<TemplateKind, string>,
 ): Promise<boolean> {
-  // Тег даты занятия (свой, ADR-0075) + тег занятия в расписании, к которому
-  // дата относится (ADR-0072) — оба считаются тегами даты для фильтра канала.
-  const lessonTags = [...(lesson.tags ?? []), ...(cls.tags ?? [])];
-  const { activeChannelIds, matchingChannelIds } = await findChannelsForLesson(
-    deps.channelModel,
-    cls.channelIds,
-    lessonTags,
-  );
-  if (activeChannelIds.length === 0) {
+  const channelIds = await findActiveChannelIds(deps.channelModel, cls.channelIds);
+  if (channelIds.length === 0) {
     return cancelPlanningWithLog(
       deps.broadcastModel,
       deps.logger,
       lesson._id,
       CANCEL_REASON.allChannelsDisabled,
-      now,
-      'warn',
-    );
-  }
-  if (matchingChannelIds.length === 0) {
-    return cancelPlanningWithLog(
-      deps.broadcastModel,
-      deps.logger,
-      lesson._id,
-      CANCEL_REASON.noChannelsForTags,
       now,
       'warn',
     );
@@ -89,7 +71,7 @@ export async function sendLessonBroadcast(
     {
       kind: 'lesson_link',
       lessonId: lesson._id,
-      channelIds: matchingChannelIds,
+      channelIds,
       scheduledAt: sendAt.toJSDate(),
       deliveryNextAttemptAt: sendAt.toJSDate(),
       text,

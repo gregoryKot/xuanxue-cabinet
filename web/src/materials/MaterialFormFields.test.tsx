@@ -23,7 +23,6 @@ function makeTagSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
     tag: 'старшая',
     lessonCount: 0,
     materialCount: 0,
-    channelCount: 0,
     ...overrides,
   };
 }

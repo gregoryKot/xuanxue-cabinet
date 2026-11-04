@@ -12,7 +12,7 @@ import type { Recording } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
-import { findChannelsForLesson } from './broadcast-channels.queries';
+import { findActiveChannelIds } from './broadcast-channels.queries';
 import { CANCEL_REASON as REASON } from './broadcast-cancel-reasons';
 import { buildRecordingText } from './broadcast-planner.render';
 import { findClassForRecording } from './broadcast-planner.queries';
@@ -29,7 +29,6 @@ interface RecordingLesson {
   startsAt: Date;
   durationMin: number;
   leaderId?: Types.ObjectId;
-  tags?: string[]; // отбор по тегу (ADR-0108) — опционально, как у PlannerLesson.tags
 }
 
 const LESSON_PROJECTION = {
@@ -38,7 +37,6 @@ const LESSON_PROJECTION = {
   startsAt: 1,
   durationMin: 1,
   leaderId: 1,
-  tags: 1,
 } as const;
 
 @Injectable()
@@ -107,18 +105,12 @@ export class RecordingBroadcastService {
     if (!cls) return this.cancel(lessonId, recording, REASON.noClass, now);
     if (!cls.active) return this.cancel(lessonId, recording, REASON.classDisabled, now);
 
-    // Отбор по тегу (ADR-0108) — тот же приём, что у broadcast-planner.send.ts.
-    const lessonTags = [...(lesson.tags ?? []), ...(cls.tags ?? [])];
-    const { activeChannelIds, matchingChannelIds } = await findChannelsForLesson(
+    const channelIds = await findActiveChannelIds(
       this.models.channelModel,
       cls.channelIds,
-      lessonTags,
     );
-    if (activeChannelIds.length === 0) {
+    if (channelIds.length === 0) {
       return this.cancel(lessonId, recording, REASON.allChannelsDisabled, now);
-    }
-    if (matchingChannelIds.length === 0) {
-      return this.cancel(lessonId, recording, REASON.noChannelsForTags, now);
     }
 
     const settings = await this.settingsService.get();
@@ -137,7 +129,7 @@ export class RecordingBroadcastService {
         kind: 'recording',
         lessonId,
         recordingKey: recordingKeyOf(recording),
-        channelIds: matchingChannelIds,
+        channelIds,
         telegramFileId: recording.telegramFileId,
         text,
         scheduledAt: now.toJSDate(),

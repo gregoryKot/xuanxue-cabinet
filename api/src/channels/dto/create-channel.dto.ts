@@ -4,20 +4,10 @@
 // длиннее и дальше от текста ошибки, чем явная проверка. Здесь — только
 // базовая форма (`@IsObject()`), развёрнутая проверка полей по `type` —
 // `assertConfigForType` в channels.service.ts.
-import {
-  ArrayMaxSize,
-  IsArray,
-  IsIn,
-  IsNotEmpty,
-  IsObject,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsIn, IsNotEmpty, IsObject, IsString, MaxLength } from 'class-validator';
 import {
   CHANNEL_LIMITS,
   CHANNEL_TYPES,
-  TAG_LIMITS,
   type ChannelConfig,
   type ChannelType,
   type ApiRouteBody,
@@ -36,14 +26,4 @@ export class CreateChannelDto implements ApiRouteBody<'POST /channels'> {
 
   @IsObject()
   config!: ChannelConfig;
-
-  // Отбор рассылок по тегу (ADR-0108) — нормализация (обрезка, дедуп без
-  // учёта регистра), только если поле прислали, ChannelsService (тот же
-  // приём, что у CreateLessonDto.tags).
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(TAG_LIMITS.perRecord)
-  @IsString({ each: true })
-  @MaxLength(TAG_LIMITS.length, { each: true })
-  tags?: string[];
 }
