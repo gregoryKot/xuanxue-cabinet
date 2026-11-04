@@ -89,7 +89,7 @@ describe('ChannelClassesSection', () => {
     expect(box).toBeChecked();
     expect(screen.getAllByRole('checkbox')).toHaveLength(2);
     expect(screen.getByLabelText('Цигун')).not.toBeChecked();
-    expect(screen.getByText('пн 19:00, вт 19:00, вс 20:00')).toBeInTheDocument();
+    expect(screen.getByText('вс 20:00, пн 19:00, вт 19:00')).toBeInTheDocument();
     expect(screen.getByText(/каждого отмеченного курса/)).toBeInTheDocument();
   });
 
