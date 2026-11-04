@@ -1,5 +1,6 @@
-// Секция «Какие занятия сюда уходят» на странице канала: галочка сразу
-// шлёт PATCH /classes/:id с channelIds и показывает то, что вернул сервер.
+// Секция «Какие занятия сюда уходят» на странице канала: строка — курс,
+// отметка сразу шлёт PATCH /classes/:id для каждого занятия курса и
+// показывает то, что вернул сервер.
 // Мок сети — по пути (mockApiByPath), не очередью `…Once`.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -55,62 +56,137 @@ function patchCalls() {
   );
 }
 
+function patchBodies(): Record<string, unknown> {
+  return Object.fromEntries(
+    patchCalls().map((call) => [call[0], (call[1] as { body: unknown }).body]),
+  );
+}
+
+const MON = [{ id: 'r1', weekday: 1 as const, time: '19:00', durationMin: 60 }];
+const TUE = [{ id: 'r2', weekday: 2 as const, time: '19:00', durationMin: 60 }];
+const SUN = [{ id: 'r3', weekday: 0 as const, time: '20:00', durationMin: 60 }];
+
+function course(linked: boolean[]): ClassDto[] {
+  const rules = [SUN, TUE, MON];
+  return linked.map((on, i) =>
+    makeClass({
+      id: `c${i}`,
+      rules: rules[i % rules.length],
+      channelIds: on ? ['ch1', 'other'] : ['other'],
+    }),
+  );
+}
+
 describe('ChannelClassesSection', () => {
-  it('объяснение стоит до галочек, галочка отмечена у привязанных занятий', async () => {
+  it('одна строка на курс с днями по порядку недели; объяснение до галочек', async () => {
     mockApiByPath({
-      '/classes': [
-        makeClass({ channelIds: ['ch1', 'other'] }),
-        makeClass({ id: 'c2', title: 'Цигун', channelIds: [] }),
-      ],
+      '/classes': [...course([true, true, true]), makeClass({ id: 'z', title: 'Цигун' })],
     });
 
     render(<ChannelClassesSection channel={CHANNEL} />);
 
-    expect(await screen.findByLabelText('Тайцзи вт 19:00')).toBeChecked();
-    expect(screen.getByLabelText('Цигун вт 19:00')).not.toBeChecked();
-    expect(screen.getByText(/каждого отмеченного занятия/)).toBeInTheDocument();
+    const box = await screen.findByLabelText('Тайцзи');
+    expect(box).toBeChecked();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    expect(screen.getByLabelText('Цигун')).not.toBeChecked();
+    expect(screen.getByText('вс 20:00, пн 19:00, вт 19:00')).toBeInTheDocument();
+    expect(screen.getByText(/каждого отмеченного курса/)).toBeInTheDocument();
   });
 
-  it('отметка шлёт PATCH с channelIds и показывает ответ сервера', async () => {
-    const user = userEvent.setup();
-    mockApiByPath({ '/classes': [makeClass({ channelIds: ['other'] })] });
-    render(<ChannelClassesSection channel={CHANNEL} />);
-    const box = await screen.findByLabelText('Тайцзи вт 19:00');
+  it('часть занятий курса привязана — «частично»', async () => {
+    mockApiByPath({ '/classes': course([true, false]) });
 
-    mockApiByPath({ '/classes/c1': makeClass({ channelIds: ['other', 'ch1'] }) });
+    render(<ChannelClassesSection channel={CHANNEL} />);
+
+    const box = await screen.findByLabelText<HTMLInputElement>('Тайцзи');
+    expect(box).not.toBeChecked();
+    expect(box.indeterminate).toBe(true);
+    expect(box).toHaveAttribute('aria-checked', 'mixed');
+  });
+
+  it('клик по «частично» отмечает только непривязанные занятия курса', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/classes': course([true, false, false]) });
+    render(<ChannelClassesSection channel={CHANNEL} />);
+    const box = await screen.findByLabelText('Тайцзи');
+
+    mockApiByPath({
+      '/classes/c1': course([true, true])[1],
+      '/classes/c2': course([true, true, true])[2],
+    });
     await user.click(box);
 
     await waitFor(() => expect(box).toBeChecked());
-    expect(patchCalls()).toHaveLength(1);
-    expect(patchCalls()[0]?.[0]).toBe('/classes/c1');
-    expect((patchCalls()[0]?.[1] as { body: unknown }).body).toEqual({
-      channelIds: ['other', 'ch1'],
+    expect(patchBodies()).toEqual({
+      '/classes/c1': { channelIds: ['other', 'ch1'] },
+      '/classes/c2': { channelIds: ['other', 'ch1'] },
     });
   });
 
-  it('снятие отметки убирает только этот канал', async () => {
+  it('клик по отмеченному курсу снимает все его занятия, чужие каналы целы', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/classes': [makeClass({ channelIds: ['ch1', 'other'] })] });
+    mockApiByPath({ '/classes': course([true, true]) });
     render(<ChannelClassesSection channel={CHANNEL} />);
-    const box = await screen.findByLabelText('Тайцзи вт 19:00');
+    const box = await screen.findByLabelText('Тайцзи');
 
-    mockApiByPath({ '/classes/c1': makeClass({ channelIds: ['other'] }) });
+    mockApiByPath({
+      '/classes/c0': course([false, false])[0],
+      '/classes/c1': course([false, false])[1],
+    });
     await user.click(box);
 
     await waitFor(() => expect(box).not.toBeChecked());
-    expect((patchCalls()[0]?.[1] as { body: unknown }).body).toEqual({
-      channelIds: ['other'],
+    expect(patchBodies()).toEqual({
+      '/classes/c0': { channelIds: ['other'] },
+      '/classes/c1': { channelIds: ['other'] },
     });
   });
 
-  it('сбой — галочка остаётся прежней, текст ошибки сервера на экране', async () => {
+  it('«Снять все» снимает привязанные, «Отметить все» тогда не прячется', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/classes': [...course([true]), makeClass({ id: 'z', title: 'Цигун' })],
+    });
+    render(<ChannelClassesSection channel={CHANNEL} />);
+    await screen.findByLabelText('Тайцзи');
+    expect(screen.getByRole('button', { name: 'Отметить все' })).toBeInTheDocument();
+
+    mockApiByPath({ '/classes/c0': course([false])[0] });
+    await user.click(screen.getByRole('button', { name: 'Снять все' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Тайцзи')).not.toBeChecked());
+    expect(patchBodies()).toEqual({ '/classes/c0': { channelIds: ['other'] } });
+    expect(screen.queryByRole('button', { name: 'Снять все' })).not.toBeInTheDocument();
+  });
+
+  it('«Отметить все» шлёт запросы только непривязанным занятиям', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/classes': [...course([true]), makeClass({ id: 'z', title: 'Цигун' })],
+    });
+    render(<ChannelClassesSection channel={CHANNEL} />);
+    await screen.findByLabelText('Тайцзи');
+
+    mockApiByPath({
+      '/classes/z': makeClass({ id: 'z', title: 'Цигун', channelIds: ['ch1'] }),
+    });
+    await user.click(screen.getByRole('button', { name: 'Отметить все' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Цигун')).toBeChecked());
+    expect(patchBodies()).toEqual({ '/classes/z': { channelIds: ['ch1'] } });
+    expect(
+      screen.queryByRole('button', { name: 'Отметить все' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('сбой — отметка остаётся как на сервере, текст ошибки на экране', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockApiByPath({ '/classes': [makeClass()] });
+    mockApiByPath({ '/classes': course([false, false]) });
     render(<ChannelClassesSection channel={CHANNEL} />);
-    const box = await screen.findByLabelText('Тайцзи вт 19:00');
+    const box = await screen.findByLabelText('Тайцзи');
 
-    mockApiByPath({ '/classes/c1': new ApiError('Сервис недоступен', 503, 'unknown') });
+    mockApiByPath({ '/classes/c': new ApiError('Сервис недоступен', 503, 'unknown') });
     await user.click(box);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
@@ -120,11 +196,11 @@ describe('ChannelClassesSection', () => {
 
   it('сбой без текста от сервера — запасная фраза', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/classes': [makeClass()] });
+    mockApiByPath({ '/classes': course([false]) });
     render(<ChannelClassesSection channel={CHANNEL} />);
-    const box = await screen.findByLabelText('Тайцзи вт 19:00');
+    const box = await screen.findByLabelText('Тайцзи');
 
-    mockApiByPath({ '/classes/c1': new Error('сеть') });
+    mockApiByPath({ '/classes/c0': new Error('сеть') });
     await user.click(box);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -132,26 +208,26 @@ describe('ChannelClassesSection', () => {
     );
   });
 
-  it('пока запрос в пути, строка отключена', async () => {
+  it('пока запрос в пути, строка и кнопки отключены', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/classes': [makeClass()] });
+    mockApiByPath({ '/classes': course([false]) });
     render(<ChannelClassesSection channel={CHANNEL} />);
-    const box = await screen.findByLabelText('Тайцзи вт 19:00');
+    const box = await screen.findByLabelText('Тайцзи');
 
-    mockApiByPath({ '/classes/c1': new Promise(() => {}) });
+    mockApiByPath({ '/classes/c0': new Promise(() => {}) });
     await user.click(box);
 
     await waitFor(() => expect(box).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Отметить все' })).toBeDisabled();
   });
 
-  it('выключенное занятие в списке с пометкой', async () => {
+  it('выключенное занятие в списке не показывается', async () => {
     mockApiByPath({ '/classes': [makeClass({ active: false })] });
 
     render(<ChannelClassesSection channel={CHANNEL} />);
 
-    expect(
-      await screen.findByLabelText('Тайцзи вт 19:00 (выключено)'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Занятий в расписании пока нет/)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   it('занятий нет — честный текст', async () => {
@@ -171,6 +247,6 @@ describe('ChannelClassesSection', () => {
     mockApiByPath({ '/classes': [makeClass()] });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
-    expect(await screen.findByLabelText('Тайцзи вт 19:00')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Тайцзи')).toBeInTheDocument();
   });
 });
