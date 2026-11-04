@@ -14,22 +14,16 @@ export interface CourseRow {
   name: string;
   classes: ClassDto[];
   state: CourseLinkState;
-  /** «пн 19:00, вт 19:00» — дни недели по порядку, с понедельника. */
+  /** «вс 20:00, пн 19:00» — дни в порядке недели школы: с воскресенья, как
+   * нумерует `WEEKDAYS` и как их показывает «Расписание» (scheduleGrid.ts). */
   days: string;
-}
-
-const WEEK_ORDER_SHIFT = 6; // JS: 0 = воскресенье; неделя школы идёт с понедельника
-const DAYS_PER_WEEK = 7;
-
-function weekIndex(weekday: number): number {
-  return (weekday + WEEK_ORDER_SHIFT) % DAYS_PER_WEEK;
 }
 
 function formatDays(classes: readonly ClassDto[]): string {
   const slots = classes
     .flatMap((cls) => cls.rules)
     .map((rule) => ({
-      order: weekIndex(rule.weekday),
+      order: rule.weekday,
       time: rule.time,
       text: `${WEEKDAY_LABELS_RU[rule.weekday].toLowerCase()} ${rule.time}`,
     }))

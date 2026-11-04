@@ -26,7 +26,7 @@ function slot(id: string, weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6, time: string) {
 }
 
 describe('groupClassesByCourse', () => {
-  it('занятия с одним названием и группой — одна строка, дни по порядку недели', () => {
+  it('занятия с одним названием и группой — одна строка, дни в порядке недели школы (с воскресенья, как в «Расписании»)', () => {
     const rows = groupClassesByCourse(
       [
         makeClass({ id: 'a', rules: [slot('r1', 0, '20:00')] }),
@@ -38,7 +38,7 @@ describe('groupClassesByCourse', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.name).toBe('Тайцзицюань · Начинающие');
     expect(rows[0]?.classes.map((cls) => cls.id)).toEqual(['a', 'b', 'c']);
-    expect(rows[0]?.days).toBe('пн 19:00, ср 19:00, вс 20:00');
+    expect(rows[0]?.days).toBe('вс 20:00, пн 19:00, ср 19:00');
   });
 
   it('другая группа — другая строка; порядок по названию, потом по группе', () => {
