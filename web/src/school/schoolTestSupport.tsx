@@ -52,8 +52,10 @@ export function mockSchoolSaveFailure(error: Error): void {
         ? Promise.reject(error)
         : Promise.resolve(makeSettings());
     }
+    // Группы сюда не приходят: эту заглушку ставят уже после первого рендера,
+    // когда список групп загружен через mockSchoolApi, а сохранение настроек
+    // его не перечитывает — ветка под `/groups` была бы мёртвой.
     if (path.startsWith(STATS_PATH)) return Promise.resolve(EMPTY_STATS);
-    if (path.startsWith('/groups')) return Promise.resolve([]);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 }
