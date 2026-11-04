@@ -13,8 +13,10 @@ import {
 import { toIsoUtc } from '../common/iso-date';
 import type { ChannelRecord } from './channel.schema';
 
-export type LeanChannel = Omit<ChannelRecord, 'config'> & {
+export type LeanChannel = Omit<ChannelRecord, 'config' | 'groupIds'> & {
   _id: Types.ObjectId;
+  /** У каналов до миграции 0030 поля нет — маппер отдаёт `[]` (ADR-0196). */
+  groupIds?: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -46,7 +48,7 @@ export function toChannelDto(doc: LeanChannel): ChannelDto {
     // Страховка для документов, созданных до появления поля target в схеме —
     // `doc.target` из старой записи может быть undefined, DTO его не отдаёт.
     target: doc.target ?? '',
-    groupId: doc.groupId?.toString() ?? null,
+    groupIds: (doc.groupIds ?? []).map(String),
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

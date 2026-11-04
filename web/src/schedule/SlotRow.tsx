@@ -68,6 +68,9 @@ export function SlotRow({ slot, onSelect }: SlotRowProps) {
             {slot.destination.text}
           </span>
         )}
+        {slot.destination?.warning && (
+          <span style={destinationWarningStyle}>{slot.destination.warning}</span>
+        )}
         {(!slot.active || slot.linkMissing) && (
           <span style={statusRowStyle}>
             {!slot.active && (

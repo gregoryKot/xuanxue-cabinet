@@ -82,8 +82,19 @@ describe('Миграция 0029-group-routing', () => {
     });
   }
 
+  interface RawGrouped {
+    groupId?: Types.ObjectId;
+    forAllGroups?: boolean;
+    groupLabel?: string;
+    channelIds?: Types.ObjectId[];
+  }
+
   async function raw(title: string) {
-    return db().collection('classes').findOne({ title });
+    return db().collection('classes').findOne<RawGrouped>({ title });
+  }
+
+  async function rawChannel(id: Types.ObjectId) {
+    return db().collection('channels').findOne<RawGrouped>({ _id: id });
   }
 
   it('занятие с одной группой получает её, подпись — название группы, groupIds снят', async () => {
@@ -91,7 +102,7 @@ describe('Миграция 0029-group-routing', () => {
 
     await groupRouting.up(db());
 
-    const dto = await classes.findOne({ title: 'А' }).lean();
+    const dto = await raw('А');
     expect(dto?.groupId?.toString()).toBe(middle.toString());
     expect(dto?.forAllGroups).toBe(false);
     expect(dto?.groupLabel).toBe('Средние');
@@ -105,7 +116,7 @@ describe('Миграция 0029-group-routing', () => {
     await groupRouting.up(db());
 
     for (const title of ['Пятница', 'Две']) {
-      const doc = await classes.findOne({ title }).lean();
+      const doc = await raw(title);
       expect(doc?.forAllGroups).toBe(true);
       expect(doc?.groupLabel).toBe('все группы');
       expect(await raw(title)).not.toHaveProperty('groupId');
@@ -118,7 +129,7 @@ describe('Миграция 0029-group-routing', () => {
 
     await groupRouting.up(db());
 
-    const doc = await classes.findOne({ title: 'Без' }).lean();
+    const doc = await raw('Без');
     expect(doc?.groupId).toBeUndefined();
     expect(doc?.forAllGroups).toBe(false);
     expect(doc?.groupLabel).toBe('');
@@ -131,7 +142,7 @@ describe('Миграция 0029-group-routing', () => {
 
     await groupRouting.up(db());
 
-    const doc = await channels.findById(channel).lean();
+    const doc = await rawChannel(channel);
     expect(doc?.groupId?.toString()).toBe(beginners.toString());
   });
 
@@ -144,7 +155,7 @@ describe('Миграция 0029-group-routing', () => {
     const report = await groupRouting.up(db());
 
     for (const id of [mixed, lonely]) {
-      expect((await channels.findById(id).lean())?.groupId).toBeUndefined();
+      expect((await rawChannel(id))?.groupId).toBeUndefined();
     }
     const lines = report.filter((line) => line.startsWith('канал'));
     expect(lines).toHaveLength(2);
@@ -159,7 +170,7 @@ describe('Миграция 0029-group-routing', () => {
 
     await groupRouting.up(db());
 
-    expect((await channels.findById(channel).lean())?.groupId).toBeUndefined();
+    expect((await rawChannel(channel))?.groupId).toBeUndefined();
   });
 
   it('личный чат ученика группы не получает и в отчёт не попадает', async () => {
@@ -168,7 +179,7 @@ describe('Миграция 0029-group-routing', () => {
 
     const report = await groupRouting.up(db());
 
-    expect((await channels.findById(personal).lean())?.groupId).toBeUndefined();
+    expect((await rawChannel(personal))?.groupId).toBeUndefined();
     expect(report.join('\n')).not.toContain(String(personal));
   });
 
@@ -187,18 +198,18 @@ describe('Миграция 0029-group-routing', () => {
     await legacyClass('Пятница', [beginners, middle], []);
     await groupRouting.up(db());
     // Владелец переназначил группу канала и занятия руками.
-    await channels.updateOne({ _id: channel }, { $set: { groupId: advanced } });
-    await classes.updateOne({ title: 'А' }, { $set: { groupId: middle } });
+    await db()
+      .collection('channels')
+      .updateOne({ _id: channel }, { $set: { groupId: advanced } });
+    await db()
+      .collection('classes')
+      .updateOne({ title: 'А' }, { $set: { groupId: middle } });
 
     const second = await groupRouting.up(db());
 
-    expect((await channels.findById(channel).lean())?.groupId?.toString()).toBe(
-      advanced.toString(),
-    );
-    expect((await classes.findOne({ title: 'А' }).lean())?.groupId?.toString()).toBe(
-      middle.toString(),
-    );
-    expect((await classes.findOne({ title: 'Пятница' }).lean())?.forAllGroups).toBe(true);
+    expect((await rawChannel(channel))?.groupId?.toString()).toBe(advanced.toString());
+    expect((await raw('А'))?.groupId?.toString()).toBe(middle.toString());
+    expect((await raw('Пятница'))?.forAllGroups).toBe(true);
     expect(second[0]).toBe('занятий переведено на группы: 0');
   });
 

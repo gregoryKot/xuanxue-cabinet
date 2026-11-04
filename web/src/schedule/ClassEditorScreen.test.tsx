@@ -38,8 +38,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: 'Средние',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
@@ -121,12 +120,12 @@ describe('ClassEditorScreen — загрузка', () => {
   });
 
   it('открытое по адресу занятие — название в заголовке, поля из ответа сервера', async () => {
-    mockClass(makeClass({ groupId: 'g2' }));
+    mockClass(makeClass({ groupIds: ['g2'] }));
 
     renderAt('/schedule/c1');
 
-    expect(await screen.findByRole('radio', { name: 'Средние' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Начинающие' })).not.toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: 'Средние' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Начинающие' })).not.toBeChecked();
     expect(screen.getByLabelText('Ссылка Zoom')).toHaveValue('https://zoom.example/1');
     expect(screen.getByLabelText('За сколько минут слать ссылку')).toHaveValue('30');
     expect(screen.getByLabelText('День недели')).toHaveValue('2');
@@ -152,7 +151,7 @@ describe('ClassEditorScreen — сохранение', () => {
     mockClass(makeClass());
 
     renderAt('/schedule/c1');
-    await user.click(await screen.findByRole('radio', { name: 'Старшие' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Старшие' }));
     await user.selectOptions(screen.getByLabelText('Формат'), 'offline');
     await user.click(screen.getByLabelText('Занятие активно'));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
@@ -160,11 +159,11 @@ describe('ClassEditorScreen — сохранение', () => {
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const [path, options] = callsWithMethod('PATCH')[0] as [
       string,
-      { body: { groupId: string; format: string; active: boolean } },
+      { body: { groupIds: string[]; format: string; active: boolean } },
     ];
     expect(path).toBe('/classes/c1');
     expect(options.body).toMatchObject({
-      groupId: 'g3',
+      groupIds: ['g3'],
       format: 'offline',
       active: false,
     });

@@ -1,5 +1,5 @@
-// Группа занятия на странице занятия (ADR-0195): радио «Группа» с «Без группы» и
-// «Все группы», «Новая группа» прямо под ним и сбой загрузки списка. Отдельный файл — ClassEditorScreen.test.tsx
+// Группы занятия на странице занятия (ADR-0196): галочки «Группы», «Новая группа»
+// прямо под ними и сбой загрузки списка. Отдельный файл — ClassEditorScreen.test.tsx
 // уже за 300 строк (CLAUDE.md «Файлы»). Сеть — mockApiByPath по пути запроса:
 // ответ на действие ставится вторым вызовом, не очередью `…Once` (ADR-0116).
 import { render, screen, waitFor } from '@testing-library/react';
@@ -41,8 +41,7 @@ const CLASS: ClassDto = {
   id: 'c1',
   title: 'Тайцзицюань',
   groupLabel: 'Начинающие',
-  groupId: 'g1',
-  forAllGroups: false,
+  groupIds: ['g1'],
   format: 'online',
   rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
   tz: 'Asia/Jerusalem',
@@ -80,59 +79,55 @@ function callsWithMethod(method: string) {
   );
 }
 
-describe('ClassEditorScreen — группа занятия', () => {
-  it('школа без групп: подсказка, что групп нет, «Без группы» и «Все группы» на месте, поле «Новая группа»', async () => {
+describe('ClassEditorScreen — группы занятия', () => {
+  it('школа без групп: подсказка, что групп нет, поле «Новая группа» на месте', async () => {
     mockEditor([]);
 
     renderEditor();
 
     expect(await screen.findByText(/Групп пока нет/)).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Без группы' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Все группы' })).toBeInTheDocument();
     expect(screen.getByLabelText('Новая группа')).toBeInTheDocument();
   });
 
-  it('радио по группам школы: выбрана группа занятия, выбор другой уходит в PATCH одной группой', async () => {
+  it('подсказка объясняет выбор до первого действия', async () => {
+    mockEditor([BEGINNERS]);
+
+    renderEditor();
+
+    expect(await screen.findByText(/отмеченных групп/)).toBeInTheDocument();
+    expect(screen.getByText(/Без группы занятие никуда не уходит/)).toBeInTheDocument();
+  });
+
+  it('галочки по группам школы: отмечена группа занятия, вторая добавляется и уходит в PATCH списком', async () => {
     const user = userEvent.setup();
     mockEditor([BEGINNERS, MIDDLE]);
 
     renderEditor();
-    expect(await screen.findByRole('radio', { name: 'Начинающие' })).toBeChecked();
-    await user.click(screen.getByRole('radio', { name: 'Средние' }));
-    expect(screen.getByRole('radio', { name: 'Начинающие' })).not.toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: 'Начинающие' })).toBeChecked();
+    await user.click(screen.getByRole('checkbox', { name: 'Средние' }));
+    expect(screen.getByRole('checkbox', { name: 'Начинающие' })).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const options = callsWithMethod('PATCH')[0]?.[1] as { body: Record<string, unknown> };
-    expect(options.body).toMatchObject({ groupId: 'g2', forAllGroups: false });
+    expect(options.body).toMatchObject({ groupIds: ['g1', 'g2'] });
+    expect(options.body).not.toHaveProperty('forAllGroups');
+    expect(options.body).not.toHaveProperty('groupId');
     expect(options.body).not.toHaveProperty('groupLabel');
     expect(options.body).not.toHaveProperty('channelIds');
   });
 
-  it('«Все группы» уходит флагом, groupId пустой', async () => {
+  it('снять все галочки — в PATCH уходит пустой список', async () => {
     const user = userEvent.setup();
     mockEditor([BEGINNERS, MIDDLE]);
 
     renderEditor();
-    await user.click(await screen.findByRole('radio', { name: 'Все группы' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Начинающие' }));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const options = callsWithMethod('PATCH')[0]?.[1] as { body: Record<string, unknown> };
-    expect(options.body).toMatchObject({ groupId: null, forAllGroups: true });
-  });
-
-  it('«Без группы» снимает группу — в PATCH уходит null', async () => {
-    const user = userEvent.setup();
-    mockEditor([BEGINNERS, MIDDLE]);
-
-    renderEditor();
-    await user.click(await screen.findByRole('radio', { name: 'Без группы' }));
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
-    const options = callsWithMethod('PATCH')[0]?.[1] as { body: Record<string, unknown> };
-    expect(options.body).toMatchObject({ groupId: null, forAllGroups: false });
+    expect(options.body).toMatchObject({ groupIds: [] });
   });
 
   it('«Добавить» заводит группу POST-ом и сразу выбирает её; поле очищается', async () => {
@@ -140,14 +135,14 @@ describe('ClassEditorScreen — группа занятия', () => {
     mockEditor([BEGINNERS]);
 
     renderEditor();
-    await screen.findByRole('radio', { name: 'Начинающие' });
+    await screen.findByRole('checkbox', { name: 'Начинающие' });
     // Ответ на действие — отдельным вызовом, путь POST тот же, что у списка.
     mockEditor(makeGroup('g9', 'Вечерние'));
     await user.type(screen.getByLabelText('Новая группа'), '  Вечерние ');
     await user.click(screen.getByRole('button', { name: 'Добавить' }));
 
-    expect(await screen.findByRole('radio', { name: 'Вечерние' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Начинающие' })).not.toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: 'Вечерние' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Начинающие' })).toBeChecked();
     expect(screen.getByLabelText('Новая группа')).toHaveValue('');
     const [path, options] = callsWithMethod('POST')[0] as [
       string,
@@ -158,8 +153,8 @@ describe('ClassEditorScreen — группа занятия', () => {
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
-    const patch = callsWithMethod('PATCH')[0]?.[1] as { body: { groupId: string } };
-    expect(patch.body.groupId).toBe('g9');
+    const patch = callsWithMethod('PATCH')[0]?.[1] as { body: { groupIds: string[] } };
+    expect(patch.body.groupIds).toEqual(['g1', 'g9']);
   });
 
   it('Enter в поле «Новая группа» добавляет группу, а не сохраняет всё занятие', async () => {
@@ -167,11 +162,11 @@ describe('ClassEditorScreen — группа занятия', () => {
     mockEditor([BEGINNERS]);
 
     renderEditor();
-    await screen.findByRole('radio', { name: 'Начинающие' });
+    await screen.findByRole('checkbox', { name: 'Начинающие' });
     mockEditor(makeGroup('g9', 'Вечерние'));
     await user.type(screen.getByLabelText('Новая группа'), 'Вечерние{Enter}');
 
-    expect(await screen.findByRole('radio', { name: 'Вечерние' })).toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: 'Вечерние' })).toBeChecked();
     expect(callsWithMethod('PATCH')).toHaveLength(0);
   });
 
@@ -180,7 +175,7 @@ describe('ClassEditorScreen — группа занятия', () => {
     mockEditor([BEGINNERS]);
 
     renderEditor();
-    await screen.findByRole('radio', { name: 'Начинающие' });
+    await screen.findByRole('checkbox', { name: 'Начинающие' });
     mockEditor(
       new ApiError(
         'Группа «Начинающие» уже есть. Отметьте её в списке.',
@@ -194,7 +189,7 @@ describe('ClassEditorScreen — группа занятия', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Группа «Начинающие» уже есть',
     );
-    expect(screen.getByRole('radio', { name: 'Начинающие' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Начинающие' })).toBeChecked();
     expect(screen.getByLabelText('Новая группа')).toHaveValue('начинающие');
   });
 
@@ -203,7 +198,7 @@ describe('ClassEditorScreen — группа занятия', () => {
     mockEditor([BEGINNERS]);
 
     renderEditor();
-    await screen.findByRole('radio', { name: 'Начинающие' });
+    await screen.findByRole('checkbox', { name: 'Начинающие' });
     await user.click(screen.getByRole('button', { name: 'Добавить' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -228,7 +223,7 @@ describe('ClassEditorScreen — группа занятия', () => {
     mockEditor([BEGINNERS, MIDDLE]);
     await user.click(screen.getByRole('button', { name: 'Обновить' }));
 
-    expect(await screen.findByRole('radio', { name: 'Средние' })).not.toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: 'Средние' })).not.toBeChecked();
     // Повтор не прячет форму скелетоном: название на месте.
     expect(screen.getByLabelText('Название')).toHaveValue('Тайцзицюань');
   });

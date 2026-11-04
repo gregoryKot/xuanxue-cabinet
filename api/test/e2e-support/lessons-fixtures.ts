@@ -50,7 +50,7 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
   const deliveryModel = (): Model<DeliveryRecord> =>
     getApp().app.get(getModelToken(DeliveryRecord.name), { strict: false });
 
-  // `zoomLink`/`groupId` — только send-now.e2e-spec.ts (нужен реально
+  // `zoomLink`/`groupIds` — только send-now.e2e-spec.ts (нужен реально
   // рассылаемый класс: ссылка и активный канал), остальные вызовы этого
   // хелпера их не передают и получают прежнее поведение без изменений.
   // `zoomLink` пишем через encryptRecord — как и прод-код (ClassesService),
@@ -61,10 +61,10 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
     overrides: {
       rulesDurationMin?: number;
       zoomLink?: string;
-      groupId?: Types.ObjectId;
+      groupIds?: Types.ObjectId[];
     } = {},
   ): Promise<string> {
-    const { rulesDurationMin = 45, zoomLink, groupId } = overrides;
+    const { rulesDurationMin = 45, zoomLink, groupIds } = overrides;
     const cls = await classModel().create(
       encryptRecord(
         {
@@ -72,7 +72,7 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
           format: 'online',
           rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
           zoomLink,
-          groupId,
+          groupIds,
         },
         CLASS_ENCRYPT_SCHEMA,
       ),
@@ -82,7 +82,7 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
 
   /** Класс с реальной ссылкой и активным каналом той же группы —
    * send-now.e2e-spec.ts (нужен класс, куда реально можно отправить;
-   * маршрут задаёт только группа, ADR-0195). */
+   * маршрут задают только группы, ADR-0196). */
   async function createSendableClass(): Promise<string> {
     const groupId = new Types.ObjectId();
     await channelModel().create({
@@ -91,11 +91,11 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
       config: '{}',
       target: '',
       active: true,
-      groupId,
+      groupIds: [groupId],
     });
     return createClass({
       zoomLink: 'https://zoom.example/1',
-      groupId,
+      groupIds: [groupId],
     });
   }
 

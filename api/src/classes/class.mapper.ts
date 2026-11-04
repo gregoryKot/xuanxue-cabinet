@@ -11,12 +11,12 @@ import { type ClassRecord, type LeanScheduleRule } from './class.schema';
  * документе нет, а `.lean()` default схемы при чтении не подставляет —
  * toClassDto ниже сам отдаёт `[]` (тот же приём, что у LeanLesson,
  * lesson.mapper.ts). */
-export type LeanClass = Omit<ClassRecord, 'rules' | 'tags' | 'forAllGroups'> & {
+export type LeanClass = Omit<ClassRecord, 'rules' | 'tags' | 'groupIds'> & {
   _id: Types.ObjectId;
   rules: LeanScheduleRule[];
   tags?: string[];
-  /** Как `tags`: у документов до ADR-0195 поля нет. */
-  forAllGroups?: boolean;
+  /** Как `tags`: у документов до миграции 0030 поля нет. */
+  groupIds?: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,8 +26,7 @@ export function toClassDto(doc: LeanClass): ClassDto {
     id: doc._id.toString(),
     title: doc.title,
     groupLabel: doc.groupLabel,
-    groupId: doc.groupId?.toString() ?? null,
-    forAllGroups: doc.forAllGroups ?? false,
+    groupIds: (doc.groupIds ?? []).map(String),
     format: doc.format,
     location: doc.location,
     zoomLink: doc.zoomLink,

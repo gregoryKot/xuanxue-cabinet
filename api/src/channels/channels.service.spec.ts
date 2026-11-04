@@ -240,7 +240,7 @@ describe('ChannelsService', () => {
       type: 'manual',
       title: 'Facebook',
       config: {},
-      groupId: group._id.toString(),
+      groupIds: [group._id.toString()],
     });
 
     await service.remove(created.id);
@@ -248,60 +248,59 @@ describe('ChannelsService', () => {
     await expect(service.getById(created.id)).rejects.toThrow('не найден');
   });
 
-  it('groupId: создание с группой → читается; без группы — null', async () => {
-    const group = await groupModel.create({ name: 'Средние', nameKey: 'средние' });
+  it('groupIds: создание с двумя группами → читается в порядке создания групп; без групп — []', async () => {
+    const middle = await groupModel.create({ name: 'Средние', nameKey: 'средние' });
+    const advanced = await groupModel.create({ name: 'Старшие', nameKey: 'старшие' });
 
-    const withGroup = await service.create({
+    const withGroups = await service.create({
       type: 'manual',
       title: 'A',
       config: {},
-      groupId: group._id.toString(),
+      groupIds: [advanced._id.toString(), middle._id.toString(), advanced._id.toString()],
     });
     const without = await service.create({ type: 'manual', title: 'B', config: {} });
 
-    expect(withGroup.groupId).toBe(group._id.toString());
-    expect((await service.getById(withGroup.id)).groupId).toBe(group._id.toString());
-    expect(without.groupId).toBeNull();
+    const expected = [middle._id.toString(), advanced._id.toString()];
+    expect(withGroups.groupIds).toEqual(expected);
+    expect((await service.getById(withGroups.id)).groupIds).toEqual(expected);
+    expect(without.groupIds).toEqual([]);
   });
 
-  it('groupId: неизвестная группа — InvalidInputError, канал не создан', async () => {
+  it('groupIds: неизвестная группа — InvalidInputError, канал не создан', async () => {
     await expect(
       service.create({
         type: 'manual',
         title: 'A',
         config: {},
-        groupId: new Types.ObjectId().toString(),
+        groupIds: [new Types.ObjectId().toString()],
       }),
     ).rejects.toThrow('Такой группы нет');
     await expect(service.list({})).resolves.toEqual([]);
   });
 
-  it('update: группу меняют, потом снимают null — поле удаляется', async () => {
+  it('update: группы заменяют целиком, потом снимаются пустым списком', async () => {
     const first = await groupModel.create({ name: 'Старшие', nameKey: 'старшие' });
     const created = await service.create({ type: 'manual', title: 'A', config: {} });
 
-    const set = await service.update(created.id, { groupId: first._id.toString() });
-    const cleared = await service.update(created.id, { groupId: null });
+    const set = await service.update(created.id, { groupIds: [first._id.toString()] });
+    const cleared = await service.update(created.id, { groupIds: [] });
 
-    expect(set.groupId).toBe(first._id.toString());
-    expect(cleared.groupId).toBeNull();
-    await expect(model.findById(created.id).lean()).resolves.not.toHaveProperty(
-      'groupId',
-    );
+    expect(set.groupIds).toEqual([first._id.toString()]);
+    expect(cleared.groupIds).toEqual([]);
   });
 
-  it('update: тело без groupId не трогает группу', async () => {
+  it('update: тело без groupIds не трогает группы', async () => {
     const group = await groupModel.create({ name: 'Средние', nameKey: 'средние' });
     const created = await service.create({
       type: 'manual',
       title: 'A',
       config: {},
-      groupId: group._id.toString(),
+      groupIds: [group._id.toString()],
     });
 
     const renamed = await service.update(created.id, { title: 'Новое имя' });
 
-    expect(renamed.groupId).toBe(group._id.toString());
+    expect(renamed.groupIds).toEqual([group._id.toString()]);
   });
 
   it('test(): manual — { status: "manual" }', async () => {

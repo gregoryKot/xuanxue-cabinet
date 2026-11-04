@@ -21,8 +21,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
 
   // classes — /classes.
   title: 'Название',
-  groupId: 'Группа', // у занятия и у канала (ADR-0195)
-  forAllGroups: 'Для всех групп',
+  groupIds: 'Группы', // у занятия и у канала (ADR-0196)
   format: 'Формат занятия',
   location: 'Адрес',
   zoomLink: 'Ссылка Zoom',

@@ -136,10 +136,7 @@ describe('ChannelConfigService', () => {
       title: 'Группа учеников',
     });
 
-    expect(channel.groupId).toBeNull();
-    await expect(model.findById(channel.id).lean()).resolves.not.toHaveProperty(
-      'groupId',
-    );
+    expect(channel.groupIds).toEqual([]);
   });
 
   it('upsertTelegramChat: повторный вызов не отменяет группу, выбранную учителем', async () => {
@@ -148,11 +145,11 @@ describe('ChannelConfigService', () => {
       title: 'Группа',
     });
     const groupId = new Types.ObjectId();
-    await model.updateOne({ _id: channel.id }, { $set: { groupId } });
+    await model.updateOne({ _id: channel.id }, { $set: { groupIds: [groupId] } });
 
     const again = await service.upsertTelegramChat({ chatId: '@twice', title: 'Группа' });
 
-    expect(again.groupId).toBe(groupId.toString());
+    expect(again.groupIds).toEqual([groupId.toString()]);
   });
 
   it('upsertTelegramChat: чат вернулся после kicked — active снова true, title обновлён', async () => {

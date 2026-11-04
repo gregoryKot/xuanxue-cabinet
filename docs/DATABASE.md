@@ -139,7 +139,7 @@
 
 Данные школы (личных данных учеников нет; в них лежат ссылки на людей школы, а токены
 и ссылки Zoom шифруются, как и тексты событий): `classes`, `lessons`, `channels`, `broadcasts`,
-`deliveries`, `groups` (группы учеников школы, ADR-0193: только названия; у занятия и канала лишь ссылка `groupId`, ADR-0195), `exams`, `exam_items`, `exam_images`, `exam_videos`, `lesson_videos`
+`deliveries`, `groups` (группы учеников школы, ADR-0193: только названия; у занятия и канала лишь список ссылок `groupIds`, ADR-0196), `exams`, `exam_items`, `exam_images`, `exam_videos`, `lesson_videos`
 (файл записи занятия в R2, ADR-0180: в базе ключ объекта и размер),
 `grading_comment_presets`, `school_events`, `materials`, `settings`, `invite_links`,
 `storage_orphans`. Живут, пока школа их не удалит. Ссылки на человека в них

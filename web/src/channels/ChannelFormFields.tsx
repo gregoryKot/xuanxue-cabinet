@@ -5,15 +5,14 @@
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
-import { RichText } from '../components/RichText';
-import { GroupRadioField } from '../groups/GroupRadioField';
+import { GroupCheckboxField } from '../groups/GroupCheckboxField';
 import type { UseGroupsResult } from '../groups/useGroups';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
 import { ChannelVkFields } from './ChannelVkFields';
 
 const GROUP_HINT =
-  'Сюда уходят ссылки и записи занятий **одной группы**. Пока группа не выбрана, посты в этот канал не уходят.';
+  'Сюда уходят ссылки и записи занятий **отмеченных групп**. Пока ни одна не отмечена, посты в этот канал не уходят.';
 
 interface ChannelFormFieldsProps {
   state: ChannelFormState;
@@ -74,17 +73,11 @@ export function ChannelFormFields({
         />
       </Field>
 
-      <GroupRadioField
-        legend="Для какой группы"
-        noneLabel="Пока никакой"
+      <GroupCheckboxField
         groups={groups}
-        value={state.groupId}
-        onChange={(groupId) => setField('groupId', groupId)}
-        hint={
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-            <RichText text={GROUP_HINT} />
-          </p>
-        }
+        selectedIds={state.groupIds}
+        onChange={(groupIds) => setField('groupIds', groupIds)}
+        hint={GROUP_HINT}
       />
 
       {state.type === 'telegram' && (

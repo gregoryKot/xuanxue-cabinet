@@ -56,7 +56,7 @@ describe('ChatMemberHandler', () => {
 
     const channel = await channelModel.findOne({ target: '-100200300' }).lean();
     expect(channel?.active).toBe(true);
-    expect(channel).not.toHaveProperty('groupId');
+    expect(channel?.groupIds ?? []).toEqual([]);
   });
 
   it('повышение в админы (member → administrator) — ничего не создаёт и не трогает', async () => {
@@ -81,7 +81,10 @@ describe('ChatMemberHandler', () => {
       fakeCtx(memberUpdate(-100222, { old: 'member', new: 'kicked' })),
     );
     const groupId = new Types.ObjectId();
-    await channelModel.updateOne({ target: '-100222' }, { $set: { groupId } });
+    await channelModel.updateOne(
+      { target: '-100222' },
+      { $set: { groupIds: [groupId] } },
+    );
 
     await handler.handle(
       fakeCtx(memberUpdate(-100222, { old: 'kicked', new: 'member' })),
@@ -89,7 +92,7 @@ describe('ChatMemberHandler', () => {
 
     const channel = await channelModel.findOne({ target: '-100222' }).lean();
     expect(channel?.active).toBe(true);
-    expect(channel?.groupId?.toString()).toBe(groupId.toString());
+    expect(channel?.groupIds.map(String)).toEqual([groupId.toString()]);
   });
 
   it('убрали бота (member → kicked) — канал active: false, документ не удаляется', async () => {

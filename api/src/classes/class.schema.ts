@@ -61,25 +61,19 @@ export class ClassRecord {
   @Prop({ type: String, required: true })
   title!: string;
 
-  // Подпись группы для постов и экранов — ПРОИЗВОДНАЯ от `groupId`: название
-  // группы занятия, сервер пересобирает её при записи занятия и при
-  // переименовании группы (ADR-0193, ADR-0195). Поле осталось, чтобы десятки
+  // Подпись групп для постов и экранов — ПРОИЗВОДНАЯ от `groupIds`: названия
+  // отмеченных групп через запятую, сервер пересобирает её при записи занятия и
+  // при переименовании группы (ADR-0193, ADR-0196). Поле осталось, чтобы десятки
   // мест, читающих подпись (посты, бот, экраны), не менялись.
   @Prop({ type: String, default: '' })
   groupLabel!: string;
 
-  // Группа школы (коллекция `groups`) — единственный рычаг рассылки
-  // (ADR-0195): ссылка и запись занятия уходят в каналы с той же группой.
-  // Нет поля — занятие никуда не уходит. Старое `groupIds` (ADR-0193) схема не
-  // знает: миграция 0029 перенесла его сюда и сняла.
-  @Prop({ type: SchemaTypes.ObjectId, required: false })
-  groupId?: Types.ObjectId;
-
-  // «Для всех групп» (ADR-0195): занятие уходит в каждый канал, у которого есть
-  // группа; `groupId` при этом не хранится. У старых документов поля нет —
-  // маппер отдаёт `false`.
-  @Prop({ type: Boolean, default: false })
-  forAllGroups!: boolean;
+  // Группы школы (коллекция `groups`), в порядке создания групп — единственный
+  // рычаг рассылки (ADR-0195, ADR-0196): ссылка и запись занятия уходят в каналы,
+  // у которых есть хоть одна из этих групп. Пусто — занятие никуда не уходит.
+  // У документов до миграции 0030 поля нет — маппер отдаёт `[]`.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  groupIds!: Types.ObjectId[];
 
   @Prop({ type: String, enum: CLASS_FORMATS, required: true })
   format!: ClassFormat;
@@ -122,6 +116,8 @@ export class ClassRecord {
 
 export const ClassSchema = SchemaFactory.createForClass(ClassRecord);
 ClassSchema.index({ active: 1 });
+// Счёт занятий группы и защита её удаления (GroupsService, ADR-0196).
+ClassSchema.index({ groupIds: 1 });
 // Фильтр по тегу курса (GET /api/classes?tag=…, ADR-0072) — тот же приём,
 // что у LessonSchema.index({ tags: 1 }).
 ClassSchema.index({ tags: 1 });

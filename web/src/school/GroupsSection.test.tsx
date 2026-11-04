@@ -47,7 +47,7 @@ const CHANNEL: ChannelDto = {
   type: 'telegram',
   title: 'Тайцзи вечер',
   target: '@taiji',
-  groupId: 'g1',
+  groupIds: ['g1'],
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 };
@@ -83,12 +83,27 @@ describe('GroupsSection — список', () => {
     expect(screen.getByText(/Группы учеников/)).toHaveTextContent(
       'начинающие, средние, старшие',
     );
+    expect(screen.getByText(/Группы учеников/)).toHaveTextContent('общая группа');
     expect(screen.getByText(/Групп:/)).toHaveTextContent('Групп: 2');
     expect(
       within(rowOf('Начинающие')).getByText('3 занятия · каналы: Тайцзи вечер'),
     ).toBeInTheDocument();
     expect(
       within(rowOf('Средние')).getByText('Занятий нет · канала нет'),
+    ).toBeInTheDocument();
+  });
+
+  it('канал с двумя группами назван в строке каждой из них (ADR-0196)', async () => {
+    await renderLoaded(
+      [BEGINNERS, MIDDLE],
+      [{ ...CHANNEL, title: 'Общий чат', groupIds: ['g1', 'g2'] }],
+    );
+
+    expect(
+      within(rowOf('Начинающие')).getByText('3 занятия · каналы: Общий чат'),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf('Средние')).getByText('Занятий нет · каналы: Общий чат'),
     ).toBeInTheDocument();
   });
 

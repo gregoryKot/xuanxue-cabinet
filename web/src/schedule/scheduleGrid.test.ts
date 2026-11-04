@@ -7,8 +7,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань, средняя группа',
     groupLabel: '',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     rules: [],
     tz: 'Asia/Jerusalem',
@@ -168,9 +167,9 @@ describe('buildScheduleGrid', () => {
     expect(grid[1][0]?.linkMissing).toBe(false);
   });
 
-  it('слот несёт строку «→ каналы» группы занятия, чужие каналы не попадают (ADR-0195)', () => {
+  it('слот несёт строку «→ группа · каналы», чужие каналы не попадают (ADR-0196)', () => {
     const cls = makeClass({
-      groupId: 'g1',
+      groupIds: ['g1'],
       groupLabel: 'Начинающие',
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
@@ -178,21 +177,22 @@ describe('buildScheduleGrid', () => {
     const grid = buildScheduleGrid(
       [cls],
       [
-        { title: 'Тайцзи вечер', groupId: 'g1' },
-        { title: 'Ученики', groupId: 'g1' },
-        { title: 'Старшие', groupId: 'g2' },
+        { title: 'Тайцзи вечер', groupIds: ['g1'] },
+        { title: 'Ученики', groupIds: ['g1'] },
+        { title: 'Старшие', groupIds: ['g2'] },
       ],
+      [{ id: 'g1', name: 'Начинающие' }],
     );
 
     expect(grid[1][0]?.destination).toEqual({
-      text: '→ Тайцзи вечер, Ученики',
+      text: '→ Начинающие · Тайцзи вечер, Ученики',
       isWarning: false,
     });
   });
 
   it('каналы ещё грузятся (null) — строки нет, а не ложное предупреждение', () => {
     const cls = makeClass({
-      groupId: 'g1',
+      groupIds: ['g1'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
@@ -206,7 +206,7 @@ describe('buildScheduleGrid', () => {
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
-    const grid = buildScheduleGrid([cls], [{ title: 'Ученики', groupId: 'g1' }]);
+    const grid = buildScheduleGrid([cls], [{ title: 'Ученики', groupIds: ['g1'] }]);
 
     expect(grid[1][0]?.destination).toEqual({
       text: 'Без группы — никуда не уходит',

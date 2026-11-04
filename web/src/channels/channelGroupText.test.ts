@@ -12,8 +12,7 @@ function cls(overrides: Partial<ClassDto>): ClassDto {
     id: 'c',
     title: 'Занятие',
     groupLabel: '',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     rules: [],
     tz: 'Asia/Jerusalem',
@@ -27,41 +26,53 @@ function cls(overrides: Partial<ClassDto>): ClassDto {
 }
 
 describe('formatChannelGroup', () => {
-  it('у канала нет группы — красное «Группа не выбрана», посты не уходят', () => {
+  it('у канала нет групп — красное «Группы не выбраны», посты не уходят', () => {
     expect(
-      formatChannelGroup({ groupId: null }, GROUPS, [cls({ groupId: 'g1' })]),
+      formatChannelGroup({ groupIds: [] }, GROUPS, [cls({ groupIds: ['g1'] })]),
     ).toEqual({
-      text: 'Группа не выбрана — посты сюда не уходят',
+      text: 'Группы не выбраны — посты сюда не уходят',
       isWarning: true,
     });
   });
 
-  it('группа есть — название выделено, занятия считаются: свои и «для всех»', () => {
+  it('группа есть — название выделено, занятия считаются по пересечению групп', () => {
     const classes = [
-      cls({ id: 'a', groupId: 'g1' }),
-      cls({ id: 'b', groupId: 'g1' }),
-      cls({ id: 'c', groupId: 'g2' }),
-      cls({ id: 'd', forAllGroups: true }),
+      cls({ id: 'a', groupIds: ['g1'] }),
+      cls({ id: 'b', groupIds: ['g1', 'g2'] }),
+      cls({ id: 'c', groupIds: ['g2'] }),
+      cls({ id: 'd', groupIds: [] }),
     ];
 
-    expect(formatChannelGroup({ groupId: 'g1' }, GROUPS, classes)).toEqual({
-      text: 'Группа: **Начинающие** · 3 занятия',
+    expect(formatChannelGroup({ groupIds: ['g1'] }, GROUPS, classes)).toEqual({
+      text: 'Группы: **Начинающие** · 2 занятия',
+      isWarning: false,
+    });
+  });
+
+  it('две группы — названия через запятую, занятие с обеими считается один раз', () => {
+    const classes = [
+      cls({ id: 'a', groupIds: ['g1', 'g2'] }),
+      cls({ id: 'b', groupIds: ['g2'] }),
+    ];
+
+    expect(formatChannelGroup({ groupIds: ['g1', 'g2'] }, GROUPS, classes)).toEqual({
+      text: 'Группы: **Начинающие, Средние** · 2 занятия',
       isWarning: false,
     });
   });
 
   it('выключенное занятие в счёт не входит; занятий нет — честное «Занятий нет»', () => {
-    const classes = [cls({ groupId: 'g1', active: false })];
+    const classes = [cls({ groupIds: ['g1'], active: false })];
 
-    expect(formatChannelGroup({ groupId: 'g1' }, GROUPS, classes)?.text).toBe(
-      'Группа: **Начинающие** · Занятий нет',
+    expect(formatChannelGroup({ groupIds: ['g1'] }, GROUPS, classes)?.text).toBe(
+      'Группы: **Начинающие** · Занятий нет',
     );
-    expect(formatChannelGroup({ groupId: 'g1' }, GROUPS, [])?.text).toBe(
-      'Группа: **Начинающие** · Занятий нет',
+    expect(formatChannelGroup({ groupIds: ['g1'] }, GROUPS, [])?.text).toBe(
+      'Группы: **Начинающие** · Занятий нет',
     );
   });
 
-  it('группы канала нет в списке групп — строки нет, а не чужое название', () => {
-    expect(formatChannelGroup({ groupId: 'gone' }, GROUPS, [])).toBeNull();
+  it('групп канала нет в списке групп — строки нет, а не чужое название', () => {
+    expect(formatChannelGroup({ groupIds: ['gone'] }, GROUPS, [])).toBeNull();
   });
 });

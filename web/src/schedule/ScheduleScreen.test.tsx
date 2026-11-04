@@ -26,8 +26,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань, средняя группа',
     groupLabel: '',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
@@ -46,7 +45,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'telegram',
     title: 'Канал школы',
     target: '@xuanxue',
-    groupId: null,
+    groupIds: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -273,45 +272,70 @@ describe('ScheduleScreen — пояс и ссылки (отзыв владель
   });
 });
 
-// Под занятием стоит «куда оно уходит» (ADR-0191, ADR-0195): каналы его группы;
-// считаются только АКТИВНЫЕ каналы кабинета (экран грузит их отдельным запросом).
-describe('ScheduleScreen — куда уходит занятие (ADR-0195)', () => {
-  it('у занятия группа — «→ названия» каналов этой группы, чужие не попадают', async () => {
+// Под занятием стоит «куда оно уходит» (ADR-0191, ADR-0195, ADR-0196): каналы его
+// групп; считаются только АКТИВНЫЕ каналы кабинета (экран грузит их отдельным
+// запросом), названия групп — из списка групп.
+const SCHEDULE_GROUPS = [
+  { id: 'g1', name: 'Средние' },
+  { id: 'g2', name: 'Старшие' },
+];
+
+describe('ScheduleScreen — куда уходит занятие (ADR-0196)', () => {
+  it('у занятия две группы — по группе «название · каналы», чужие не попадают', async () => {
     mockApiByPath({
-      '/classes': [makeClass({ groupId: 'g1', groupLabel: 'Начинающие' })],
+      '/classes': [makeClass({ groupIds: ['g1', 'g2'], groupLabel: 'Средние, Старшие' })],
+      '/groups': SCHEDULE_GROUPS,
       '/channels': [
-        makeChannel({ id: 'ch1', title: 'Тайцзи вечер', groupId: 'g1' }),
-        makeChannel({ id: 'ch2', title: 'Ученики ВК', groupId: 'g1' }),
-        makeChannel({ id: 'ch3', title: 'Старшие', groupId: 'g2' }),
-      ],
-    });
-
-    renderScreen();
-
-    expect(await screen.findByText('→ Тайцзи вечер, Ученики ВК')).toBeInTheDocument();
-    expect(screen.queryByText(/никуда не уходит/)).not.toBeInTheDocument();
-  });
-
-  it('занятие для всех групп — «→ все каналы с группой: …»', async () => {
-    mockApiByPath({
-      '/classes': [makeClass({ forAllGroups: true, groupLabel: 'все группы' })],
-      '/channels': [
-        makeChannel({ id: 'ch1', title: 'Тайцзи вечер', groupId: 'g1' }),
-        makeChannel({ id: 'ch3', title: 'Без группы', groupId: null }),
+        makeChannel({ id: 'ch1', title: 'Тайцзи онлайн', groupIds: ['g1'] }),
+        makeChannel({ id: 'ch2', title: 'Вечерняя группа', groupIds: ['g2'] }),
+        makeChannel({ id: 'ch3', title: 'Чужой', groupIds: ['g3'] }),
       ],
     });
 
     renderScreen();
 
     expect(
-      await screen.findByText('→ все каналы с группой: Тайцзи вечер'),
+      await screen.findByText('→ Средние · Тайцзи онлайн, Старшие · Вечерняя группа'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/никуда не уходит/)).not.toBeInTheDocument();
+  });
+
+  it('у одной из групп нет канала — стрелка по остальным и красная строка про эту', async () => {
+    mockApiByPath({
+      '/classes': [makeClass({ groupIds: ['g1', 'g2'], groupLabel: 'Средние, Старшие' })],
+      '/groups': SCHEDULE_GROUPS,
+      '/channels': [makeChannel({ id: 'ch1', title: 'Тайцзи онлайн', groupIds: ['g1'] })],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('→ Средние · Тайцзи онлайн')).toBeInTheDocument();
+    expect(screen.getByText('У группы «Старшие» нет канала — туда не уйдёт')).toHaveStyle(
+      {
+        color: 'var(--danger)',
+      },
+    );
+  });
+
+  it('ни у одной группы нет канала — красное «Ни у одной группы занятия нет канала»', async () => {
+    mockApiByPath({
+      '/classes': [makeClass({ groupIds: ['g1', 'g2'], groupLabel: 'Средние, Старшие' })],
+      '/groups': SCHEDULE_GROUPS,
+      '/channels': [makeChannel({ id: 'ch3', title: 'Без группы', groupIds: [] })],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Ни у одной группы занятия нет канала — никуда не уходит'),
     ).toBeInTheDocument();
   });
 
   it('занятие без группы — красное «Без группы — никуда не уходит»', async () => {
     mockApiByPath({
       '/classes': [makeClass()],
-      '/channels': [makeChannel({ groupId: 'g1' })],
+      '/groups': SCHEDULE_GROUPS,
+      '/channels': [makeChannel({ groupIds: ['g1'] })],
     });
 
     renderScreen();
@@ -321,14 +345,15 @@ describe('ScheduleScreen — куда уходит занятие (ADR-0195)', (
 
   it('у группы нет канала — предупреждение называет группу', async () => {
     mockApiByPath({
-      '/classes': [makeClass({ groupId: 'g1', groupLabel: 'Начинающие' })],
+      '/classes': [makeClass({ groupIds: ['g1'], groupLabel: 'Средние' })],
+      '/groups': SCHEDULE_GROUPS,
       '/channels': [],
     });
 
     renderScreen();
 
     expect(
-      await screen.findByText('У группы «Начинающие» нет канала — никуда не уходит'),
+      await screen.findByText('У группы «Средние» нет канала — никуда не уходит'),
     ).toBeInTheDocument();
   });
 

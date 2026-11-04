@@ -17,7 +17,7 @@ import { groupsSummaryText } from './groupsText';
 import { schoolSectionStyle } from './schoolSectionStyle';
 
 const EXPLANATION =
-  'Группы учеников — **начинающие, средние, старшие**. Занятие и канал выбирают по **одной группе**: ссылка и запись идут в каналы той же группы.';
+  'Группы учеников — **начинающие, средние, старшие**. Занятие и канал отмечают нужные группы: ссылка и запись идут в канал, если у него и у занятия есть **общая группа**.';
 
 const summaryStyle: CSSProperties = { margin: 0, fontSize: 14, fontWeight: 600 };
 
@@ -56,7 +56,7 @@ export function GroupsSection() {
                     channels === null
                       ? null
                       : channels
-                          .filter((channel) => channel.groupId === group.id)
+                          .filter((channel) => channel.groupIds.includes(group.id))
                           .map((channel) => channel.title)
                   }
                   onRename={rename}

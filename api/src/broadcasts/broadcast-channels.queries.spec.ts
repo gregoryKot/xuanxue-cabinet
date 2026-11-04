@@ -1,6 +1,6 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты» — не мок модели): занятие уходит в
-// каналы своей группы, занятие «для всех групп» — в каналы с любой группой,
-// занятие без группы — никуда (ADR-0195).
+// каналы, чьи группы пересекаются с его группами, по одному разу; занятие без
+// групп — никуда (ADR-0195, ADR-0196).
 import { Types } from 'mongoose';
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
@@ -12,6 +12,7 @@ describe('findGroupChannelIds', () => {
   let connection: Connection;
   let channelModel: Model<ChannelRecord>;
   const beginners = new Types.ObjectId();
+  const middle = new Types.ObjectId();
   const advanced = new Types.ObjectId();
 
   beforeAll(async () => {
@@ -39,75 +40,91 @@ describe('findGroupChannelIds', () => {
     });
   }
 
-  it('занятие группы получает только каналы этой группы', async () => {
-    const mine = await createChannel({ groupId: beginners });
-    await createChannel({ groupId: advanced });
+  it('занятие группы получает только каналы, где эта группа отмечена', async () => {
+    const mine = await createChannel({ groupIds: [beginners] });
+    await createChannel({ groupIds: [advanced] });
     await createChannel();
 
-    const result = await findGroupChannelIds(channelModel, { groupId: beginners });
+    const result = await findGroupChannelIds(channelModel, { groupIds: [beginners] });
 
     expect(result.map(String)).toEqual([mine._id.toString()]);
   });
 
-  it('занятие без группы не уходит никуда, даже если каналы есть', async () => {
-    await createChannel({ groupId: beginners });
-    await createChannel();
+  it('две группы занятия — объединение их каналов, без дублей', async () => {
+    const first = await createChannel({ groupIds: [beginners] });
+    const second = await createChannel({ groupIds: [advanced] });
+    await createChannel({ groupIds: [middle] });
 
-    await expect(findGroupChannelIds(channelModel, {})).resolves.toEqual([]);
-  });
-
-  it('группа без канала — пусто', async () => {
-    await createChannel({ groupId: advanced });
-
-    await expect(
-      findGroupChannelIds(channelModel, { groupId: beginners }),
-    ).resolves.toEqual([]);
-  });
-
-  it('выключенный канал группы не получает занятий', async () => {
-    await createChannel({ groupId: beginners, active: false });
-
-    await expect(
-      findGroupChannelIds(channelModel, { groupId: beginners }),
-    ).resolves.toEqual([]);
-  });
-
-  it('личный чат ученика не получает занятий группы', async () => {
-    await createChannel({ groupId: beginners, broadcastEligible: false });
-
-    await expect(
-      findGroupChannelIds(channelModel, { groupId: beginners }),
-    ).resolves.toEqual([]);
-  });
-
-  it('занятие для всех групп идёт в каждый канал с группой и не идёт в канал без неё', async () => {
-    const first = await createChannel({ groupId: beginners });
-    const second = await createChannel({ groupId: advanced });
-    await createChannel();
-    await createChannel({ groupId: advanced, broadcastEligible: false });
-
-    const result = await findGroupChannelIds(channelModel, { forAllGroups: true });
+    const result = await findGroupChannelIds(channelModel, {
+      groupIds: [beginners, advanced],
+    });
 
     expect(result.map(String).sort()).toEqual(
       [first._id.toString(), second._id.toString()].sort(),
     );
   });
 
-  it('ни у одного канала нет группы — занятию для всех групп пусто', async () => {
+  it('канал с теми же двумя группами, что у занятия, получает занятие один раз (ADR-0196)', async () => {
+    const both = await createChannel({ groupIds: [middle, advanced] });
+
+    const result = await findGroupChannelIds(channelModel, {
+      groupIds: [middle, advanced],
+    });
+
+    expect(result.map(String)).toEqual([both._id.toString()]);
+  });
+
+  it('у одной группы нет канала — занятие всё равно идёт в канал другой', async () => {
+    const only = await createChannel({ groupIds: [advanced] });
+
+    const result = await findGroupChannelIds(channelModel, {
+      groupIds: [beginners, advanced],
+    });
+
+    expect(result.map(String)).toEqual([only._id.toString()]);
+  });
+
+  it('занятие без групп не уходит никуда, даже если каналы есть', async () => {
+    await createChannel({ groupIds: [beginners] });
     await createChannel();
 
+    await expect(findGroupChannelIds(channelModel, {})).resolves.toEqual([]);
+    await expect(findGroupChannelIds(channelModel, { groupIds: [] })).resolves.toEqual(
+      [],
+    );
+  });
+
+  it('группа без канала — пусто', async () => {
+    await createChannel({ groupIds: [advanced] });
+
     await expect(
-      findGroupChannelIds(channelModel, { forAllGroups: true }),
+      findGroupChannelIds(channelModel, { groupIds: [beginners] }),
+    ).resolves.toEqual([]);
+  });
+
+  it('выключенный канал группы не получает занятий', async () => {
+    await createChannel({ groupIds: [beginners], active: false });
+
+    await expect(
+      findGroupChannelIds(channelModel, { groupIds: [beginners] }),
+    ).resolves.toEqual([]);
+  });
+
+  it('личный чат ученика не получает занятий группы', async () => {
+    await createChannel({ groupIds: [beginners], broadcastEligible: false });
+
+    await expect(
+      findGroupChannelIds(channelModel, { groupIds: [beginners] }),
     ).resolves.toEqual([]);
   });
 });
 
 describe('noChannelsReason', () => {
-  it('без группы — «нет группы», с группой или для всех — «нет канала»', () => {
+  it('без групп — «нет группы», с группами — «нет канала»', () => {
     expect(noChannelsReason({})).toBe('у занятия нет группы');
-    expect(noChannelsReason({ groupId: new Types.ObjectId() })).toBe(
+    expect(noChannelsReason({ groupIds: [] })).toBe('у занятия нет группы');
+    expect(noChannelsReason({ groupIds: [new Types.ObjectId()] })).toBe(
       'у группы занятия нет канала',
     );
-    expect(noChannelsReason({ forAllGroups: true })).toBe('у группы занятия нет канала');
   });
 });

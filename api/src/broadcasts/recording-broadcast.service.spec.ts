@@ -79,23 +79,23 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
     ]);
   });
 
-  async function createChannel(active = true, groupId?: Types.ObjectId) {
+  async function createChannel(active = true, groupIds: Types.ObjectId[] = []) {
     return channelModel.create({
       type: 'telegram',
       title: 'Канал школы',
       config: '{}',
       target: '',
       active,
-      groupId,
+      groupIds,
     });
   }
 
-  // Маршрут задаёт только группа (ADR-0195): без явного `groupId` занятие
+  // Маршрут задают только группы (ADR-0196): без явного `groupIds` занятие
   // получает свою группу и один активный канал в ней.
   async function createClass(overrides: Partial<ClassRecord> = {}) {
-    const explicit = 'groupId' in overrides || overrides.forAllGroups === true;
-    const groupId = explicit ? overrides.groupId : new Types.ObjectId();
-    if (!explicit) await createChannel(true, groupId);
+    const explicit = 'groupIds' in overrides;
+    const groupIds = explicit ? (overrides.groupIds ?? []) : [new Types.ObjectId()];
+    if (!explicit) await createChannel(true, groupIds);
     return classModel.create({
       title: 'цигун для глаз',
       format: 'online',
@@ -103,7 +103,7 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
       leadMinutes: 30,
       active: true,
       ...overrides,
-      groupId,
+      groupIds,
     });
   }
 
@@ -203,8 +203,8 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
 
   it('у группы занятия все каналы выключены — cancelled-плейсхолдер с recordingKey, доставок нет', async () => {
     const groupId = new Types.ObjectId();
-    await createChannel(false, groupId);
-    const cls = await createClass({ groupId });
+    await createChannel(false, [groupId]);
+    const cls = await createClass({ groupIds: [groupId] });
     const lesson = await createLesson(cls._id);
 
     await service.ensureForRecording(lesson._id, RECORDING, NOW);
@@ -217,8 +217,8 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
   });
 
   it('у занятия нет группы — cancelled-плейсхолдер «нет группы», канал с группой записи не получает', async () => {
-    await createChannel(true, new Types.ObjectId());
-    const cls = await createClass({ groupId: undefined });
+    await createChannel(true, [new Types.ObjectId()]);
+    const cls = await createClass({ groupIds: [] });
     const lesson = await createLesson(cls._id);
 
     await service.ensureForRecording(lesson._id, RECORDING, NOW);
@@ -240,13 +240,13 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
       config: '{}',
       target: '',
       active: true,
-      groupId,
+      groupIds: [groupId],
     });
     await channelModel.collection.updateOne(
       { _id: channel._id },
       { $set: { tags: ['средние'] } },
     );
-    const cls = await createClass({ groupId });
+    const cls = await createClass({ groupIds: [groupId] });
     const lesson = await lessonModel.create({
       classId: cls._id,
       startsAt: NOW.minus({ hours: 1 }).toJSDate(),
@@ -303,10 +303,10 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
     const lesson = await createLesson(cls._id);
     // Ломаем документ класса так, чтобы findClassForRecording упал не на
     // штатной ветке (не «класса нет»/«выключен»), а на самом чтении —
-    // groupId не ObjectId вызывает CastError у Mongoose.
+    // groupIds не из ObjectId вызывает CastError у Mongoose.
     await classModel.collection.updateOne(
       { _id: cls._id },
-      { $set: { groupId: 'не-ObjectId' } },
+      { $set: { groupIds: ['не-ObjectId'] } },
     );
 
     await expect(

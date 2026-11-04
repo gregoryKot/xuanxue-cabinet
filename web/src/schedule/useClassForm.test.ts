@@ -20,8 +20,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: '',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
@@ -92,13 +91,13 @@ describe('useClassForm — создание', () => {
     });
   });
 
-  it('создание: группа выбирается радио и уходит в onCreate вместе с «для всех» выключенным', async () => {
+  it('создание: группы отмечаются галочками и уходят в onCreate', async () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useClassForm(null, onCreate, vi.fn(), vi.fn()));
 
     act(() => {
       result.current.setField('title', 'Новое занятие');
-      result.current.setField('groupChoice', 'g1');
+      result.current.setField('groupIds', ['g1', 'g2']);
       result.current.setField('rules', [
         { weekday: 1, time: '19:00', durationMinText: '60', everyWeeks: 1, startsOn: '' },
       ]);
@@ -108,7 +107,7 @@ describe('useClassForm — создание', () => {
     });
 
     expect(onCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ groupId: 'g1', forAllGroups: false }),
+      expect.objectContaining({ groupIds: ['g1', 'g2'] }),
     );
   });
 

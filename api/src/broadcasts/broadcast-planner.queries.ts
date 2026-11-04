@@ -24,8 +24,7 @@ export type PlannerClass = {
   zoomLink?: string;
   zoomPassword?: string;
   tz: string;
-  groupId?: Types.ObjectId;
-  forAllGroups?: boolean;
+  groupIds?: Types.ObjectId[];
   leadMinutes: number;
   active: boolean;
   leaderId?: Types.ObjectId;
@@ -38,8 +37,7 @@ const CLASS_PROJECTION = {
   zoomLink: 1,
   zoomPassword: 1,
   tz: 1,
-  groupId: 1,
-  forAllGroups: 1,
+  groupIds: 1,
   leadMinutes: 1,
   active: 1,
   leaderId: 1,

@@ -5,8 +5,8 @@
 import { readFile } from 'fs/promises';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
-import { ALL_GROUPS_LABEL, groupNameKey } from '@xuanxue/shared';
+import { Types, type Model } from 'mongoose';
+import { groupNameKey } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import { isEncryptionConfigured } from '../utils/encryption';
 import { ClassesService } from '../classes/classes.service';
@@ -35,6 +35,9 @@ export class SeedValidationFailedError extends Error {
 const MISSING_KEY_MESSAGE =
   'Не задан ENCRYPTION_KEY — ссылки и пароли легли бы в базу открытым текстом. ' +
   'Укажите тот же ключ, что в Railway, и повторите импорт.';
+
+/** Как школа пишет «все группы» в файле сида (ADR-0196: все группы школы). */
+const ALL_GROUPS_SEED_LABEL = 'все группы';
 
 function describeClass(title: string, groupLabel: string | undefined): string {
   return groupLabel ? `${title} (${groupLabel})` : title;
@@ -73,27 +76,37 @@ export class SeedService {
 
     for (const cls of classes) {
       const name = describeClass(cls.title, cls.groupLabel);
-      // Точное совпадение (title, groupLabel) — тот же ключ, что и в
-      // человеческом описании отчёта: одна ссылка — общий слот школы
-      // (PLAN.md §9), а не отдельный класс на каждое правило расписания.
-      const groupLabel = cls.groupLabel ?? '';
-      const exists = await this.model.exists({ title: cls.title, groupLabel });
+      // Группы из файла — группы школы (ADR-0193): находятся по названию или
+      // заводятся, подпись сервер соберёт сам (ADR-0196). Дубль ищется по
+      // (title, группы): одна ссылка — общий слот школы (PLAN.md §9), а не
+      // отдельный класс на каждое правило расписания.
+      const { groupLabel: label, ...input } = cls;
+      const groupIds = await this.resolveSeedGroups(label ?? '');
+      const exists = await this.model.exists({
+        title: cls.title,
+        groupIds: groupIds.map((id) => new Types.ObjectId(id)),
+      });
       if (exists) {
         skipped.push(name);
         continue;
       }
-      // Группа из файла — группа школы (ADR-0193): находится по названию или
-      // заводится, занятие получает её id, а подпись сервер соберёт сам (ADR-0195).
-      const { groupLabel: label, ...input } = cls;
-      // «все группы» из файла — занятие для всех групп (ADR-0195), не группа с
-      // таким названием.
-      const forAllGroups = groupNameKey(label ?? '') === groupNameKey(ALL_GROUPS_LABEL);
-      const groupId =
-        label && !forAllGroups ? await this.groupsService.ensureByName(label) : null;
-      await this.classesService.create({ ...input, groupId, forAllGroups });
+      await this.classesService.create({ ...input, groupIds });
       created.push(name);
     }
 
     return { created, skipped };
+  }
+
+  /** «все группы» из файла — все группы школы на сейчас (ADR-0196: отдельного
+   * состояния «для всех» нет); иначе названия через запятую, каждое — группа.
+   * В порядке создания групп — как их хранит занятие, чтобы повторный импорт
+   * находил своё. */
+  private async resolveSeedGroups(label: string): Promise<string[]> {
+    const names = label.split(',').filter((name) => name.trim() !== '');
+    const ids =
+      names.length === 1 && groupNameKey(label) === ALL_GROUPS_SEED_LABEL
+        ? (await this.groupsService.list()).map((group) => group.id)
+        : await Promise.all(names.map((name) => this.groupsService.ensureByName(name)));
+    return [...new Set(ids)].sort();
   }
 }
