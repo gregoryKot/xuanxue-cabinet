@@ -167,6 +167,40 @@ describe('SeedService', () => {
     expect(cls?.groupLabel).toBe('Средние, Старшие');
   });
 
+  // Регрессия: красный `main` 2026-11-04 (прогон CI 1591) — группы заводились
+  // через Promise.all, и подпись выходила «Старшие, Средние», когда вторая
+  // запись обгоняла первую. Проверяется сам механизм: следующая группа не
+  // начинается, пока предыдущая не заведена, — тогда порядок подписи задаёт файл.
+  it('группы из файла заводятся по очереди — порядок подписи не зависит от гонки записей', async () => {
+    const calls: string[] = [];
+    const ensureByName = groupsService.ensureByName.bind(groupsService);
+    jest.spyOn(groupsService, 'ensureByName').mockImplementation(async (name) => {
+      calls.push(`начало ${name.trim()}`);
+      const id = await ensureByName(name);
+      calls.push(`конец ${name.trim()}`);
+      return id;
+    });
+    const path = await writeSeed({
+      tz: 'Asia/Jerusalem',
+      classes: [
+        { title: 'Три', groupLabel: 'Старшие, Начинающие, Средние', format: 'online' },
+      ],
+    });
+
+    await seedService.importClasses(path);
+
+    expect(calls).toEqual([
+      'начало Старшие',
+      'конец Старшие',
+      'начало Начинающие',
+      'конец Начинающие',
+      'начало Средние',
+      'конец Средние',
+    ]);
+    const [cls] = await classesService.list({});
+    expect(cls?.groupLabel).toBe('Старшие, Начинающие, Средние');
+  });
+
   it('read-after-write: ClassesService.list видит импортированные классы', async () => {
     const path = await writeSeed(VALID_SEED);
     await seedService.importClasses(path);
