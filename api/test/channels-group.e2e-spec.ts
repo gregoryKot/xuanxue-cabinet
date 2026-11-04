@@ -1,5 +1,5 @@
-// e2e: группа канала (ADR-0195) — `groupId` у POST и PATCH /channels, снятие
-// `null`-ом, неизвестная группа, удаление канала с группой. Настоящий AppModule на
+// e2e: группы канала (ADR-0196) — `groupIds` у POST и PATCH /channels, снятие
+// пустым списком, неизвестная группа, удаление канала с группой. Настоящий AppModule на
 // MongoMemoryServer. Отдельный файл: channels.e2e-spec.ts уже у предела размера.
 import { Types } from 'mongoose';
 import request from 'supertest';
@@ -8,7 +8,7 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { withCsrf } from './e2e-support/http';
 import { createChannelTestHelpers, MANUAL_BODY } from './e2e-support/channels-fixtures';
 
-describe('Группа канала (e2e, ADR-0195)', () => {
+describe('Группа канала (e2e, ADR-0196)', () => {
   let testApp: TestApp;
   const { server, postChannel, groupModel, sessionFor } = createChannelTestHelpers(
     () => testApp,
@@ -28,36 +28,41 @@ describe('Группа канала (e2e, ADR-0195)', () => {
     await testApp.close();
   });
 
-  it('POST и PATCH с groupId: группа канала читается; null снимает; неизвестная — 400', async () => {
+  it('POST и PATCH с groupIds: группы канала читаются; [] снимает; неизвестная — 400', async () => {
     const cookie = await sessionFor(['teacher']);
     const group = await newGroup('Начинающие');
+    const other = await newGroup('Старшие');
     const groupId = group._id.toString();
+    const otherId = other._id.toString();
 
-    const created = await postChannel(cookie, { ...MANUAL_BODY, groupId });
+    const created = await postChannel(cookie, {
+      ...MANUAL_BODY,
+      groupIds: [groupId, otherId],
+    });
     expect(created.status).toBe(201);
     const dto = created.body as ChannelDto;
-    expect(dto.groupId).toBe(groupId);
+    expect(dto.groupIds).toEqual([groupId, otherId]);
 
     const read = await request(server())
       .get(`/api/channels/${dto.id}`)
       .set('Cookie', cookie);
-    expect((read.body as ChannelDto).groupId).toBe(groupId);
+    expect((read.body as ChannelDto).groupIds).toEqual([groupId, otherId]);
 
     const cleared = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
       .set('Cookie', cookie)
-      .send({ groupId: null });
+      .send({ groupIds: [] });
     expect(cleared.status).toBe(200);
-    expect((cleared.body as ChannelDto).groupId).toBeNull();
+    expect((cleared.body as ChannelDto).groupIds).toEqual([]);
 
     const unknown = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
       .set('Cookie', cookie)
-      .send({ groupId: new Types.ObjectId().toString() });
+      .send({ groupIds: [new Types.ObjectId().toString()] });
     expect(unknown.status).toBe(400);
     expect((unknown.body as ApiErrorBody).message).toContain('Такой группы нет');
 
     const garbage = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
       .set('Cookie', cookie)
-      .send({ groupId: 'не-id' });
+      .send({ groupIds: ['не-id'] });
     expect(garbage.status).toBe(400);
   });
 
@@ -78,7 +83,7 @@ describe('Группа канала (e2e, ADR-0195)', () => {
     const group = await newGroup('Средние');
     const created = await postChannel(cookie, {
       ...MANUAL_BODY,
-      groupId: group._id.toString(),
+      groupIds: [group._id.toString()],
     });
     const dto = created.body as ChannelDto;
 

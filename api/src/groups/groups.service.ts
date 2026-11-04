@@ -1,6 +1,6 @@
 // Список групп школы (ADR-0193, ADR-0195): создание, переименование, удаление и
-// счёт занятий и каналов. Подпись `groupLabel` у занятий — название их группы;
-// переименование переписывает её у всех занятий группы, чтобы посты, бот и
+// счёт занятий и каналов. Подпись `groupLabel` у занятий — названия их групп;
+// переименование переписывает её у всех занятий с этой группой, чтобы посты, бот и
 // экраны учеников (их десятки мест) продолжали читать одно поле.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -17,6 +17,7 @@ import { ClassRecord } from '../classes/class.schema';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { assertObjectId } from '../common/object-id';
+import { selectGroups, type NamedGroup } from './group-selection';
 import { toGroupDto, type LeanGroup } from './group.mapper';
 import { GroupRecord } from './group.schema';
 
@@ -100,13 +101,10 @@ export class GroupsService {
       throw await this.duplicateOrRethrow(error, name);
     }
     if (!doc) throw new NotFoundError(GROUP_NOT_FOUND_MESSAGE);
-    await this.classModel.updateMany(
-      { groupId: doc._id },
-      { $set: { groupLabel: name } },
-    );
+    await this.relabelClasses(doc._id);
     const [classCount, channelCount] = await Promise.all([
-      this.classModel.countDocuments({ groupId: doc._id }),
-      this.channelModel.countDocuments({ groupId: doc._id, ...SCHOOL_CHANNELS }),
+      this.classModel.countDocuments({ groupIds: doc._id }),
+      this.channelModel.countDocuments({ groupIds: doc._id, ...SCHOOL_CHANNELS }),
     ]);
     return toGroupDto(doc, classCount, channelCount);
   }
@@ -114,8 +112,8 @@ export class GroupsService {
   async remove(id: string): Promise<void> {
     assertObjectId(id, GROUP_NOT_FOUND_MESSAGE);
     const [classCount, channelCount] = await Promise.all([
-      this.classModel.countDocuments({ groupId: id }),
-      this.channelModel.countDocuments({ groupId: id }),
+      this.classModel.countDocuments({ groupIds: id }),
+      this.channelModel.countDocuments({ groupIds: id }),
     ]);
     if (classCount + channelCount > 0)
       throw new ConflictError(inUseMessage(classCount, channelCount));
@@ -123,14 +121,34 @@ export class GroupsService {
     if (deletedCount === 0) throw new NotFoundError(GROUP_NOT_FOUND_MESSAGE);
   }
 
-  /** Сколько документов несёт каждая группа — одна агрегация на весь список. */
+  /** Подпись `groupLabel` каждого занятия с этой группой — заново из названий
+   * всех его групп (порядок и запятые собирает один `selectGroups`). */
+  private async relabelClasses(groupId: Types.ObjectId): Promise<void> {
+    const classes = await this.classModel
+      .find({ groupIds: groupId }, { groupIds: 1 })
+      .lean<{ _id: Types.ObjectId; groupIds: Types.ObjectId[] }[]>();
+    if (classes.length === 0) return;
+    const all = await this.model.find().select('name').lean<NamedGroup[]>();
+    await Promise.all(
+      classes.map((cls) =>
+        this.classModel.updateOne(
+          { _id: cls._id },
+          { $set: { groupLabel: selectGroups(all, cls.groupIds).groupLabel } },
+        ),
+      ),
+    );
+  }
+
+  /** Сколько документов несёт каждая группа — одна агрегация на весь список.
+   * Документ с несколькими группами считается в каждой из них. */
   private async countByGroup(
     model: Pick<Model<ClassRecord>, 'aggregate'>,
     filter: Record<string, unknown>,
   ): Promise<Map<string, number>> {
     const rows = await model.aggregate<{ _id: Types.ObjectId; count: number }>([
-      { $match: { ...filter, groupId: { $exists: true } } },
-      { $group: { _id: '$groupId', count: { $sum: 1 } } },
+      { $match: { ...filter, groupIds: { $exists: true } } },
+      { $unwind: '$groupIds' },
+      { $group: { _id: '$groupIds', count: { $sum: 1 } } },
     ]);
     return new Map(rows.map((row) => [row._id.toString(), row.count]));
   }

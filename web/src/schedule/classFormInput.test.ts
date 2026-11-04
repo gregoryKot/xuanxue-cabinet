@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { TAG_LIMITS, type ClassDto } from '@xuanxue/shared';
-import { ALL_GROUPS_CHOICE } from '../groups/groupChoice';
 import {
   initialClassFormState,
   toCreateInput,
@@ -14,8 +13,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
@@ -33,7 +31,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
 function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
   return {
     title: 'Занятие',
-    groupChoice: '',
+    groupIds: [],
     format: 'online',
     zoomLink: '',
     zoomPassword: '',
@@ -117,19 +115,14 @@ describe('initialClassFormState', () => {
     expect(state.tagsText).toBe('начинающие, медитация');
   });
 
-  it('существующее занятие — группа переносится как есть (ADR-0195)', () => {
-    const state = initialClassFormState(makeClass({ groupId: 'g1' }));
-    expect(state.groupChoice).toBe('g1');
+  it('существующее занятие — группы переносятся как есть, в том же порядке (ADR-0196)', () => {
+    const state = initialClassFormState(makeClass({ groupIds: ['g1', 'g2'] }));
+    expect(state.groupIds).toEqual(['g1', 'g2']);
   });
 
-  it('занятие для всех групп — выбор «Все группы»', () => {
-    const state = initialClassFormState(makeClass({ forAllGroups: true }));
-    expect(state.groupChoice).toBe(ALL_GROUPS_CHOICE);
-  });
-
-  it('создание и занятие без группы — «Без группы», пока группу не выберут', () => {
-    expect(initialClassFormState(null).groupChoice).toBe('');
-    expect(initialClassFormState(makeClass({ groupId: null })).groupChoice).toBe('');
+  it('создание и занятие без групп — пусто, пока группы не отметят', () => {
+    expect(initialClassFormState(null).groupIds).toEqual([]);
+    expect(initialClassFormState(makeClass({ groupIds: [] })).groupIds).toEqual([]);
   });
 
   it('занятие без тегов — пустая строка, не undefined', () => {
@@ -315,27 +308,22 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
   });
 });
 
-describe('toCreateInput / toUpdateInput — группа занятия (ADR-0195)', () => {
-  it('выбрана группа — groupId в обоих телах, «для всех» выключено, подписи нет — её берёт сервер', () => {
-    const state = baseState({ groupChoice: 'g1' });
+describe('toCreateInput / toUpdateInput — группы занятия (ADR-0196)', () => {
+  it('отмечены две группы — groupIds в обоих телах, подписи нет — её берёт сервер', () => {
+    const state = baseState({ groupIds: ['g1', 'g2'] });
 
     for (const input of [toCreateInput(state), toUpdateInput(state)]) {
-      expect(input).toMatchObject({ groupId: 'g1', forAllGroups: false });
+      expect(input).toMatchObject({ groupIds: ['g1', 'g2'] });
       expect(input).not.toHaveProperty('groupLabel');
+      expect(input).not.toHaveProperty('forAllGroups');
+      expect(input).not.toHaveProperty('groupId');
     }
   });
 
-  it('«Все группы» — флаг forAllGroups, groupId пустой', () => {
-    const state = baseState({ groupChoice: ALL_GROUPS_CHOICE });
+  it('ничего не отмечено — при правке уходит [], а не «не трогать»', () => {
+    const state = baseState({ groupIds: [] });
 
-    expect(toCreateInput(state)).toMatchObject({ groupId: null, forAllGroups: true });
-    expect(toUpdateInput(state)).toMatchObject({ groupId: null, forAllGroups: true });
-  });
-
-  it('«Без группы» — при правке уходит null, а не «не трогать»', () => {
-    const state = baseState({ groupChoice: '' });
-
-    expect(toUpdateInput(state)).toMatchObject({ groupId: null, forAllGroups: false });
-    expect(toCreateInput(state)).toMatchObject({ groupId: null, forAllGroups: false });
+    expect(toUpdateInput(state)).toMatchObject({ groupIds: [] });
+    expect(toCreateInput(state)).toMatchObject({ groupIds: [] });
   });
 });

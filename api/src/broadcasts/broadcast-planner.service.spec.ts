@@ -118,8 +118,8 @@ describe('BroadcastPlannerService.plan', () => {
 
   it('у группы занятия все каналы выключены — cancelled-плейсхолдер, доставок нет', async () => {
     const groupId = new mongoose.Types.ObjectId();
-    await createChannel(ctx, { active: false, groupId });
-    const cls = await createClass(ctx, { groupId });
+    await createChannel(ctx, { active: false, groupIds: [groupId] });
+    const cls = await createClass(ctx, { groupIds: [groupId] });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     const result = await ctx.service.plan(NOW);
@@ -133,9 +133,9 @@ describe('BroadcastPlannerService.plan', () => {
 
   it('часть каналов группы выключена — доставка только на активные', async () => {
     const groupId = new mongoose.Types.ObjectId();
-    const active = await createChannel(ctx, { groupId });
-    await createChannel(ctx, { active: false, groupId });
-    const cls = await createClass(ctx, { groupId });
+    const active = await createChannel(ctx, { groupIds: [groupId] });
+    await createChannel(ctx, { active: false, groupIds: [groupId] });
+    const cls = await createClass(ctx, { groupIds: [groupId] });
     await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     const result = await ctx.service.plan(NOW);
@@ -148,9 +148,9 @@ describe('BroadcastPlannerService.plan', () => {
 
   it('два канала группы — дата уходит в оба: решает группа, не теги (ADR-0195)', async () => {
     const groupId = new mongoose.Types.ObjectId();
-    const first = await createChannel(ctx, { groupId });
-    const second = await createChannel(ctx, { groupId });
-    const cls = await createClass(ctx, { groupId });
+    const first = await createChannel(ctx, { groupIds: [groupId] });
+    const second = await createChannel(ctx, { groupIds: [groupId] });
+    const cls = await createClass(ctx, { groupIds: [groupId] });
     await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
       tags: ['новички'],
     });
@@ -166,12 +166,12 @@ describe('BroadcastPlannerService.plan', () => {
 
   it('у канала остался старый tags в базе (до миграции 0026) — ничего не отсеивает (ADR-0192)', async () => {
     const groupId = new mongoose.Types.ObjectId();
-    const channel = await createChannel(ctx, { groupId });
+    const channel = await createChannel(ctx, { groupIds: [groupId] });
     await ctx.channelModel.collection.updateOne(
       { _id: channel._id },
       { $set: { tags: ['средние'] } },
     );
-    const cls = await createClass(ctx, { groupId });
+    const cls = await createClass(ctx, { groupIds: [groupId] });
     await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
       tags: ['новички'],
     });
@@ -184,8 +184,8 @@ describe('BroadcastPlannerService.plan', () => {
   });
 
   it('занятие без группы — cancelled-плейсхолдер «нет группы», даже если каналы с группами есть', async () => {
-    await createChannel(ctx, { groupId: new mongoose.Types.ObjectId() });
-    const cls = await createClass(ctx, { groupId: undefined });
+    await createChannel(ctx, { groupIds: [new mongoose.Types.ObjectId()] });
+    const cls = await createClass(ctx, { groupIds: [] });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     const result = await ctx.service.plan(NOW);
@@ -197,8 +197,8 @@ describe('BroadcastPlannerService.plan', () => {
   });
 
   it('группа занятия без канала — «у группы занятия нет канала», чужой канал не получает', async () => {
-    await createChannel(ctx, { groupId: new mongoose.Types.ObjectId() });
-    const cls = await createClass(ctx, { groupId: new mongoose.Types.ObjectId() });
+    await createChannel(ctx, { groupIds: [new mongoose.Types.ObjectId()] });
+    const cls = await createClass(ctx, { groupIds: [new mongoose.Types.ObjectId()] });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     await ctx.service.plan(NOW);
@@ -210,10 +210,10 @@ describe('BroadcastPlannerService.plan', () => {
 
   it('канал другой группы и канал без группы занятие группы не получают', async () => {
     const groupId = new mongoose.Types.ObjectId();
-    const mine = await createChannel(ctx, { groupId });
-    await createChannel(ctx, { groupId: new mongoose.Types.ObjectId() });
+    const mine = await createChannel(ctx, { groupIds: [groupId] });
+    await createChannel(ctx, { groupIds: [new mongoose.Types.ObjectId()] });
     await createChannel(ctx);
-    const cls = await createClass(ctx, { groupId });
+    const cls = await createClass(ctx, { groupIds: [groupId] });
     await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     await ctx.service.plan(NOW);
@@ -222,11 +222,15 @@ describe('BroadcastPlannerService.plan', () => {
     expect(deliveries.map((d) => d.channelId.toString())).toEqual([mine._id.toString()]);
   });
 
-  it('занятие для всех групп уходит в каждый канал с группой, в канал без группы — нет', async () => {
-    const first = await createChannel(ctx, { groupId: new mongoose.Types.ObjectId() });
-    const second = await createChannel(ctx, { groupId: new mongoose.Types.ObjectId() });
+  it('занятие с двумя группами: канал с обеими получает пост один раз, чужой канал — ни одного (ADR-0196)', async () => {
+    const first = new mongoose.Types.ObjectId();
+    const second = new mongoose.Types.ObjectId();
+    const other = new mongoose.Types.ObjectId();
+    const one = await createChannel(ctx, { groupIds: [first] });
+    const both = await createChannel(ctx, { groupIds: [first, second] });
+    await createChannel(ctx, { groupIds: [other] });
     await createChannel(ctx);
-    const cls = await createClass(ctx, { groupId: undefined, forAllGroups: true });
+    const cls = await createClass(ctx, { groupIds: [first, second] });
     await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     const result = await ctx.service.plan(NOW);
@@ -234,7 +238,7 @@ describe('BroadcastPlannerService.plan', () => {
     expect(result).toEqual({ broadcasts: 1 });
     const deliveries = await ctx.deliveryModel.find({}).lean();
     expect(deliveries.map((d) => d.channelId.toString()).sort()).toEqual(
-      [first._id.toString(), second._id.toString()].sort(),
+      [one._id.toString(), both._id.toString()].sort(),
     );
   });
 

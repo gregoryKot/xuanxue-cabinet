@@ -13,7 +13,7 @@ function fullClass(): LeanClass {
     _id: CLASS_ID,
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
-    groupId: GROUP_ID,
+    groupIds: [GROUP_ID],
     format: 'online',
     location: 'зал школы',
     zoomLink: 'https://us02web.zoom.us/j/123',
@@ -30,20 +30,20 @@ function fullClass(): LeanClass {
 }
 
 describe('toClassDto', () => {
-  // ADR-0195: у занятия без группы поля в документе нет — ответ отдаёт null.
-  it('занятие без groupId в документе — groupId: null, forAllGroups: false', () => {
+  // ADR-0196: у занятия без групп (и до миграции 0030) поля в документе нет.
+  it('занятие без groupIds в документе — groupIds: []', () => {
     const doc = fullClass();
-    delete doc.groupId;
+    delete doc.groupIds;
 
-    expect(toClassDto(doc)).toMatchObject({ groupId: null, forAllGroups: false });
+    expect(toClassDto(doc)).toMatchObject({ groupIds: [] });
   });
 
-  it('занятие для всех групп — forAllGroups: true, groupId: null', () => {
+  it('несколько групп — строки id в том же порядке', () => {
+    const other = new Types.ObjectId();
     const doc = fullClass();
-    delete doc.groupId;
-    doc.forAllGroups = true;
+    doc.groupIds = [GROUP_ID, other];
 
-    expect(toClassDto(doc)).toMatchObject({ groupId: null, forAllGroups: true });
+    expect(toClassDto(doc).groupIds).toEqual([GROUP_ID.toString(), other.toString()]);
   });
 
   it('переносит все поля, id и даты — строками', () => {
@@ -51,8 +51,7 @@ describe('toClassDto', () => {
       id: CLASS_ID.toString(),
       title: 'Тайцзицюань',
       groupLabel: 'средняя группа',
-      groupId: GROUP_ID.toString(),
-      forAllGroups: false,
+      groupIds: [GROUP_ID.toString()],
       format: 'online',
       location: 'зал школы',
       zoomLink: 'https://us02web.zoom.us/j/123',

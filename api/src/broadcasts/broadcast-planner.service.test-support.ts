@@ -119,7 +119,7 @@ type ChannelFixtureContext = Pick<PlannerTestContext, 'channelModel'>;
 type ClassFixtureContext = Pick<PlannerTestContext, 'classModel' | 'channelModel'>;
 type LessonFixtureContext = Pick<PlannerTestContext, 'lessonModel'>;
 
-/** Активный telegram-канал; `groupId` в `overrides` — его группа (ADR-0195). */
+/** Активный telegram-канал; `groupIds` в `overrides` — его группы (ADR-0196). */
 export async function createChannel(
   ctx: ChannelFixtureContext,
   overrides: Partial<ChannelRecord> = {},
@@ -138,11 +138,11 @@ export async function createClass(
   ctx: ClassFixtureContext,
   overrides: Partial<ClassRecord> = {},
 ) {
-  // Маршрут задаёт только группа (ADR-0195): без явного `groupId` (даже
-  // `undefined` — «без группы») занятию достаётся своя группа и канал в ней.
-  const explicit = 'groupId' in overrides || overrides.forAllGroups === true;
-  const groupId = explicit ? overrides.groupId : new Types.ObjectId();
-  if (!explicit) await createChannel(ctx, { groupId });
+  // Маршрут задают только группы (ADR-0195, ADR-0196): без явного `groupIds`
+  // (даже `[]` — «без групп») занятию достаётся своя группа и канал в ней.
+  const explicit = 'groupIds' in overrides;
+  const groupIds = explicit ? (overrides.groupIds ?? []) : [new Types.ObjectId()];
+  if (!explicit) await createChannel(ctx, { groupIds });
   // Как в проде: ссылка класса лежит шифротекстом — планировщик её расшифровывает.
   return ctx.classModel.create(
     encryptRecord(
@@ -155,7 +155,7 @@ export async function createClass(
         leadMinutes: 30,
         active: true,
         ...overrides,
-        groupId,
+        groupIds,
       },
       CLASS_ENCRYPT_SCHEMA,
     ),

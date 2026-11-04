@@ -15,9 +15,9 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
+import { GroupCheckboxField } from '../groups/GroupCheckboxField';
 import type { UseGroupsResult } from '../groups/useGroups';
 import { useTagOptions } from '../hooks/useTagOptions';
-import { ClassGroupField } from './ClassGroupField';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 
@@ -26,6 +26,9 @@ import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 // planning/lessonFormInput.ts) — два поля рядом не заведёшь, подсказка
 // объясняет это словом «постоянные».
 const TAG_HINT = `Постоянные теги занятия: «начинающие», «медитация» — через запятую, до **${TAG_LIMITS.perRecord}**`;
+
+const GROUPS_HINT =
+  'Ссылка и запись уйдут в каналы **отмеченных групп**, их названия — первая строка поста. Без группы занятие никуда не уходит.';
 
 interface ClassFormFieldsProps {
   state: ClassFormState;
@@ -64,10 +67,11 @@ export function ClassFormFields({
         />
       </Field>
 
-      <ClassGroupField
+      <GroupCheckboxField
         groups={groups}
-        value={state.groupChoice}
-        onChange={(groupChoice) => setField('groupChoice', groupChoice)}
+        selectedIds={state.groupIds}
+        onChange={(groupIds) => setField('groupIds', groupIds)}
+        hint={GROUPS_HINT}
       />
 
       <TagsField

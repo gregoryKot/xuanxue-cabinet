@@ -20,7 +20,6 @@ import {
   type CreateClassInput,
   type UpdateClassInput,
 } from '@xuanxue/shared';
-import { ALL_GROUPS_CHOICE, NO_GROUP_CHOICE } from '../groups/groupChoice';
 import { isValidInt } from '../exams/examQuestions';
 import { longTagError } from '../lib/longTagError';
 import {
@@ -32,10 +31,9 @@ import {
 
 export interface ClassFormState {
   title: string;
-  /** Выбор радио «Группа» (ADR-0195): id группы, `ALL_GROUPS_CHOICE` — «все
-   * группы», пустая строка — «без группы». Подпись для постов сервер берёт из
-   * названия группы сам. */
-  groupChoice: string;
+  /** Отмеченные группы (ADR-0196): id групп школы; пусто — «без группы».
+   * Подпись для постов сервер собирает из названий сам. */
+  groupIds: string[];
   format: ClassFormat;
   zoomLink: string;
   zoomPassword: string;
@@ -52,24 +50,10 @@ export interface ClassFormState {
   tagsText: string;
 }
 
-/** Радио «Группа» → тело запроса: «все группы» — флаг, а не id (ADR-0195). */
-function groupFields(choice: string): Pick<UpdateClassInput, 'groupId' | 'forAllGroups'> {
-  const forAllGroups = choice === ALL_GROUPS_CHOICE;
-  return {
-    groupId: choice === NO_GROUP_CHOICE || forAllGroups ? null : choice,
-    forAllGroups,
-  };
-}
-
-function groupChoiceOf(classDto: ClassDto | null): string {
-  if (classDto?.forAllGroups) return ALL_GROUPS_CHOICE;
-  return classDto?.groupId ?? NO_GROUP_CHOICE;
-}
-
 export function initialClassFormState(classDto: ClassDto | null): ClassFormState {
   return {
     title: classDto?.title ?? '',
-    groupChoice: groupChoiceOf(classDto),
+    groupIds: classDto?.groupIds ?? [],
     format: classDto?.format ?? 'online',
     zoomLink: classDto?.zoomLink ?? '',
     zoomPassword: classDto?.zoomPassword ?? '',
@@ -99,7 +83,7 @@ export function validateClassForm(state: ClassFormState): string | null {
 export function toCreateInput(state: ClassFormState): CreateClassInput {
   return {
     title: state.title.trim(),
-    ...groupFields(state.groupChoice),
+    groupIds: state.groupIds,
     format: state.format,
     zoomLink: state.zoomLink.trim() || undefined,
     zoomPassword: state.zoomPassword.trim() || undefined,
@@ -115,7 +99,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
 export function toUpdateInput(state: ClassFormState): UpdateClassInput {
   return {
     title: state.title.trim(),
-    ...groupFields(state.groupChoice),
+    groupIds: state.groupIds,
     format: state.format,
     zoomLink: state.zoomLink.trim() || null,
     zoomPassword: state.zoomPassword.trim() || null,

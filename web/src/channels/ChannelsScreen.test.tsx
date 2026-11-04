@@ -30,7 +30,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
-    groupId: null,
+    groupIds: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -42,8 +42,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзи',
     groupLabel: '',
-    groupId: null,
-    forAllGroups: false,
+    groupIds: [],
     format: 'online',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
@@ -68,6 +67,7 @@ function makeGroup(id: string, name: string): GroupDto {
 }
 
 const BEGINNERS = makeGroup('g1', 'Начинающие');
+const MIDDLE = makeGroup('g2', 'Средние');
 
 function renderScreen() {
   return render(
@@ -138,22 +138,23 @@ describe('ChannelsScreen — список', () => {
   });
 });
 
-describe('ChannelsScreen — группа канала (ADR-0195)', () => {
-  it('у канала группа — строка называет её и считает занятия группы и «для всех»', async () => {
+describe('ChannelsScreen — группы канала (ADR-0196)', () => {
+  it('у канала две группы — строка называет обе и считает занятия, у которых отмечена хоть одна', async () => {
     mockApiByPath({
-      '/channels': [makeChannel({ groupId: 'g1' })],
-      '/groups': [BEGINNERS],
+      '/channels': [makeChannel({ groupIds: ['g1', 'g2'] })],
+      '/groups': [BEGINNERS, MIDDLE],
       '/classes': [
-        makeClass({ groupId: 'g1' }),
-        makeClass({ id: 'c2', forAllGroups: true }),
-        makeClass({ id: 'c3', groupId: 'g2' }),
+        makeClass({ groupIds: ['g1'] }),
+        makeClass({ id: 'c2', groupIds: ['g1', 'g2'] }),
+        makeClass({ id: 'c3', groupIds: ['g2'] }),
+        makeClass({ id: 'c4', groupIds: ['g3'] }),
       ],
     });
 
     renderScreen();
 
-    expect(await screen.findByText(/Группа:/)).toHaveTextContent(
-      'Группа: Начинающие · 2 занятия',
+    expect(await screen.findByText(/Группы:/)).toHaveTextContent(
+      'Группы: Начинающие, Средние · 3 занятия',
     );
   });
 
@@ -161,12 +162,12 @@ describe('ChannelsScreen — группа канала (ADR-0195)', () => {
     mockApiByPath({
       '/channels': [makeChannel()],
       '/groups': [BEGINNERS],
-      '/classes': [makeClass({ groupId: 'g1' })],
+      '/classes': [makeClass({ groupIds: ['g1'] })],
     });
 
     renderScreen();
 
-    expect(await screen.findByText(/Группа не выбрана/)).toHaveStyle({
+    expect(await screen.findByText(/Группы не выбраны/)).toHaveStyle({
       color: 'var(--danger)',
     });
   });
@@ -181,7 +182,7 @@ describe('ChannelsScreen — группа канала (ADR-0195)', () => {
     renderScreen();
     await screen.findByText('ВК · ВК школы');
 
-    expect(screen.queryByText(/Группа не выбрана/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Группы не выбраны/)).not.toBeInTheDocument();
   });
 
   it('группы не загрузились — строки нет, список каналов цел', async () => {
@@ -194,18 +195,18 @@ describe('ChannelsScreen — группа канала (ADR-0195)', () => {
     renderScreen();
 
     expect(await screen.findByText('ВК · ВК школы')).toBeInTheDocument();
-    expect(screen.queryByText(/Группа не выбрана/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Группы не выбраны/)).not.toBeInTheDocument();
   });
 
   it('в строках канала слова «курс» нет', async () => {
     mockApiByPath({
-      '/channels': [makeChannel({ groupId: 'g1' })],
+      '/channels': [makeChannel({ groupIds: ['g1'] })],
       '/groups': [BEGINNERS],
-      '/classes': [makeClass({ groupId: 'g1' })],
+      '/classes': [makeClass({ groupIds: ['g1'] })],
     });
 
     renderScreen();
-    await screen.findByText(/Группа:/);
+    await screen.findByText(/Группы:/);
 
     expect(document.body.textContent).not.toMatch(/курс/i);
   });

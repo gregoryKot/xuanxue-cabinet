@@ -14,7 +14,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
-    groupId: null,
+    groupIds: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -63,15 +63,15 @@ describe('ChannelCard', () => {
 
   it('строка группы: название выделено, предупреждение — цветом опасности (ADR-0195)', () => {
     const { unmount } = renderCard(
-      { groupId: 'g1' },
-      { text: 'Группа: **Начинающие** · 5 занятий', isWarning: false },
+      { groupIds: ['g1'] },
+      { text: 'Группы: **Средние, Старшие** · 5 занятий', isWarning: false },
     );
-    expect(screen.getByText('Начинающие').tagName).toBe('STRONG');
+    expect(screen.getByText('Средние, Старшие').tagName).toBe('STRONG');
     expect(screen.getByText(/5 занятий/)).not.toHaveStyle({ color: 'var(--danger)' });
     unmount();
 
-    renderCard({}, { text: 'Группа не выбрана — посты сюда не уходят', isWarning: true });
-    expect(screen.getByText('Группа не выбрана — посты сюда не уходят')).toHaveStyle({
+    renderCard({}, { text: 'Группы не выбраны — посты сюда не уходят', isWarning: true });
+    expect(screen.getByText('Группы не выбраны — посты сюда не уходят')).toHaveStyle({
       color: 'var(--danger)',
     });
   });
@@ -86,7 +86,7 @@ describe('ChannelCard', () => {
     unmount();
 
     renderCard();
-    expect(screen.queryByText(/Группа/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Групп/)).not.toBeInTheDocument();
   });
 
   // Список каналов — одна карточка (docs/adr/0043): волосяную линию между

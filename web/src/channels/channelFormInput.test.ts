@@ -13,7 +13,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
-    groupId: null,
+    groupIds: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -125,22 +125,27 @@ describe('validateChannelForm', () => {
   });
 });
 
-describe('группа канала (ADR-0195)', () => {
-  it('правка: группа берётся из канала, у канала без группы — «пока никакой»', () => {
-    expect(initialChannelFormState(makeChannel({ groupId: 'g1' })).groupId).toBe('g1');
-    expect(initialChannelFormState(makeChannel({ groupId: null })).groupId).toBe('');
-    expect(initialChannelFormState(null).groupId).toBe('');
+describe('группы канала (ADR-0196)', () => {
+  it('правка: группы берутся из канала, у канала без групп — пусто', () => {
+    expect(
+      initialChannelFormState(makeChannel({ groupIds: ['g1', 'g2'] })).groupIds,
+    ).toEqual(['g1', 'g2']);
+    expect(initialChannelFormState(makeChannel({ groupIds: [] })).groupIds).toEqual([]);
+    expect(initialChannelFormState(null).groupIds).toEqual([]);
   });
 
-  it('создание: выбранная группа уходит в тело, невыбранной в теле нет', () => {
+  it('создание: отмеченные группы уходят в тело, неотмеченных — пустой список', () => {
     const base = {
       ...initialChannelFormState(null),
       type: 'manual' as const,
       title: 'FB',
     };
 
-    expect(toCreateInput({ ...base, groupId: 'g2' }).groupId).toBe('g2');
-    expect(toCreateInput(base)).not.toHaveProperty('groupId');
+    expect(toCreateInput({ ...base, groupIds: ['g2', 'g3'] }).groupIds).toEqual([
+      'g2',
+      'g3',
+    ]);
+    expect(toCreateInput(base).groupIds).toEqual([]);
   });
 });
 
@@ -156,6 +161,7 @@ describe('toCreateInput', () => {
       type: 'telegram',
       title: 'Канал',
       config: { chatId: '@school' },
+      groupIds: [],
     });
   });
 
@@ -170,6 +176,7 @@ describe('toCreateInput', () => {
       type: 'vk',
       title: 'ВК',
       config: { token: 'secret', peerId: 42 },
+      groupIds: [],
     });
   });
 
@@ -183,6 +190,7 @@ describe('toCreateInput', () => {
       type: 'manual',
       title: 'FB',
       config: {},
+      groupIds: [],
     });
   });
 
@@ -206,7 +214,7 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'telegram')).toEqual({
       title: 'Канал',
-      groupId: null,
+      groupIds: [],
       config: { chatId: '-100123' },
     });
   });
@@ -215,7 +223,7 @@ describe('toUpdateInput', () => {
     const state = { ...initialChannelFormState(null), title: 'ВК', peerIdText: '5' };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
-      groupId: null,
+      groupIds: [],
     });
   });
 
@@ -228,7 +236,7 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
-      groupId: null,
+      groupIds: [],
       config: { token: 'newsecret', peerId: 5 },
     });
   });
@@ -237,15 +245,15 @@ describe('toUpdateInput', () => {
     const state = { ...initialChannelFormState(null), title: 'FB' };
     expect(toUpdateInput(state, 'manual')).toEqual({
       title: 'FB',
-      groupId: null,
+      groupIds: [],
     });
   });
 
-  it('группа выбрана — groupId уходит; «пока никакой» — явный null, не «не трогать» (ADR-0195)', () => {
-    const chosen = { ...initialChannelFormState(null), title: 'FB', groupId: 'g1' };
-    const none = { ...chosen, groupId: '' };
+  it('группы отмечены — groupIds уходит; ничего не отмечено — явный [], не «не трогать» (ADR-0196)', () => {
+    const chosen = { ...initialChannelFormState(null), title: 'FB', groupIds: ['g1'] };
+    const none = { ...chosen, groupIds: [] };
 
-    expect(toUpdateInput(chosen, 'manual').groupId).toBe('g1');
-    expect(toUpdateInput(none, 'manual').groupId).toBeNull();
+    expect(toUpdateInput(chosen, 'manual').groupIds).toEqual(['g1']);
+    expect(toUpdateInput(none, 'manual').groupIds).toEqual([]);
   });
 });

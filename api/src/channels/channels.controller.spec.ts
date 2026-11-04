@@ -10,7 +10,7 @@ const CHANNEL_DTO: ChannelDto = {
   type: 'telegram',
   title: 'Основной канал',
   target: '@school',
-  groupId: null,
+  groupIds: [],
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };

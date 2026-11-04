@@ -29,7 +29,12 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { CLASS_LIMITS, TAG_LIMITS, type ScheduleRuleInput } from '@xuanxue/shared';
+import {
+  CLASS_LIMITS,
+  LIST_LIMIT_MAX,
+  TAG_LIMITS,
+  type ScheduleRuleInput,
+} from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
 import { ruleUniqueKey } from '../classes.update';
 import { ScheduleRuleDto } from './schedule-rule.dto';
@@ -37,17 +42,14 @@ import { ScheduleRuleDto } from './schedule-rule.dto';
 const MIN_LEAD_MINUTES = 0;
 
 export class ClassFieldsDto {
-  // Группа школы (ADR-0195): существование id проверяет ClassesService, здесь
-  // только форма. `null` — «без группы». Старый клиент со `groupIds` или
-  // `channelIds` получает 400 (`forbidNonWhitelisted`) — вкладку надо обновить.
-  @IsOptional()
-  @IsMongoId()
-  groupId?: string | null;
-
-  // «Для всех групп»: при `true` сервер хранит `groupId` пустым.
+  // Группы школы (ADR-0196): существование id проверяет ClassesService, здесь
+  // только форма; дубли схлопывает сервис. `[]` — «без групп». Вкладка со
+  // старым `groupId`/`forAllGroups` получает 400 (`forbidNonWhitelisted`).
   @OptionalNotNull()
-  @IsBoolean()
-  forAllGroups?: boolean;
+  @IsArray()
+  @ArrayMaxSize(LIST_LIMIT_MAX)
+  @IsMongoId({ each: true })
+  groupIds?: string[];
 
   @OptionalNotNull()
   @IsArray()

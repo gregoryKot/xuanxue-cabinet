@@ -16,13 +16,12 @@ import {
   type CreateChannelInput,
   type UpdateChannelInput,
 } from '@xuanxue/shared';
-import { NO_GROUP_CHOICE } from '../groups/groupChoice';
 
 export interface ChannelFormState {
   type: ChannelType;
   title: string;
-  /** Группа канала (ADR-0195): id группы, пустая строка — «пока никакой». */
-  groupId: string;
+  /** Группы канала (ADR-0196): id групп школы; пусто — «пока никаких». */
+  groupIds: string[];
   chatId: string;
   token: string;
   peerIdText: string;
@@ -39,7 +38,7 @@ export function initialChannelFormState(channelDto: ChannelDto | null): ChannelF
   return {
     type: channelDto ? channelDto.type : 'vk',
     title: channelDto?.title ?? '',
-    groupId: channelDto?.groupId ?? NO_GROUP_CHOICE,
+    groupIds: channelDto?.groupIds ?? [],
     chatId: channelDto?.type === 'telegram' ? channelDto.target : '',
     token: '',
     peerIdText: channelDto?.type === 'vk' ? channelDto.target : '',
@@ -105,7 +104,7 @@ export function toCreateInput(state: ChannelFormState): CreateChannelInput {
     type: state.type,
     title: state.title.trim(),
     config: configFor(state, state.type),
-    ...(state.groupId === NO_GROUP_CHOICE ? {} : { groupId: state.groupId }),
+    groupIds: state.groupIds,
   };
 }
 
@@ -118,8 +117,8 @@ export function toUpdateInput(
 ): UpdateChannelInput {
   const input: UpdateChannelInput = {
     title: state.title.trim(),
-    // Пустой выбор — явный сброс (null): канал перестаёт получать занятия.
-    groupId: state.groupId === NO_GROUP_CHOICE ? null : state.groupId,
+    // Пустой список — явный сброс: канал перестаёт получать занятия.
+    groupIds: state.groupIds,
   };
   if (existingType === 'telegram') {
     input.config = { chatId: state.chatId.trim() };

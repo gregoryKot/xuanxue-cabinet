@@ -204,11 +204,11 @@ export {
 export { classDisplayName } from './class-name';
 export type { GroupDto, GroupInput } from './groups';
 export {
-  ALL_GROUPS_LABEL,
   DEFAULT_GROUP_NAMES,
   GROUP_LIMITS,
   GROUP_NOT_FOUND_MESSAGE,
   groupNameKey,
+  joinGroupNames,
 } from './groups';
 export type {
   RecordingDto,

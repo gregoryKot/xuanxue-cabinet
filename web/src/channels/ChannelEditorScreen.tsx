@@ -11,8 +11,8 @@ export default function ChannelEditorScreen() {
   // Адреса два: у `/channels/new` параметра нет вовсе — это новый канал.
   const { channelId } = useParams<{ channelId: string }>();
   const editor = useChannelEditor(channelId);
-  // Группы ждём наравне с каналом: радио «Для какой группы» без списка нечем
-  // рисовать (ADR-0195); «Обновить» после сбоя форму не прячет.
+  // Группы ждём наравне с каналом: галочки «Группы» без списка нечем
+  // рисовать (ADR-0196); «Обновить» после сбоя форму не прячет.
   const groupsState = useGroups();
 
   return (

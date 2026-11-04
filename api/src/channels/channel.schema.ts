@@ -51,18 +51,19 @@ export class ChannelRecord {
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
 
-  // Группа школы (коллекция `groups`), занятия которой идут в этот канал —
-  // единственный рычаг рассылки (ADR-0195): канал получает ссылки и записи
-  // занятий с той же группой. Нет поля — канал ничего не получает. У личного
-  // чата ученика (broadcastEligible: false) группы не бывает никогда.
-  @Prop({ type: SchemaTypes.ObjectId, required: false })
-  groupId?: Types.ObjectId;
+  // Группы школы (коллекция `groups`), занятия которых идут в этот канал, в
+  // порядке создания групп — единственный рычаг рассылки (ADR-0195, ADR-0196):
+  // канал получает ссылки и записи занятий, чьи группы пересекаются с этими.
+  // Пусто (или нет поля) — канал ничего не получает. У личного чата ученика
+  // (broadcastEligible: false) групп не бывает никогда.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  groupIds!: Types.ObjectId[];
 }
 
 export const ChannelSchema = SchemaFactory.createForClass(ChannelRecord);
 ChannelSchema.index({ type: 1 });
-// Каналы группы занятия (findActiveChannelIds, ADR-0195) и счёт каналов группы.
-ChannelSchema.index({ groupId: 1 });
+// Каналы групп занятия (findGroupChannelIds, ADR-0196) и счёт каналов группы.
+ChannelSchema.index({ groupIds: 1 });
 // Второй канал того же типа с тем же адресом не создаётся дважды —
 // идемпотентность upsertTelegramChat и защита от дубля при ручном создании.
 // Частичный: у ручного канала target === '' и дублей не считает (иначе все

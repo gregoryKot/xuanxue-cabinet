@@ -1,5 +1,5 @@
 // Юнит без Mongo и DI (CLAUDE.md «Тесты») — сборка payload и команды PATCH там,
-// где группа не ищется в базе (`undefined`, `null`); выбор существующей группы,
+// где группа не ищется в базе (нет полей, `[]`); выбор существующей группы,
 // шифрование и запись проверены на настоящей Mongo в channels.service.spec.ts.
 import type { Model } from 'mongoose';
 import type { GroupRecord } from '../groups/group.schema';
@@ -13,7 +13,7 @@ const NO_GROUP_LOOKUP = {
 } as unknown as Model<GroupRecord>;
 
 describe('buildChannelCreatePayload', () => {
-  it('поля из CreateChannelInput, active: true по умолчанию, группы и тегов нет', async () => {
+  it('поля из CreateChannelInput, active: true по умолчанию, групп нет', async () => {
     const payload = await buildChannelCreatePayload(
       NO_GROUP_LOOKUP,
       { type: 'telegram', title: 'Канал', config: { chatId: '@x' } },
@@ -26,22 +26,23 @@ describe('buildChannelCreatePayload', () => {
       config: { chatId: '@x' },
       target: '@x',
       active: true,
+      groupIds: [],
     });
   });
 
-  it('groupId: null при создании — то же, что без группы', async () => {
+  it('groupIds: [] при создании — то же, что без групп', async () => {
     const payload = await buildChannelCreatePayload(
       NO_GROUP_LOOKUP,
-      { type: 'manual', title: 'Канал', config: {}, groupId: null },
+      { type: 'manual', title: 'Канал', config: {}, groupIds: [] },
       '',
     );
 
-    expect(payload).not.toHaveProperty('groupId');
+    expect(payload).toHaveProperty('groupIds', []);
   });
 });
 
 describe('buildChannelUpdate', () => {
-  it('переданные поля попадают в $set как есть, остальных и $unset нет', async () => {
+  it('переданные поля попадают в $set как есть, групп без поля не трогаем', async () => {
     const update = await buildChannelUpdate(NO_GROUP_LOOKUP, {
       title: 'Новое имя',
     });
@@ -49,9 +50,9 @@ describe('buildChannelUpdate', () => {
     expect(update).toEqual({ $set: { title: 'Новое имя' } });
   });
 
-  it('groupId: null — группа уходит в $unset, а не пишется литералом null (ADR-0195)', async () => {
-    const update = await buildChannelUpdate(NO_GROUP_LOOKUP, { groupId: null });
+  it('groupIds: [] — группы снимаются пустым списком (ADR-0196)', async () => {
+    const update = await buildChannelUpdate(NO_GROUP_LOOKUP, { groupIds: [] });
 
-    expect(update).toEqual({ $set: {}, $unset: { groupId: '' } });
+    expect(update).toEqual({ $set: { groupIds: [] } });
   });
 });

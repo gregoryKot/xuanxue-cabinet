@@ -31,11 +31,9 @@ import type { BroadcastDto } from '@xuanxue/shared';
 // контракт из ТЗ аудита В12, дословно.
 const NO_LINK_MESSAGE =
   'У занятия нет ссылки — добавьте её в занятии или в слоте расписания.';
-const NO_GROUP_MESSAGE = 'У занятия нет группы — выберите её на странице занятия.';
-const NO_GROUPED_CHANNEL_MESSAGE =
-  'Ни у одного канала нет группы — выберите группу у канала на экране «Каналы».';
+const NO_GROUP_MESSAGE = 'У занятия нет группы — отметьте группы на странице занятия.';
 function noGroupChannelMessage(groupLabel: string): string {
-  return `У группы «${groupLabel}» нет канала — выберите эту группу у канала на экране «Каналы».`;
+  return `Ни у одной из групп занятия («${groupLabel}») нет канала — выберите группу у канала на экране «Каналы».`;
 }
 const LESSON_CANCELLED_MESSAGE =
   'Занятие отменено, слать ссылку некуда. Верните занятие в расписание, если это ошибка.';
@@ -63,14 +61,10 @@ export class SendNowService {
     const link = lesson.zoomLinkOverride ?? cls?.zoomLink;
     if (!cls || !link) throw new InvalidInputError(NO_LINK_MESSAGE);
 
-    if (!cls.groupId && !cls.forAllGroups) throw new InvalidInputError(NO_GROUP_MESSAGE);
+    if (!cls.groupIds?.length) throw new InvalidInputError(NO_GROUP_MESSAGE);
     const channelIds = await findGroupChannelIds(this.models.channelModel, cls);
     if (channelIds.length === 0)
-      throw new InvalidInputError(
-        cls.forAllGroups
-          ? NO_GROUPED_CHANNEL_MESSAGE
-          : noGroupChannelMessage(cls.groupLabel),
-      );
+      throw new InvalidInputError(noGroupChannelMessage(cls.groupLabel));
 
     const settings = await this.settingsService.get();
     const text = await buildLessonLinkText(

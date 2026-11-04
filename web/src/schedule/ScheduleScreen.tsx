@@ -18,6 +18,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { useChannels } from '../channels/useChannels';
+import { useGroups } from '../groups/useGroups';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenActions, type ScreenAction } from '../components/ScreenActions';
@@ -40,11 +41,13 @@ export default function ScheduleScreen() {
   // Активные каналы нужны самой неделе: SlotRow по ним видит, что ссылку
   // некому разослать (ревью п.4).
   const { channels: activeChannels } = useChannels();
+  // Названия групп — для строки «→ Средние · Тайцзи онлайн» под занятием.
+  const { groups } = useGroups();
   const navigate = useNavigate();
 
   const grid = useMemo(
-    () => buildScheduleGrid(classes ?? [], activeChannels),
-    [classes, activeChannels],
+    () => buildScheduleGrid(classes ?? [], activeChannels, groups),
+    [classes, activeChannels, groups],
   );
   const totalSlots = useMemo(() => Object.values(grid).flat().length, [grid]);
   // Пояс подписан один раз под объяснением, а не припиской у каждого слота:

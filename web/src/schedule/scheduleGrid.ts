@@ -10,6 +10,7 @@ import {
   WEEKDAYS,
   type ChannelDto,
   type ClassDto,
+  type GroupDto,
   type ScheduleRuleDto,
   type Weekday,
 } from '@xuanxue/shared';
@@ -95,10 +96,11 @@ function emptyGrid(): ScheduleGrid {
  * записи не должен весь экран. `activeChannels` — активные каналы
  * кабинета (ScheduleScreen грузит их один раз через useChannels()), `null`
  * пока грузятся: занятие уходит в каналы своей группы, канал без группы
- * рассылку не получит (ADR-0195). */
+ * рассылку не получит (ADR-0195); `groups` — названия групп для строки (ADR-0196). */
 export function buildScheduleGrid(
   classes: ClassDto[],
-  activeChannels: readonly Pick<ChannelDto, 'title' | 'groupId'>[] | null = null,
+  activeChannels: readonly Pick<ChannelDto, 'title' | 'groupIds'>[] | null = null,
+  groups: readonly Pick<GroupDto, 'id' | 'name'>[] | null = null,
 ): ScheduleGrid {
   const grid = emptyGrid();
   for (const cls of classes) {
@@ -118,7 +120,7 @@ export function buildScheduleGrid(
         isBiweekly: rule.everyWeeks === EVERY_TWO_WEEKS,
         active: cls.active,
         linkMissing: cls.format !== 'offline' && !cls.zoomLink,
-        destination: formatClassDestination(cls, activeChannels),
+        destination: formatClassDestination(cls, groups, activeChannels),
         tags: cls.tags,
       });
     }

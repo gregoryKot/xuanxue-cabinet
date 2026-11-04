@@ -172,7 +172,7 @@ describe('Группы школы (e2e)', () => {
     });
   });
 
-  describe('группа у занятия и у канала (ADR-0195)', () => {
+  describe('группы у занятия и у канала (ADR-0196)', () => {
     function postChannel(cookie: string, body: Record<string, unknown>): request.Test {
       return withCsrf(request(server()).post('/api/channels'))
         .set('Cookie', cookie)
@@ -184,15 +184,15 @@ describe('Группы школы (e2e)', () => {
       return res.body as GroupDto[];
     }
 
-    it('создание и правка с groupId: подпись — название группы, classCount растёт и падает', async () => {
+    it('создание и правка с groupIds: подпись — названия групп, classCount растёт и падает', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const first = await createGroup(cookie, 'Утренние');
       const second = await createGroup(cookie, 'Вечерние');
 
-      const created = await postClass(cookie, { groupId: second.id });
+      const created = await postClass(cookie, { groupIds: [second.id] });
       expect(created.status).toBe(201);
       const cls = created.body as ClassDto;
-      expect(cls.groupId).toBe(second.id);
+      expect(cls.groupIds).toEqual([second.id]);
       expect(cls.groupLabel).toBe('Вечерние');
       expect((await listGroups(cookie)).find((g) => g.id === second.id)?.classCount).toBe(
         1,
@@ -200,19 +200,19 @@ describe('Группы школы (e2e)', () => {
 
       const patched = await withCsrf(request(server()).patch(`/api/classes/${cls.id}`))
         .set('Cookie', cookie)
-        .send({ groupId: first.id });
-      expect((patched.body as ClassDto).groupLabel).toBe('Утренние');
+        .send({ groupIds: [first.id, second.id] });
+      expect((patched.body as ClassDto).groupLabel).toBe('Утренние, Вечерние');
 
       const after = await listGroups(cookie);
       expect(after.find((g) => g.id === first.id)?.classCount).toBe(1);
-      expect(after.find((g) => g.id === second.id)?.classCount).toBe(0);
+      expect(after.find((g) => g.id === second.id)?.classCount).toBe(1);
     });
 
-    it('channelCount: канал с группой считается; снятие группы у канала уменьшает', async () => {
+    it('channelCount: канал с группой считается; снятие групп у канала уменьшает', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const group = await createGroup(cookie);
 
-      const channel = await postChannel(cookie, { groupId: group.id });
+      const channel = await postChannel(cookie, { groupIds: [group.id] });
       expect(channel.status).toBe(201);
       expect(
         (await listGroups(cookie)).find((g) => g.id === group.id)?.channelCount,
@@ -221,7 +221,7 @@ describe('Группы школы (e2e)', () => {
       const channelId = (channel.body as { id: string }).id;
       await withCsrf(request(server()).patch(`/api/channels/${channelId}`))
         .set('Cookie', cookie)
-        .send({ groupId: null });
+        .send({ groupIds: [] });
       expect(
         (await listGroups(cookie)).find((g) => g.id === group.id)?.channelCount,
       ).toBe(0);
@@ -230,7 +230,7 @@ describe('Группы школы (e2e)', () => {
     it('переименование меняет groupLabel занятия, которое читается отдельным GET', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const group = await createGroup(cookie);
-      const cls = (await postClass(cookie, { groupId: group.id })).body as ClassDto;
+      const cls = (await postClass(cookie, { groupIds: [group.id] })).body as ClassDto;
 
       await withCsrf(request(server()).patch(`/api/groups/${group.id}`))
         .set('Cookie', cookie)
@@ -245,8 +245,8 @@ describe('Группы школы (e2e)', () => {
     it('DELETE группы, которую несёт занятие или канал — 409 с названием, что держит; после снятия — 204', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const group = await createGroup(cookie);
-      const cls = (await postClass(cookie, { groupId: group.id })).body as ClassDto;
-      const channel = await postChannel(cookie, { groupId: group.id });
+      const cls = (await postClass(cookie, { groupIds: [group.id] })).body as ClassDto;
+      const channel = await postChannel(cookie, { groupIds: [group.id] });
       const channelId = (channel.body as { id: string }).id;
 
       const blocked = await withCsrf(
@@ -257,28 +257,32 @@ describe('Группы школы (e2e)', () => {
 
       await withCsrf(request(server()).patch(`/api/classes/${cls.id}`))
         .set('Cookie', cookie)
-        .send({ groupId: null });
+        .send({ groupIds: [] });
       await withCsrf(request(server()).patch(`/api/channels/${channelId}`))
         .set('Cookie', cookie)
-        .send({ groupId: null });
+        .send({ groupIds: [] });
       const freed = await withCsrf(
         request(server()).delete(`/api/groups/${group.id}`),
       ).set('Cookie', cookie);
       expect(freed.status).toBe(204);
     });
 
-    it('неизвестная группа и не-id в groupId занятия и канала — 400', async () => {
+    it('неизвестная группа и не-id в groupIds занятия и канала — 400', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const missing = new Types.ObjectId().toString();
 
       const statuses = [
+        (await postClass(cookie, { groupIds: [missing] })).status,
+        (await postClass(cookie, { groupIds: ['не-id'] })).status,
+        (await postChannel(cookie, { groupIds: [missing] })).status,
+        (await postChannel(cookie, { groupIds: ['не-id'] })).status,
+        // Старые поля одной группы и «для всех» (ADR-0195): вкладку надо обновить.
         (await postClass(cookie, { groupId: missing })).status,
-        (await postClass(cookie, { groupId: 'не-id' })).status,
+        (await postClass(cookie, { forAllGroups: true })).status,
         (await postChannel(cookie, { groupId: missing })).status,
-        (await postChannel(cookie, { groupId: 'не-id' })).status,
       ];
 
-      expect(statuses).toEqual([400, 400, 400, 400]);
+      expect(statuses).toEqual([400, 400, 400, 400, 400, 400, 400]);
     });
 
     // Подпись больше не пишется клиентом: вкладка со старой сборкой получает

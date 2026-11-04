@@ -1,7 +1,7 @@
 // Провайдеры адаптеров идут через multi-провайдер CHANNEL_ADAPTERS — в Nest
 // нет декларативного «multi: true», поэтому фабрика собирает массив вручную
 // (ADR-0004). GroupModelModule — модель групп: create()/update() проверяют
-// `groupId` канала (ADR-0195).
+// `groupIds` канала (ADR-0196).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GroupModelModule } from '../groups/group-model.module';

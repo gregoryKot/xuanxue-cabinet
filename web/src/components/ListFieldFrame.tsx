@@ -1,4 +1,4 @@
-// Рамка списка выбора — общая для CheckboxListField и RadioListField (CLAUDE.md
+// Рамка списка выбора — общая для списков выбора (CLAUDE.md
 // «Одна механика — один компонент»): `fieldset` с `legend`, подсказкой над
 // списком и ошибкой под ним. Строки списка кладёт вызывающий компонент.
 // `ref` — на сам `fieldset` (`tabIndex={-1}`): форма рассылки фокусирует его при
@@ -15,7 +15,7 @@ const fieldsetStyle: CSSProperties = {
   gap: 8,
 };
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-export const listFieldHintStyle: CSSProperties = {
+const listFieldHintStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
   color: 'var(--ink-soft)',

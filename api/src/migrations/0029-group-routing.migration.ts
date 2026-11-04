@@ -21,13 +21,14 @@
 // занятий с `groupIds` и каналов без решения о группе, у которых нашлось бы что
 // проставить. Отчёт называет id и подпись — владелец поправит спорное руками.
 import type { mongo } from 'mongoose';
-import { ALL_GROUPS_LABEL } from '@xuanxue/shared';
 
 type Db = mongo.Db;
 
 const CHANNELS = 'channels';
 const CLASSES = 'classes';
 const GROUPS = 'groups';
+// Литерал, не импорт: миграция — снимок на день записи, а константу ADR-0196 убрал.
+const ALL_GROUPS_LABEL = 'все группы';
 
 interface LegacyClass {
   _id: mongo.ObjectId;

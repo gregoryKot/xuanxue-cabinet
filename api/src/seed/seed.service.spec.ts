@@ -123,31 +123,48 @@ describe('SeedService', () => {
     const byTitle = Object.fromEntries(
       (await classesService.list({})).map((c) => [c.title, c]),
     );
-    expect(byTitle['Б']?.groupId).toBe(existing.id);
+    expect(byTitle['Б']?.groupIds).toEqual([existing.id]);
     expect(byTitle['Б']?.groupLabel).toBe('Средние');
     // «средняя группа» — другое название, чем «Средние»: заводится своя группа.
     expect(byTitle['А']?.groupLabel).toBe('средняя группа');
-    expect(byTitle['А']?.groupId).not.toBeNull();
-    expect(byTitle['В']?.groupId).toBeNull();
+    expect(byTitle['А']?.groupIds).toHaveLength(1);
+    expect(byTitle['В']?.groupIds).toEqual([]);
     expect(await groupModel.countDocuments()).toBe(2);
   });
 
-  // ADR-0195: «все группы» с сайта — не группа с таким названием, а занятие для всех.
-  it('подпись «все группы» из файла — занятие для всех групп, группа не заводится', async () => {
+  // ADR-0196: «все группы» с сайта — все группы школы на сейчас, своей группы не заводится.
+  it('подпись «все группы» из файла — все группы школы, повторный импорт не дублирует', async () => {
+    const middle = await groupsService.create({ name: 'Средние' });
+    const advanced = await groupsService.create({ name: 'Старшие' });
     const path = await writeSeed({
       tz: 'Asia/Jerusalem',
       classes: [{ title: 'Пятница', groupLabel: 'Все группы', format: 'online' }],
     });
 
     await seedService.importClasses(path);
+    const second = await seedService.importClasses(path);
+
+    const list = await classesService.list({});
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({
+      groupIds: [middle.id, advanced.id],
+      groupLabel: 'Средние, Старшие',
+    });
+    expect(second.skipped).toHaveLength(1);
+    expect(await groupModel.countDocuments()).toBe(2);
+  });
+
+  it('несколько названий через запятую — несколько групп', async () => {
+    const path = await writeSeed({
+      tz: 'Asia/Jerusalem',
+      classes: [{ title: 'Две', groupLabel: 'Средние, Старшие', format: 'online' }],
+    });
+
+    await seedService.importClasses(path);
 
     const [cls] = await classesService.list({});
-    expect(cls).toMatchObject({
-      forAllGroups: true,
-      groupId: null,
-      groupLabel: 'все группы',
-    });
-    expect(await groupModel.countDocuments()).toBe(0);
+    expect(cls?.groupIds).toHaveLength(2);
+    expect(cls?.groupLabel).toBe('Средние, Старшие');
   });
 
   it('read-after-write: ClassesService.list видит импортированные классы', async () => {
