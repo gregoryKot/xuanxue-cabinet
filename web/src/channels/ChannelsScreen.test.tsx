@@ -134,9 +134,9 @@ describe('ChannelsScreen — какие занятия кормят канал',
 
     renderScreen();
 
-    expect(
-      await screen.findByText('Тайцзи вт 19:00', { exact: false }),
-    ).toHaveTextContent('1 занятие: Тайцзи вт 19:00');
+    expect(await screen.findByText('Тайцзи', { exact: false })).toHaveTextContent(
+      '1 курс: Тайцзи',
+    );
   });
 
   it('канал без занятий — предупреждение вместо пустоты', async () => {

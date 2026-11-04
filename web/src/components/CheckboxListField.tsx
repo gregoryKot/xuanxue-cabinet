@@ -25,6 +25,8 @@ const errorStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--dange
 interface CheckboxListOption {
   id: string;
   label: string;
+  /** Строка под подписью (Toggle.hint) — например, дни недели курса. */
+  hint?: string;
 }
 
 interface CheckboxListFieldProps {
@@ -37,11 +39,23 @@ interface CheckboxListFieldProps {
   error?: string;
   /** Строки, занятые запросом: галочку нельзя нажать, пока он в пути. */
   disabledIds?: readonly string[];
+  /** Строки «отмечено частично» — не входят в `selectedIds`. */
+  mixedIds?: readonly string[];
 }
 
 export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFieldProps>(
   function CheckboxListField(
-    { legend, options, selectedIds, onChange, hint, emptyMessage, error, disabledIds },
+    {
+      legend,
+      options,
+      selectedIds,
+      onChange,
+      hint,
+      emptyMessage,
+      error,
+      disabledIds,
+      mixedIds,
+    },
     ref,
   ) {
     function toggle(id: string, checked: boolean) {
@@ -60,6 +74,8 @@ export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFie
             <Toggle
               key={option.id}
               label={option.label}
+              hint={option.hint}
+              mixed={mixedIds?.includes(option.id)}
               checked={selectedIds.includes(option.id)}
               disabled={disabledIds?.includes(option.id)}
               onChange={(checked) => toggle(option.id, checked)}

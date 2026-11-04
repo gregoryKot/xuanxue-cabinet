@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClassDto } from '@xuanxue/shared';
-import {
-  formatChannelClasses,
-  formatClassLabel,
-  formatClassOptionLabel,
-} from './channelClassesText';
+import { formatChannelClasses } from './channelClassesText';
 
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
@@ -25,22 +21,6 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   };
 }
 
-describe('formatClassLabel', () => {
-  it('название, день недели и время первого правила', () => {
-    expect(formatClassLabel(makeClass())).toBe('Тайцзи вт 19:00');
-  });
-
-  it('занятие без правил — одно название', () => {
-    expect(formatClassLabel(makeClass({ rules: [] }))).toBe('Тайцзи');
-  });
-
-  it('выключенное в списке галочек помечено', () => {
-    expect(formatClassOptionLabel(makeClass({ active: false }))).toBe(
-      'Тайцзи вт 19:00 (выключено)',
-    );
-  });
-});
-
 describe('formatChannelClasses', () => {
   it('занятий в школе нет — честный текст, не предупреждение', () => {
     expect(formatChannelClasses('ch1', [])).toEqual({
@@ -60,7 +40,7 @@ describe('formatChannelClasses', () => {
   it('привязаны все включённые — «Все занятия»', () => {
     const classes = [
       makeClass({ id: 'a', channelIds: ['ch1'] }),
-      makeClass({ id: 'b', channelIds: ['ch1'] }),
+      makeClass({ id: 'b', title: 'Цигун', channelIds: ['ch1'] }),
     ];
     expect(formatChannelClasses('ch1', classes)).toEqual({
       text: '**Все занятия**',
@@ -68,25 +48,38 @@ describe('formatChannelClasses', () => {
     });
   });
 
-  it('несколько из всех — число со склонением и названия', () => {
+  it('несколько курсов из всех — число со склонением и названия курсов', () => {
     const classes = [
       makeClass({ id: 'a', channelIds: ['ch1'] }),
-      makeClass({
-        id: 'b',
-        title: 'Цигун',
-        rules: [{ id: 'r2', weekday: 4, time: '08:30', durationMin: 60 }],
-        channelIds: ['ch1'],
-      }),
-      makeClass({ id: 'c' }),
+      makeClass({ id: 'a2', channelIds: ['ch1'] }),
+      makeClass({ id: 'b', title: 'Цигун', channelIds: ['ch1'] }),
+      makeClass({ id: 'c', title: 'Нейгун' }),
     ];
+    expect(formatChannelClasses('ch1', classes).text).toBe('**2 курса**: Тайцзи, Цигун');
+  });
+
+  it('слоты одного курса считаются одним курсом, в названии есть группа', () => {
+    const classes = ['a', 'b', 'c'].map((id) =>
+      makeClass({ id, groupLabel: 'Начинающие', channelIds: ['ch1'] }),
+    );
+    classes.push(makeClass({ id: 'd', title: 'Цигун' }));
     expect(formatChannelClasses('ch1', classes).text).toBe(
-      '**2 занятия**: Тайцзи вт 19:00, Цигун чт 08:30',
+      '**1 курс**: Тайцзи · Начинающие',
     );
   });
 
-  it('единственное занятие школы — «1 занятие», а не «Все»', () => {
+  it('курс, привязанный частью слотов, всё равно назван', () => {
+    const classes = [
+      makeClass({ id: 'a', channelIds: ['ch1'] }),
+      makeClass({ id: 'b' }),
+      makeClass({ id: 'c', title: 'Цигун' }),
+    ];
+    expect(formatChannelClasses('ch1', classes).text).toBe('**1 курс**: Тайцзи');
+  });
+
+  it('единственный курс школы — «1 курс», а не «Все»', () => {
     expect(formatChannelClasses('ch1', [makeClass({ channelIds: ['ch1'] })]).text).toBe(
-      '**1 занятие**: Тайцзи вт 19:00',
+      '**1 курс**: Тайцзи',
     );
   });
 
@@ -95,7 +88,7 @@ describe('formatChannelClasses', () => {
       makeClass({ id, title: id, rules: [], channelIds: id === 'f' ? [] : ['ch1'] }),
     );
     expect(formatChannelClasses('ch1', classes).text).toBe(
-      '**5 занятий**: a, b, c и ещё 2',
+      '**5 курсов**: a, b, c и ещё 2',
     );
   });
 
@@ -110,8 +103,8 @@ describe('formatChannelClasses', () => {
   it('выключенное не мешает «Всем»: привязаны все включённые', () => {
     const classes = [
       makeClass({ id: 'a', channelIds: ['ch1'] }),
-      makeClass({ id: 'b', channelIds: ['ch1'] }),
-      makeClass({ id: 'c', active: false }),
+      makeClass({ id: 'b', title: 'Цигун', channelIds: ['ch1'] }),
+      makeClass({ id: 'c', title: 'Цигун', active: false }),
     ];
     expect(formatChannelClasses('ch1', classes).text).toBe('**Все занятия**');
   });
