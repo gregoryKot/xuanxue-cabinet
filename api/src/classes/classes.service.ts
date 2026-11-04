@@ -17,7 +17,6 @@ import {
   normalizeTags,
   NULLABLE_CLASS_FIELDS,
 } from '@xuanxue/shared';
-import { ChannelRecord } from '../channels/channel.schema';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { GroupRecord } from '../groups/group.schema';
 import { assertObjectId } from '../common/object-id';
@@ -31,7 +30,7 @@ import { UserRecord } from '../users/user.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
 import { mapRules } from './classes.update';
-import { defaultTelegramChannelIds, groupFields } from './class-groups';
+import { classGroupChange } from './class-group';
 
 const NOT_FOUND_MESSAGE = CLASS_NOT_FOUND_MESSAGE;
 const HAS_LESSONS_MESSAGE =
@@ -42,7 +41,6 @@ export class ClassesService {
   constructor(
     @InjectModel(ClassRecord.name) private readonly model: Model<ClassRecord>,
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
-    @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
     @InjectModel(MaterialRecord.name)
     private readonly materialModel: Model<MaterialRecord>,
@@ -77,21 +75,21 @@ export class ClassesService {
 
   async create(input: CreateClassInput): Promise<ClassDto> {
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    const { rules, groupIds, ...rest } = input;
+    const { rules, groupId, forAllGroups, ...rest } = input;
     const payload: Record<string, unknown> = { ...rest };
     if (rules !== undefined) payload.rules = mapRules(rules);
-    Object.assign(payload, await groupFields(this.groupModel, groupIds ?? []));
-    // channelIds не передан учителем (undefined, не []) — занятие подписывается
-    // на все активные Telegram-каналы по умолчанию. Иначе класс, созданный
-    // ПОСЛЕ подключения бота (docs/adr/0015 — «чат сам становится каналом»
-    // только в момент upsertTelegramChat), получал бы channelIds: [], и
-    // каждая ссылка на занятие молча отменялась бы «у класса нет каналов
-    // рассылки». Явный [] или список от учителя — его выбор, ничего не
-    // подставляем (та же логика — в SeedService.importClasses, который зовёт
-    // этот же create()).
-    if (payload.channelIds === undefined) {
-      payload.channelIds = await defaultTelegramChannelIds(this.channelModel);
-    }
+    // Куда уходит занятие, решает только группа (ADR-0195): без неё занятие
+    // создаётся и никуда не уходит — экран говорит это красным, а не подставляет
+    // каналы за учителя.
+    Object.assign(
+      payload,
+      (
+        await classGroupChange(this.groupModel, {
+          groupId: groupId ?? null,
+          forAllGroups,
+        })
+      ).$set,
+    );
     // Нормализация здесь, не в DTO: тег — фильтр (ADR-0072), опечатка и дубль
     // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
     // LessonsService.create/lessons.create.ts).
@@ -110,10 +108,12 @@ export class ClassesService {
     // «поле не трогать» (тот же приём, что у MaterialsService.update).
     const normalized =
       input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
-    const { rules, groupIds, ...rest } = normalized;
+    const { rules, groupId, forAllGroups, ...rest } = normalized;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
-    Object.assign($set, await groupFields(this.groupModel, groupIds));
+    const group = await classGroupChange(this.groupModel, { groupId, forAllGroups });
+    Object.assign($set, group.$set);
+    Object.assign($unset, group.$unset);
 
     const update: UpdateCommand = { $set: encryptRecord($set, CLASS_ENCRYPT_SCHEMA) };
     if (Object.keys($unset).length > 0) update.$unset = $unset;

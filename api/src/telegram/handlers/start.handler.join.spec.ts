@@ -12,7 +12,6 @@ import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { ACCESS_MESSAGE, INVITE_LINK_INVALID_MESSAGE } from '@xuanxue/shared';
 import type { ChannelRecord } from '../../channels/channel.schema';
-import type { ClassRecord } from '../../classes/class.schema';
 import type { UserRecord } from '../../users/user.schema';
 import type { StartHandler } from './start.handler';
 import {
@@ -34,12 +33,11 @@ describe('StartHandler — deep link «Ссылка-приглашение» (jo
   let harness: StartHandlerHarness;
   let userModel: Model<UserRecord>;
   let channelModel: Model<ChannelRecord>;
-  let classModel: Model<ClassRecord>;
   let handler: StartHandler;
 
   beforeAll(async () => {
     harness = await openStartHandlerHarness();
-    ({ userModel, channelModel, classModel, handler } = harness);
+    ({ userModel, channelModel, handler } = harness);
   }, 60_000);
 
   afterAll(async () => {
@@ -129,18 +127,12 @@ describe('StartHandler — deep link «Ссылка-приглашение» (jo
   // upsertPersonalTelegramChat и подключить личный чат ученика ко всем
   // активным классам (ADR-0027) — этого не происходит, тот же образец, что у
   // обычного /start.
-  it('ученик по ссылке НЕ подключается к активным классам (ADR-0027)', async () => {
-    const active = await classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      active: true,
-    });
-
+  it('ученик по ссылке получает личный канал без группы (ADR-0027, ADR-0195)', async () => {
     const { ctx } = fakeCtx(607, 'private', false, `join_${VALID_INVITE_CODE}`, 'Аня');
     await handler.handle(ctx, NOW);
 
-    const classAfter = await classModel.findById(active._id).lean();
-    expect(classAfter?.channelIds).toHaveLength(0);
+    // Личный чат ученика — не канал школы, группы у него не бывает (ADR-0195).
+    expect(await channelModel.countDocuments({ groupId: { $exists: true } })).toBe(0);
   });
 
   // Регрессия аудита 2026-09-16: до перехода хендлера на LoginIdentityService

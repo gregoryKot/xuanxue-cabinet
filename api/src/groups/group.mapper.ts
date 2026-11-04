@@ -10,11 +10,16 @@ export type LeanGroup = GroupRecord & {
   updatedAt: Date;
 };
 
-export function toGroupDto(doc: LeanGroup, classCount: number): GroupDto {
+export function toGroupDto(
+  doc: LeanGroup,
+  classCount: number,
+  channelCount: number,
+): GroupDto {
   return {
     id: doc._id.toString(),
     name: doc.name,
     classCount,
+    channelCount,
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

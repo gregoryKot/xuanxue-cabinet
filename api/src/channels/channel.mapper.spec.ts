@@ -43,10 +43,18 @@ describe('toChannelDto', () => {
       type: 'telegram',
       title: 'Основной канал',
       target: '@school',
+      groupId: null,
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-01T00:00:00.000Z',
     });
     expect(dto).not.toHaveProperty('config');
+  });
+
+  it('группа канала — строкой id; нет группы — null (ADR-0195)', () => {
+    const groupId = new Types.ObjectId();
+
+    expect(toChannelDto(lean({ groupId })).groupId).toBe(groupId.toString());
+    expect(toChannelDto(lean()).groupId).toBeNull();
   });
 
   it('target отсутствует в документе (запись до поля target) — пустая строка, не undefined', () => {

@@ -5,7 +5,7 @@ import type { Model } from 'mongoose';
 import request from 'supertest';
 import type { UserRole } from '@xuanxue/shared';
 import { ChannelRecord } from '../../src/channels/channel.schema';
-import { ClassRecord } from '../../src/classes/class.schema';
+import { GroupRecord } from '../../src/groups/group.schema';
 import { sessionCookieFor, withCsrf } from './http';
 import type { TestApp } from './create-app';
 
@@ -37,8 +37,8 @@ export function createChannelTestHelpers(getApp: () => TestApp) {
       withCsrf(request(server()).post('/api/channels')).set('Cookie', cookie).send(body),
     channelModel: (): Model<ChannelRecord> =>
       getApp().app.get(getModelToken(ChannelRecord.name), { strict: false }),
-    classModel: (): Model<ClassRecord> =>
-      getApp().app.get(getModelToken(ClassRecord.name), { strict: false }),
+    groupModel: (): Model<GroupRecord> =>
+      getApp().app.get(getModelToken(GroupRecord.name), { strict: false }),
     sessionFor: (roles: UserRole[]): Promise<string> =>
       sessionCookieFor(getApp().app, roles),
   };

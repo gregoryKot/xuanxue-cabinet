@@ -1,6 +1,7 @@
 // Сервис групп против настоящей Mongo (CLAUDE.md «Тесты»: запросы — не через
 // мок модели). Подпись `groupLabel` у занятий проверяем read-after-write: то,
 // что переименование записало, читается занятием, а не только группой.
+// Счёт каналов и запрет удаления группы с занятиями или каналами (ADR-0195).
 import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
@@ -18,6 +19,7 @@ describe('GroupsService', () => {
   let connection: Connection;
   let groupModel: Model<GroupRecord>;
   let classModel: Model<ClassRecord>;
+  let channelModel: Model<ChannelRecord>;
   let groups: GroupsService;
   let classes: ClassesService;
 
@@ -26,11 +28,11 @@ describe('GroupsService', () => {
     connection = memory.connection;
     groupModel = connection.model<GroupRecord>(GroupRecord.name, GroupSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    groups = new GroupsService(groupModel, classModel);
+    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+    groups = new GroupsService(groupModel, classModel, channelModel);
     classes = new ClassesService(
       classModel,
       connection.model<LessonRecord>(LessonRecord.name, LessonSchema),
-      connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema),
       connection.model<UserRecord>(UserRecord.name, UserSchema),
       connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema),
       groupModel,
@@ -43,11 +45,26 @@ describe('GroupsService', () => {
   });
 
   beforeEach(async () => {
-    await Promise.all([groupModel.deleteMany({}), classModel.deleteMany({})]);
+    await Promise.all([
+      groupModel.deleteMany({}),
+      classModel.deleteMany({}),
+      channelModel.deleteMany({}),
+    ]);
   });
 
-  async function classWith(title: string, ...groupIds: string[]) {
-    return classes.create({ title, format: 'online', groupIds, channelIds: [] });
+  async function classWith(title: string, groupId: string) {
+    return classes.create({ title, format: 'online', groupId });
+  }
+
+  async function channelWith(title: string, groupId?: string, eligible = true) {
+    return channelModel.create({
+      type: 'manual',
+      title,
+      config: '{}',
+      target: '',
+      broadcastEligible: eligible,
+      ...(groupId ? { groupId } : {}),
+    });
   }
 
   it('list: на чистой базе — пустой список, группы идут в порядке создания', async () => {
@@ -64,23 +81,27 @@ describe('GroupsService', () => {
     ]);
   });
 
-  it('list: classCount — сколько занятий несёт группа, одним запросом на всех', async () => {
+  it('list: classCount и channelCount — занятия и каналы группы; «для всех» и личные чаты не считаются', async () => {
     const beginners = await groups.create({ name: 'Начинающие' });
     const middle = await groups.create({ name: 'Средние' });
-    await classWith('А', beginners.id, middle.id);
+    await classWith('А', beginners.id);
     await classWith('Б', beginners.id);
+    await classWith('В', middle.id);
+    await classes.create({ title: 'Для всех', format: 'online', forAllGroups: true });
+    await channelWith('Тайцзи вечер', beginners.id);
+    await channelWith('Личный', beginners.id, false);
 
     const counts = Object.fromEntries(
-      (await groups.list()).map((g) => [g.name, g.classCount]),
+      (await groups.list()).map((g) => [g.name, [g.classCount, g.channelCount]]),
     );
 
-    expect(counts).toEqual({ Начинающие: 2, Средние: 1 });
+    expect(counts).toEqual({ Начинающие: [2, 1], Средние: [1, 0] });
   });
 
   it('create: обрезает пробелы, отдаёт группу целиком без служебных полей', async () => {
     const created = await groups.create({ name: '  Средние  ' });
 
-    expect(created).toMatchObject({ name: 'Средние', classCount: 0 });
+    expect(created).toMatchObject({ name: 'Средние', classCount: 0, channelCount: 0 });
     expect(created).not.toHaveProperty('nameKey');
     expect(await groups.list()).toHaveLength(1);
   });
@@ -107,12 +128,13 @@ describe('GroupsService', () => {
     expect(await groupModel.countDocuments()).toBe(2);
   });
 
-  it('rename: пересобирает подпись у занятий группы — у занятия двух групп склейкой', async () => {
+  it('rename: переписывает подпись у занятий группы, чужие и «для всех» не трогает', async () => {
     const beginners = await groups.create({ name: 'Начинающие' });
     const middle = await groups.create({ name: 'Средние' });
     await classWith('Одна', middle.id);
-    await classWith('Две', beginners.id, middle.id);
+    await classWith('Две', middle.id);
     await classWith('Чужая', beginners.id);
+    await classes.create({ title: 'Все', format: 'online', forAllGroups: true });
 
     const renamed = await groups.rename(middle.id, { name: 'Продолжающие' });
 
@@ -122,8 +144,9 @@ describe('GroupsService', () => {
     );
     expect(labels).toEqual({
       Одна: 'Продолжающие',
-      Две: 'Начинающие, Продолжающие',
+      Две: 'Продолжающие',
       Чужая: 'Начинающие',
+      Все: 'все группы',
     });
   });
 
@@ -167,11 +190,28 @@ describe('GroupsService', () => {
     const error: unknown = await groups.remove(group.id).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(ConflictError);
-    expect((error as ConflictError).message).toContain('2');
+    expect((error as ConflictError).message).toContain('занятий: 2');
+    expect((error as ConflictError).message).not.toContain('каналов');
     expect(await groupModel.countDocuments()).toBe(1);
   });
 
-  it('remove: группа без занятий удаляется; повторное удаление — 404', async () => {
+  it('remove: группа у канала — 409 с числом каналов; у занятий и каналов — оба названы', async () => {
+    const onlyChannel = await groups.create({ name: 'Старшие' });
+    const both = await groups.create({ name: 'Средние' });
+    await channelWith('Канал', onlyChannel.id);
+    await channelWith('Другой', both.id);
+    await classWith('А', both.id);
+
+    const first: unknown = await groups.remove(onlyChannel.id).catch((e: unknown) => e);
+    const second: unknown = await groups.remove(both.id).catch((e: unknown) => e);
+
+    expect((first as ConflictError).message).toContain('каналов: 1');
+    expect((first as ConflictError).message).not.toContain('занятий');
+    expect((second as ConflictError).message).toContain('занятий: 1 и каналов: 1');
+    expect(await groupModel.countDocuments()).toBe(2);
+  });
+
+  it('remove: группа без занятий и каналов удаляется; повторное удаление — 404', async () => {
     const group = await groups.create({ name: 'Лишняя' });
 
     await groups.remove(group.id);
@@ -180,10 +220,12 @@ describe('GroupsService', () => {
     await expect(groups.remove(group.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it('remove: после того как занятие сняло группу, её можно удалить', async () => {
+  it('remove: после того как занятие и канал сняли группу, её можно удалить', async () => {
     const group = await groups.create({ name: 'Средние' });
     const cls = await classWith('А', group.id);
-    await classes.update(cls.id, { groupIds: [] });
+    const channel = await channelWith('Канал', group.id);
+    await classes.update(cls.id, { groupId: null });
+    await channelModel.updateOne({ _id: channel._id }, { $unset: { groupId: '' } });
 
     await groups.remove(group.id);
 

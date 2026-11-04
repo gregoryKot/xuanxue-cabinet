@@ -3,7 +3,7 @@
 // чтобы оба спека уместились в лимит файл-храповика (CLAUDE.md «Храповики»),
 // без дублей (jscpd), как channels-fixtures.ts для channels.e2e-spec.ts.
 import { getModelToken } from '@nestjs/mongoose';
-import type { Model, Types } from 'mongoose';
+import { Types, type Model } from 'mongoose';
 import request from 'supertest';
 import type { UserRole } from '@xuanxue/shared';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from '../../src/classes/class.schema';
@@ -50,7 +50,7 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
   const deliveryModel = (): Model<DeliveryRecord> =>
     getApp().app.get(getModelToken(DeliveryRecord.name), { strict: false });
 
-  // `zoomLink`/`channelIds` — только send-now.e2e-spec.ts (нужен реально
+  // `zoomLink`/`groupId` — только send-now.e2e-spec.ts (нужен реально
   // рассылаемый класс: ссылка и активный канал), остальные вызовы этого
   // хелпера их не передают и получают прежнее поведение без изменений.
   // `zoomLink` пишем через encryptRecord — как и прод-код (ClassesService),
@@ -61,10 +61,10 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
     overrides: {
       rulesDurationMin?: number;
       zoomLink?: string;
-      channelIds?: Types.ObjectId[];
+      groupId?: Types.ObjectId;
     } = {},
   ): Promise<string> {
-    const { rulesDurationMin = 45, zoomLink, channelIds } = overrides;
+    const { rulesDurationMin = 45, zoomLink, groupId } = overrides;
     const cls = await classModel().create(
       encryptRecord(
         {
@@ -72,7 +72,7 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
           format: 'online',
           rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
           zoomLink,
-          channelIds,
+          groupId,
         },
         CLASS_ENCRYPT_SCHEMA,
       ),
@@ -80,19 +80,22 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
     return cls._id.toString();
   }
 
-  /** Класс с реальной ссылкой и активным каналом — send-now.e2e-spec.ts
-   * (нужен класс, куда реально можно отправить). */
+  /** Класс с реальной ссылкой и активным каналом той же группы —
+   * send-now.e2e-spec.ts (нужен класс, куда реально можно отправить;
+   * маршрут задаёт только группа, ADR-0195). */
   async function createSendableClass(): Promise<string> {
-    const channel = await channelModel().create({
+    const groupId = new Types.ObjectId();
+    await channelModel().create({
       type: 'telegram',
       title: 'Канал школы',
       config: '{}',
       target: '',
       active: true,
+      groupId,
     });
     return createClass({
       zoomLink: 'https://zoom.example/1',
-      channelIds: [channel._id],
+      groupId,
     });
   }
 

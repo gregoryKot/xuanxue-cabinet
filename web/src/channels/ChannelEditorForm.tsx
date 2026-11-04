@@ -5,13 +5,12 @@
 // тестовым сообщением после подвала.
 //
 // Выключателя у канала нет (ADR-0194): ненужный канал удаляют, а «пока не
-// слать» — «Снять все» в секции занятий. После подвала — две отдельные
-// секции со своим сохранением: занятия канала (ChannelClassesSection.tsx) и
-// тестовое сообщение.
+// слать» — убрать у канала группу. Группа канала — поле формы (ADR-0195);
+// после подвала — отдельная секция тестового сообщения.
 import type { ChannelDto } from '@xuanxue/shared';
+import type { UseGroupsResult } from '../groups/useGroups';
 import { SimpleEditorForm } from '../components/SimpleEditorForm';
 import { ChannelFormFields } from './ChannelFormFields';
-import { ChannelClassesSection } from './ChannelClassesSection';
 import { ChannelTestSection } from './ChannelTestSection';
 import { useChannelForm } from './useChannelForm';
 import type { UseChannelEditorResult } from './useChannelEditor';
@@ -26,9 +25,10 @@ const REMOVE_MESSAGE =
 interface ChannelEditorFormProps {
   channel: ChannelDto | null;
   editor: UseChannelEditorResult;
+  groups: UseGroupsResult;
 }
 
-export function ChannelEditorForm({ channel, editor }: ChannelEditorFormProps) {
+export function ChannelEditorForm({ channel, editor, groups }: ChannelEditorFormProps) {
   const form = useChannelForm(channel, editor.create, editor.update, editor.remove);
 
   return (
@@ -50,20 +50,14 @@ export function ChannelEditorForm({ channel, editor }: ChannelEditorFormProps) {
             }
           : undefined
       }
-      afterFooter={
-        channel && (
-          <>
-            <ChannelClassesSection channel={channel} />
-            <ChannelTestSection channel={channel} />
-          </>
-        )
-      }
+      afterFooter={channel && <ChannelTestSection channel={channel} />}
     >
       <ChannelFormFields
         state={form.state}
         setField={form.setField}
         error={form.validationError}
         isCreate={!channel}
+        groups={groups}
       />
     </SimpleEditorForm>
   );

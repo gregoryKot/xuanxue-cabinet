@@ -81,7 +81,6 @@ describe('LessonCancelNoticeService.announce (ADR-0162)', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
       ...overrides,
     });
   }

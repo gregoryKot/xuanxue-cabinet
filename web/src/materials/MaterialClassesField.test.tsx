@@ -1,4 +1,4 @@
-// По образцу schedule/ClassChannelsField.test.tsx — та же механика
+// По образцу channels/ChannelPicker.test.tsx — та же механика
 // (components/CheckboxListField.tsx), другая подпись и текст пустого списка.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

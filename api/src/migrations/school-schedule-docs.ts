@@ -58,7 +58,7 @@ export const momentOf = (rule: Pick<SeedRule, 'weekday' | 'time'>): string =>
 // а не повод уронить старт приложения.
 export const rulesOf = (doc: Pick<ClassDoc, 'rules'>): StoredRule[] => doc.rules ?? [];
 
-/** Тот же отбор, что `ClassesService.defaultTelegramChannelIds`: личный канал
+/** Активные каналы школы: личный канал
  * ученика (`broadcastEligible: false`, ADR-0027) получателем занятия не бывает. */
 export async function readBroadcastChannelIds(db: Db): Promise<Id[]> {
   const channels = await db

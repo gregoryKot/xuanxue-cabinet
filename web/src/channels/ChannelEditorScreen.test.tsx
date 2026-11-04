@@ -6,7 +6,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChannelDto } from '@xuanxue/shared';
+import type { ChannelDto, GroupDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -30,6 +30,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -48,11 +49,19 @@ function renderAt(path: string) {
   );
 }
 
-/** Страница канала сама читает занятия школы (ChannelClassesSection.tsx);
- * их секция проверяется в своём файле, здесь — пустое расписание, чтобы
- * чужой GET не падал и не рисовал свой alert поверх проверяемых. */
+const GROUPS: GroupDto[] = ['Начинающие', 'Средние'].map((name, index) => ({
+  id: `g${index + 1}`,
+  name,
+  classCount: 0,
+  channelCount: 0,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}));
+
+/** Страница канала сама читает группы школы для радио «Для какой группы»
+ * (ADR-0195); по умолчанию — список из двух групп. */
 function mockApi(handlers: Record<string, unknown>) {
-  mockApiByPath({ '/classes': [], ...handlers });
+  mockApiByPath({ '/groups': GROUPS, ...handlers });
 }
 
 function mockChannel(channel: ChannelDto) {
@@ -215,7 +224,7 @@ describe('ChannelEditorScreen — правка', () => {
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
-    expect(body.body).toEqual({ title: 'ВК школы' });
+    expect(body.body).toEqual({ title: 'ВК школы', groupId: null });
   });
 
   it('заполненный токен — config уходит целиком', async () => {
@@ -230,6 +239,7 @@ describe('ChannelEditorScreen — правка', () => {
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
     expect(body.body).toEqual({
       title: 'ВК школы',
+      groupId: null,
       config: { token: 'newsecret', peerId: 777 },
     });
   });
@@ -262,6 +272,82 @@ describe('ChannelEditorScreen — правка', () => {
     expect(alert).toHaveTextContent('Проверьте поля.');
     expect(alert).toHaveTextContent('title: занято');
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
+  });
+});
+
+describe('ChannelEditorScreen — группа канала (ADR-0195)', () => {
+  it('радио «Для какой группы»: «Пока никакой» и группы школы, у канала без группы выбрано «Пока никакой»', async () => {
+    mockChannel(makeChannel());
+
+    renderAt('/channels/ch1');
+
+    const group = await screen.findByRole('group', { name: 'Для какой группы' });
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    expect(within(group).getByRole('radio', { name: 'Пока никакой' })).toBeChecked();
+    expect(within(group).queryByRole('radio', { name: 'Все группы' })).toBeNull();
+    expect(screen.getByText(/одной группы/)).toBeInTheDocument();
+  });
+
+  it('выбор группы уходит в PATCH, «Пока никакой» — null', async () => {
+    const user = userEvent.setup();
+    mockChannel(makeChannel({ groupId: 'g1' }));
+
+    renderAt('/channels/ch1');
+    expect(await screen.findByRole('radio', { name: 'Начинающие' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Средние' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { groupId: string | null } };
+    expect(body.body.groupId).toBe('g2');
+  });
+
+  it('снять группу — «Пока никакой» отправляет null', async () => {
+    const user = userEvent.setup();
+    mockChannel(makeChannel({ groupId: 'g1' }));
+
+    renderAt('/channels/ch1');
+    await user.click(await screen.findByRole('radio', { name: 'Пока никакой' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { groupId: string | null } };
+    expect(body.body.groupId).toBeNull();
+  });
+
+  it('новый канал: группа выбирается при создании и уходит в POST', async () => {
+    const user = userEvent.setup();
+    mockApi({ '/channels': makeChannel() });
+
+    renderAt('/channels/new');
+    await user.type(await screen.findByLabelText('Название'), 'ВК школы');
+    await user.type(screen.getByLabelText('Токен сообщества'), 'secret');
+    await user.type(screen.getByLabelText('ID беседы'), '42');
+    await user.click(screen.getByRole('radio', { name: 'Средние' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    const body = callsWithMethod('POST')[0]?.[1] as { body: { groupId?: string } };
+    expect(body.body.groupId).toBe('g2');
+  });
+
+  it('«Новая группа» тут же: заводится и сразу выбирается', async () => {
+    const user = userEvent.setup();
+    mockChannel(makeChannel());
+
+    renderAt('/channels/ch1');
+    await screen.findByRole('radio', { name: 'Начинающие' });
+    mockApi({
+      '/groups': {
+        ...GROUPS[0],
+        id: 'g9',
+        name: 'Вечерние',
+      },
+    });
+    await user.type(screen.getByLabelText('Новая группа'), 'Вечерние');
+    await user.click(screen.getByRole('button', { name: 'Добавить' }));
+
+    expect(await screen.findByRole('radio', { name: 'Вечерние' })).toBeChecked();
   });
 });
 

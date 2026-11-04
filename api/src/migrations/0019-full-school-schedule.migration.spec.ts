@@ -20,6 +20,8 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 import { encrypt } from '../utils/encryption';
 
 interface LeanClass extends Omit<ClassRecord, 'rules'> {
+  /** Схема поле больше не знает (ADR-0195), миграция его ещё пишет в коллекцию. */
+  channelIds: Types.ObjectId[];
   _id: Types.ObjectId;
   rules: LeanScheduleRule[];
   createdAt: Date;
@@ -156,7 +158,8 @@ describe('Миграция 0019-full-school-schedule', () => {
     const password = sealed('00000');
     const leaderId = new Types.ObjectId();
     const channelId = new Types.ObjectId();
-    await model.updateOne(
+    // `channelIds` схема занятия больше не знает (ADR-0195) — пишем мимо неё.
+    await model.collection.updateOne(
       { title: MORNING },
       {
         $set: {

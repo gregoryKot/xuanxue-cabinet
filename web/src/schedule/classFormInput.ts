@@ -15,12 +15,12 @@ import {
   DEFAULT_LEAD_MINUTES,
   parseTagsText,
   SCHOOL_TZ,
-  type ChannelDto,
   type ClassDto,
   type ClassFormat,
   type CreateClassInput,
   type UpdateClassInput,
 } from '@xuanxue/shared';
+import { ALL_GROUPS_CHOICE, NO_GROUP_CHOICE } from '../groups/groupChoice';
 import { isValidInt } from '../exams/examQuestions';
 import { longTagError } from '../lib/longTagError';
 import {
@@ -32,8 +32,10 @@ import {
 
 export interface ClassFormState {
   title: string;
-  /** Группы школы (ADR-0193): подпись для постов сервер собирает из них сам. */
-  groupIds: string[];
+  /** Выбор радио «Группа» (ADR-0195): id группы, `ALL_GROUPS_CHOICE` — «все
+   * группы», пустая строка — «без группы». Подпись для постов сервер берёт из
+   * названия группы сам. */
+  groupChoice: string;
   format: ClassFormat;
   zoomLink: string;
   zoomPassword: string;
@@ -41,10 +43,6 @@ export interface ClassFormState {
   active: boolean;
   tz: string;
   rules: RuleDraft[];
-  /** Каналы рассылки для этого занятия (ревью п.1, docs/PLAN.md §6 п.1) —
-   * ссылка и запись уходят только сюда; Telegram-группа с ботом
-   * подключается ко всем занятиям сама, отдельно от этого списка. */
-  channelIds: string[];
   /** id учителя из GET /users/teachers, пустая строка — «не указан»
    * (LeaderField, аудит В4). Сервер проверяет, что это существующий
    * teacher/admin (assertTeacherExists) — форма отправляет id как есть. */
@@ -54,28 +52,30 @@ export interface ClassFormState {
   tagsText: string;
 }
 
-/** Каналы, которые сервер подставит новому занятию по умолчанию
- * (ClassesService.create — Telegram-каналы, docs/adr/0015): форма
- * отмечает их заранее, чтобы список чекбоксов не расходился с тем, что
- * реально уйдёт в POST (учитель видит и может снять отметку до сохранения). */
-function defaultChannelIds(channels: ChannelDto[]): string[] {
-  return channels.filter((c) => c.type === 'telegram').map((c) => c.id);
+/** Радио «Группа» → тело запроса: «все группы» — флаг, а не id (ADR-0195). */
+function groupFields(choice: string): Pick<UpdateClassInput, 'groupId' | 'forAllGroups'> {
+  const forAllGroups = choice === ALL_GROUPS_CHOICE;
+  return {
+    groupId: choice === NO_GROUP_CHOICE || forAllGroups ? null : choice,
+    forAllGroups,
+  };
 }
 
-export function initialClassFormState(
-  classDto: ClassDto | null,
-  channels: ChannelDto[] = [],
-): ClassFormState {
+function groupChoiceOf(classDto: ClassDto | null): string {
+  if (classDto?.forAllGroups) return ALL_GROUPS_CHOICE;
+  return classDto?.groupId ?? NO_GROUP_CHOICE;
+}
+
+export function initialClassFormState(classDto: ClassDto | null): ClassFormState {
   return {
     title: classDto?.title ?? '',
-    groupIds: classDto?.groupIds ?? [],
+    groupChoice: groupChoiceOf(classDto),
     format: classDto?.format ?? 'online',
     zoomLink: classDto?.zoomLink ?? '',
     zoomPassword: classDto?.zoomPassword ?? '',
     leadMinutesText: String(classDto?.leadMinutes ?? DEFAULT_LEAD_MINUTES),
     active: classDto?.active ?? true,
     tz: classDto?.tz ?? SCHOOL_TZ,
-    channelIds: classDto?.channelIds ?? defaultChannelIds(channels),
     leaderId: classDto?.leaderId ?? '',
     tagsText: classDto?.tags.join(', ') ?? '',
     rules: classDto?.rules.map(ruleToDraft) ?? [],
@@ -99,7 +99,7 @@ export function validateClassForm(state: ClassFormState): string | null {
 export function toCreateInput(state: ClassFormState): CreateClassInput {
   return {
     title: state.title.trim(),
-    groupIds: state.groupIds,
+    ...groupFields(state.groupChoice),
     format: state.format,
     zoomLink: state.zoomLink.trim() || undefined,
     zoomPassword: state.zoomPassword.trim() || undefined,
@@ -107,7 +107,6 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
-    channelIds: state.channelIds,
     tags: parseTagsText(state.tagsText),
     rules: draftsToRules(state.rules),
   };
@@ -116,7 +115,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
 export function toUpdateInput(state: ClassFormState): UpdateClassInput {
   return {
     title: state.title.trim(),
-    groupIds: state.groupIds,
+    ...groupFields(state.groupChoice),
     format: state.format,
     zoomLink: state.zoomLink.trim() || null,
     zoomPassword: state.zoomPassword.trim() || null,
@@ -127,7 +126,6 @@ export function toUpdateInput(state: ClassFormState): UpdateClassInput {
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
-    channelIds: state.channelIds,
     tags: parseTagsText(state.tagsText),
     rules: draftsToRules(state.rules),
   };

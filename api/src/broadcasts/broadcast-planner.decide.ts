@@ -9,7 +9,9 @@ import { CANCEL_REASON } from './broadcast-cancel-reasons';
 export interface DecideClassInput {
   active: boolean;
   format: ClassFormat;
-  channelIds: readonly unknown[];
+  /** Группа занятия: без неё занятие никуда не уходит (ADR-0195). */
+  groupId?: unknown;
+  forAllGroups?: boolean;
   zoomLink?: string;
   leadMinutes: number;
 }
@@ -66,7 +68,7 @@ function skipReason(
 ): string | undefined {
   if (!cls) return CANCEL_REASON.noClass;
   if (!cls.active) return CANCEL_REASON.classDisabled;
-  if (cls.channelIds.length === 0) return CANCEL_REASON.noChannels;
+  if (!cls.groupId && !cls.forAllGroups) return CANCEL_REASON.noGroup;
   if (cls.format !== 'online' && cls.format !== 'both') {
     return CANCEL_REASON.offline;
   }

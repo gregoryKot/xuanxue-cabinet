@@ -37,14 +37,17 @@ import { ScheduleRuleDto } from './schedule-rule.dto';
 const MIN_LEAD_MINUTES = 0;
 
 export class ClassFieldsDto {
-  // Группы школы (ADR-0193): существование id проверяет ClassesService, здесь
-  // только форма. Поля `groupLabel` в теле больше нет: подпись выводится из
-  // `groupIds`, а старый клиент с ней получает 400 (`forbidNonWhitelisted`).
+  // Группа школы (ADR-0195): существование id проверяет ClassesService, здесь
+  // только форма. `null` — «без группы». Старый клиент со `groupIds` или
+  // `channelIds` получает 400 (`forbidNonWhitelisted`) — вкладку надо обновить.
+  @IsOptional()
+  @IsMongoId()
+  groupId?: string | null;
+
+  // «Для всех групп»: при `true` сервер хранит `groupId` пустым.
   @OptionalNotNull()
-  @IsArray()
-  @ArrayMaxSize(CLASS_LIMITS.groupsMax)
-  @IsMongoId({ each: true })
-  groupIds?: string[];
+  @IsBoolean()
+  forAllGroups?: boolean;
 
   @OptionalNotNull()
   @IsArray()
@@ -57,12 +60,6 @@ export class ClassFieldsDto {
   @OptionalNotNull()
   @IsTimeZone()
   tz?: string;
-
-  @OptionalNotNull()
-  @IsArray()
-  @ArrayMaxSize(CLASS_LIMITS.channelsMax)
-  @IsMongoId({ each: true })
-  channelIds?: string[];
 
   @OptionalNotNull()
   @IsInt()

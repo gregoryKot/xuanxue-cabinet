@@ -27,7 +27,7 @@ const CHANNELS = 'channels';
 export const attachChannelsToClasses = {
   id: '0004-attach-channels-to-classes',
   async up(db: Db): Promise<void> {
-    // Тот же отбор, что у ClassesService.defaultTelegramChannelIds().
+    // Активные Telegram-каналы школы, без личных чатов учеников (ADR-0027).
     const channels = await db
       .collection(CHANNELS)
       .find({ type: 'telegram', active: true }, { projection: { _id: 1 } })

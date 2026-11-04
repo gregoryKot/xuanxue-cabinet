@@ -6,6 +6,7 @@ import { readFile } from 'fs/promises';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { ALL_GROUPS_LABEL, groupNameKey } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import { isEncryptionConfigured } from '../utils/encryption';
 import { ClassesService } from '../classes/classes.service';
@@ -82,10 +83,14 @@ export class SeedService {
         continue;
       }
       // Группа из файла — группа школы (ADR-0193): находится по названию или
-      // заводится, занятие получает её id, а подпись сервер соберёт сам.
+      // заводится, занятие получает её id, а подпись сервер соберёт сам (ADR-0195).
       const { groupLabel: label, ...input } = cls;
-      const groupIds = label ? [await this.groupsService.ensureByName(label)] : [];
-      await this.classesService.create({ ...input, groupIds });
+      // «все группы» из файла — занятие для всех групп (ADR-0195), не группа с
+      // таким названием.
+      const forAllGroups = groupNameKey(label ?? '') === groupNameKey(ALL_GROUPS_LABEL);
+      const groupId =
+        label && !forAllGroups ? await this.groupsService.ensureByName(label) : null;
+      await this.classesService.create({ ...input, groupId, forAllGroups });
       created.push(name);
     }
 

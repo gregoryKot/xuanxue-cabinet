@@ -15,7 +15,7 @@ import { LESSON_ENCRYPT_SCHEMA } from '../lessons/lesson.schema';
 import { LESSON_NOT_FOUND, assertLessonId } from '../lessons/lessons.queries';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
-import { findActiveChannelIds } from './broadcast-channels.queries';
+import { findGroupChannelIds } from './broadcast-channels.queries';
 import { findClassForRecording } from './broadcast-planner.queries';
 import { buildLessonLinkText } from './broadcast-planner.render';
 import { BroadcastModels } from './broadcast-models.provider';
@@ -27,12 +27,16 @@ import {
 } from './send-now.queries';
 import type { BroadcastDto } from '@xuanxue/shared';
 
-// VOICE.md: что случилось и что сделать. Тексты «нет ссылки»/«нет каналов» —
+// VOICE.md: что случилось и что сделать. Тексты «нет ссылки»/«нет группы»/«нет канала» —
 // контракт из ТЗ аудита В12, дословно.
 const NO_LINK_MESSAGE =
   'У занятия нет ссылки — добавьте её в занятии или в слоте расписания.';
-const NO_CHANNELS_MESSAGE =
-  'У занятия нет подключённых каналов — отметьте канал в занятии.';
+const NO_GROUP_MESSAGE = 'У занятия нет группы — выберите её на странице занятия.';
+const NO_GROUPED_CHANNEL_MESSAGE =
+  'Ни у одного канала нет группы — выберите группу у канала на экране «Каналы».';
+function noGroupChannelMessage(groupLabel: string): string {
+  return `У группы «${groupLabel}» нет канала — выберите эту группу у канала на экране «Каналы».`;
+}
 const LESSON_CANCELLED_MESSAGE =
   'Занятие отменено, слать ссылку некуда. Верните занятие в расписание, если это ошибка.';
 
@@ -59,11 +63,14 @@ export class SendNowService {
     const link = lesson.zoomLinkOverride ?? cls?.zoomLink;
     if (!cls || !link) throw new InvalidInputError(NO_LINK_MESSAGE);
 
-    const channelIds = await findActiveChannelIds(
-      this.models.channelModel,
-      cls.channelIds,
-    );
-    if (channelIds.length === 0) throw new InvalidInputError(NO_CHANNELS_MESSAGE);
+    if (!cls.groupId && !cls.forAllGroups) throw new InvalidInputError(NO_GROUP_MESSAGE);
+    const channelIds = await findGroupChannelIds(this.models.channelModel, cls);
+    if (channelIds.length === 0)
+      throw new InvalidInputError(
+        cls.forAllGroups
+          ? NO_GROUPED_CHANNEL_MESSAGE
+          : noGroupChannelMessage(cls.groupLabel),
+      );
 
     const settings = await this.settingsService.get();
     const text = await buildLessonLinkText(

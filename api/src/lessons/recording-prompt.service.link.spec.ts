@@ -58,7 +58,6 @@ describe('RecordingPromptService.prompt: занятие без ссылки', ()
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
   }
 

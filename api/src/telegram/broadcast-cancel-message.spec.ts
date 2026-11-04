@@ -5,18 +5,18 @@ import { cancelledBroadcastMessage } from './broadcast-cancel-message';
 const NAME = 'цигун для глаз 19:00';
 
 describe('cancelledBroadcastMessage', () => {
-  it('нет каналов — что случилось, куда идти', () => {
-    const text = cancelledBroadcastMessage(CANCEL_REASON.noChannels, NAME);
+  it('нет группы — что случилось, куда идти', () => {
+    const text = cancelledBroadcastMessage(CANCEL_REASON.noGroup, NAME);
 
     expect(text).toContain(`«${NAME}»`);
-    expect(text).toContain('нет каналов рассылки');
-    expect(text).toContain('«Расписании»');
+    expect(text).toContain('у занятия нет группы');
+    expect(text).toContain('страниц');
   });
 
-  it('все каналы выключены — действие «Каналы»', () => {
-    const text = cancelledBroadcastMessage(CANCEL_REASON.allChannelsDisabled, NAME);
+  it('у группы нет канала — действие «Каналы»', () => {
+    const text = cancelledBroadcastMessage(CANCEL_REASON.groupWithoutChannel, NAME);
 
-    expect(text).toContain('все каналы класса выключены');
+    expect(text).toContain('у группы занятия нет канала');
     expect(text).toContain('«Каналах»');
   });
 

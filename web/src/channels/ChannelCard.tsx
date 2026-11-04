@@ -8,11 +8,11 @@
 // ломали её как список, а тест уходит в живой канал — такое нажимают
 // осознанно, а не мимоходом.
 import type { CSSProperties, ReactNode } from 'react';
-import type { ChannelDto, ClassDto } from '@xuanxue/shared';
+import type { ChannelDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
 import { RichText } from '../components/RichText';
 import { Skeleton } from '../components/Skeleton';
-import { formatChannelClasses } from './channelClassesText';
+import type { ChannelGroupLine } from './channelGroupText';
 import { CHANNEL_TYPE_LABELS_RU } from './channelTypeLabels';
 
 const NO_TARGET = '—';
@@ -38,17 +38,17 @@ interface ChannelCardProps {
   /** Последняя строка общей карточки списка — без нижней волосяной линии
    * (ChannelsScreen.tsx, docs/adr/0043). */
   isLast?: boolean;
-  /** Занятия школы: по ним строка говорит, какие из них шлют сюда посты.
-   * `null` — ещё грузятся (скелетон, не «ни одного»); не передано — строки
-   * нет (занятия не загрузились, лучше молчать, чем соврать). */
-  classes?: ClassDto[] | null;
+  /** Строка группы канала (formatChannelGroup, ADR-0195). `null` — ещё грузится
+   * (скелетон, не «группа не выбрана»); не передано — строки нет (группы или
+   * занятия не загрузились, лучше молчать, чем соврать). */
+  groupLine?: ChannelGroupLine | null;
 }
 
 export function ChannelCard({
   channel,
   onSelect,
   isLast = false,
-  classes,
+  groupLine,
 }: ChannelCardProps) {
   const content: ReactNode = (
     <>
@@ -56,7 +56,7 @@ export function ChannelCard({
         {CHANNEL_TYPE_LABELS_RU[channel.type]} · {channel.title}
       </div>
       <div style={listCardMetaStyle}>{channel.target || NO_TARGET}</div>
-      <ClassesLine channelId={channel.id} classes={classes} />
+      <GroupLine line={groupLine} />
     </>
   );
 
@@ -69,16 +69,9 @@ export function ChannelCard({
   );
 }
 
-function ClassesLine({
-  channelId,
-  classes,
-}: {
-  channelId: string;
-  classes: ClassDto[] | null | undefined;
-}) {
-  if (classes === undefined) return null;
-  if (classes === null) return <Skeleton w="60%" h={13} style={{ marginTop: 6 }} />;
-  const line = formatChannelClasses(channelId, classes);
+function GroupLine({ line }: { line: ChannelGroupLine | null | undefined }) {
+  if (line === undefined) return null;
+  if (line === null) return <Skeleton w="60%" h={13} style={{ marginTop: 6 }} />;
   return (
     <div
       style={{

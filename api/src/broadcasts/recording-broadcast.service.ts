@@ -12,7 +12,7 @@ import type { Recording } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
-import { findActiveChannelIds } from './broadcast-channels.queries';
+import { findGroupChannelIds, noChannelsReason } from './broadcast-channels.queries';
 import { CANCEL_REASON as REASON } from './broadcast-cancel-reasons';
 import { buildRecordingText } from './broadcast-planner.render';
 import { findClassForRecording } from './broadcast-planner.queries';
@@ -105,12 +105,9 @@ export class RecordingBroadcastService {
     if (!cls) return this.cancel(lessonId, recording, REASON.noClass, now);
     if (!cls.active) return this.cancel(lessonId, recording, REASON.classDisabled, now);
 
-    const channelIds = await findActiveChannelIds(
-      this.models.channelModel,
-      cls.channelIds,
-    );
+    const channelIds = await findGroupChannelIds(this.models.channelModel, cls);
     if (channelIds.length === 0) {
-      return this.cancel(lessonId, recording, REASON.allChannelsDisabled, now);
+      return this.cancel(lessonId, recording, noChannelsReason(cls), now);
     }
 
     const settings = await this.settingsService.get();

@@ -6,9 +6,9 @@
 import type { Connection, Model } from 'mongoose';
 import type { ConfigService } from '@nestjs/config';
 import type { Context } from 'telegraf';
+import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
-import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
 import { SettingsService } from '../../settings/settings.service';
@@ -61,7 +61,6 @@ export interface StartHandlerHarness {
   connection: Connection;
   userModel: Model<UserRecord>;
   channelModel: Model<ChannelRecord>;
-  classModel: Model<ClassRecord>;
   lessonModel: Model<LessonRecord>;
   settingsModel: Model<SettingsRecord>;
   botSessionModel: Model<BotSessionRecord>;
@@ -76,7 +75,6 @@ export interface StartHandlerHarness {
 export function buildStartHandler(
   userModel: Model<UserRecord>,
   channelModel: Model<ChannelRecord>,
-  classModel: Model<ClassRecord>,
   botSessionModel: Model<BotSessionRecord>,
   settingsService: SettingsService,
   botAccess: BotUserAccessService = new BotUserAccessService(new UsersService(userModel)),
@@ -89,7 +87,7 @@ export function buildStartHandler(
   );
   return new StartHandler(
     settingsService,
-    new ChannelConfigService(channelModel, classModel),
+    new ChannelConfigService(channelModel),
     new BotSessionService(botSessionModel),
     botAccess,
     loginIdentity,
@@ -103,8 +101,8 @@ export async function openStartHandlerHarness(): Promise<StartHandlerHarness> {
   const connection = memory.connection;
   const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
   const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-  const classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
   const lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
+  const classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
   const settingsModel = connection.model<SettingsRecord>(
     SettingsRecord.name,
     SettingsSchema,
@@ -123,7 +121,6 @@ export async function openStartHandlerHarness(): Promise<StartHandlerHarness> {
   const handler = buildStartHandler(
     userModel,
     channelModel,
-    classModel,
     botSessionModel,
     settingsService,
   );
@@ -133,7 +130,6 @@ export async function openStartHandlerHarness(): Promise<StartHandlerHarness> {
     connection,
     userModel,
     channelModel,
-    classModel,
     lessonModel,
     settingsModel,
     botSessionModel,
@@ -147,7 +143,6 @@ export async function clearStartHandlerHarness(
 ): Promise<void> {
   await harness.userModel.deleteMany({});
   await harness.channelModel.deleteMany({});
-  await harness.classModel.deleteMany({});
   await harness.settingsModel.deleteMany({});
   await harness.botSessionModel.deleteMany({});
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GROUP_NAMES, groupNameKey, joinGroupNames } from './groups';
+import { DEFAULT_GROUP_NAMES, groupNameKey } from './groups';
 
 describe('groupNameKey', () => {
   it('пробелы по краям и регистр не делают вторую группу', () => {
@@ -12,17 +12,8 @@ describe('groupNameKey', () => {
   });
 });
 
-describe('joinGroupNames', () => {
-  it('названия через запятую в переданном порядке — первая строка поста', () => {
-    expect(joinGroupNames(['Начинающие', 'Средние'])).toBe('Начинающие, Средние');
-  });
-
-  it('одна группа — без разделителя, ни одной — пустая подпись', () => {
-    expect(joinGroupNames(['Старшие'])).toBe('Старшие');
-    expect(joinGroupNames([])).toBe('');
-  });
-
+describe('DEFAULT_GROUP_NAMES', () => {
   it('группы по умолчанию идут от новичков к старшим', () => {
-    expect(joinGroupNames(DEFAULT_GROUP_NAMES)).toBe('Начинающие, Средние, Старшие');
+    expect([...DEFAULT_GROUP_NAMES]).toEqual(['Начинающие', 'Средние', 'Старшие']);
   });
 });

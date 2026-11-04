@@ -46,6 +46,7 @@ export function toChannelDto(doc: LeanChannel): ChannelDto {
     // Страховка для документов, созданных до появления поля target в схеме —
     // `doc.target` из старой записи может быть undefined, DTO его не отдаёт.
     target: doc.target ?? '',
+    groupId: doc.groupId?.toString() ?? null,
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

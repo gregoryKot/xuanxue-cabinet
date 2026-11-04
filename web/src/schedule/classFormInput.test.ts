@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TAG_LIMITS, type ChannelDto, type ClassDto } from '@xuanxue/shared';
+import { TAG_LIMITS, type ClassDto } from '@xuanxue/shared';
+import { ALL_GROUPS_CHOICE } from '../groups/groupChoice';
 import {
   initialClassFormState,
   toCreateInput,
@@ -8,30 +9,18 @@ import {
   type ClassFormState,
 } from './classFormInput';
 
-function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
-  return {
-    id: 'ch1',
-    type: 'telegram',
-    title: 'Группа учеников',
-    target: '@group',
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
-    groupIds: [],
+    groupId: null,
+    forAllGroups: false,
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Europe/Moscow',
-    channelIds: [],
     leadMinutes: 15,
     active: true,
     tags: [],
@@ -44,14 +33,13 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
 function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
   return {
     title: 'Занятие',
-    groupIds: [],
+    groupChoice: '',
     format: 'online',
     zoomLink: '',
     zoomPassword: '',
     leadMinutesText: '30',
     active: true,
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leaderId: '',
     tagsText: '',
     rules: [
@@ -124,44 +112,24 @@ describe('initialClassFormState', () => {
     ]);
   });
 
-  it('существующее занятие — channelIds переносятся как есть (ревью п.1)', () => {
-    const state = initialClassFormState(makeClass({ channelIds: ['ch1', 'ch2'] }));
-    expect(state.channelIds).toEqual(['ch1', 'ch2']);
-  });
-
-  it('создание: Telegram-каналы отмечены заранее — совпадает с тем, что уйдёт в POST', () => {
-    const channels = [
-      makeChannel({ id: 'ch1' }),
-      makeChannel({ id: 'ch2', type: 'vk' }),
-      makeChannel({ id: 'ch3', type: 'manual' }),
-    ];
-    const state = initialClassFormState(null, channels);
-    expect(state.channelIds).toEqual(['ch1']);
-  });
-
-  it('создание без каналов в кабинете — channelIds пустой', () => {
-    const state = initialClassFormState(null, []);
-    expect(state.channelIds).toEqual([]);
-  });
-
-  it('существующее занятие — Telegram-каналы кабинета не подмешиваются в channelIds', () => {
-    const channels = [makeChannel({ id: 'ch9' })];
-    const state = initialClassFormState(makeClass({ channelIds: [] }), channels);
-    expect(state.channelIds).toEqual([]);
-  });
-
   it('существующее занятие с тегами — собраны в строку через запятую (ADR-0072)', () => {
     const state = initialClassFormState(makeClass({ tags: ['начинающие', 'медитация'] }));
     expect(state.tagsText).toBe('начинающие, медитация');
   });
 
-  it('существующее занятие — groupIds переносятся как есть (ADR-0193)', () => {
-    const state = initialClassFormState(makeClass({ groupIds: ['g1', 'g2'] }));
-    expect(state.groupIds).toEqual(['g1', 'g2']);
+  it('существующее занятие — группа переносится как есть (ADR-0195)', () => {
+    const state = initialClassFormState(makeClass({ groupId: 'g1' }));
+    expect(state.groupChoice).toBe('g1');
   });
 
-  it('создание — групп нет, пока их не отметили', () => {
-    expect(initialClassFormState(null).groupIds).toEqual([]);
+  it('занятие для всех групп — выбор «Все группы»', () => {
+    const state = initialClassFormState(makeClass({ forAllGroups: true }));
+    expect(state.groupChoice).toBe(ALL_GROUPS_CHOICE);
+  });
+
+  it('создание и занятие без группы — «Без группы», пока группу не выберут', () => {
+    expect(initialClassFormState(null).groupChoice).toBe('');
+    expect(initialClassFormState(makeClass({ groupId: null })).groupChoice).toBe('');
   });
 
   it('занятие без тегов — пустая строка, не undefined', () => {
@@ -316,10 +284,10 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     expect(toUpdateInput(state).rules).toEqual(expected);
   });
 
-  it('channelIds уходят в тело запроса как есть — создание и правка (ревью п.1)', () => {
-    const state = baseState({ channelIds: ['ch1', 'ch2'] });
-    expect(toCreateInput(state).channelIds).toEqual(['ch1', 'ch2']);
-    expect(toUpdateInput(state).channelIds).toEqual(['ch1', 'ch2']);
+  it('в теле запроса каналов занятия нет — маршрут задаёт только группа (ADR-0195)', () => {
+    const state = baseState();
+    expect(toCreateInput(state)).not.toHaveProperty('channelIds');
+    expect(toUpdateInput(state)).not.toHaveProperty('channelIds');
   });
 
   it('leaderId выбран — уходит как есть в POST и PATCH (аудит В4)', () => {
@@ -347,17 +315,27 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
   });
 });
 
-describe('toCreateInput / toUpdateInput — группы школы (ADR-0193)', () => {
-  it('groupIds уходят в обоих телах, а подписи группы в теле нет — её собирает сервер', () => {
-    const state = baseState({ groupIds: ['g1', 'g2'] });
+describe('toCreateInput / toUpdateInput — группа занятия (ADR-0195)', () => {
+  it('выбрана группа — groupId в обоих телах, «для всех» выключено, подписи нет — её берёт сервер', () => {
+    const state = baseState({ groupChoice: 'g1' });
 
-    expect(toCreateInput(state).groupIds).toEqual(['g1', 'g2']);
-    expect(toUpdateInput(state).groupIds).toEqual(['g1', 'g2']);
-    expect(toCreateInput(state)).not.toHaveProperty('groupLabel');
-    expect(toUpdateInput(state)).not.toHaveProperty('groupLabel');
+    for (const input of [toCreateInput(state), toUpdateInput(state)]) {
+      expect(input).toMatchObject({ groupId: 'g1', forAllGroups: false });
+      expect(input).not.toHaveProperty('groupLabel');
+    }
   });
 
-  it('все группы сняты — при правке уходит [], а не «не трогать»', () => {
-    expect(toUpdateInput(baseState({ groupIds: [] })).groupIds).toEqual([]);
+  it('«Все группы» — флаг forAllGroups, groupId пустой', () => {
+    const state = baseState({ groupChoice: ALL_GROUPS_CHOICE });
+
+    expect(toCreateInput(state)).toMatchObject({ groupId: null, forAllGroups: true });
+    expect(toUpdateInput(state)).toMatchObject({ groupId: null, forAllGroups: true });
+  });
+
+  it('«Без группы» — при правке уходит null, а не «не трогать»', () => {
+    const state = baseState({ groupChoice: '' });
+
+    expect(toUpdateInput(state)).toMatchObject({ groupId: null, forAllGroups: false });
+    expect(toCreateInput(state)).toMatchObject({ groupId: null, forAllGroups: false });
   });
 });

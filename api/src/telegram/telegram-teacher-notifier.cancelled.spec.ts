@@ -36,7 +36,6 @@ describe('TelegramTeacherNotifier.notifyBroadcastCancelled', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
     const lesson = await ctx.lessonModel.create({
       classId: cls._id,
@@ -63,7 +62,7 @@ describe('TelegramTeacherNotifier.notifyBroadcastCancelled', () => {
       {
         broadcastId: broadcast._id.toString(),
         lessonId: broadcast.lessonId?.toString(),
-        reason: CANCEL_REASON.noChannels,
+        reason: CANCEL_REASON.noGroup,
       },
       NOW,
     );
@@ -72,7 +71,8 @@ describe('TelegramTeacherNotifier.notifyBroadcastCancelled', () => {
     const [chatId, text] = bot.sendMessage.mock.calls[0] as [string, string];
     expect(chatId).toBe('111');
     expect(text).toContain('цигун для глаз');
-    expect(text).toContain('«Расписании»');
+    expect(text).toContain('у занятия нет группы');
+    expect(text).toContain('странице занятия');
   });
 
   it('класс выключен — DM не шлём (осознанное решение учителя)', async () => {

@@ -106,19 +106,14 @@ describe('StartHandler', () => {
     expect(replies[0]).not.toBe(buildStrangerMessage());
   });
 
-  it('ученик — /start НЕ подключает его ко всем активным классам (в отличие от штата)', async () => {
-    const active = await harness.classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      active: true,
-    });
+  it('ученик — /start заводит личный канал без группы (ADR-0027, ADR-0195)', async () => {
     await userModel.create({ name: 'Ольга', telegramId: 333, roles: [] });
 
     const { ctx } = fakeCtx(333);
     await handler.handle(ctx, NOW);
 
-    const classAfter = await harness.classModel.findById(active._id).lean();
-    expect(classAfter?.channelIds).toHaveLength(0);
+    // Личный чат ученика — не канал школы, группы у него не бывает (ADR-0195).
+    expect(await channelModel.countDocuments({ groupId: { $exists: true } })).toBe(0);
   });
 
   it('заблокированный штат — ACCESS_MESSAGE, без канала', async () => {
@@ -185,7 +180,6 @@ describe('StartHandler', () => {
     const failingHandler = buildStartHandler(
       userModel,
       channelModel,
-      harness.classModel,
       harness.botSessionModel,
       harness.settingsService,
       new BotUserAccessService(failingUsers),

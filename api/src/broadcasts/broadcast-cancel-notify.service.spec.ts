@@ -58,7 +58,7 @@ describe('BroadcastCancelNotifyService.notifyPending', () => {
           lessonId: new Types.ObjectId(),
           channelIds: [],
           scheduledAt: NOW.toJSDate(),
-          text: CANCEL_REASON.noChannels,
+          text: CANCEL_REASON.noGroup,
           status: 'cancelled',
           ...overrides,
         },
@@ -85,7 +85,7 @@ describe('BroadcastCancelNotifyService.notifyPending', () => {
     ];
     expect(context.broadcastId).toBe(broadcast._id.toString());
     expect(context.lessonId).toBe(broadcast.lessonId?.toString());
-    expect(context.reason).toBe(CANCEL_REASON.noChannels);
+    expect(context.reason).toBe(CANCEL_REASON.noGroup);
 
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(updated?.teacherNotifiedAt).toBeInstanceOf(Date);

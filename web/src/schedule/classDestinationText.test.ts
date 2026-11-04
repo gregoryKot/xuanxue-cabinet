@@ -1,68 +1,104 @@
 import { describe, expect, it } from 'vitest';
-import type { ClassDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { formatClassDestination } from './classDestinationText';
 
-const CHANNELS = [
-  { id: 'ch1', title: 'Тайцзи вечер' },
-  { id: 'ch2', title: 'Ученики' },
+type Routed = Pick<
+  ClassDto,
+  'groupId' | 'forAllGroups' | 'groupLabel' | 'active' | 'format'
+>;
+type Channel = Pick<ChannelDto, 'title' | 'groupId'>;
+
+const CHANNELS: Channel[] = [
+  { title: 'Тайцзи вечер', groupId: 'g1' },
+  { title: 'Ученики ВК', groupId: 'g1' },
+  { title: 'Средние', groupId: 'g2' },
+  { title: 'Без группы', groupId: null },
 ];
-const ONLINE: Pick<ClassDto, 'channelIds' | 'active' | 'format'> = {
-  channelIds: [],
+const ONLINE: Routed = {
+  groupId: 'g1',
+  forAllGroups: false,
+  groupLabel: 'Начинающие',
   active: true,
   format: 'online',
 };
 
 describe('formatClassDestination', () => {
-  it('один канал — «→ название»', () => {
-    expect(formatClassDestination({ ...ONLINE, channelIds: ['ch1'] }, CHANNELS)).toEqual({
-      text: '→ Тайцзи вечер',
+  it('занятие группы — каналы этой группы через запятую, чужие и без группы не попадают', () => {
+    expect(formatClassDestination(ONLINE, CHANNELS)).toEqual({
+      text: '→ Тайцзи вечер, Ученики ВК',
       isWarning: false,
     });
   });
 
-  it('несколько — названия через запятую в порядке занятия', () => {
+  it('занятие для всех групп — все каналы, у которых есть группа', () => {
     expect(
-      formatClassDestination({ ...ONLINE, channelIds: ['ch2', 'ch1'] }, CHANNELS)?.text,
-    ).toBe('→ Ученики, Тайцзи вечер');
+      formatClassDestination(
+        { ...ONLINE, groupId: null, forAllGroups: true, groupLabel: 'все группы' },
+        CHANNELS,
+      ),
+    ).toEqual({
+      text: '→ все каналы с группой: Тайцзи вечер, Ученики ВК, Средние',
+      isWarning: false,
+    });
   });
 
-  it('выключенный или удалённый канал в строку не попадает', () => {
+  it('занятие для всех групп, а группа есть не у одного канала — красное предупреждение', () => {
     expect(
-      formatClassDestination({ ...ONLINE, channelIds: ['ch1', 'gone'] }, CHANNELS)?.text,
-    ).toBe('→ Тайцзи вечер');
+      formatClassDestination({ ...ONLINE, groupId: null, forAllGroups: true }, [
+        { title: 'Без группы', groupId: null },
+      ]),
+    ).toEqual({
+      text: 'Ни у одного канала нет группы — никуда не уходит',
+      isWarning: true,
+    });
   });
 
-  it('онлайн без активных каналов — предупреждение', () => {
-    expect(formatClassDestination({ ...ONLINE, channelIds: ['gone'] }, CHANNELS)).toEqual(
-      {
-        text: 'Никуда не уходит — выберите канал',
-        isWarning: true,
-      },
-    );
+  it('занятие без группы — «Без группы — никуда не уходит», даже когда каналы есть', () => {
+    expect(formatClassDestination({ ...ONLINE, groupId: null }, CHANNELS)).toEqual({
+      text: 'Без группы — никуда не уходит',
+      isWarning: true,
+    });
   });
 
-  it('«офлайн + онлайн» без каналов — тоже предупреждение', () => {
+  it('у группы нет канала — предупреждение называет группу', () => {
     expect(
-      formatClassDestination({ ...ONLINE, format: 'both' }, CHANNELS)?.isWarning,
+      formatClassDestination(
+        { ...ONLINE, groupId: 'g3', groupLabel: 'Старшие' },
+        CHANNELS,
+      ),
+    ).toEqual({
+      text: 'У группы «Старшие» нет канала — никуда не уходит',
+      isWarning: true,
+    });
+  });
+
+  it('«офлайн + онлайн» без канала — тоже предупреждение', () => {
+    expect(
+      formatClassDestination({ ...ONLINE, format: 'both', groupId: null }, CHANNELS)
+        ?.isWarning,
     ).toBe(true);
   });
 
   it('офлайн без каналов — строки нет: рассылать нечего', () => {
-    expect(formatClassDestination({ ...ONLINE, format: 'offline' }, CHANNELS)).toBeNull();
-  });
-
-  it('выключенное занятие без каналов — без предупреждения', () => {
-    expect(formatClassDestination({ ...ONLINE, active: false }, CHANNELS)).toBeNull();
-  });
-
-  it('выключенное занятие с каналами — стрелка остаётся', () => {
     expect(
-      formatClassDestination({ ...ONLINE, active: false, channelIds: ['ch1'] }, CHANNELS)
-        ?.isWarning,
+      formatClassDestination({ ...ONLINE, format: 'offline', groupId: null }, CHANNELS),
+    ).toBeNull();
+  });
+
+  it('выключенное занятие без каналов — без предупреждения; с каналами — стрелка остаётся', () => {
+    expect(
+      formatClassDestination({ ...ONLINE, active: false, groupId: null }, CHANNELS),
+    ).toBeNull();
+    expect(
+      formatClassDestination({ ...ONLINE, active: false }, CHANNELS)?.isWarning,
     ).toBe(false);
   });
 
   it('каналы ещё грузятся (null) — строки нет, не ложное предупреждение', () => {
     expect(formatClassDestination(ONLINE, null)).toBeNull();
+  });
+
+  it('пустой список каналов — предупреждение (каналов в школе нет)', () => {
+    expect(formatClassDestination(ONLINE, [])?.isWarning).toBe(true);
   });
 });

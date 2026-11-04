@@ -10,27 +10,38 @@
 // («включён» видно в самой строке), и каналов у школы единицы — ряд
 // переключателей и поиск на таком списке были бы мебелью.
 import { useNavigate } from 'react-router-dom';
+import type { ChannelDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { ChannelCard } from './ChannelCard';
+import { useGroups } from '../groups/useGroups';
 import { useClasses } from '../schedule/useClasses';
+import { ChannelCard } from './ChannelCard';
+import { formatChannelGroup } from './channelGroupText';
 import { useChannels } from './useChannels';
 
 const TITLE = 'Каналы';
 const EXPLANATION =
-  'Каналы — куда уходят ссылки и записи. **Telegram подключается сам**, ВК и ручные каналы добавьте здесь.';
+  'Каналы — куда уходят ссылки и записи. **Telegram подключается сам**, ВК и ручные каналы добавьте здесь. Канал получает занятия **одной группы** — выберите её на странице канала.';
 const EMPTY_MESSAGE = 'Пока нет ни одного канала — добавьте первый.';
 const CHANNELS_PATH = '/channels';
 
 export default function ChannelsScreen() {
   const { channels, loading, error, reload } = useChannels();
-  // Какие занятия кормят канал, видно в строке (отзыв владельца 2026-11-03).
-  // Сбой загрузки занятий строку прячет, а не врёт «ни одного».
+  // Какая группа кормит канал и сколько у неё занятий, видно в строке
+  // (отзыв владельца 2026-11-03, ADR-0195). Сбой загрузки групп или занятий
+  // строку прячет, а не врёт «группа не выбрана».
   const classesState = useClasses();
-  const classes = classesState.error ? undefined : classesState.classes;
+  const groupsState = useGroups();
+  const groupLineFor = (channel: ChannelDto) => {
+    if (classesState.error || groupsState.error) return undefined;
+    if (classesState.classes === null || groupsState.groups === null) return null;
+    return (
+      formatChannelGroup(channel, groupsState.groups, classesState.classes) ?? undefined
+    );
+  };
   const navigate = useNavigate();
 
   return (
@@ -63,7 +74,7 @@ export default function ChannelsScreen() {
             channel={channel}
             onSelect={() => void navigate(`${CHANNELS_PATH}/${channel.id}`)}
             isLast={index === all.length - 1}
-            classes={classes}
+            groupLine={groupLineFor(channel)}
           />
         )}
       />

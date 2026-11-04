@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ChannelModelModule } from '../channels/channel-model.module';
 import { LessonModelModule } from '../lessons/lesson-model.module';
 import { GroupModelModule } from '../groups/group-model.module';
 import { MaterialModelModule } from '../materials/material-model.module';
@@ -17,10 +16,6 @@ import { ClassesService } from './classes.service';
     // импорт замкнул бы цикл: LessonsModule сам зависит от ClassesModule
     // ради модели ClassRecord, см. lesson-model.module.ts).
     LessonModelModule,
-    // create() подставляет активные Telegram-каналы новому занятию по
-    // умолчанию (fix «новое занятие без каналов») — только модель, тот же
-    // приём (ADR-0013, channel-model.module.ts).
-    ChannelModelModule,
     // create()/update() проверяют leaderId через assertTeacherExists (аудит
     // В4) — только модель UserRecord, тот же приём.
     UserModelModule,
@@ -28,8 +23,8 @@ import { ClassesService } from './classes.service';
     // ADR-0047 «Последствия») — только модель, тот же приём: полный импорт
     // MaterialsModule замкнул бы цикл через её собственный импорт ClassesModule.
     MaterialModelModule,
-    // create()/update() проверяют groupIds и собирают подпись группы
-    // (ADR-0193) — только модель, тот же приём.
+    // create()/update() проверяют groupId и собирают подпись группы
+    // (ADR-0195) — только модель, тот же приём.
     GroupModelModule,
   ],
   controllers: [ClassesController],

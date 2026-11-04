@@ -61,18 +61,25 @@ export class ClassRecord {
   @Prop({ type: String, required: true })
   title!: string;
 
-  // Подпись группы для постов и экранов — ПРОИЗВОДНАЯ от `groupIds`:
-  // названия групп через запятую, сервер пересобирает её при записи занятия и
-  // при переименовании группы (ADR-0193). Поле осталось, чтобы десятки мест,
-  // читающих подпись (посты, бот, экраны), не менялись.
+  // Подпись группы для постов и экранов — ПРОИЗВОДНАЯ от `groupId`: название
+  // группы занятия, сервер пересобирает её при записи занятия и при
+  // переименовании группы (ADR-0193, ADR-0195). Поле осталось, чтобы десятки
+  // мест, читающих подпись (посты, бот, экраны), не менялись.
   @Prop({ type: String, default: '' })
   groupLabel!: string;
 
-  // Группы школы (коллекция `groups`), в порядке создания групп. У занятий,
-  // заведённых до ADR-0193, поля нет, пока его не проставит миграция 0027, —
-  // `.lean()` default не подставляет, маппер отдаёт `[]`.
-  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
-  groupIds!: Types.ObjectId[];
+  // Группа школы (коллекция `groups`) — единственный рычаг рассылки
+  // (ADR-0195): ссылка и запись занятия уходят в каналы с той же группой.
+  // Нет поля — занятие никуда не уходит. Старое `groupIds` (ADR-0193) схема не
+  // знает: миграция 0029 перенесла его сюда и сняла.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  groupId?: Types.ObjectId;
+
+  // «Для всех групп» (ADR-0195): занятие уходит в каждый канал, у которого есть
+  // группа; `groupId` при этом не хранится. У старых документов поля нет —
+  // маппер отдаёт `false`.
+  @Prop({ type: Boolean, default: false })
+  forAllGroups!: boolean;
 
   @Prop({ type: String, enum: CLASS_FORMATS, required: true })
   format!: ClassFormat;
@@ -95,9 +102,6 @@ export class ClassRecord {
 
   @Prop({ type: String, default: SCHOOL_TZ })
   tz!: string;
-
-  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
-  channelIds!: Types.ObjectId[];
 
   @Prop({ type: Number, default: DEFAULT_LEAD_MINUTES })
   leadMinutes!: number;

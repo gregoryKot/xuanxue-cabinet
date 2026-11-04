@@ -1,7 +1,7 @@
 // Занятие для преподавателей — против настоящей Mongo, после всей цепочки
 // полного расписания; читаем моделью (read-after-write): правило «раз в две
 // недели» обязано пережить схему, иначе планировщик сделал бы его еженедельным.
-import type { Connection, Model } from 'mongoose';
+import type { Connection, Model, Types } from 'mongoose';
 import { seedSchoolClasses } from './0001-school-classes.migration';
 import { fullSchoolSchedule } from './0019-full-school-schedule.migration';
 import { scheduleByMoment } from './0022-school-schedule-by-moment.migration';
@@ -52,7 +52,9 @@ describe('Миграция 0024-teachers-class', () => {
 
     const report = await teachersClass.up(db());
 
-    const created = await model.findOne({ title: TITLE }).lean();
+    const created = await model
+      .findOne({ title: TITLE })
+      .lean<ClassRecord & { channelIds: Types.ObjectId[] }>();
     expect(created?.format).toBe('online');
     expect(created?.active).toBe(true);
     expect(created?.zoomLink).toBe(LINK);

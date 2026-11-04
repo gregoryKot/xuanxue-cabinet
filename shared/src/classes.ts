@@ -18,12 +18,17 @@ export interface ScheduleRuleInput extends ScheduleRule {
 export interface ClassDto {
   id: string;
   title: string;
-  /** Подпись группы для постов и экранов — выводится из `groupIds` сервером
-   * (названия через запятую, ADR-0193); клиент её не пишет. Пустая — занятие
-   * не отнесено ни к одной группе. */
+  /** Подпись группы для постов и экранов — название группы занятия, которое
+   * сервер выводит из `groupId` сам (ADR-0195); клиент её не пишет. Пустая —
+   * у занятия нет группы. */
   groupLabel: string;
-  /** Группы школы (`GET /groups`), которым идёт занятие, в порядке создания групп. */
-  groupIds: string[];
+  /** Группа школы (`GET /groups`), для которой это занятие. Единственный
+   * рычаг рассылки (ADR-0195): ссылка и запись уходят в каналы этой же группы.
+   * `null` — группы нет, и занятие никуда не уходит. */
+  groupId: string | null;
+  /** Занятие для всех групп (ADR-0195): уходит в каждый канал, у которого есть
+   * группа. Тогда `groupId` всегда `null`, а `groupLabel` — «все группы». */
+  forAllGroups: boolean;
   format: ClassFormat;
   location?: string;
   zoomLink?: string;
@@ -31,7 +36,6 @@ export interface ClassDto {
   leaderId?: string;
   rules: ScheduleRuleDto[];
   tz: string;
-  channelIds: string[];
   leadMinutes: number;
   active: boolean;
   /** Постоянная рубрика курса — «начинающие», «медитация» (ADR-0072).
@@ -45,7 +49,9 @@ export interface ClassDto {
 
 export interface CreateClassInput {
   title: string;
-  groupIds?: string[];
+  groupId?: string | null;
+  /** `true` — для всех групп; `groupId` при этом игнорируется и хранится пустым. */
+  forAllGroups?: boolean;
   format: ClassFormat;
   location?: string;
   zoomLink?: string;
@@ -53,7 +59,6 @@ export interface CreateClassInput {
   leaderId?: string;
   rules?: ScheduleRuleInput[];
   tz?: string;
-  channelIds?: string[];
   leadMinutes?: number;
   active?: boolean;
   tags?: string[];
@@ -61,7 +66,7 @@ export interface CreateClassInput {
 
 /**
  * PATCH: поле, которого нет в теле, не трогается; `null` допустим только у
- * четырёх полей из NULLABLE_CLASS_FIELDS ниже — явный сброс (сервис
+ * четырёх полей из NULLABLE_CLASS_FIELDS ниже (и у `groupId`, его сервис разбирает сам) — явный сброс (сервис
  * превращает его в `$unset`, не в сохранённый литерал `null`, см.
  * `classes.service.ts`/`splitUpdate`). У остальных полей `null` — ошибка
  * формы (400), а не «сбросить». Не `Partial<CreateClassInput>` — там `null`
@@ -70,8 +75,9 @@ export interface CreateClassInput {
  */
 export interface UpdateClassInput {
   title?: string;
-  /** Пустой массив — «снять все группы». */
-  groupIds?: string[];
+  /** `null` — «снять группу»: занятие перестаёт уходить в каналы. */
+  groupId?: string | null;
+  forAllGroups?: boolean;
   format?: ClassFormat;
   location?: string | null;
   zoomLink?: string | null;
@@ -79,7 +85,6 @@ export interface UpdateClassInput {
   leaderId?: string | null;
   rules?: ScheduleRuleInput[];
   tz?: string;
-  channelIds?: string[];
   leadMinutes?: number;
   active?: boolean;
   /** Пустой массив — «снять все теги»; `null` здесь не нужен, и в
@@ -113,8 +118,6 @@ export const CLASS_LIMITS = {
   zoomLink: 500,
   zoomPassword: 64,
   rulesMax: 14,
-  channelsMax: 20,
-  groupsMax: 20,
   leadMinutesMax: 1440,
   durationMinMin: 5,
   durationMinMax: 600,

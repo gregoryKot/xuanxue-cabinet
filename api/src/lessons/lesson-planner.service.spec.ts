@@ -41,7 +41,6 @@ function createClass(
     format: 'online',
     rules: [TUESDAY_19],
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leadMinutes: 30,
     active: true,
     ...overrides,

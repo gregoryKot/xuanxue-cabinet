@@ -29,7 +29,7 @@
 // оставив её доступным именем): он существовал ровно ради варианта-картинки
 // без своего текста, а тот теперь плитка и прячет «Вариант N» сам. У строки
 // без картинки прятать нечего — подпись и есть всё, что видно.
-import { useEffect, useRef, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
@@ -83,9 +83,6 @@ interface ToggleProps {
    * вуаль исказила бы вид строки, какой её видит ученик (отзыв владельца
    * 2026-10-02, та же причина, что у AttemptOptionTile.tsx). */
   readOnly?: boolean;
-  /** «Отмечено частично» (галочка строки-группы, ChannelClassesSection): чёрточка
-   * вместо галочки и `aria-checked="mixed"`. Клик по ней отмечает всё. */
-  mixed?: boolean;
   /** Передано — это радио из группы с таким именем, а не самостоятельная галочка. */
   name?: string;
   onChange: (checked: boolean) => void;
@@ -98,17 +95,9 @@ export function Toggle({
   checked,
   disabled,
   readOnly,
-  mixed,
   name,
   onChange,
 }: ToggleProps) {
-  // Через спред: jsx-a11y не знает, что у type=checkbox допустим aria-checked="mixed".
-  const mixedAria = mixed ? { 'aria-checked': 'mixed' as const } : {};
-  const inputRef = useRef<HTMLInputElement>(null);
-  // `indeterminate` у checkbox — только свойство DOM, атрибута нет.
-  useEffect(() => {
-    if (inputRef.current) inputRef.current.indeterminate = Boolean(mixed);
-  }, [mixed]);
   const labelStyle: CSSProperties = {
     ...rowStyle,
     cursor: disabled || readOnly ? 'default' : 'pointer',
@@ -119,10 +108,8 @@ export function Toggle({
       <label style={labelStyle}>
         <input
           type={name ? 'radio' : 'checkbox'}
-          ref={inputRef}
           name={name}
           checked={checked}
-          {...mixedAria}
           disabled={disabled || readOnly}
           onChange={(event) => onChange(event.target.checked)}
           style={inputStyle}

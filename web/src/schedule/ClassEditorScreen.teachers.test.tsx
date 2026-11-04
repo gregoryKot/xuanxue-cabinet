@@ -29,11 +29,11 @@ const CLASS: ClassDto = {
   id: 'c1',
   title: 'Тайцзицюань',
   groupLabel: 'средняя группа',
-  groupIds: [],
+  groupId: null,
+  forAllGroups: false,
   format: 'online',
   rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
   tz: 'Asia/Jerusalem',
-  channelIds: [],
   leadMinutes: 30,
   active: true,
   tags: [],
@@ -58,7 +58,6 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/classes/c1': CLASS,
-      '/channels': [],
       '/groups': [],
       '/users/teachers': new ApiError(TEACHERS_ERROR, 503, 'unknown'),
     });
@@ -71,7 +70,6 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
 
     mockApiByPath({
       '/classes/c1': CLASS,
-      '/channels': [],
       '/groups': [],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
     });
@@ -85,7 +83,6 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
     const user = userEvent.setup();
     mockApiByPath({
       '/classes/c1': CLASS,
-      '/channels': [],
       '/groups': [],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
     });

@@ -69,12 +69,11 @@ describe('SeedService', () => {
     classesService = new ClassesService(
       classModel,
       lessonModel,
-      channelModel,
       userModel,
       materialModel,
       groupModel,
     );
-    groupsService = new GroupsService(groupModel, classModel);
+    groupsService = new GroupsService(groupModel, classModel, channelModel);
     seedService = new SeedService(classModel, classesService, groupsService);
     dir = await mkdtemp(join(tmpdir(), 'xuanxue-seed-'));
   }, 60_000);
@@ -86,7 +85,6 @@ describe('SeedService', () => {
 
   afterEach(async () => {
     await classModel.deleteMany({});
-    await channelModel.deleteMany({});
     await groupModel.deleteMany({});
   });
 
@@ -125,13 +123,31 @@ describe('SeedService', () => {
     const byTitle = Object.fromEntries(
       (await classesService.list({})).map((c) => [c.title, c]),
     );
-    expect(byTitle['Б']?.groupIds).toEqual([existing.id]);
+    expect(byTitle['Б']?.groupId).toBe(existing.id);
     expect(byTitle['Б']?.groupLabel).toBe('Средние');
     // «средняя группа» — другое название, чем «Средние»: заводится своя группа.
     expect(byTitle['А']?.groupLabel).toBe('средняя группа');
-    expect(byTitle['А']?.groupIds).toHaveLength(1);
-    expect(byTitle['В']?.groupIds).toEqual([]);
+    expect(byTitle['А']?.groupId).not.toBeNull();
+    expect(byTitle['В']?.groupId).toBeNull();
     expect(await groupModel.countDocuments()).toBe(2);
+  });
+
+  // ADR-0195: «все группы» с сайта — не группа с таким названием, а занятие для всех.
+  it('подпись «все группы» из файла — занятие для всех групп, группа не заводится', async () => {
+    const path = await writeSeed({
+      tz: 'Asia/Jerusalem',
+      classes: [{ title: 'Пятница', groupLabel: 'Все группы', format: 'online' }],
+    });
+
+    await seedService.importClasses(path);
+
+    const [cls] = await classesService.list({});
+    expect(cls).toMatchObject({
+      forAllGroups: true,
+      groupId: null,
+      groupLabel: 'все группы',
+    });
+    expect(await groupModel.countDocuments()).toBe(0);
   });
 
   it('read-after-write: ClassesService.list видит импортированные классы', async () => {
@@ -144,26 +160,6 @@ describe('SeedService', () => {
       'Медитация чжи-гуань',
       'Цзибеньгун',
     ]);
-  });
-
-  it('импорт без channelIds в файле — классы получают активные Telegram-каналы (фикс «занятие без каналов»)', async () => {
-    const telegram = await channelModel.create({
-      type: 'telegram',
-      title: 'Группа учеников',
-      config: '{}',
-      target: '@group',
-      active: true,
-    });
-    const path = await writeSeed(VALID_SEED);
-
-    await seedService.importClasses(path);
-
-    // Read-after-write: то же, что увидит планировщик через
-    // ClassesService.list — не сырой Mongo.
-    const list = await classesService.list({});
-    for (const cls of list) {
-      expect(cls.channelIds).toEqual([telegram._id.toString()]);
-    }
   });
 
   it('zoomLink/zoomPassword в сырой Mongo — шифротекст, не сам секрет', async () => {
@@ -251,7 +247,6 @@ describe('SeedService', () => {
     const freshClassesService = new FreshClassesService(
       classModel,
       lessonModel,
-      channelModel,
       userModel,
       materialModel,
       groupModel,

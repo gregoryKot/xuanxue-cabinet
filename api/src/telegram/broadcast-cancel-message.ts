@@ -9,10 +9,10 @@ import {
 } from '../broadcasts/broadcast-cancel-reasons';
 
 const MESSAGE_BY_ACTION: Record<BroadcastCancelAction, (name: string) => string> = {
-  no_channels: (name) =>
-    `Ссылка на «${name}» не уйдёт: у занятия нет каналов рассылки. Отметьте каналы в «Расписании».`,
-  channels_disabled: (name) =>
-    `Ссылка на «${name}» не уйдёт: все каналы класса выключены. Включите канал в «Каналах».`,
+  no_group: (name) =>
+    `Ссылка на «${name}» не уйдёт: у занятия нет группы. Выберите группу на странице занятия.`,
+  group_without_channel: (name) =>
+    `Ссылка на «${name}» не уйдёт: у группы занятия нет канала. Выберите эту группу у канала в «Каналах».`,
   no_link: (name) =>
     `Ссылка на «${name}» не уйдёт: у занятия нет ссылки Zoom. Впишите ссылку в «Расписании».`,
   too_late: (name) =>

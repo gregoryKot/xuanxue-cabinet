@@ -1,12 +1,13 @@
 // Страница занятия расписания целиком: загрузка по адресу, поля, дни и
-// время, каналы, сохранение и удаление (ADR-0033). Удаление — через
+// время, сохранение и удаление (ADR-0033). Группа занятия — в
+// ClassEditorScreen.groups.test.tsx. Удаление — через
 // подтверждение (ConfirmDialog), не с одного касания. Мок сети — по префиксу
 // пути (test-support/apiFetchMock.ts).
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChannelDto, ClassDto, GroupDto } from '@xuanxue/shared';
+import type { ClassDto, GroupDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -27,34 +28,23 @@ const GROUPS: GroupDto[] = ['Начинающие', 'Средние', 'Стар�
   id: `g${index + 1}`,
   name,
   classCount: 0,
+  channelCount: 0,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 }));
-
-function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
-  return {
-    id: 'ch1',
-    type: 'vk',
-    title: 'ВК школы',
-    target: '777',
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
 
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: 'Средние',
-    groupIds: ['g2'],
+    groupId: null,
+    forAllGroups: false,
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leadMinutes: 30,
     active: true,
     tags: [],
@@ -76,10 +66,9 @@ function renderAt(path: string) {
   );
 }
 
-function mockClass(classDto: ClassDto, channels: ChannelDto[] = []) {
+function mockClass(classDto: ClassDto) {
   mockApiByPath({
     '/classes/c1': classDto,
-    '/channels': channels,
     '/groups': GROUPS,
     '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
   });
@@ -115,7 +104,6 @@ describe('ClassEditorScreen — загрузка', () => {
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/classes/c1': new ApiError('Сервис недоступен', 503, 'unknown'),
-      '/channels': [],
       '/groups': [],
       '/users/teachers': [],
     });
@@ -133,19 +121,19 @@ describe('ClassEditorScreen — загрузка', () => {
   });
 
   it('открытое по адресу занятие — название в заголовке, поля из ответа сервера', async () => {
-    mockClass(makeClass());
+    mockClass(makeClass({ groupId: 'g2' }));
 
     renderAt('/schedule/c1');
 
-    expect(await screen.findByLabelText('Средние')).toBeChecked();
-    expect(screen.getByLabelText('Начинающие')).not.toBeChecked();
+    expect(await screen.findByRole('radio', { name: 'Средние' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Начинающие' })).not.toBeChecked();
     expect(screen.getByLabelText('Ссылка Zoom')).toHaveValue('https://zoom.example/1');
     expect(screen.getByLabelText('За сколько минут слать ссылку')).toHaveValue('30');
     expect(screen.getByLabelText('День недели')).toHaveValue('2');
   });
 
   it('/schedule/new — заголовок «Новое занятие в расписании», за занятием сервер не спрашивают', async () => {
-    mockApiByPath({ '/channels': [], '/groups': [], '/users/teachers': [] });
+    mockApiByPath({ '/groups': [], '/users/teachers': [] });
 
     renderAt('/schedule/new');
 
@@ -164,7 +152,7 @@ describe('ClassEditorScreen — сохранение', () => {
     mockClass(makeClass());
 
     renderAt('/schedule/c1');
-    await user.click(await screen.findByLabelText('Старшие'));
+    await user.click(await screen.findByRole('radio', { name: 'Старшие' }));
     await user.selectOptions(screen.getByLabelText('Формат'), 'offline');
     await user.click(screen.getByLabelText('Занятие активно'));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
@@ -172,11 +160,11 @@ describe('ClassEditorScreen — сохранение', () => {
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const [path, options] = callsWithMethod('PATCH')[0] as [
       string,
-      { body: { groupIds: string[]; format: string; active: boolean } },
+      { body: { groupId: string; format: string; active: boolean } },
     ];
     expect(path).toBe('/classes/c1');
     expect(options.body).toMatchObject({
-      groupIds: ['g2', 'g3'],
+      groupId: 'g3',
       format: 'offline',
       active: false,
     });
@@ -199,7 +187,6 @@ describe('ClassEditorScreen — сохранение', () => {
   it('новое занятие — POST с названием и добавленным днём', async () => {
     const user = userEvent.setup();
     mockApiByPath({
-      '/channels': [],
       '/groups': [],
       '/users/teachers': [],
       '/classes': makeClass(),
@@ -478,42 +465,19 @@ describe('ClassEditorScreen — «раз в две недели» (ADR-0168)', (
   });
 });
 
-describe('ClassEditorScreen — каналы рассылки', () => {
-  it('отметка канала уходит в channelIds при сохранении', async () => {
+describe('ClassEditorScreen — каналов у занятия нет (ADR-0195)', () => {
+  it('на странице нет списка каналов, а в PATCH нет channelIds: рычаг один — группа', async () => {
     const user = userEvent.setup();
-    mockClass(makeClass({ channelIds: [] }), [makeChannel()]);
-
-    renderAt('/schedule/c1');
-    await user.click(await screen.findByLabelText('ВК · ВК школы'));
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
-    const options = callsWithMethod('PATCH')[0]?.[1] as {
-      body: { channelIds: string[] };
-    };
-    expect(options.body.channelIds).toEqual(['ch1']);
-  });
-
-  it('каналы не загрузились — форма открыта, отмечать пока нечего', async () => {
-    const { ApiError } = await import('../api/http');
-    mockApiByPath({
-      '/classes/c1': makeClass(),
-      '/channels': new ApiError('Не удалось загрузить каналы.', 503, 'unknown'),
-      '/users/teachers': [],
-    });
-
-    renderAt('/schedule/c1');
-
-    expect(await screen.findByLabelText('Название')).toHaveValue('Тайцзицюань');
-    expect(screen.getByText(/Каналов пока нет/)).toBeInTheDocument();
-  });
-
-  it('каналов нет — подсказка со ссылкой на «Каналы»', async () => {
     mockClass(makeClass());
 
     renderAt('/schedule/c1');
+    await user.click(await screen.findByRole('button', { name: 'Сохранить' }));
 
-    expect(await screen.findByText(/Каналов пока нет/)).toBeInTheDocument();
+    expect(screen.queryByText('Каналы рассылки')).not.toBeInTheDocument();
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const options = callsWithMethod('PATCH')[0]?.[1] as { body: Record<string, unknown> };
+    expect(options.body).not.toHaveProperty('channelIds');
+    expect(mockedApiFetch.mock.calls.some((call) => call[0] === '/channels')).toBe(false);
   });
 });
 
@@ -554,7 +518,7 @@ describe('ClassEditorScreen — удаление', () => {
   });
 
   it('новое занятие — удалять нечего, кнопки нет', async () => {
-    mockApiByPath({ '/channels': [], '/groups': [], '/users/teachers': [] });
+    mockApiByPath({ '/groups': [], '/users/teachers': [] });
 
     renderAt('/schedule/new');
     await screen.findByLabelText('Название');

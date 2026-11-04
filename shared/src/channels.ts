@@ -43,6 +43,9 @@ export interface ChannelDto {
   /** Что показать учителю без секрета: `chatId`/`peerId`/`''` — `config`
    * целиком в DTO не входит никогда (SECURITY §3). */
   target: string;
+  /** Группа школы, занятия которой уходят в этот канал (ADR-0195). `null` —
+   * группа не выбрана, и занятия сюда не приходят. Один канал — одна группа. */
+  groupId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,15 +54,17 @@ export interface CreateChannelInput {
   type: ChannelType;
   title: string;
   config: ChannelConfig;
+  groupId?: string | null;
 }
 
 /** `config` заменяется целиком, частичный патч секрета не предусмотрен
  * (SECURITY §3: `config` write-only, сравнивать старое/новое значение
- * эндпоинту незачем). `null` нигде не допускается — ни у одного поля канала
- * нет смысла «сбросить». */
+ * эндпоинту незачем). `null` допустим только у `groupId` — «убрать группу»
+ * (ADR-0195); остальные поля канала «сбросить» нельзя. */
 export interface UpdateChannelInput {
   title?: string;
   config?: ChannelConfig;
+  groupId?: string | null;
 }
 
 export interface ChannelTestResult {

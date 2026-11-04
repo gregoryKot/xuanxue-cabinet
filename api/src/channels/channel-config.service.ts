@@ -6,7 +6,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { ChannelConfig, ChannelDto, ChannelType } from '@xuanxue/shared';
 import { CHANNEL_LIMITS, CHANNEL_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
-import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { assertObjectId } from '../common/object-id';
@@ -23,7 +22,6 @@ const NOT_FOUND_MESSAGE = CHANNEL_NOT_FOUND_MESSAGE;
 export class ChannelConfigService {
   constructor(
     @InjectModel(ChannelRecord.name) private readonly model: Model<ChannelRecord>,
-    @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
   ) {}
 
   /** Расшифрованный config для отправки — не DTO, HTTP им не пользуется
@@ -54,33 +52,21 @@ export class ChannelConfigService {
    * при E11000 от гонки двух одновременных вызовов — читаем (и «оживляем»,
    * если чат раньше был кикнут) уже созданный документ по тому же
    * уникальному индексу (type, target), а не падаем и не создаём второй.
-   * Подключение канала ко всем активным классам — ТОЛЬКО при создании нового
-   * документа (docs/PLAN.md §6, без действий учителя): у существующего
-   * канала учитель мог руками отключить лишние классы — повторное
-   * добавление бота такое решение не отменяет, только оживляет active:true. */
+   * Новый канал создаётся без группы (ADR-0195): бот сам занятия никуда не
+   * подключает, учитель выбирает группу канала на странице канала — пока её
+   * нет, канал ничего не получает, и карточка говорит это красным. */
   async upsertTelegramChat(input: {
     chatId: string;
     title: string;
   }): Promise<ChannelDto> {
-    const config: ChannelConfig = { chatId: input.chatId };
-    assertConfigForType('telegram', config);
-    const target = targetOf('telegram', config);
-    const title = input.title.slice(0, CHANNEL_LIMITS.title);
-    const { doc, created } = await findOrReviveChannel(this.model, target, title, config);
-    if (created) {
-      await this.classModel.updateMany(
-        { active: true },
-        { $addToSet: { channelIds: doc._id } },
-      );
-    }
-    return toChannelDto(doc);
+    return this.upsertChat(input);
   }
 
   /** Личный канал ОДНОГО ученика по /start (ADR-0027, docs/PLAN.md §11
    * слой 4.7) — тот же идемпотентный upsert, что и у канала школы выше, но
-   * ДВЕ разницы намеренно: `broadcastEligible: false` (только при создании —
-   * см. комментарий в findOrReviveChannel про revive) и НИКАКОГО подключения
-   * к классам. Иначе первый же /start ученика превратил бы его личный чат в
+   * разница намеренная: `broadcastEligible: false` (только при создании —
+   * см. комментарий в findOrReviveChannel про revive), и группы у личного
+   * чата не бывает (ADR-0195). Иначе первый же /start ученика превратил бы его личный чат в
    * получателя рассылок всех занятий школы (нашлось на аудите 2026-09-15:
    * `PersonalChats.chatFor` для ученика всегда отдавал `null`, потому что
    * канал в принципе не заводился, — этот метод и закрывает разрыв). */
@@ -88,13 +74,20 @@ export class ChannelConfigService {
     chatId: string;
     title: string;
   }): Promise<ChannelDto> {
+    return this.upsertChat(input, { broadcastEligible: false });
+  }
+
+  // Общая часть двух upsert-ов: проверка адреса, название по лимиту, insert или
+  // revive. `extra` — поля только при создании (личный чат ученика).
+  private async upsertChat(
+    input: { chatId: string; title: string },
+    extra?: Record<string, unknown>,
+  ): Promise<ChannelDto> {
     const config: ChannelConfig = { chatId: input.chatId };
     assertConfigForType('telegram', config);
     const target = targetOf('telegram', config);
     const title = input.title.slice(0, CHANNEL_LIMITS.title);
-    const { doc } = await findOrReviveChannel(this.model, target, title, config, {
-      broadcastEligible: false,
-    });
+    const { doc } = await findOrReviveChannel(this.model, target, title, config, extra);
     return toChannelDto(doc);
   }
 

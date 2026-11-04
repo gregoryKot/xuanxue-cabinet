@@ -5,9 +5,15 @@
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
+import { RichText } from '../components/RichText';
+import { GroupRadioField } from '../groups/GroupRadioField';
+import type { UseGroupsResult } from '../groups/useGroups';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
 import { ChannelVkFields } from './ChannelVkFields';
+
+const GROUP_HINT =
+  'Сюда уходят ссылки и записи занятий **одной группы**. Пока группа не выбрана, посты в этот канал не уходят.';
 
 interface ChannelFormFieldsProps {
   state: ChannelFormState;
@@ -17,6 +23,7 @@ interface ChannelFormFieldsProps {
   ) => void;
   error: ChannelFormError | null;
   isCreate: boolean;
+  groups: UseGroupsResult;
 }
 
 // Своя копия и здесь, и в ChannelVkFields.tsx: общий модуль между двумя
@@ -35,6 +42,7 @@ export function ChannelFormFields({
   setField,
   error,
   isCreate,
+  groups,
 }: ChannelFormFieldsProps) {
   return (
     <>
@@ -65,6 +73,19 @@ export function ChannelFormFields({
           onChange={(e) => setField('title', e.target.value)}
         />
       </Field>
+
+      <GroupRadioField
+        legend="Для какой группы"
+        noneLabel="Пока никакой"
+        groups={groups}
+        value={state.groupId}
+        onChange={(groupId) => setField('groupId', groupId)}
+        hint={
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
+            <RichText text={GROUP_HINT} />
+          </p>
+        }
+      />
 
       {state.type === 'telegram' && (
         <Field

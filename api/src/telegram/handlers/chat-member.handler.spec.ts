@@ -3,12 +3,11 @@
 // маршрутизацию проверяет telegram-bot.service.spec.ts), только те поля,
 // которые читает хендлер. `oldStatus` в апдейтах — не декорация: хендлер
 // реагирует на переход, не на голый new_chat_member.status (ADR-0015).
-import type { Connection, Model } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import type { Context } from 'telegraf';
 import type { ChatMemberUpdated } from 'telegraf/types';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
-import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { ChatMemberHandler } from './chat-member.handler';
 
@@ -32,16 +31,14 @@ describe('ChatMemberHandler', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let channelModel: Model<ChannelRecord>;
-  let classModel: Model<ClassRecord>;
   let handler: ChatMemberHandler;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     await channelModel.syncIndexes();
-    handler = new ChatMemberHandler(new ChannelConfigService(channelModel, classModel));
+    handler = new ChatMemberHandler(new ChannelConfigService(channelModel));
   }, 60_000);
 
   afterAll(async () => {
@@ -50,24 +47,16 @@ describe('ChatMemberHandler', () => {
 
   afterEach(async () => {
     await channelModel.deleteMany({});
-    await classModel.deleteMany({});
   });
 
-  it('новый чат (left → member) — канал создан и подключён ко всем активным классам', async () => {
-    const activeClass = await classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      active: true,
-    });
-
+  it('новый чат (left → member) — канал создан без группы: занятия сюда не идут, пока учитель не выберет группу (ADR-0195)', async () => {
     await handler.handle(
       fakeCtx(memberUpdate(-100200300, { old: 'left', new: 'member' })),
     );
 
     const channel = await channelModel.findOne({ target: '-100200300' }).lean();
     expect(channel?.active).toBe(true);
-    const cls = await classModel.findById(activeClass._id).lean();
-    expect(cls?.channelIds.map(String)).toContain(String(channel?._id));
+    expect(channel).not.toHaveProperty('groupId');
   });
 
   it('повышение в админы (member → administrator) — ничего не создаёт и не трогает', async () => {
@@ -86,16 +75,13 @@ describe('ChatMemberHandler', () => {
     expect(await channelModel.countDocuments({})).toBe(0);
   });
 
-  it('повторное добавление бота (kicked → member) — active без переподключения к новым активным классам', async () => {
+  it('повторное добавление бота (kicked → member) — active, выбранная учителем группа остаётся', async () => {
     await handler.handle(fakeCtx(memberUpdate(-100222, { old: 'left', new: 'member' })));
     await handler.handle(
       fakeCtx(memberUpdate(-100222, { old: 'member', new: 'kicked' })),
     );
-    const appeared = await classModel.create({
-      title: 'Появился, пока бот был кикнут',
-      format: 'online',
-      active: true,
-    });
+    const groupId = new Types.ObjectId();
+    await channelModel.updateOne({ target: '-100222' }, { $set: { groupId } });
 
     await handler.handle(
       fakeCtx(memberUpdate(-100222, { old: 'kicked', new: 'member' })),
@@ -103,8 +89,7 @@ describe('ChatMemberHandler', () => {
 
     const channel = await channelModel.findOne({ target: '-100222' }).lean();
     expect(channel?.active).toBe(true);
-    const cls = await classModel.findById(appeared._id).lean();
-    expect(cls?.channelIds).toHaveLength(0);
+    expect(channel?.groupId?.toString()).toBe(groupId.toString());
   });
 
   it('убрали бота (member → kicked) — канал active: false, документ не удаляется', async () => {
