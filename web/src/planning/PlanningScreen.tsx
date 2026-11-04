@@ -102,7 +102,7 @@ export default function PlanningScreen() {
           !lessonsState.loading && (
             <ScreenActions
               actions={[
-                { label: 'Расписание', onClick: openSchedule },
+                { label: 'Расписание и рассылки', onClick: openSchedule },
                 { label: 'Разовое занятие', onClick: openCreate, variant: 'primary' },
               ]}
             />

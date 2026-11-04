@@ -12,7 +12,10 @@ import {
   type ScheduleRuleDto,
   type Weekday,
 } from '@xuanxue/shared';
-import { countActiveChannels } from './channelCountLabel';
+import {
+  formatClassDestination,
+  type ClassDestinationLine,
+} from './classDestinationText';
 
 export interface ScheduleSlot {
   classId: string;
@@ -38,11 +41,10 @@ export interface ScheduleSlot {
    * останется за дверью. SlotRow показывает «без ссылки» прямо в сетке
    * (отзыв владельца 2026-09-12). У офлайна ссылки и не должно быть. */
   linkMissing: boolean;
-  /** Число АКТИВНЫХ каналов рассылки у занятия (channelIds ∩ активные
-   * каналы кабинета). Ноль у онлайна — SlotRow пишет «без каналов» (ревью
-   * п.1): ссылку некому разослать. Выключенный канал в channelIds не
-   * считается: рассылку он не получит. */
-  channelCount: number;
+  /** Куда уходят ссылка и записи (ADR-0191): названия активных каналов или
+   * предупреждение, что ссылку некому разослать. `null` — каналы ещё
+   * грузятся или говорить нечего. */
+  destination: ClassDestinationLine | null;
   /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotRow печатает их
    * подписью, без пилюль: в сетке дня они ничего не фильтруют. Теги даты
    * (lessons.tags, ADR-0075) сюда не подмешиваются — другое поле, другой
@@ -89,12 +91,13 @@ function emptyGrid(): ScheduleGrid {
  * осознанно: слот в сетке появляется, когда у него есть хоть одно время.
  * Правило с нечисловым временем (`timeToMinutes` вернул NaN) тоже
  * пропускается — показать его в сетке нечем, а падать из-за одной плохой
- * записи не должен весь экран. `activeChannelIds` — id активных каналов
- * кабинета (ScheduleScreen грузит их один раз через useChannels(true)): без
- * него channelCount считал бы и давно выключенные каналы (ревью п.4). */
+ * записи не должен весь экран. `activeChannels` — активные каналы
+ * кабинета (ScheduleScreen грузит их один раз через useChannels(true)), `null`
+ * пока грузятся: выключенный канал в channelIds занятия рассылку не получит
+ * (ревью п.4). */
 export function buildScheduleGrid(
   classes: ClassDto[],
-  activeChannelIds: ReadonlySet<string> = new Set(),
+  activeChannels: readonly { id: string; title: string }[] | null = null,
 ): ScheduleGrid {
   const grid = emptyGrid();
   for (const cls of classes) {
@@ -114,7 +117,7 @@ export function buildScheduleGrid(
         isBiweekly: rule.everyWeeks === EVERY_TWO_WEEKS,
         active: cls.active,
         linkMissing: cls.format !== 'offline' && !cls.zoomLink,
-        channelCount: countActiveChannels(cls.channelIds, activeChannelIds),
+        destination: formatClassDestination(cls, activeChannels),
         tags: cls.tags,
       });
     }

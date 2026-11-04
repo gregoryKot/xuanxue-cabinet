@@ -13,6 +13,7 @@ import { ClassPlace } from './ClassPlace';
 import {
   bodyStyle,
   dangerStatusStyle,
+  destinationWarningStyle,
   endStyle,
   groupStyle,
   rowStyle,
@@ -25,13 +26,11 @@ import {
 import type { ScheduleSlot } from './scheduleGrid';
 
 // Онлайн без ссылки Zoom — рассылка уйдёт без ссылки, ученик останется за
-// дверью; онлайн без каналов — ссылку некому разослать. Оба видны прямо в
-// неделе, чтобы не открывать каждое занятие по очереди (отзыв владельца
-// 2026-09-12, ревью п.1). Число каналов, когда они есть, строка не пишет:
-// «1 канал» у каждого из тридцати занятий читался шумом, а смотрят его на
-// странице занятия.
+// дверью. Это видно прямо в неделе, чтобы не открывать каждое занятие по
+// очереди (отзыв владельца 2026-09-12, ревью п.1). Куда уходят ссылка и
+// записи, пишет отдельная строка «→ каналы» (ADR-0191): онлайн без каналов
+// там же предупреждение, второй пометки «без каналов» нет.
 const NO_LINK_TEXT = 'без ссылки';
-const NO_CHANNELS_TEXT = 'без каналов';
 const DISABLED_TEXT = 'выключено';
 const GROUP_SEPARATOR = ' · ';
 
@@ -41,8 +40,6 @@ interface SlotRowProps {
 }
 
 export function SlotRow({ slot, onSelect }: SlotRowProps) {
-  const channelsMissing = slot.format !== 'offline' && slot.channelCount === 0;
-
   return (
     <button type="button" style={rowStyle} onClick={onSelect}>
       <span style={timeStyle}>
@@ -66,7 +63,12 @@ export function SlotRow({ slot, onSelect }: SlotRowProps) {
         {/* Постоянные теги курса — подписью, не пилюлями: в карточке дня
             они ничего не фильтруют (ADR-0072). */}
         {slot.tags.length > 0 && <span style={tagsStyle}>{slot.tags.join(', ')}</span>}
-        {(!slot.active || slot.linkMissing || channelsMissing) && (
+        {slot.destination && (
+          <span style={slot.destination.isWarning ? destinationWarningStyle : tagsStyle}>
+            {slot.destination.text}
+          </span>
+        )}
+        {(!slot.active || slot.linkMissing) && (
           <span style={statusRowStyle}>
             {!slot.active && (
               <span className="xuanxue-status-label">{DISABLED_TEXT}</span>
@@ -75,9 +77,6 @@ export function SlotRow({ slot, onSelect }: SlotRowProps) {
               <span className="xuanxue-status-label" style={dangerStatusStyle}>
                 {NO_LINK_TEXT}
               </span>
-            )}
-            {channelsMissing && (
-              <span className="xuanxue-status-label">{NO_CHANNELS_TEXT}</span>
             )}
           </span>
         )}

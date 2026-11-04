@@ -209,12 +209,14 @@ describe('PlanningScreen — список занятий', () => {
     expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
   });
 
-  it('«Расписание» в шапке ведёт в сетку расписания', async () => {
+  it('«Расписание и рассылки» в шапке ведёт в сетку расписания', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
 
     renderScreen();
-    await user.click(await screen.findByRole('button', { name: 'Расписание' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Расписание и рассылки' }),
+    );
 
     expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
   });

@@ -68,3 +68,9 @@ export const statusRowStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 export const dangerStatusStyle: CSSProperties = { color: 'var(--danger)' };
+// Предупреждение «Никуда не уходит» — тот же кегль, что у подписи места, но
+// цветом опасности: ссылку на занятие некому разослать (ADR-0191).
+export const destinationWarningStyle: CSSProperties = {
+  ...tagsStyle,
+  color: 'var(--danger)',
+};

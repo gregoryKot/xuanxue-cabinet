@@ -252,7 +252,7 @@ describe('«Настроить главную» — штат', () => {
     await vi.waitFor(() =>
       expect(screen.queryByRole('link', { name: /Проверка/ })).not.toBeInTheDocument(),
     );
-    for (const title of ['Занятия', 'Рассылки', 'Материалы', 'Школа']) {
+    for (const title of ['Занятия', 'Расписание и рассылки', 'Материалы', 'Школа']) {
       expect(screen.getByRole('link', { name: new RegExp(title) })).toBeInTheDocument();
     }
   });

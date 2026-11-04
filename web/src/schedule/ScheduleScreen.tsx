@@ -1,5 +1,7 @@
-// Сетка недели, `/schedule` — подэкран раздела «Занятия» (вход с
-// PlanningScreen.tsx, docs/adr/0025-navigation-by-domain.md). Правка и
+// Раздел «Расписание и рассылки», `/schedule` (ADR-0191, владелец 2026-11-04):
+// постоянные занятия недели и то, куда уходят их ссылки и записи, — на одном
+// экране; журнал отправок, шаблоны и каналы — подэкраны, входы в шапке. Вход
+// с главной штата и с «Занятий» (docs/adr/0025). Правка и
 // создание занятия — своя страница `/schedule/new` и `/schedule/:classId`
 // (ClassEditorScreen.tsx, ADR-0033): отсюда только переход. Одно главное
 // действие — «Добавить занятие» (CLAUDE.md «Продукт»: одна очевидная кнопка
@@ -16,9 +18,9 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { useChannels } from '../channels/useChannels';
-import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
+import { screenSectionStyle } from '../components/screenLayout';
+import { ScreenActions, type ScreenAction } from '../components/ScreenActions';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { ScheduleDayList } from './ScheduleDayList';
@@ -26,9 +28,12 @@ import { buildScheduleGrid } from './scheduleGrid';
 import { scheduleTzNote } from './timezoneLabel';
 import { useClasses } from './useClasses';
 
-const TITLE = 'Расписание';
-const EXPLANATION = `Постоянные занятия недели. Впишите ссылку Zoom в занятие, и ученики получат её за **${DEFAULT_LEAD_MINUTES} минут** до начала сами.`;
+const TITLE = 'Расписание и рассылки';
+const EXPLANATION = `Постоянные занятия недели. Впишите ссылку Zoom в занятие, и ученики получат её за **${DEFAULT_LEAD_MINUTES} минут** до начала сами; под каждым занятием видно, куда уходят ссылка и запись.`;
 const SCHEDULE_PATH = '/schedule';
+const CHANNELS_PATH = '/channels';
+const TEMPLATES_PATH = '/templates';
+const JOURNAL_PATH = '/broadcasts';
 
 export default function ScheduleScreen() {
   const { classes, loading, error, reload } = useClasses();
@@ -37,16 +42,9 @@ export default function ScheduleScreen() {
   const { channels: activeChannels } = useChannels(true);
   const navigate = useNavigate();
 
-  // Только id — scheduleGrid/channelCountLabel считают пересечение с
-  // channelIds занятия, чтобы выключенный канал не попадал в счётчик
-  // (ревью п.4).
-  const activeChannelIds = useMemo(
-    () => new Set((activeChannels ?? []).map((channel) => channel.id)),
-    [activeChannels],
-  );
   const grid = useMemo(
-    () => buildScheduleGrid(classes ?? [], activeChannelIds),
-    [classes, activeChannelIds],
+    () => buildScheduleGrid(classes ?? [], activeChannels),
+    [classes, activeChannels],
   );
   const totalSlots = useMemo(() => Object.values(grid).flat().length, [grid]);
   // Пояс подписан один раз под объяснением, а не припиской у каждого слота:
@@ -59,6 +57,16 @@ export default function ScheduleScreen() {
   // Занятие открывается своей страницей с адресом, а не листом поверх сетки
   // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
   const openCreate = () => void navigate(`${SCHEDULE_PATH}/new`);
+  // Входы в подэкраны видны сразу: им не нужно ждать список занятий. На 360px
+  // ряд переносится на вторую строку (ScreenActions.tsx).
+  const actions: ScreenAction[] = [
+    { label: 'Каналы', onClick: () => void navigate(CHANNELS_PATH) },
+    { label: 'Шаблоны', onClick: () => void navigate(TEMPLATES_PATH) },
+    { label: 'Журнал отправок', onClick: () => void navigate(JOURNAL_PATH) },
+  ];
+  if (!loading) {
+    actions.push({ label: 'Добавить занятие', onClick: openCreate, variant: 'primary' });
+  }
   const openEdit = (classId: string) => void navigate(`${SCHEDULE_PATH}/${classId}`);
 
   return (
@@ -67,13 +75,7 @@ export default function ScheduleScreen() {
         title={TITLE}
         explanation={EXPLANATION}
         hint={tzNote}
-        action={
-          !loading && (
-            <Button style={primaryActionStyle} onClick={openCreate}>
-              Добавить занятие
-            </Button>
-          )
-        }
+        action={<ScreenActions actions={actions} />}
       />
 
       {error && (

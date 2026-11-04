@@ -1,7 +1,7 @@
-// «Рассылки» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
-// docs/adr/0025). Вход в «Каналы» и «Шаблоны» — вторичные кнопки в шапке
-// (ScreenActions.tsx, дополнение 2026-10-08): внизу под журналом их надо было
-// долистывать, не пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
+// «Журнал отправок» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
+// docs/adr/0025). Подэкран раздела «Расписание и рассылки» (ADR-0191): входы в
+// «Каналы» и «Шаблоны» живут в шапке раздела (ScheduleScreen.tsx), здесь
+// остаётся одно действие — «Новая рассылка». «Ждут отправки вручную» — сверху журнала, это нужно сделать
 // прямо сейчас. Новая рассылка — страница `/broadcasts/new`
 // (BroadcastNewScreen.tsx, ADR-0033), отсюда только переход. Числа, фильтры,
 // пустое состояние — отдельные компоненты (CLAUDE.md «Файлы»).
@@ -27,13 +27,11 @@ import { ManualDeliveriesSection } from './ManualDeliveriesSection';
 import { useBroadcasts } from './useBroadcasts';
 import { useManualDeliveries } from './useManualDeliveries';
 
-const TITLE = 'Рассылки';
+const TITLE = 'Журнал отправок';
 // VOICE.md «Начинать с сути, а не с определения темы» — не «Здесь журнал...»
 // (pr-k3-fixes.md п.19).
 const EXPLANATION = 'Журнал показывает, что ушло, что ждёт и что не отправилось.';
 const BROADCASTS_PATH = '/broadcasts';
-const CHANNELS_PATH = '/channels';
-const TEMPLATES_PATH = '/templates';
 
 export default function BroadcastsScreen() {
   const [searchParams] = useSearchParams();
@@ -68,12 +66,8 @@ export default function BroadcastsScreen() {
     await broadcastsState.reload();
   }
 
-  // «Каналы» и «Шаблоны» видны всегда: им не нужен журнал, а ждать его ради
-  // входа в настройки незачем. «Новая рассылка» — после загрузки, как раньше.
-  const actions: ScreenAction[] = [
-    { label: 'Каналы', onClick: () => void navigate(CHANNELS_PATH) },
-    { label: 'Шаблоны', onClick: () => void navigate(TEMPLATES_PATH) },
-  ];
+  // «Новая рассылка» — после загрузки журнала, как раньше.
+  const actions: ScreenAction[] = [];
   if (!loading) {
     actions.push({
       label: 'Новая рассылка',

@@ -26,7 +26,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     isBiweekly: false,
     active: true,
     linkMissing: false,
-    channelCount: 1,
+    destination: null,
     tags: [],
     ...overrides,
   };

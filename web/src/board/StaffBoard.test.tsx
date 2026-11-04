@@ -96,7 +96,7 @@ function renderStaffBoard({
     <>
       <Route path="/grading" element={<p>Экран проверки</p>} />
       <Route path="/planning" element={<p>Экран занятий штата</p>} />
-      <Route path="/broadcasts" element={<p>Экран рассылок</p>} />
+      <Route path="/schedule" element={<p>Экран расписания и рассылок</p>} />
       <Route path="/materials" element={<p>Экран материалов</p>} />
       <Route path="/school" element={<p>Экран школы</p>} />
     </>,
@@ -136,7 +136,7 @@ describe('StaffBoard — шапка и плитки', () => {
       '/events/ev1',
       '/events/new',
       '/planning',
-      '/broadcasts',
+      '/schedule',
       '/materials',
       '/school',
     ]);
@@ -180,7 +180,7 @@ describe('StaffBoard — карточка «Проверка»', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(QUEUE_ERROR_TEXT);
     expect(screen.getByRole('link', { name: /Проверка/ })).toBeInTheDocument();
-    for (const name of ['Занятия', 'Рассылки', 'Материалы', 'Школа']) {
+    for (const name of ['Занятия', 'Расписание и рассылки', 'Материалы', 'Школа']) {
       expect(screen.getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     }
 
@@ -199,24 +199,29 @@ describe('StaffBoard — входы в разделы', () => {
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'))
       .filter((href) => href !== '/grading' && href !== '/events/new');
-    expect(hrefs).toEqual(['/planning', '/broadcasts', '/materials', '/school']);
+    expect(hrefs).toEqual(['/planning', '/schedule', '/materials', '/school']);
   });
 
-  // «Расписание» значит один экран, /schedule (ADR-0025, дополнение
-  // 2026-10-08): карточка на доске ведёт на «Занятия» и так называется.
-  it('карточка «Занятия» с подсказкой про четыре недели, карточки «Расписание» нет', async () => {
+  // ADR-0191: постоянное расписание и рассылки — одна плитка «Расписание и
+  // рассылки» (/schedule); отдельной плитки «Рассылки» нет, а «Занятия» про
+  // постоянное расписание не говорят.
+  it('карточка «Занятия» про четыре недели; «Расписание и рассылки» ведёт на /schedule, «Рассылки» нет', async () => {
     renderStaffBoard();
 
     const card = await screen.findByRole('link', { name: /Занятия/ });
     expect(card).toHaveAttribute('href', '/planning');
     expect(card).toHaveTextContent('Занятия на четыре недели');
-    expect(card).toHaveTextContent('разовое занятие и постоянное расписание');
-    expect(screen.queryByRole('link', { name: /Расписание/ })).not.toBeInTheDocument();
+    expect(card).not.toHaveTextContent('постоянное расписание');
+    const section = screen.getByRole('link', { name: /Расписание и рассылки/ });
+    expect(section).toHaveAttribute('href', '/schedule');
+    expect(section).toHaveTextContent('куда уходят');
+    expect(screen.queryByRole('link', { name: /^Рассылки/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /рассылки/i })).toHaveLength(1);
   });
 
   it.each([
     ['Занятия', 'Экран занятий штата'],
-    ['Рассылки', 'Экран рассылок'],
+    ['Расписание и рассылки', 'Экран расписания и рассылок'],
     ['Материалы', 'Экран материалов'],
     ['Школа', 'Экран школы'],
   ])('«%s» ведёт на свой экран', async (name, screenText) => {

@@ -234,7 +234,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Каналы' })).toBeInTheDocument();
   });
 
-  it('учитель на /broadcasts — маршрут «Рассылки» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
+  it('учитель на /broadcasts — маршрут «Журнал отправок» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
     mockRoute(TEACHER, {
       '/broadcasts': [],
       '/deliveries': [],
@@ -534,7 +534,9 @@ describe('App', () => {
       await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /Занятия/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Рассылки/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Расписание и рассылки/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Материалы/ })).toBeInTheDocument();
   });
 
