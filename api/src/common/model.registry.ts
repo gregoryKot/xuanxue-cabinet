@@ -10,6 +10,7 @@ import {
   STORAGE_ORPHAN_FIELD_POLICY,
 } from '../storage/storage-orphan.schema';
 import { ClassRecord, ClassSchema, CLASS_FIELD_POLICY } from '../classes/class.schema';
+import { GroupRecord, GroupSchema, GROUP_FIELD_POLICY } from '../groups/group.schema';
 import {
   LessonRecord,
   LessonSchema,
@@ -177,6 +178,7 @@ interface ModelDefinition {
 
 export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
   { name: ClassRecord.name, schema: ClassSchema, fieldPolicy: CLASS_FIELD_POLICY },
+  { name: GroupRecord.name, schema: GroupSchema, fieldPolicy: GROUP_FIELD_POLICY },
   { name: LessonRecord.name, schema: LessonSchema, fieldPolicy: LESSON_FIELD_POLICY },
   { name: ChannelRecord.name, schema: ChannelSchema, fieldPolicy: CHANNEL_FIELD_POLICY },
   {

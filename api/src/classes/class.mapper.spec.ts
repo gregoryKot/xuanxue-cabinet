@@ -5,6 +5,7 @@ const RULE_ID = new Types.ObjectId();
 const CLASS_ID = new Types.ObjectId();
 const LEADER_ID = new Types.ObjectId();
 const CHANNEL_ID = new Types.ObjectId();
+const GROUP_ID = new Types.ObjectId();
 const CREATED_AT = new Date(Date.UTC(2026, 8, 1, 10, 0, 0));
 const UPDATED_AT = new Date(Date.UTC(2026, 8, 2, 11, 0, 0));
 
@@ -13,6 +14,7 @@ function fullClass(): LeanClass {
     _id: CLASS_ID,
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
+    groupIds: [GROUP_ID],
     format: 'online',
     location: 'зал школы',
     zoomLink: 'https://us02web.zoom.us/j/123',
@@ -30,11 +32,21 @@ function fullClass(): LeanClass {
 }
 
 describe('toClassDto', () => {
+  // ADR-0193: до миграции 0027 в документе поля нет, `.lean()` default не
+  // подставляет — ответ отдаёт пустой список, а не падает на `undefined.map`.
+  it('занятие без groupIds в документе — groupIds: []', () => {
+    const doc = fullClass();
+    delete doc.groupIds;
+
+    expect(toClassDto(doc).groupIds).toEqual([]);
+  });
+
   it('переносит все поля, id и даты — строками', () => {
     expect(toClassDto(fullClass())).toEqual({
       id: CLASS_ID.toString(),
       title: 'Тайцзицюань',
       groupLabel: 'средняя группа',
+      groupIds: [GROUP_ID.toString()],
       format: 'online',
       location: 'зал школы',
       zoomLink: 'https://us02web.zoom.us/j/123',

@@ -10,6 +10,8 @@ import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { ClassesService } from '../classes/classes.service';
+import { GroupRecord, GroupSchema } from '../groups/group.schema';
+import { GroupsService } from '../groups/groups.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -51,6 +53,8 @@ describe('SeedService', () => {
   let materialModel: Model<MaterialRecord>;
   let classesService: ClassesService;
   let seedService: SeedService;
+  let groupModel: Model<GroupRecord>;
+  let groupsService: GroupsService;
   let dir: string;
 
   beforeAll(async () => {
@@ -61,14 +65,17 @@ describe('SeedService', () => {
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    groupModel = connection.model<GroupRecord>(GroupRecord.name, GroupSchema);
     classesService = new ClassesService(
       classModel,
       lessonModel,
       channelModel,
       userModel,
       materialModel,
+      groupModel,
     );
-    seedService = new SeedService(classModel, classesService);
+    groupsService = new GroupsService(groupModel, classModel);
+    seedService = new SeedService(classModel, classesService, groupsService);
     dir = await mkdtemp(join(tmpdir(), 'xuanxue-seed-'));
   }, 60_000);
 
@@ -80,6 +87,7 @@ describe('SeedService', () => {
   afterEach(async () => {
     await classModel.deleteMany({});
     await channelModel.deleteMany({});
+    await groupModel.deleteMany({});
   });
 
   async function writeSeed(content: unknown): Promise<string> {
@@ -98,6 +106,32 @@ describe('SeedService', () => {
     const second = await seedService.importClasses(path);
     expect(second.created).toHaveLength(0);
     expect(second.skipped).toHaveLength(2);
+  });
+
+  // ADR-0193: группа в файле названа текстом, в базе она — группа школы.
+  it('группа из файла находится или заводится, занятие получает её id и подпись', async () => {
+    const existing = await groupsService.create({ name: 'Средние' });
+    const path = await writeSeed({
+      tz: 'Asia/Jerusalem',
+      classes: [
+        { title: 'А', groupLabel: 'средняя группа', format: 'online' },
+        { title: 'Б', groupLabel: 'Средние', format: 'online' },
+        { title: 'В', groupLabel: '', format: 'online' },
+      ],
+    });
+
+    await seedService.importClasses(path);
+
+    const byTitle = Object.fromEntries(
+      (await classesService.list({})).map((c) => [c.title, c]),
+    );
+    expect(byTitle['Б']?.groupIds).toEqual([existing.id]);
+    expect(byTitle['Б']?.groupLabel).toBe('Средние');
+    // «средняя группа» — другое название, чем «Средние»: заводится своя группа.
+    expect(byTitle['А']?.groupLabel).toBe('средняя группа');
+    expect(byTitle['А']?.groupIds).toHaveLength(1);
+    expect(byTitle['В']?.groupIds).toEqual([]);
+    expect(await groupModel.countDocuments()).toBe(2);
   });
 
   it('read-after-write: ClassesService.list видит импортированные классы', async () => {
@@ -220,8 +254,13 @@ describe('SeedService', () => {
       channelModel,
       userModel,
       materialModel,
+      groupModel,
     );
-    const freshSeedService = new FreshSeedService(classModel, freshClassesService);
+    const freshSeedService = new FreshSeedService(
+      classModel,
+      freshClassesService,
+      groupsService,
+    );
 
     try {
       const path = await writeSeed(VALID_SEED);

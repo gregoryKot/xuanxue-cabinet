@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChannelDto, ClassDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto, GroupDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -23,6 +23,13 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 const SCHEDULE_MARKER = 'Здесь сетка расписания';
+const GROUPS: GroupDto[] = ['Начинающие', 'Средние', 'Старшие'].map((name, index) => ({
+  id: `g${index + 1}`,
+  name,
+  classCount: 0,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}));
 
 function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
   return {
@@ -41,7 +48,8 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
     id: 'c1',
     title: 'Тайцзицюань',
-    groupLabel: 'средняя группа',
+    groupLabel: 'Средние',
+    groupIds: ['g2'],
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
@@ -73,6 +81,7 @@ function mockClass(classDto: ClassDto, channels: ChannelDto[] = []) {
   mockApiByPath({
     '/classes/c1': classDto,
     '/channels': channels,
+    '/groups': GROUPS,
     '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
   });
 }
@@ -108,6 +117,7 @@ describe('ClassEditorScreen — загрузка', () => {
     mockApiByPath({
       '/classes/c1': new ApiError('Сервис недоступен', 503, 'unknown'),
       '/channels': [],
+      '/groups': [],
       '/users/teachers': [],
     });
 
@@ -128,14 +138,15 @@ describe('ClassEditorScreen — загрузка', () => {
 
     renderAt('/schedule/c1');
 
-    expect(await screen.findByLabelText('Подпись группы')).toHaveValue('средняя группа');
+    expect(await screen.findByLabelText('Средние')).toBeChecked();
+    expect(screen.getByLabelText('Начинающие')).not.toBeChecked();
     expect(screen.getByLabelText('Ссылка Zoom')).toHaveValue('https://zoom.example/1');
     expect(screen.getByLabelText('За сколько минут слать ссылку')).toHaveValue('30');
     expect(screen.getByLabelText('День недели')).toHaveValue('2');
   });
 
   it('/schedule/new — заголовок «Новое занятие в расписании», за занятием сервер не спрашивают', async () => {
-    mockApiByPath({ '/channels': [], '/users/teachers': [] });
+    mockApiByPath({ '/channels': [], '/groups': [], '/users/teachers': [] });
 
     renderAt('/schedule/new');
 
@@ -154,8 +165,7 @@ describe('ClassEditorScreen — сохранение', () => {
     mockClass(makeClass());
 
     renderAt('/schedule/c1');
-    await user.clear(await screen.findByLabelText('Подпись группы'));
-    await user.type(screen.getByLabelText('Подпись группы'), 'старшая группа');
+    await user.click(await screen.findByLabelText('Старшие'));
     await user.selectOptions(screen.getByLabelText('Формат'), 'offline');
     await user.click(screen.getByLabelText('Занятие активно'));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
@@ -163,11 +173,11 @@ describe('ClassEditorScreen — сохранение', () => {
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const [path, options] = callsWithMethod('PATCH')[0] as [
       string,
-      { body: { groupLabel: string; format: string; active: boolean } },
+      { body: { groupIds: string[]; format: string; active: boolean } },
     ];
     expect(path).toBe('/classes/c1');
     expect(options.body).toMatchObject({
-      groupLabel: 'старшая группа',
+      groupIds: ['g2', 'g3'],
       format: 'offline',
       active: false,
     });
@@ -191,6 +201,7 @@ describe('ClassEditorScreen — сохранение', () => {
     const user = userEvent.setup();
     mockApiByPath({
       '/channels': [],
+      '/groups': [],
       '/users/teachers': [],
       '/classes': makeClass(),
     });
@@ -544,7 +555,7 @@ describe('ClassEditorScreen — удаление', () => {
   });
 
   it('новое занятие — удалять нечего, кнопки нет', async () => {
-    mockApiByPath({ '/channels': [], '/users/teachers': [] });
+    mockApiByPath({ '/channels': [], '/groups': [], '/users/teachers': [] });
 
     renderAt('/schedule/new');
     await screen.findByLabelText('Название');

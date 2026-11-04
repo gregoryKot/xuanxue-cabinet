@@ -14,6 +14,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
 import { useSettings } from '../templates/useSettings';
 import { DataControllerField } from './DataControllerField';
+import { GroupsSection } from './GroupsSection';
 import { LessonReminderField } from './LessonReminderField';
 import { NewcomerContactField } from './NewcomerContactField';
 import { PaymentContactField } from './PaymentContactField';
@@ -40,6 +41,7 @@ export default function SchoolScreen() {
           <PaymentReminderSection settings={settings} update={update} />
           <NewcomerContactField settings={settings} update={update} />
           <LessonReminderField settings={settings} update={update} />
+          <GroupsSection />
           <SchoolSiteField settings={settings} update={update} />
           <DataControllerField settings={settings} update={update} />
         </>

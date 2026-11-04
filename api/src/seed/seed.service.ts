@@ -10,6 +10,7 @@ import { InvalidInputError } from '../common/errors';
 import { isEncryptionConfigured } from '../utils/encryption';
 import { ClassesService } from '../classes/classes.service';
 import { ClassRecord } from '../classes/class.schema';
+import { GroupsService } from '../groups/groups.service';
 import {
   parseSeedFile,
   validateSeedClasses,
@@ -43,6 +44,7 @@ export class SeedService {
   constructor(
     @InjectModel(ClassRecord.name) private readonly model: Model<ClassRecord>,
     private readonly classesService: ClassesService,
+    private readonly groupsService: GroupsService,
   ) {}
 
   async importClasses(filePath: string): Promise<SeedReport> {
@@ -79,7 +81,11 @@ export class SeedService {
         skipped.push(name);
         continue;
       }
-      await this.classesService.create(cls);
+      // Группа из файла — группа школы (ADR-0193): находится по названию или
+      // заводится, занятие получает её id, а подпись сервер соберёт сам.
+      const { groupLabel: label, ...input } = cls;
+      const groupIds = label ? [await this.groupsService.ensureByName(label)] : [];
+      await this.classesService.create({ ...input, groupIds });
       created.push(name);
     }
 

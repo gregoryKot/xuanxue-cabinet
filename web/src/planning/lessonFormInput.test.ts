@@ -12,6 +12,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: '',
+    groupIds: [],
     format: 'online',
     rules: [],
     tz: 'Asia/Jerusalem',

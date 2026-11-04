@@ -126,7 +126,7 @@ describe('Выбор «о каких занятиях» (e2e)', () => {
   });
 
   it('ответ не выдаёт ссылку Zoom, пароль, каналы, теги ни ученику, ни админу', async () => {
-    await createClass('Цигун', { groupLabel: 'Утро' });
+    await createClass('Цигун');
     const cookies = [
       await studentCookie(),
       await sessionCookieFor(testApp.app, ['admin']),

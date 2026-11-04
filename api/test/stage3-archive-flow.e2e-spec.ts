@@ -38,7 +38,6 @@ describe('Этап 3: ученик находит запись прошлого 
       .set('Cookie', teacher)
       .send({
         title: 'Тайцзицюань, средняя группа',
-        groupLabel: 'Средняя',
         format: 'online',
         rules: [{ weekday: 2, time: '19:00', durationMin: 60 }],
       });

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChannelModelModule } from '../channels/channel-model.module';
 import { LessonModelModule } from '../lessons/lesson-model.module';
+import { GroupModelModule } from '../groups/group-model.module';
 import { MaterialModelModule } from '../materials/material-model.module';
 import { UserModelModule } from '../users/user-model.module';
 import { ClassRecord, ClassSchema } from './class.schema';
@@ -27,6 +28,9 @@ import { ClassesService } from './classes.service';
     // ADR-0047 «Последствия») — только модель, тот же приём: полный импорт
     // MaterialsModule замкнул бы цикл через её собственный импорт ClassesModule.
     MaterialModelModule,
+    // create()/update() проверяют groupIds и собирают подпись группы
+    // (ADR-0193) — только модель, тот же приём.
+    GroupModelModule,
   ],
   controllers: [ClassesController],
   providers: [ClassesService],

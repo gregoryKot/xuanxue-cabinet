@@ -15,7 +15,9 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
+import type { UseGroupsResult } from '../groups/useGroups';
 import { useTagOptions } from '../hooks/useTagOptions';
+import { ClassGroupsField } from './ClassGroupsField';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 
@@ -35,6 +37,8 @@ interface ClassFormFieldsProps {
   teachers: TeacherOptionDto[];
   teachersError: string | null;
   onRetryTeachers: () => void;
+  /** Группы школы — грузит страница занятия, как каналы (ClassEditorScreen). */
+  groups: UseGroupsResult;
 }
 
 export function ClassFormFields({
@@ -44,6 +48,7 @@ export function ClassFormFields({
   teachers,
   teachersError,
   onRetryTeachers,
+  groups,
 }: ClassFormFieldsProps) {
   // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
   // но поле работает как обычный текстовый ввод.
@@ -59,16 +64,11 @@ export function ClassFormFields({
         />
       </Field>
 
-      <Field
-        label="Подпись группы"
-        hint="Например «средняя группа» — печатается в постах"
-      >
-        <input
-          style={inputStyle}
-          value={state.groupLabel}
-          onChange={(e) => setField('groupLabel', e.target.value)}
-        />
-      </Field>
+      <ClassGroupsField
+        groups={groups}
+        selectedIds={state.groupIds}
+        onChange={(groupIds) => setField('groupIds', groupIds)}
+      />
 
       <TagsField
         value={state.tagsText}

@@ -84,7 +84,7 @@ describe('Теги занятий расписания (e2e, ADR-0072)', () => {
     const created = await postClass(cookie, { ...VALID_BODY, tags: ['начинающие'] });
 
     const patched = await patchClass(cookie, (created.body as ClassDto).id, {
-      groupLabel: 'средняя группа',
+      active: false,
     });
 
     expect(patched.status).toBe(200);

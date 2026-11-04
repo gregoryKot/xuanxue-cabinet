@@ -18,7 +18,12 @@ export interface ScheduleRuleInput extends ScheduleRule {
 export interface ClassDto {
   id: string;
   title: string;
+  /** Подпись группы для постов и экранов — выводится из `groupIds` сервером
+   * (названия через запятую, ADR-0193); клиент её не пишет. Пустая — занятие
+   * не отнесено ни к одной группе. */
   groupLabel: string;
+  /** Группы школы (`GET /groups`), которым идёт занятие, в порядке создания групп. */
+  groupIds: string[];
   format: ClassFormat;
   location?: string;
   zoomLink?: string;
@@ -40,7 +45,7 @@ export interface ClassDto {
 
 export interface CreateClassInput {
   title: string;
-  groupLabel?: string;
+  groupIds?: string[];
   format: ClassFormat;
   location?: string;
   zoomLink?: string;
@@ -65,7 +70,8 @@ export interface CreateClassInput {
  */
 export interface UpdateClassInput {
   title?: string;
-  groupLabel?: string;
+  /** Пустой массив — «снять все группы». */
+  groupIds?: string[];
   format?: ClassFormat;
   location?: string | null;
   zoomLink?: string | null;
@@ -103,12 +109,12 @@ export interface ListClassesQuery {
 
 export const CLASS_LIMITS = {
   title: 120,
-  groupLabel: 60,
   location: 200,
   zoomLink: 500,
   zoomPassword: 64,
   rulesMax: 14,
   channelsMax: 20,
+  groupsMax: 20,
   leadMinutesMax: 1440,
   durationMinMin: 5,
   durationMinMax: 600,

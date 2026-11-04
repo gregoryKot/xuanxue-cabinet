@@ -4,7 +4,9 @@
 import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
+import { InvalidInputError } from '../common/errors';
 import { ClassesService } from './classes.service';
+import { GroupRecord, GroupSchema } from '../groups/group.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -18,6 +20,7 @@ describe('ClassesService', () => {
   let channelModel: Model<ChannelRecord>;
   let userModel: Model<UserRecord>;
   let materialModel: Model<MaterialRecord>;
+  let groupModel: Model<GroupRecord>;
   let service: ClassesService;
 
   beforeAll(async () => {
@@ -28,12 +31,14 @@ describe('ClassesService', () => {
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    groupModel = connection.model<GroupRecord>(GroupRecord.name, GroupSchema);
     service = new ClassesService(
       model,
       lessonModel,
       channelModel,
       userModel,
       materialModel,
+      groupModel,
     );
   }, 60_000);
 
@@ -47,6 +52,7 @@ describe('ClassesService', () => {
     await channelModel.deleteMany({});
     await userModel.deleteMany({});
     await materialModel.deleteMany({});
+    await groupModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, zoomLink расшифрован в ответе', async () => {
@@ -395,7 +401,7 @@ describe('ClassesService', () => {
         tags: ['начинающие'],
       });
 
-      const updated = await service.update(created.id, { groupLabel: 'группа А' });
+      const updated = await service.update(created.id, { active: false });
 
       expect(updated.tags).toEqual(['начинающие']);
     });
@@ -432,6 +438,115 @@ describe('ClassesService', () => {
       const list = await service.list({ tag: '' });
 
       expect(list).toHaveLength(2);
+    });
+  });
+
+  describe('groupIds — группы школы и производная подпись (ADR-0193)', () => {
+    async function makeGroups(...names: string[]): Promise<string[]> {
+      const ids: string[] = [];
+      // Последовательно: порядок создания — порядок групп в подписи.
+      for (const name of names) {
+        const doc = await groupModel.create({ name, nameKey: name.toLowerCase() });
+        ids.push(doc._id.toString());
+      }
+      return ids;
+    }
+
+    it('create: groupIds собирают подпись из названий в порядке создания групп', async () => {
+      const [first, second, third] = await makeGroups('Начинающие', 'Средние', 'Старшие');
+
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupIds: [third as string, first as string],
+      });
+
+      expect(created.groupIds).toEqual([first, third]);
+      expect(created.groupLabel).toBe('Начинающие, Старшие');
+      expect(second).toBeDefined();
+    });
+
+    it('create без groupIds — занятие без группы и с пустой подписью', async () => {
+      const created = await service.create({ title: 'Курс', format: 'online' });
+
+      expect(created.groupIds).toEqual([]);
+      expect(created.groupLabel).toBe('');
+    });
+
+    it('create: groupLabel из тела не доверяем — подпись выводится только из групп', async () => {
+      const input = { title: 'Курс', format: 'online', groupLabel: 'выдумка' } as const;
+
+      const created = await service.create(input);
+
+      expect(created.groupLabel).toBe('');
+    });
+
+    it('create: неизвестная группа — 400, занятие не создано', async () => {
+      await expect(
+        service.create({
+          title: 'Курс',
+          format: 'online',
+          groupIds: [new Types.ObjectId().toString()],
+        }),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+      expect(await model.countDocuments()).toBe(0);
+    });
+
+    it('update: новые groupIds меняют и группы, и подпись вместе', async () => {
+      const [first, second] = await makeGroups('Начинающие', 'Средние');
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupIds: [first as string],
+      });
+
+      const updated = await service.update(created.id, { groupIds: [second as string] });
+
+      expect(updated.groupIds).toEqual([second]);
+      expect(updated.groupLabel).toBe('Средние');
+      expect((await service.getById(created.id)).groupLabel).toBe('Средние');
+    });
+
+    it('update без groupIds — группы и подпись остаются', async () => {
+      const [first] = await makeGroups('Начинающие');
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupIds: [first as string],
+      });
+
+      const updated = await service.update(created.id, { active: false });
+
+      expect(updated.groupIds).toEqual([first]);
+      expect(updated.groupLabel).toBe('Начинающие');
+    });
+
+    it('update с groupIds: [] — снимает все группы вместе с подписью', async () => {
+      const [first] = await makeGroups('Начинающие');
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupIds: [first as string],
+      });
+
+      const updated = await service.update(created.id, { groupIds: [] });
+
+      expect(updated.groupIds).toEqual([]);
+      expect(updated.groupLabel).toBe('');
+    });
+
+    it('update: неизвестная группа — 400, прежние группы остались', async () => {
+      const [first] = await makeGroups('Начинающие');
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupIds: [first as string],
+      });
+
+      await expect(
+        service.update(created.id, { groupIds: [new Types.ObjectId().toString()] }),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+      expect((await service.getById(created.id)).groupIds).toEqual([first]);
     });
   });
 });

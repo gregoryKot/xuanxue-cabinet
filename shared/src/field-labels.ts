@@ -21,7 +21,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
 
   // classes — /classes.
   title: 'Название',
-  groupLabel: 'Название группы',
+  groupIds: 'Группы',
   format: 'Формат занятия',
   location: 'Адрес',
   zoomLink: 'Ссылка Zoom',
@@ -37,6 +37,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   durationMin: 'Длительность',
   everyWeeks: 'Как часто', // ADR-0168
   startsOn: 'Первое занятие',
+
+  // groups — /groups (ADR-0193); тело то же при создании и переименовании.
+  name: 'Название группы',
 
   // lessons — /lessons.
   classId: 'Занятие',

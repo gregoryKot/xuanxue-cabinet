@@ -35,10 +35,11 @@ export function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto 
 }
 
 /** Сеть экрана «Школа»: настройки (и на GET, и на PATCH — настоящий
- * контроллер отвечает полным SettingsDto, ADR-0087) и число под напоминанием.
+ * контроллер отвечает полным SettingsDto, ADR-0087), число под напоминанием и
+ * пустой список групп (раздел «Группы», ADR-0193 — свои тесты в GroupsSection.test.tsx).
  * `Error` вместо настроек — «настройки не загрузились». */
 export function mockSchoolApi(settings: SettingsDto | Error = makeSettings()): void {
-  mockApiByPath({ '/settings': settings, [STATS_PATH]: EMPTY_STATS });
+  mockApiByPath({ '/settings': settings, [STATS_PATH]: EMPTY_STATS, '/groups': [] });
 }
 
 /** Настройки читаются, а сохранение (PATCH) падает с `error`. Очередь
@@ -51,6 +52,9 @@ export function mockSchoolSaveFailure(error: Error): void {
         ? Promise.reject(error)
         : Promise.resolve(makeSettings());
     }
+    // Группы сюда не приходят: эту заглушку ставят уже после первого рендера,
+    // когда список групп загружен через mockSchoolApi, а сохранение настроек
+    // его не перечитывает — ветка под `/groups` была бы мёртвой.
     if (path.startsWith(STATS_PATH)) return Promise.resolve(EMPTY_STATS);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });

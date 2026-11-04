@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { TagSummaryDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import type { UseGroupsResult } from '../groups/useGroups';
 import { ClassFormFields } from './ClassFormFields';
 import { initialClassFormState } from './classFormInput';
 
@@ -15,6 +16,17 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+// Группы школы в этом файле не предмет проверки — список уже загружен и пуст.
+const NO_GROUPS: UseGroupsResult = {
+  groups: [],
+  loading: false,
+  error: null,
+  reload: vi.fn(),
+  create: vi.fn(),
+  rename: vi.fn(),
+  remove: vi.fn(),
+};
 
 function makeTagSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
   return {
@@ -37,6 +49,7 @@ describe('ClassFormFields — подсказка тегов (ADR-0072)', () => {
         teachers={[]}
         teachersError={null}
         onRetryTeachers={vi.fn()}
+        groups={NO_GROUPS}
       />,
     );
 
