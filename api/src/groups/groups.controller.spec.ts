@@ -9,6 +9,7 @@ const GROUP: GroupDto = {
   id: 'g1',
   name: 'Средние',
   classCount: 0,
+  channelCount: 0,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };

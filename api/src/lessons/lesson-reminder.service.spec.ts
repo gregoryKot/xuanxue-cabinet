@@ -84,7 +84,6 @@ describe('LessonReminderService.remind (регрессия 2026-09-27)', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
       ...overrides,
     });
   }

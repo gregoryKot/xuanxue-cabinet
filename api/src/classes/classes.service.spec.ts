@@ -2,7 +2,6 @@
 // «Тесты»): шифрование секретов и read-after-write, PATCH null → $unset,
 // запрет удаления класса с занятиями (clarification 7 ТЗ PR D).
 import { Types, type Connection, type Model } from 'mongoose';
-import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { InvalidInputError } from '../common/errors';
 import { ClassesService } from './classes.service';
@@ -17,7 +16,6 @@ describe('ClassesService', () => {
   let connection: Connection;
   let model: Model<ClassRecord>;
   let lessonModel: Model<LessonRecord>;
-  let channelModel: Model<ChannelRecord>;
   let userModel: Model<UserRecord>;
   let materialModel: Model<MaterialRecord>;
   let groupModel: Model<GroupRecord>;
@@ -28,14 +26,12 @@ describe('ClassesService', () => {
     connection = memory.connection;
     model = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
     groupModel = connection.model<GroupRecord>(GroupRecord.name, GroupSchema);
     service = new ClassesService(
       model,
       lessonModel,
-      channelModel,
       userModel,
       materialModel,
       groupModel,
@@ -49,7 +45,6 @@ describe('ClassesService', () => {
   afterEach(async () => {
     await model.deleteMany({});
     await lessonModel.deleteMany({});
-    await channelModel.deleteMany({});
     await userModel.deleteMany({});
     await materialModel.deleteMany({});
     await groupModel.deleteMany({});
@@ -70,99 +65,6 @@ describe('ClassesService', () => {
 
     const found = await service.getById(created.id);
     expect(found.zoomLink).toBe('https://us02web.zoom.us/j/123');
-  });
-
-  it('create без channelIds — подставляются активные Telegram-каналы (фикс «занятие без каналов»)', async () => {
-    const telegram = await channelModel.create({
-      type: 'telegram',
-      title: 'Группа учеников',
-      config: '{}',
-      target: '@group',
-      active: true,
-    });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'Выключенный',
-      config: '{}',
-      target: '@off',
-      active: false,
-    });
-    await channelModel.create({
-      type: 'vk',
-      title: 'ВК школы',
-      config: '{}',
-      target: '777',
-      active: true,
-    });
-
-    const created = await service.create({ title: 'Новое занятие', format: 'online' });
-
-    expect(created.channelIds).toEqual([telegram._id.toString()]);
-  });
-
-  it('create без channelIds — личный канал ученика (broadcastEligible: false) не подставляется (ADR-0027)', async () => {
-    const telegram = await channelModel.create({
-      type: 'telegram',
-      title: 'Группа учеников',
-      config: '{}',
-      target: '@group',
-      active: true,
-    });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'Личные сообщения: Ольга',
-      config: '{}',
-      target: '555',
-      active: true,
-      broadcastEligible: false,
-    });
-
-    const created = await service.create({ title: 'Новое занятие', format: 'online' });
-
-    expect(created.channelIds).toEqual([telegram._id.toString()]);
-  });
-
-  it('create с явным channelIds: [] — остаётся пустым, активные каналы не подставляются', async () => {
-    await channelModel.create({
-      type: 'telegram',
-      title: 'Группа учеников',
-      config: '{}',
-      target: '@group',
-      active: true,
-    });
-
-    const created = await service.create({
-      title: 'Занятие без рассылки',
-      format: 'online',
-      channelIds: [],
-    });
-
-    expect(created.channelIds).toEqual([]);
-  });
-
-  it('create с явным channelIds — список учителя не расширяется активными каналами', async () => {
-    const chosen = await channelModel.create({
-      type: 'telegram',
-      title: 'Выбранный вручную',
-      config: '{}',
-      target: '@chosen',
-      active: true,
-    });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'Другой активный',
-      config: '{}',
-      target: '@other',
-      active: true,
-    });
-
-    const created = await service.create({
-      title: 'Занятие с выбором',
-      format: 'online',
-      channelIds: [chosen._id.toString()],
-    });
-
-    expect(created.channelIds).toEqual([chosen._id.toString()]);
   });
 
   it('update zoomPassword → getById видит новое значение', async () => {
@@ -441,39 +343,51 @@ describe('ClassesService', () => {
     });
   });
 
-  describe('groupIds — группы школы и производная подпись (ADR-0193)', () => {
-    async function makeGroups(...names: string[]): Promise<string[]> {
-      const ids: string[] = [];
-      // Последовательно: порядок создания — порядок групп в подписи.
-      for (const name of names) {
-        const doc = await groupModel.create({ name, nameKey: name.toLowerCase() });
-        ids.push(doc._id.toString());
-      }
-      return ids;
+  describe('groupId — группа занятия, единственный рычаг рассылки (ADR-0195)', () => {
+    async function makeGroup(name: string): Promise<string> {
+      const doc = await groupModel.create({ name, nameKey: name.toLowerCase() });
+      return doc._id.toString();
     }
 
-    it('create: groupIds собирают подпись из названий в порядке создания групп', async () => {
-      const [first, second, third] = await makeGroups('Начинающие', 'Средние', 'Старшие');
+    it('create: groupId → группа и подпись из названия группы', async () => {
+      const first = await makeGroup('Начинающие');
 
       const created = await service.create({
         title: 'Курс',
         format: 'online',
-        groupIds: [third as string, first as string],
+        groupId: first,
       });
 
-      expect(created.groupIds).toEqual([first, third]);
-      expect(created.groupLabel).toBe('Начинающие, Старшие');
-      expect(second).toBeDefined();
+      expect(created).toMatchObject({
+        groupId: first,
+        forAllGroups: false,
+        groupLabel: 'Начинающие',
+      });
+      expect((await service.getById(created.id)).groupId).toBe(first);
     });
 
-    it('create без groupIds — занятие без группы и с пустой подписью', async () => {
+    it('create без группы — занятие без группы, подпись пустая, каналы не подставляются', async () => {
       const created = await service.create({ title: 'Курс', format: 'online' });
 
-      expect(created.groupIds).toEqual([]);
-      expect(created.groupLabel).toBe('');
+      expect(created).toMatchObject({
+        groupId: null,
+        forAllGroups: false,
+        groupLabel: '',
+      });
+      expect(created).not.toHaveProperty('channelIds');
     });
 
-    it('create: groupLabel из тела не доверяем — подпись выводится только из групп', async () => {
+    it('create с groupId: null — то же, что без группы', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupId: null,
+      });
+
+      expect(created.groupId).toBeNull();
+    });
+
+    it('create: groupLabel из тела не доверяем — подпись выводится только из группы', async () => {
       const input = { title: 'Курс', format: 'online', groupLabel: 'выдумка' } as const;
 
       const created = await service.create(input);
@@ -486,67 +400,127 @@ describe('ClassesService', () => {
         service.create({
           title: 'Курс',
           format: 'online',
-          groupIds: [new Types.ObjectId().toString()],
+          groupId: new Types.ObjectId().toString(),
         }),
       ).rejects.toBeInstanceOf(InvalidInputError);
       expect(await model.countDocuments()).toBe(0);
     });
 
-    it('update: новые groupIds меняют и группы, и подпись вместе', async () => {
-      const [first, second] = await makeGroups('Начинающие', 'Средние');
+    it('create для всех групп: groupId не хранится даже если прислан, подпись «все группы»', async () => {
+      const first = await makeGroup('Начинающие');
+
+      const created = await service.create({
+        title: 'Пятница',
+        format: 'online',
+        groupId: first,
+        forAllGroups: true,
+      });
+
+      expect(created).toMatchObject({
+        groupId: null,
+        forAllGroups: true,
+        groupLabel: 'все группы',
+      });
+      await expect(model.findById(created.id).lean()).resolves.not.toHaveProperty(
+        'groupId',
+      );
+    });
+
+    it('update: другая группа меняет и группу, и подпись вместе', async () => {
+      const first = await makeGroup('Начинающие');
+      const second = await makeGroup('Средние');
       const created = await service.create({
         title: 'Курс',
         format: 'online',
-        groupIds: [first as string],
+        groupId: first,
       });
 
-      const updated = await service.update(created.id, { groupIds: [second as string] });
+      const updated = await service.update(created.id, { groupId: second });
 
-      expect(updated.groupIds).toEqual([second]);
-      expect(updated.groupLabel).toBe('Средние');
+      expect(updated).toMatchObject({ groupId: second, groupLabel: 'Средние' });
       expect((await service.getById(created.id)).groupLabel).toBe('Средние');
     });
 
-    it('update без groupIds — группы и подпись остаются', async () => {
-      const [first] = await makeGroups('Начинающие');
+    it('update без groupId — группа и подпись остаются', async () => {
+      const first = await makeGroup('Начинающие');
       const created = await service.create({
         title: 'Курс',
         format: 'online',
-        groupIds: [first as string],
+        groupId: first,
       });
 
       const updated = await service.update(created.id, { active: false });
 
-      expect(updated.groupIds).toEqual([first]);
-      expect(updated.groupLabel).toBe('Начинающие');
+      expect(updated).toMatchObject({ groupId: first, groupLabel: 'Начинающие' });
     });
 
-    it('update с groupIds: [] — снимает все группы вместе с подписью', async () => {
-      const [first] = await makeGroups('Начинающие');
+    it('update с groupId: null — снимает группу вместе с подписью, поля в документе нет', async () => {
+      const first = await makeGroup('Начинающие');
       const created = await service.create({
         title: 'Курс',
         format: 'online',
-        groupIds: [first as string],
+        groupId: first,
       });
 
-      const updated = await service.update(created.id, { groupIds: [] });
+      const updated = await service.update(created.id, { groupId: null });
 
-      expect(updated.groupIds).toEqual([]);
-      expect(updated.groupLabel).toBe('');
+      expect(updated).toMatchObject({ groupId: null, groupLabel: '' });
+      await expect(model.findById(created.id).lean()).resolves.not.toHaveProperty(
+        'groupId',
+      );
     });
 
-    it('update: неизвестная группа — 400, прежние группы остались', async () => {
-      const [first] = await makeGroups('Начинающие');
+    it('update: неизвестная группа — 400, прежняя группа осталась', async () => {
+      const first = await makeGroup('Начинающие');
       const created = await service.create({
         title: 'Курс',
         format: 'online',
-        groupIds: [first as string],
+        groupId: first,
       });
 
       await expect(
-        service.update(created.id, { groupIds: [new Types.ObjectId().toString()] }),
+        service.update(created.id, { groupId: new Types.ObjectId().toString() }),
       ).rejects.toBeInstanceOf(InvalidInputError);
-      expect((await service.getById(created.id)).groupIds).toEqual([first]);
+      expect((await service.getById(created.id)).groupId).toBe(first);
+    });
+
+    it('update: «для всех» снимает группу; выбор группы потом выключает «для всех»', async () => {
+      const first = await makeGroup('Начинающие');
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        groupId: first,
+      });
+
+      const all = await service.update(created.id, { forAllGroups: true });
+      const back = await service.update(created.id, { groupId: first });
+
+      expect(all).toMatchObject({
+        groupId: null,
+        forAllGroups: true,
+        groupLabel: 'все группы',
+      });
+      expect(back).toMatchObject({
+        groupId: first,
+        forAllGroups: false,
+        groupLabel: 'Начинающие',
+      });
+    });
+
+    it('update: forAllGroups: false без группы — занятие без группы', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        forAllGroups: true,
+      });
+
+      const updated = await service.update(created.id, { forAllGroups: false });
+
+      expect(updated).toMatchObject({
+        groupId: null,
+        forAllGroups: false,
+        groupLabel: '',
+      });
     });
   });
 });

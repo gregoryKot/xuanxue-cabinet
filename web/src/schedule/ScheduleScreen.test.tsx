@@ -26,11 +26,11 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань, средняя группа',
     groupLabel: '',
-    groupIds: [],
+    groupId: null,
+    forAllGroups: false,
     format: 'online',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leadMinutes: 30,
     active: true,
     tags: [],
@@ -46,6 +46,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'telegram',
     title: 'Канал школы',
     target: '@xuanxue',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -272,43 +273,72 @@ describe('ScheduleScreen — пояс и ссылки (отзыв владель
   });
 });
 
-// Под занятием стоит «куда оно уходит» (ADR-0191); считаются только АКТИВНЫЕ
-// каналы кабинета (ревью п.4): экран грузит их отдельным запросом, и выключенный
-// канал в channelIds занятия строку не кормит.
-describe('ScheduleScreen — куда уходит занятие (ADR-0191)', () => {
-  it('есть каналы — «→ названия» активных каналов', async () => {
+// Под занятием стоит «куда оно уходит» (ADR-0191, ADR-0195): каналы его группы;
+// считаются только АКТИВНЫЕ каналы кабинета (экран грузит их отдельным запросом).
+describe('ScheduleScreen — куда уходит занятие (ADR-0195)', () => {
+  it('у занятия группа — «→ названия» каналов этой группы, чужие не попадают', async () => {
     mockApiByPath({
-      '/classes': [makeClass({ channelIds: ['ch1', 'ch2', 'off'] })],
+      '/classes': [makeClass({ groupId: 'g1', groupLabel: 'Начинающие' })],
       '/channels': [
-        makeChannel({ id: 'ch1', title: 'Тайцзи вечер' }),
-        makeChannel({ id: 'ch2', title: 'Ученики' }),
+        makeChannel({ id: 'ch1', title: 'Тайцзи вечер', groupId: 'g1' }),
+        makeChannel({ id: 'ch2', title: 'Ученики ВК', groupId: 'g1' }),
+        makeChannel({ id: 'ch3', title: 'Старшие', groupId: 'g2' }),
       ],
     });
 
     renderScreen();
 
-    expect(await screen.findByText('→ Тайцзи вечер, Ученики')).toBeInTheDocument();
-    expect(screen.queryByText(/Никуда не уходит/)).not.toBeInTheDocument();
+    expect(await screen.findByText('→ Тайцзи вечер, Ученики ВК')).toBeInTheDocument();
+    expect(screen.queryByText(/никуда не уходит/)).not.toBeInTheDocument();
   });
 
-  it('онлайн без активных каналов — предупреждение, пометки «без каналов» нет', async () => {
-    mockApiByPath({ '/classes': [makeClass({ channelIds: ['gone'] })], '/channels': [] });
+  it('занятие для всех групп — «→ все каналы с группой: …»', async () => {
+    mockApiByPath({
+      '/classes': [makeClass({ forAllGroups: true, groupLabel: 'все группы' })],
+      '/channels': [
+        makeChannel({ id: 'ch1', title: 'Тайцзи вечер', groupId: 'g1' }),
+        makeChannel({ id: 'ch3', title: 'Без группы', groupId: null }),
+      ],
+    });
 
     renderScreen();
 
     expect(
-      await screen.findByText('Никуда не уходит — выберите канал'),
+      await screen.findByText('→ все каналы с группой: Тайцзи вечер'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('без каналов')).not.toBeInTheDocument();
   });
 
-  it('выключенное занятие без каналов — без предупреждения', async () => {
+  it('занятие без группы — красное «Без группы — никуда не уходит»', async () => {
+    mockApiByPath({
+      '/classes': [makeClass()],
+      '/channels': [makeChannel({ groupId: 'g1' })],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('Без группы — никуда не уходит')).toBeInTheDocument();
+  });
+
+  it('у группы нет канала — предупреждение называет группу', async () => {
+    mockApiByPath({
+      '/classes': [makeClass({ groupId: 'g1', groupLabel: 'Начинающие' })],
+      '/channels': [],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('У группы «Начинающие» нет канала — никуда не уходит'),
+    ).toBeInTheDocument();
+  });
+
+  it('выключенное занятие без группы — без предупреждения', async () => {
     mockApiByPath({ '/classes': [makeClass({ active: false })], '/channels': [] });
 
     renderScreen();
 
     await screen.findByText('выключено');
-    expect(screen.queryByText(/Никуда не уходит/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/никуда не уходит/)).not.toBeInTheDocument();
   });
 
   it('каналы ещё грузятся — строки нет, ложного предупреждения тоже', async () => {
@@ -317,7 +347,7 @@ describe('ScheduleScreen — куда уходит занятие (ADR-0191)', (
     renderScreen();
 
     await screen.findByText('19:00');
-    expect(screen.queryByText(/Никуда не уходит|→/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/никуда не уходит|→/)).not.toBeInTheDocument();
   });
 });
 

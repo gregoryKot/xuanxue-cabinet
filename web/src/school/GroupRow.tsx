@@ -1,5 +1,6 @@
-// Строка списка групп на экране «Школа» (ADR-0193): название и число занятий,
-// «Переименовать» на месте и «Удалить» — только у группы без занятий (сервер
+// Строка списка групп на экране «Школа» (ADR-0193, ADR-0195): название, число
+// занятий и каналы группы, «Переименовать» на месте и «Удалить» — только у
+// группы без занятий и каналов (сервер
 // всё равно откажет, но кнопка, которая заведомо не сработает, — это ловушка).
 // Подпись у кнопок содержит название группы скрытым текстом: у скринридера в
 // списке из трёх строк иначе три одинаковых «Переименовать».
@@ -10,7 +11,7 @@ import { FormServerError } from '../components/FormServerError';
 import { InlineFormFooter } from '../components/InlineFormFooter';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
 import { TextLinkButton } from '../components/TextLinkButton';
-import { groupClassCountText } from './groupsText';
+import { groupBlockedText, groupMetaText } from './groupsText';
 import { useGroupRow } from './useGroupRow';
 
 const rowStyle: CSSProperties = {
@@ -31,14 +32,22 @@ const actionsStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap
 interface GroupRowProps {
   group: GroupDto;
   isLast: boolean;
+  /** Названия каналов группы; `null` — список каналов ещё не пришёл. */
+  channelTitles: readonly string[] | null;
   onRename: (id: string, name: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
 }
 
-export function GroupRow({ group, isLast, onRename, onRemove }: GroupRowProps) {
+export function GroupRow({
+  group,
+  isLast,
+  channelTitles,
+  onRename,
+  onRemove,
+}: GroupRowProps) {
   const row = useGroupRow(group, { onRename, onRemove });
   const style = { ...rowStyle, borderBottom: isLast ? 'none' : '1px solid var(--panel)' };
-  const canRemove = group.classCount === 0;
+  const blockedText = groupBlockedText(group);
 
   if (row.editing) {
     return (
@@ -66,14 +75,14 @@ export function GroupRow({ group, isLast, onRename, onRemove }: GroupRowProps) {
       <div style={lineStyle}>
         <div>
           <div style={{ ...listCardTitleStyle, fontSize: 20 }}>{group.name}</div>
-          <div style={listCardMetaStyle}>{groupClassCountText(group.classCount)}</div>
+          <div style={listCardMetaStyle}>{groupMetaText(group, channelTitles)}</div>
         </div>
         <div style={actionsStyle}>
           <TextLinkButton onClick={row.startEditing} disabled={row.pending}>
             Переименовать
             <span className="xuanxue-sr-only"> группу «{group.name}»</span>
           </TextLinkButton>
-          {canRemove ? (
+          {blockedText === '' ? (
             <TextLinkButton
               danger
               onClick={() => void row.remove()}
@@ -83,7 +92,7 @@ export function GroupRow({ group, isLast, onRename, onRemove }: GroupRowProps) {
               <span className="xuanxue-sr-only"> группу «{group.name}»</span>
             </TextLinkButton>
           ) : (
-            <span style={listCardMetaStyle}>Удалить нельзя: есть занятия</span>
+            <span style={listCardMetaStyle}>{blockedText}</span>
           )}
         </div>
       </div>

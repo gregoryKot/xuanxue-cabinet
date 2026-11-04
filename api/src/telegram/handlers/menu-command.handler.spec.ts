@@ -97,7 +97,6 @@ describe('MenuCommandHandler', () => {
       leadMinutes: 30,
       tz: 'Asia/Jerusalem',
       rules: [],
-      channelIds: [],
       active: true,
     });
     await lessonModel.create({

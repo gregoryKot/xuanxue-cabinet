@@ -1,11 +1,12 @@
-// Раздел «Группы» экрана «Школа» (ADR-0193): список с числом занятий,
-// переименование на месте, удаление только у группы без занятий, добавление.
+// Раздел «Группы» экрана «Школа» (ADR-0193, ADR-0195): список с числом занятий и
+// каналами группы, переименование на месте, удаление только у группы без
+// занятий и каналов, добавление.
 // Сеть — mockApiByPath по пути (ADR-0116): путь записи совпадает с путём
 // списка, поэтому ответ на действие ставится вторым вызовом.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { GroupDto } from '@xuanxue/shared';
+import type { ChannelDto, GroupDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import {
@@ -22,18 +23,34 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-function makeGroup(id: string, name: string, classCount: number): GroupDto {
+function makeGroup(
+  id: string,
+  name: string,
+  classCount: number,
+  channelCount = 0,
+): GroupDto {
   return {
     id,
     name,
     classCount,
+    channelCount,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   };
 }
 
-const BEGINNERS = makeGroup('g1', 'Начинающие', 3);
+const BEGINNERS = makeGroup('g1', 'Начинающие', 3, 1);
 const MIDDLE = makeGroup('g2', 'Средние', 0);
+
+const CHANNEL: ChannelDto = {
+  id: 'ch1',
+  type: 'telegram',
+  title: 'Тайцзи вечер',
+  target: '@taiji',
+  groupId: 'g1',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+};
 
 function writeCalls() {
   return mockedApiFetch.mock.calls.filter((call) =>
@@ -43,8 +60,11 @@ function writeCalls() {
   );
 }
 
-async function renderLoaded(groups: GroupDto[] = [BEGINNERS, MIDDLE]) {
-  mockApiByPath({ '/groups': groups });
+async function renderLoaded(
+  groups: GroupDto[] = [BEGINNERS, MIDDLE],
+  channels: ChannelDto[] = [CHANNEL],
+) {
+  mockApiByPath({ '/groups': groups, '/channels': channels });
   render(<GroupsSection />);
   await screen.findByRole('heading', { name: 'Группы' });
   if (groups.length > 0) await screen.findByText(groups[0]?.name ?? '');
@@ -64,8 +84,12 @@ describe('GroupsSection — список', () => {
       'начинающие, средние, старшие',
     );
     expect(screen.getByText(/Групп:/)).toHaveTextContent('Групп: 2');
-    expect(within(rowOf('Начинающие')).getByText('3 занятия')).toBeInTheDocument();
-    expect(within(rowOf('Средние')).getByText('Занятий нет')).toBeInTheDocument();
+    expect(
+      within(rowOf('Начинающие')).getByText('3 занятия · каналы: Тайцзи вечер'),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf('Средние')).getByText('Занятий нет · канала нет'),
+    ).toBeInTheDocument();
   });
 
   it('скелетон, пока список не пришёл', () => {
@@ -226,12 +250,37 @@ describe('GroupsSection — переименование', () => {
 });
 
 describe('GroupsSection — удаление', () => {
-  it('у группы с занятиями кнопки «Удалить» нет — вместо неё причина', async () => {
+  it('у группы с занятиями и каналом кнопки «Удалить» нет — вместо неё причина', async () => {
     await renderLoaded();
 
     const row = within(rowOf('Начинающие'));
     expect(row.queryByRole('button', { name: /Удалить/ })).not.toBeInTheDocument();
-    expect(row.getByText('Удалить нельзя: есть занятия')).toBeInTheDocument();
+    expect(row.getByText('Удалить нельзя: есть занятия и каналы')).toBeInTheDocument();
+  });
+
+  it('группа только с каналом — причина называет каналы; только с занятиями — занятия', async () => {
+    await renderLoaded(
+      [makeGroup('g1', 'Начинающие', 0, 1), makeGroup('g2', 'Средние', 2, 0)],
+      [CHANNEL],
+    );
+
+    expect(
+      within(rowOf('Начинающие')).getByText('Удалить нельзя: есть каналы'),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf('Средние')).getByText('Удалить нельзя: есть занятия'),
+    ).toBeInTheDocument();
+  });
+
+  it('каналы не загрузились — строка группы остаётся, число каналов из самой группы', async () => {
+    mockApiByPath({
+      '/groups': [BEGINNERS, MIDDLE],
+      '/channels': new ApiError('сеть', 503, 'unknown'),
+    });
+    render(<GroupsSection />);
+
+    expect(await screen.findByText('3 занятия · каналов: 1')).toBeInTheDocument();
+    expect(screen.getByText('Занятий нет · канала нет')).toBeInTheDocument();
   });
 
   it('группа без занятий удаляется, из списка уходит строка', async () => {

@@ -1,5 +1,5 @@
-// Отправка одной даты занятия: активные каналы
-// (ADR-0192) → текст поста → insert broadcast+deliveries — вынесено из
+// Отправка одной даты занятия: каналы группы
+// (ADR-0195) → текст поста → insert broadcast+deliveries — вынесено из
 // broadcast-planner.service.ts (файл-лимит 150 строк, CLAUDE.md «Храповики»).
 import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
@@ -10,8 +10,7 @@ import type { DeliveryRecord } from '../deliveries/delivery.schema';
 import type { UsersService } from '../users/users.service';
 import { insertBroadcastWithDeliveries } from './broadcast.inserts';
 import { computeBroadcastSendTiming } from './broadcast-send-timing';
-import { findActiveChannelIds } from './broadcast-channels.queries';
-import { CANCEL_REASON } from './broadcast-cancel-reasons';
+import { findGroupChannelIds, noChannelsReason } from './broadcast-channels.queries';
 import { cancelPlanningWithLog } from './broadcast-planner.log';
 import type { PlannerClass, PlannerLesson } from './broadcast-planner.queries';
 import { buildLessonLinkText } from './broadcast-planner.render';
@@ -25,8 +24,8 @@ export interface SendLessonDeps {
   logger: Logger;
 }
 
-/** Активные каналы занятия (ADR-0192) → текст поста-ссылки →
- * broadcast+deliveries. Пустой список активных — cancelled-плейсхолдер
+/** Каналы группы занятия (ADR-0195) → текст поста-ссылки →
+ * broadcast+deliveries. Пустой список — cancelled-плейсхолдер
  * (docs/PLAN.md §6). */
 export async function sendLessonBroadcast(
   deps: SendLessonDeps,
@@ -35,13 +34,13 @@ export async function sendLessonBroadcast(
   now: DateTime,
   templates: Record<TemplateKind, string>,
 ): Promise<boolean> {
-  const channelIds = await findActiveChannelIds(deps.channelModel, cls.channelIds);
+  const channelIds = await findGroupChannelIds(deps.channelModel, cls);
   if (channelIds.length === 0) {
     return cancelPlanningWithLog(
       deps.broadcastModel,
       deps.logger,
       lesson._id,
-      CANCEL_REASON.allChannelsDisabled,
+      noChannelsReason(cls),
       now,
       'warn',
     );

@@ -34,7 +34,6 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
     const lesson = await ctx.lessonModel.create({
       classId: cls._id,
@@ -115,7 +114,6 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
     const lesson = await ctx.lessonModel.create({
       classId: cls._id,

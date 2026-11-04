@@ -17,15 +17,15 @@ import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
 import type { UseGroupsResult } from '../groups/useGroups';
 import { useTagOptions } from '../hooks/useTagOptions';
-import { ClassGroupsField } from './ClassGroupsField';
+import { ClassGroupField } from './ClassGroupField';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 
-// ADR-0072: тег здесь — постоянный признак курса («начинающие»,
+// ADR-0072: тег здесь — постоянный признак занятия («начинающие»,
 // «медитация»), не пометка конкретного вечера (та живёт у формы даты,
 // planning/lessonFormInput.ts) — два поля рядом не заведёшь, подсказка
-// объясняет это словом «курса».
-const TAG_HINT = `Постоянный признак курса: «начинающие», «медитация» — через запятую, до **${TAG_LIMITS.perRecord}**`;
+// объясняет это словом «постоянные».
+const TAG_HINT = `Постоянные теги занятия: «начинающие», «медитация» — через запятую, до **${TAG_LIMITS.perRecord}**`;
 
 interface ClassFormFieldsProps {
   state: ClassFormState;
@@ -64,10 +64,10 @@ export function ClassFormFields({
         />
       </Field>
 
-      <ClassGroupsField
+      <ClassGroupField
         groups={groups}
-        selectedIds={state.groupIds}
-        onChange={(groupIds) => setField('groupIds', groupIds)}
+        value={state.groupChoice}
+        onChange={(groupChoice) => setField('groupChoice', groupChoice)}
       />
 
       <TagsField

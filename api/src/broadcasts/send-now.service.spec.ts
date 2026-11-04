@@ -2,6 +2,7 @@
 // статусу существующей lesson_link-рассылки плюс проверки входа (ссылка,
 // каналы, отменённое занятие) — образец обвязки, что у
 // broadcast-planner.service.spec.ts.
+import { Types } from 'mongoose';
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/errors';
 import {
   NOW,
@@ -59,23 +60,52 @@ describe('SendNowService.sendNow', () => {
     });
   });
 
-  it('у занятия нет активных каналов — InvalidInputError с текстом по VOICE.md', async () => {
-    const offChannel = await createChannel(ctx, { active: false });
-    const cls = await createClass(ctx, { channelIds: [offChannel._id] });
+  it('у группы занятия нет активных каналов — текст называет группу и что сделать', async () => {
+    const groupId = new Types.ObjectId();
+    await createChannel(ctx, { active: false, groupId });
+    const cls = await createClass(ctx, { groupId, groupLabel: 'Начинающие' });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
 
     await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
-      message: expect.stringContaining('нет подключённых каналов') as unknown,
+      message:
+        'У группы «Начинающие» нет канала — выберите эту группу у канала на экране «Каналы».',
     });
   });
 
+  it('у занятия нет группы — текст про страницу занятия, каналы с группами не получают', async () => {
+    await createChannel(ctx, { groupId: new Types.ObjectId() });
+    const cls = await createClass(ctx, { groupId: undefined });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
+
+    await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
+      message: 'У занятия нет группы — выберите её на странице занятия.',
+    });
+    await expect(ctx.deliveryModel.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('занятие для всех групп уходит в каналы с группой; если таких нет — текст про группу у канала', async () => {
+    const cls = await createClass(ctx, { groupId: undefined, forAllGroups: true });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
+    await createChannel(ctx);
+
+    await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
+      message:
+        'Ни у одного канала нет группы — выберите группу у канала на экране «Каналы».',
+    });
+
+    const grouped = await createChannel(ctx, { groupId: new Types.ObjectId() });
+    const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
+    expect(dto.channelIds).toEqual([grouped._id.toString()]);
+  });
+
   it('у канала остался старый tags в базе — ссылка всё равно уходит (ADR-0192)', async () => {
-    const channel = await createChannel(ctx);
+    const groupId = new Types.ObjectId();
+    const channel = await createChannel(ctx, { groupId });
     await ctx.channelModel.collection.updateOne(
       { _id: channel._id },
       { $set: { tags: ['средние'] } },
     );
-    const cls = await createClass(ctx, { channelIds: [channel._id] });
+    const cls = await createClass(ctx, { groupId });
     const lesson = await createLesson(
       ctx,
       cls._id,
@@ -116,10 +146,11 @@ describe('SendNowService.sendNow', () => {
     const cls = await createClass(ctx);
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
     const later = NOW.plus({ minutes: 40 });
+    const groupChannel = await ctx.channelModel.findOne().orFail().lean();
     await ctx.broadcastModel.create({
       kind: 'lesson_link',
       lessonId: lesson._id,
-      channelIds: cls.channelIds,
+      channelIds: [groupChannel._id],
       scheduledAt: later.toJSDate(),
       text: 'старая ссылка',
       status: 'scheduled',
@@ -129,7 +160,7 @@ describe('SendNowService.sendNow', () => {
       .lean();
     await ctx.deliveryModel.create({
       broadcastId: broadcastBefore?._id,
-      channelId: cls.channelIds[0],
+      channelId: groupChannel._id,
       status: 'pending',
       nextAttemptAt: later.toJSDate(),
     });
@@ -146,13 +177,10 @@ describe('SendNowService.sendNow', () => {
   });
 
   it('scheduled, доставка уже захвачена раннером (sending) — текст не меняем, ускоряем только оставшиеся pending (ревью п.2/п.6)', async () => {
-    const cls = await createClass(ctx, { channelIds: [] });
-    const channelA = await createChannel(ctx);
-    const channelB = await createChannel(ctx);
-    await ctx.classModel.updateOne(
-      { _id: cls._id },
-      { $set: { channelIds: [channelA._id, channelB._id] } },
-    );
+    const groupId = new Types.ObjectId();
+    const channelA = await createChannel(ctx, { groupId });
+    const channelB = await createChannel(ctx, { groupId });
+    const cls = await createClass(ctx, { groupId });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
     const broadcast = await ctx.broadcastModel.create({
       kind: 'lesson_link',
@@ -194,9 +222,10 @@ describe('SendNowService.sendNow', () => {
   });
 
   it('канал выключили после провала — его доставка cancelled, у нового канала появляется pending (ревью п.3а)', async () => {
-    const droppedChannel = await createChannel(ctx, { active: false });
-    const keptChannel = await createChannel(ctx);
-    const cls = await createClass(ctx, { channelIds: [keptChannel._id] });
+    const groupId = new Types.ObjectId();
+    const droppedChannel = await createChannel(ctx, { active: false, groupId });
+    const keptChannel = await createChannel(ctx, { groupId });
+    const cls = await createClass(ctx, { groupId });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
     const broadcast = await ctx.broadcastModel.create({
       kind: 'lesson_link',
@@ -229,8 +258,9 @@ describe('SendNowService.sendNow', () => {
   });
 
   it('все подключённые каналы уже sent — ConflictError, статус не меняется (ревью п.3б)', async () => {
-    const channel = await createChannel(ctx);
-    const cls = await createClass(ctx, { channelIds: [channel._id] });
+    const groupId = new Types.ObjectId();
+    const channel = await createChannel(ctx, { groupId });
+    const cls = await createClass(ctx, { groupId });
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
     const broadcast = await ctx.broadcastModel.create({
       kind: 'lesson_link',
@@ -273,7 +303,9 @@ describe('SendNowService.sendNow', () => {
     const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
 
     expect(dto.status).toBe('scheduled');
-    expect(dto.channelIds).toEqual(cls.channelIds.map((id) => id.toString()));
+    const groupChannel = await ctx.channelModel.findOne().orFail().lean();
+    expect(cls.groupId).toBeDefined();
+    expect(dto.channelIds).toEqual([groupChannel._id.toString()]);
     // dto.text — BroadcastsService.getById уже расшифровал; текст плейсхолдера
     // заменён на свежий рендер поста, «тик опоздал» в нём быть не должно.
     expect(dto.text).not.toContain('тик опоздал');
@@ -300,7 +332,7 @@ describe('SendNowService.sendNow', () => {
     await ctx.broadcastModel.create({
       kind: 'lesson_link',
       lessonId: lesson._id,
-      channelIds: cls.channelIds,
+      channelIds: [(await ctx.channelModel.findOne().orFail().lean())._id],
       scheduledAt: sentAt,
       sentAt,
       text: 'x',

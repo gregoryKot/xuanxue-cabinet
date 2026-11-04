@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChannelDto, ClassDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto, GroupDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -30,6 +30,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -41,11 +42,11 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзи',
     groupLabel: '',
-    groupIds: [],
+    groupId: null,
+    forAllGroups: false,
     format: 'online',
     rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leadMinutes: 30,
     active: true,
     tags: [],
@@ -54,6 +55,19 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     ...overrides,
   };
 }
+
+function makeGroup(id: string, name: string): GroupDto {
+  return {
+    id,
+    name,
+    classCount: 0,
+    channelCount: 0,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+}
+
+const BEGINNERS = makeGroup('g1', 'Начинающие');
 
 function renderScreen() {
   return render(
@@ -124,46 +138,75 @@ describe('ChannelsScreen — список', () => {
   });
 });
 
-describe('ChannelsScreen — какие занятия кормят канал', () => {
-  it('строка канала говорит, какие занятия сюда уходят', async () => {
+describe('ChannelsScreen — группа канала (ADR-0195)', () => {
+  it('у канала группа — строка называет её и считает занятия группы и «для всех»', async () => {
     mockApiByPath({
-      '/channels': [makeChannel()],
-      '/classes': [makeClass({ channelIds: ['ch1'] }), makeClass({ id: 'c2' })],
+      '/channels': [makeChannel({ groupId: 'g1' })],
+      '/groups': [BEGINNERS],
+      '/classes': [
+        makeClass({ groupId: 'g1' }),
+        makeClass({ id: 'c2', forAllGroups: true }),
+        makeClass({ id: 'c3', groupId: 'g2' }),
+      ],
     });
 
     renderScreen();
 
-    expect(await screen.findByText('Тайцзи', { exact: false })).toHaveTextContent(
-      '1 курс: Тайцзи',
+    expect(await screen.findByText(/Группа:/)).toHaveTextContent(
+      'Группа: Начинающие · 2 занятия',
     );
   });
 
-  it('канал без занятий — предупреждение вместо пустоты', async () => {
-    mockApiByPath({ '/channels': [makeChannel()], '/classes': [makeClass()] });
+  it('у канала нет группы — красное предупреждение вместо пустоты', async () => {
+    mockApiByPath({
+      '/channels': [makeChannel()],
+      '/groups': [BEGINNERS],
+      '/classes': [makeClass({ groupId: 'g1' })],
+    });
 
     renderScreen();
 
-    expect(await screen.findByText(/Ни одного занятия/)).toBeInTheDocument();
+    expect(await screen.findByText(/Группа не выбрана/)).toHaveStyle({
+      color: 'var(--danger)',
+    });
   });
 
-  it('пока занятия грузятся — не «ни одного»', async () => {
-    mockApiByPath({ '/channels': [makeChannel()], '/classes': new Promise(() => {}) });
+  it('пока группы или занятия грузятся — не «Группа не выбрана»', async () => {
+    mockApiByPath({
+      '/channels': [makeChannel()],
+      '/groups': [BEGINNERS],
+      '/classes': new Promise(() => {}),
+    });
 
     renderScreen();
     await screen.findByText('ВК · ВК школы');
 
-    expect(screen.queryByText(/Ни одного занятия/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Группа не выбрана/)).not.toBeInTheDocument();
   });
 
-  it('занятия не загрузились — строки нет, список каналов цел', async () => {
+  it('группы не загрузились — строки нет, список каналов цел', async () => {
     mockApiByPath({
       '/channels': [makeChannel()],
-      '/classes': new Error('сеть'),
+      '/groups': new Error('сеть'),
+      '/classes': [makeClass()],
     });
 
     renderScreen();
 
     expect(await screen.findByText('ВК · ВК школы')).toBeInTheDocument();
-    expect(screen.queryByText(/Ни одного занятия/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Группа не выбрана/)).not.toBeInTheDocument();
+  });
+
+  it('в строках канала слова «курс» нет', async () => {
+    mockApiByPath({
+      '/channels': [makeChannel({ groupId: 'g1' })],
+      '/groups': [BEGINNERS],
+      '/classes': [makeClass({ groupId: 'g1' })],
+    });
+
+    renderScreen();
+    await screen.findByText(/Группа:/);
+
+    expect(document.body.textContent).not.toMatch(/курс/i);
   });
 });

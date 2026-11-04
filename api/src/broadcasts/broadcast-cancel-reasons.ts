@@ -9,10 +9,10 @@ import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 export const CANCEL_REASON = {
   noClass: 'занятие без класса в базе',
   classDisabled: 'класс выключен',
-  noChannels: 'у класса нет каналов рассылки',
+  noGroup: 'у занятия нет группы',
   offline: 'офлайн-занятие, ссылка не рассылается',
   noLink: 'нет ссылки на занятие',
-  allChannelsDisabled: 'все каналы класса выключены',
+  groupWithoutChannel: 'у группы занятия нет канала',
 } as const;
 
 /** Тик опоздал непоправимо (broadcast-planner.service.ts, level: 'error') —
@@ -23,11 +23,11 @@ export const TOO_LATE_REASON = `тик опоздал: занятие начал
 /** Действие, которое нужно DM учителю по причине отмены (docs/PLAN.md §6
  * «Планировщик»). Не enum — union строк (CLAUDE.md «Код»). */
 export type BroadcastCancelAction =
-  'no_channels' | 'channels_disabled' | 'no_link' | 'too_late';
+  'no_group' | 'group_without_channel' | 'no_link' | 'too_late';
 
 const ACTION_BY_REASON: ReadonlyMap<string, BroadcastCancelAction> = new Map([
-  [CANCEL_REASON.noChannels, 'no_channels'],
-  [CANCEL_REASON.allChannelsDisabled, 'channels_disabled'],
+  [CANCEL_REASON.noGroup, 'no_group'],
+  [CANCEL_REASON.groupWithoutChannel, 'group_without_channel'],
   [CANCEL_REASON.noLink, 'no_link'],
   [TOO_LATE_REASON, 'too_late'],
 ]);

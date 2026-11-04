@@ -14,8 +14,8 @@ import type {
   UpdateChannelInput,
 } from '@xuanxue/shared';
 import { CHANNEL_NOT_FOUND_MESSAGE, LIST_LIMIT_DEFAULT } from '@xuanxue/shared';
-import { ClassRecord } from '../classes/class.schema';
 import { ConflictError, NotFoundError } from '../common/errors';
+import { GroupRecord } from '../groups/group.schema';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { assertObjectId } from '../common/object-id';
@@ -24,13 +24,12 @@ import { assertConfigForType } from './assert-channel-config';
 import { ChannelAdapterRegistry } from './channel-adapter.registry';
 import { ChannelConfigService } from './channel-config.service';
 import { scrubChannelSecrets } from './channel-secrets';
-import { buildChannelCreatePayload, buildChannelUpdateSet } from './channel-write';
+import { buildChannelCreatePayload, buildChannelUpdate } from './channel-write';
 import { CHANNEL_FIELD_POLICY, ChannelRecord } from './channel.schema';
 import { targetOf, toChannelDto, type LeanChannel } from './channel.mapper';
 
 const ENCRYPT_SCHEMA = encryptSchemaFrom(CHANNEL_FIELD_POLICY);
 const NOT_FOUND_MESSAGE = CHANNEL_NOT_FOUND_MESSAGE;
-const IN_USE_MESSAGE = 'Канал подключён к занятиям. Сначала отключите его от них.';
 const DUPLICATE_MESSAGE =
   'Этот канал уже подключён. Откройте его в списке или укажите другой адрес.';
 // VOICE.md: конкретика — учитель узнаёт школу в тексте теста. Не
@@ -41,7 +40,7 @@ const TEST_MESSAGE = 'Проверка связи: кабинет школы С�
 export class ChannelsService {
   constructor(
     @InjectModel(ChannelRecord.name) private readonly model: Model<ChannelRecord>,
-    @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
+    @InjectModel(GroupRecord.name) private readonly groupModel: Model<GroupRecord>,
     private readonly config: ConfigService,
     private readonly adapters: ChannelAdapterRegistry,
     private readonly channelConfig: ChannelConfigService,
@@ -72,7 +71,7 @@ export class ChannelsService {
   async create(input: CreateChannelInput): Promise<ChannelDto> {
     assertConfigForType(input.type, input.config);
     const target = targetOf(input.type, input.config);
-    const payload = buildChannelCreatePayload(input, target);
+    const payload = await buildChannelCreatePayload(this.groupModel, input, target);
     const created = await this.withDuplicateGuard(() =>
       this.model.create(encryptRecord(payload, ENCRYPT_SCHEMA)),
     );
@@ -81,18 +80,18 @@ export class ChannelsService {
 
   async update(id: string, input: UpdateChannelInput): Promise<ChannelDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const $set = buildChannelUpdateSet(input);
+    const update = await buildChannelUpdate(this.groupModel, input);
     if (input.config !== undefined) {
       const type = await this.typeOf(id);
       assertConfigForType(type, input.config);
-      $set.target = targetOf(type, input.config);
+      update.$set.target = targetOf(type, input.config);
     }
 
     const doc = await this.withDuplicateGuard(() =>
       this.model
         .findOneAndUpdate(
           { _id: id },
-          { $set: encryptRecord($set, ENCRYPT_SCHEMA) },
+          { ...update, $set: encryptRecord(update.$set, ENCRYPT_SCHEMA) },
           { returnDocument: 'after' },
         )
         .select('-config')
@@ -104,8 +103,6 @@ export class ChannelsService {
 
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const inUse = await this.classModel.exists({ channelIds: id });
-    if (inUse) throw new ConflictError(IN_USE_MESSAGE);
     const { deletedCount } = await this.model.deleteOne({ _id: id });
     if (deletedCount === 0) throw new NotFoundError(NOT_FOUND_MESSAGE);
   }

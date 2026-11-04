@@ -6,13 +6,13 @@ import {
 } from './broadcast-cancel-reasons';
 
 describe('classifyCancelReason', () => {
-  it('у класса нет каналов рассылки — no_channels', () => {
-    expect(classifyCancelReason(CANCEL_REASON.noChannels)).toBe('no_channels');
+  it('у занятия нет группы — no_group', () => {
+    expect(classifyCancelReason(CANCEL_REASON.noGroup)).toBe('no_group');
   });
 
-  it('все каналы класса выключены — channels_disabled', () => {
-    expect(classifyCancelReason(CANCEL_REASON.allChannelsDisabled)).toBe(
-      'channels_disabled',
+  it('у группы занятия нет канала — group_without_channel', () => {
+    expect(classifyCancelReason(CANCEL_REASON.groupWithoutChannel)).toBe(
+      'group_without_channel',
     );
   });
 

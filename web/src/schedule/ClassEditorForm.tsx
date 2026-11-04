@@ -1,10 +1,10 @@
 // Страница занятия расписания — адрес, а не лист поверх сетки (ADR-0033,
 // образец — exam-items/ExamItemEditorForm.tsx). Сверху вниз: возврат к
-// расписанию, рубрика с названием, поля занятия, дни и время, каналы
-// рассылки, подвал с сохранением и удалением. Удаление — с подтверждением
+// расписанию, рубрика с названием, поля занятия (в них группа — единственный
+// рычаг рассылки, ADR-0195), дни и время, подвал с сохранением и удалением. Удаление — с подтверждением
 // через ConfirmDialog (раньше в старом листе срабатывало с одного касания).
 import { Link, useNavigate } from 'react-router-dom';
-import type { ChannelDto, ClassDto } from '@xuanxue/shared';
+import type { ClassDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
@@ -18,7 +18,6 @@ import {
 import type { UseGroupsResult } from '../groups/useGroups';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useTeachers } from '../people/useTeachers';
-import { ClassChannelsField } from './ClassChannelsField';
 import { ClassEditorFooter } from './ClassEditorFooter';
 import { ClassFormFields } from './ClassFormFields';
 import { RuleFields } from './RuleFields';
@@ -31,35 +30,21 @@ const EYEBROW = 'Расписание';
 const NEW_CLASS_TITLE = 'Новое занятие в расписании';
 const REMOVE_TITLE = 'Удалить из расписания?';
 const REMOVE_MESSAGE =
-  'Пропадут дни и время, привязка каналов и будущие даты занятий. Отменить нельзя — **занятие придётся завести заново**.';
+  'Пропадут дни и время и будущие даты занятий. Отменить нельзя — **занятие придётся завести заново**.';
 
 interface ClassEditorFormProps {
   /** `null` — `/schedule/new`, занятия ещё нет. */
   classDto: ClassDto | null;
-  /** Активные каналы — грузятся страницей до формы (ClassEditorScreen.tsx):
-   * новому занятию Telegram-каналы отмечаются заранее (classFormInput.ts). */
-  channels: ChannelDto[];
   groups: UseGroupsResult;
   editor: UseClassEditorResult;
 }
 
-export function ClassEditorForm({
-  classDto,
-  channels,
-  groups,
-  editor,
-}: ClassEditorFormProps) {
+export function ClassEditorForm({ classDto, groups, editor }: ClassEditorFormProps) {
   const navigate = useNavigate();
   // `void` у navigate — он возвращает промис (react-router 7), а вызывающие
   // места ждут обычную функцию без результата.
   const goToSchedule = () => void navigate(SCHEDULE_PATH);
-  const form = useClassForm(
-    classDto,
-    channels,
-    editor.create,
-    editor.update,
-    editor.remove,
-  );
+  const form = useClassForm(classDto, editor.create, editor.update, editor.remove);
   // Провал сохранения прокручивает к первой ошибке: «Сохранить» стоит внизу, а
   // ошибка правила («Впишите дату первого занятия», ADR-0168) — у названия
   // наверху, без прокрутки нажатие выглядело бы как «ничего не произошло».
@@ -100,14 +85,6 @@ export function ClassEditorForm({
           <RuleFields
             rules={form.state.rules}
             onChange={(rules) => form.setField('rules', rules)}
-          />
-        </div>
-
-        <div style={editorSectionStyle}>
-          <ClassChannelsField
-            channels={channels}
-            selectedIds={form.state.channelIds}
-            onChange={(channelIds) => form.setField('channelIds', channelIds)}
           />
         </div>
 

@@ -6,12 +6,7 @@
 // (тестируется без React). Черновик (ADR-0052, дополнение 2026-09-21):
 // раньше формы в списке защищённых не было — случайный «Назад» на телефоне
 // стирал набранное расписание молча (аудит 2026-09-21, HIGH).
-import type {
-  ChannelDto,
-  ClassDto,
-  CreateClassInput,
-  UpdateClassInput,
-} from '@xuanxue/shared';
+import type { ClassDto, CreateClassInput, UpdateClassInput } from '@xuanxue/shared';
 import { useEntityForm, type UseEntityFormResult } from '../hooks/useEntityForm';
 import {
   initialClassFormState,
@@ -29,7 +24,6 @@ export type UseClassFormResult = UseEntityFormResult<ClassFormState>;
 
 export function useClassForm(
   classDto: ClassDto | null,
-  channels: ChannelDto[],
   onCreate: (input: CreateClassInput) => Promise<unknown>,
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
@@ -37,7 +31,7 @@ export function useClassForm(
   return useEntityForm({
     entity: classDto,
     getId: (c) => c.id,
-    initialState: (c) => initialClassFormState(c, channels),
+    initialState: initialClassFormState,
     validate: validateClassForm,
     toCreateInput,
     toUpdateInput,

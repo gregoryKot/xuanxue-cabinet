@@ -7,11 +7,11 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань, средняя группа',
     groupLabel: '',
-    groupIds: [],
+    groupId: null,
+    forAllGroups: false,
     format: 'online',
     rules: [],
     tz: 'Asia/Jerusalem',
-    channelIds: [],
     leadMinutes: 30,
     active: true,
     tags: [],
@@ -168,17 +168,19 @@ describe('buildScheduleGrid', () => {
     expect(grid[1][0]?.linkMissing).toBe(false);
   });
 
-  it('слот несёт строку «→ каналы» по активным каналам занятия (ADR-0191)', () => {
+  it('слот несёт строку «→ каналы» группы занятия, чужие каналы не попадают (ADR-0195)', () => {
     const cls = makeClass({
-      channelIds: ['ch1', 'ch2'],
+      groupId: 'g1',
+      groupLabel: 'Начинающие',
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
     const grid = buildScheduleGrid(
       [cls],
       [
-        { id: 'ch1', title: 'Тайцзи вечер' },
-        { id: 'ch2', title: 'Ученики' },
+        { title: 'Тайцзи вечер', groupId: 'g1' },
+        { title: 'Ученики', groupId: 'g1' },
+        { title: 'Старшие', groupId: 'g2' },
       ],
     );
 
@@ -190,7 +192,7 @@ describe('buildScheduleGrid', () => {
 
   it('каналы ещё грузятся (null) — строки нет, а не ложное предупреждение', () => {
     const cls = makeClass({
-      channelIds: ['ch1'],
+      groupId: 'g1',
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
@@ -199,18 +201,20 @@ describe('buildScheduleGrid', () => {
     expect(grid[1][0]?.destination).toBeNull();
   });
 
-  it('выключенный канал в channelIds в строку не попадает (ревью п.4)', () => {
+  it('занятие без группы — красное «Без группы — никуда не уходит»', () => {
     const cls = makeClass({
-      channelIds: ['ch1', 'ch2'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
-    const grid = buildScheduleGrid([cls], [{ id: 'ch1', title: 'Ученики' }]);
+    const grid = buildScheduleGrid([cls], [{ title: 'Ученики', groupId: 'g1' }]);
 
-    expect(grid[1][0]?.destination?.text).toBe('→ Ученики');
+    expect(grid[1][0]?.destination).toEqual({
+      text: 'Без группы — никуда не уходит',
+      isWarning: true,
+    });
   });
 
-  it('теги курса переносятся в слот как есть (ADR-0072)', () => {
+  it('теги занятия переносятся в слот как есть (ADR-0072)', () => {
     const cls = makeClass({
       tags: ['начинающие', 'медитация'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],

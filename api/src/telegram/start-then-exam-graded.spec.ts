@@ -129,7 +129,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
     );
     startHandler = new StartHandler(
       settingsService,
-      new ChannelConfigService(channelModel, classModel),
+      new ChannelConfigService(channelModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(usersService),
       loginIdentity,
@@ -210,18 +210,13 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('ученик подключился, но личный канал школы (не он сам) не стал каналом рассылки занятия', async () => {
-    const active = await classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      active: true,
-    });
+  it('ученик подключился, но его личный канал группы не получил (ADR-0195)', async () => {
     await userModel.create({ name: 'Ольга', telegramId: 902, roles: [] });
 
     await startHandler.handle(fakeStartCtx(902), NOW);
 
-    const classAfter = await classModel.findById(active._id).lean();
-    expect(classAfter?.channelIds).toHaveLength(0);
+    // Личный чат ученика — не канал школы, группы у него не бывает (ADR-0195).
+    expect(await channelModel.countDocuments({ groupId: { $exists: true } })).toBe(0);
   });
 
   // Баг с #131 (найден 2026-09-16 на аудите): join_<код> заводил

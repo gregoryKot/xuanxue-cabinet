@@ -2,11 +2,15 @@
 // поэтому проверяем именно read-after-write: записали драйвером → прочитали
 // моделью и увидели готовый класс, а не документ с дырами вместо значений по
 // умолчанию (CLAUDE.md «Тесты», уровень «запросы к базе»).
-import type { Connection, Model } from 'mongoose';
+import type { Connection, Model, Types } from 'mongoose';
 import { DEFAULT_LEAD_MINUTES, SCHOOL_TZ } from '@xuanxue/shared';
 import { seedSchoolClasses } from './0001-school-classes.migration';
 import { ClassRecord, type LeanScheduleRule } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+
+// Поле `channelIds` схема занятия больше не знает (ADR-0195), но старые миграции
+// его всё ещё пишут напрямую в коллекцию — читаем его так же, мимо схемы.
+type WithChannels = ClassRecord & { channelIds: Types.ObjectId[] };
 
 // `.lean()` отдаёт правила как ScheduleRule — публичный контракт без `_id`
 // (class.schema.ts): для проверки самого `_id` берём форму хранения.
@@ -44,7 +48,7 @@ describe('Миграция 0001-school-classes', () => {
   it('создаёт расписание школы: слоты читаются моделью со всеми умолчаниями', async () => {
     await seedSchoolClasses.up(db());
 
-    const classes = await model.find().lean();
+    const classes = await model.find().lean<WithChannels[]>();
     expect(classes).toHaveLength(EXPECTED_CLASSES);
     expect(classes.reduce((sum, cls) => sum + cls.rules.length, 0)).toBe(EXPECTED_RULES);
 

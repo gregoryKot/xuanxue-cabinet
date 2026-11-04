@@ -1,6 +1,6 @@
 // Шаг тика планировщика (docs/PLAN.md §6 «Планировщик») — DM учителю про
 // broadcast, который сам себя отменил (insertCancelledPlaceholder,
-// broadcast.inserts.ts): «нет каналов», «все каналы выключены», «нет
+// broadcast.inserts.ts): «нет группы», «у группы нет канала», «нет
 // ссылки», «тик опоздал». Живёт физически в broadcasts/, провайдер — в
 // SchedulerModule (тот же приём, что у BroadcastPlannerService/PreviewService
 // — комментарий в scheduler.module.ts): так TeacherNotifier (TelegramModule)

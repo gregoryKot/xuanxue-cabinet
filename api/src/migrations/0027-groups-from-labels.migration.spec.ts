@@ -1,7 +1,7 @@
 // Группы из подписей занятий — против настоящей Mongo. Занятия кладём «старым
 // кодом»: коллекцией напрямую, без `groupIds`, как они лежат на проде до
 // миграции; читаем потом моделью (read-after-write).
-import type { Connection, Model } from 'mongoose';
+import type { Connection, Model, Types } from 'mongoose';
 import { ClassRecord } from '../classes/class.schema';
 import { GroupRecord } from '../groups/group.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -50,7 +50,10 @@ describe('Миграция 0027-groups-from-labels', () => {
   }
 
   async function labelOf(title: string): Promise<{ ids: string[]; label: string }> {
-    const doc = await classes.findOne({ title }).lean();
+    // `groupIds` схема больше не знает (ADR-0195), 0027 его пишет напрямую.
+    const doc = await classes
+      .findOne({ title })
+      .lean<ClassRecord & { groupIds?: Types.ObjectId[] }>();
     const names = new Map(
       (await groups.find().lean()).map((g) => [g._id.toString(), g.name]),
     );
@@ -134,10 +137,12 @@ describe('Миграция 0027-groups-from-labels', () => {
     const groupsBefore = await groups.find().lean();
     // Учитель уже выбрал группу сам — повтор не должен её переписать.
     const [, middle] = await groups.find().sort({ _id: 1 }).lean();
-    await classes.updateOne(
-      { title: 'Курс' },
-      { groupIds: [middle?._id], groupLabel: 'Средние' },
-    );
+    await db()
+      .collection('classes')
+      .updateOne(
+        { title: 'Курс' },
+        { $set: { groupIds: [middle?._id], groupLabel: 'Средние' } },
+      );
 
     const report = await groupsFromLabels.up(db());
 

@@ -1,6 +1,6 @@
 // Запросы планировщика рассылок на чтение — классы, занятия «в окне».
 // Запись (insert рассылки/доставок, cancelled-плейсхолдер) —
-// broadcast-planner.inserts.ts; отбор каналов по активности и тегу —
+// broadcast-planner.inserts.ts; отбор каналов группы —
 // broadcast-channels.queries.ts: разделено ради лимита файла (CLAUDE.md
 // «Храповики», 150 строк).
 import type { DateTime } from 'luxon';
@@ -24,7 +24,8 @@ export type PlannerClass = {
   zoomLink?: string;
   zoomPassword?: string;
   tz: string;
-  channelIds: Types.ObjectId[];
+  groupId?: Types.ObjectId;
+  forAllGroups?: boolean;
   leadMinutes: number;
   active: boolean;
   leaderId?: Types.ObjectId;
@@ -37,7 +38,8 @@ const CLASS_PROJECTION = {
   zoomLink: 1,
   zoomPassword: 1,
   tz: 1,
-  channelIds: 1,
+  groupId: 1,
+  forAllGroups: 1,
   leadMinutes: 1,
   active: 1,
   leaderId: 1,

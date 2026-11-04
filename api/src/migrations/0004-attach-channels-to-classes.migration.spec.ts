@@ -8,6 +8,10 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
+// Поле `channelIds` схема занятия больше не знает (ADR-0195), но эта миграция
+// пишет его напрямую в коллекцию — читаем так же, мимо схемы.
+type WithChannels = ClassRecord & { channelIds: Types.ObjectId[] };
+
 const EXPECTED_CLASSES = 11;
 
 describe('Миграция 0004-attach-channels-to-classes', () => {
@@ -51,7 +55,7 @@ describe('Миграция 0004-attach-channels-to-classes', () => {
 
     await attachChannelsToClasses.up(db());
 
-    const classes = await classModel.find().lean();
+    const classes = await classModel.find().lean<WithChannels[]>();
     expect(classes).toHaveLength(EXPECTED_CLASSES);
     for (const cls of classes) {
       expect(cls.channelIds.map(String)).toEqual([channel._id.toString()]);
@@ -64,14 +68,17 @@ describe('Миграция 0004-attach-channels-to-classes', () => {
     const own = new Types.ObjectId();
     await createChannel();
     await seedSchoolClasses.up(db());
-    await classModel.updateOne(
+    // `channelIds` схема занятия больше не знает (ADR-0195) — пишем мимо неё.
+    await classModel.collection.updateOne(
       { title: 'Цигун для глаз' },
       { $set: { channelIds: [own] } },
     );
 
     await attachChannelsToClasses.up(db());
 
-    const found = await classModel.findOne({ title: 'Цигун для глаз' }).lean();
+    const found = await classModel
+      .findOne({ title: 'Цигун для глаз' })
+      .lean<WithChannels>();
     expect(found?.channelIds.map(String)).toEqual([own.toString()]);
   });
 
@@ -81,7 +88,7 @@ describe('Миграция 0004-attach-channels-to-classes', () => {
 
     await attachChannelsToClasses.up(db());
 
-    const classes = await classModel.find().lean();
+    const classes = await classModel.find().lean<WithChannels[]>();
     expect(classes.every((cls) => cls.channelIds.length === 0)).toBe(true);
   });
 
@@ -90,7 +97,7 @@ describe('Миграция 0004-attach-channels-to-classes', () => {
 
     await expect(attachChannelsToClasses.up(db())).resolves.toBeUndefined();
 
-    const classes = await classModel.find().lean();
+    const classes = await classModel.find().lean<WithChannels[]>();
     expect(classes.every((cls) => cls.channelIds.length === 0)).toBe(true);
   });
 
@@ -101,7 +108,7 @@ describe('Миграция 0004-attach-channels-to-classes', () => {
     await attachChannelsToClasses.up(db());
     await attachChannelsToClasses.up(db());
 
-    const classes = await classModel.find().lean();
+    const classes = await classModel.find().lean<WithChannels[]>();
     expect(classes.every((cls) => cls.channelIds.length === 1)).toBe(true);
   });
 });

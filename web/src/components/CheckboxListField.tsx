@@ -6,26 +6,14 @@
 // подпись и текст пустого состояния; сама галочка — components/Toggle.tsx.
 // `ref` — на сам `fieldset` (`tabIndex={-1}`): форма рассылки фокусирует его
 // при ошибке «выберите канал» (pr-k3-fixes.md п.6, broadcastFormInput.ts).
-import { forwardRef, type CSSProperties, type ReactNode } from 'react';
-import { RichText } from './RichText';
+import { forwardRef, type ReactNode } from 'react';
+import { ListFieldFrame } from './ListFieldFrame';
 import { Toggle } from './Toggle';
-
-const fieldsetStyle: CSSProperties = {
-  border: 'none',
-  padding: 0,
-  margin: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-};
-const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-const hintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
-const errorStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
 
 interface CheckboxListOption {
   id: string;
   label: string;
-  /** Строка под подписью (Toggle.hint) — например, дни недели курса. */
+  /** Строка под подписью (Toggle.hint) — например, дни недели занятия. */
   hint?: string;
 }
 
@@ -37,25 +25,11 @@ interface CheckboxListFieldProps {
   hint?: ReactNode;
   emptyMessage: ReactNode;
   error?: string;
-  /** Строки, занятые запросом: галочку нельзя нажать, пока он в пути. */
-  disabledIds?: readonly string[];
-  /** Строки «отмечено частично» — не входят в `selectedIds`. */
-  mixedIds?: readonly string[];
 }
 
 export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFieldProps>(
   function CheckboxListField(
-    {
-      legend,
-      options,
-      selectedIds,
-      onChange,
-      hint,
-      emptyMessage,
-      error,
-      disabledIds,
-      mixedIds,
-    },
+    { legend, options, selectedIds, onChange, hint, emptyMessage, error },
     ref,
   ) {
     function toggle(id: string, checked: boolean) {
@@ -63,33 +37,24 @@ export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFie
     }
 
     return (
-      <fieldset ref={ref} tabIndex={-1} style={fieldsetStyle}>
-        <legend style={legendStyle}>{legend}</legend>
-        {hint}
-
-        {options.length === 0 ? (
-          <p style={hintStyle}>{emptyMessage}</p>
-        ) : (
-          options.map((option) => (
-            <Toggle
-              key={option.id}
-              label={option.label}
-              hint={option.hint}
-              mixed={mixedIds?.includes(option.id)}
-              checked={selectedIds.includes(option.id)}
-              disabled={disabledIds?.includes(option.id)}
-              onChange={(checked) => toggle(option.id, checked)}
-            />
-          ))
-        )}
-        {/* Через RichText (ADR-0124); hint/emptyMessage — ReactNode, их рисует
-         * вызывающая сторона сама. */}
-        {error && (
-          <p role="alert" style={errorStyle}>
-            <RichText text={error} />
-          </p>
-        )}
-      </fieldset>
+      <ListFieldFrame
+        ref={ref}
+        legend={legend}
+        hint={hint}
+        error={error}
+        isEmpty={options.length === 0}
+        emptyMessage={emptyMessage}
+      >
+        {options.map((option) => (
+          <Toggle
+            key={option.id}
+            label={option.label}
+            hint={option.hint}
+            checked={selectedIds.includes(option.id)}
+            onChange={(checked) => toggle(option.id, checked)}
+          />
+        ))}
+      </ListFieldFrame>
     );
   },
 );

@@ -69,7 +69,6 @@ describe('RecordingPromptService.prompt', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
       // Без ссылки не спрашивают (lesson-link.ts) — см. service.link.spec.ts.
       zoomLink: 'https://zoom.example/1',
       ...overrides,

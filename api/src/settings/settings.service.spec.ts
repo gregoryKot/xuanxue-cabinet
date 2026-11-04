@@ -351,7 +351,6 @@ describe('SettingsService', () => {
         tz: 'Asia/Jerusalem',
         leadMinutes: 30,
         active: true,
-        channelIds: [],
       });
       const lesson = await lessonModel.create({
         classId: cls._id,

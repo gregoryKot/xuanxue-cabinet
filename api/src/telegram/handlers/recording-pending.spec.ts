@@ -46,7 +46,6 @@ describe('listPendingRecordings', () => {
       tz: ZONE,
       leadMinutes: 30,
       active: true,
-      channelIds: [],
       ...overrides,
     });
   }

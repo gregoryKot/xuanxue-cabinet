@@ -4,7 +4,6 @@ import { toClassDto, type LeanClass } from './class.mapper';
 const RULE_ID = new Types.ObjectId();
 const CLASS_ID = new Types.ObjectId();
 const LEADER_ID = new Types.ObjectId();
-const CHANNEL_ID = new Types.ObjectId();
 const GROUP_ID = new Types.ObjectId();
 const CREATED_AT = new Date(Date.UTC(2026, 8, 1, 10, 0, 0));
 const UPDATED_AT = new Date(Date.UTC(2026, 8, 2, 11, 0, 0));
@@ -14,7 +13,7 @@ function fullClass(): LeanClass {
     _id: CLASS_ID,
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
-    groupIds: [GROUP_ID],
+    groupId: GROUP_ID,
     format: 'online',
     location: 'зал школы',
     zoomLink: 'https://us02web.zoom.us/j/123',
@@ -22,7 +21,6 @@ function fullClass(): LeanClass {
     leaderId: LEADER_ID,
     rules: [{ _id: RULE_ID, weekday: 1, time: '19:00', durationMin: 60 }],
     tz: 'Asia/Jerusalem',
-    channelIds: [CHANNEL_ID],
     leadMinutes: 30,
     active: true,
     tags: ['начинающие'],
@@ -32,13 +30,20 @@ function fullClass(): LeanClass {
 }
 
 describe('toClassDto', () => {
-  // ADR-0193: до миграции 0027 в документе поля нет, `.lean()` default не
-  // подставляет — ответ отдаёт пустой список, а не падает на `undefined.map`.
-  it('занятие без groupIds в документе — groupIds: []', () => {
+  // ADR-0195: у занятия без группы поля в документе нет — ответ отдаёт null.
+  it('занятие без groupId в документе — groupId: null, forAllGroups: false', () => {
     const doc = fullClass();
-    delete doc.groupIds;
+    delete doc.groupId;
 
-    expect(toClassDto(doc).groupIds).toEqual([]);
+    expect(toClassDto(doc)).toMatchObject({ groupId: null, forAllGroups: false });
+  });
+
+  it('занятие для всех групп — forAllGroups: true, groupId: null', () => {
+    const doc = fullClass();
+    delete doc.groupId;
+    doc.forAllGroups = true;
+
+    expect(toClassDto(doc)).toMatchObject({ groupId: null, forAllGroups: true });
   });
 
   it('переносит все поля, id и даты — строками', () => {
@@ -46,7 +51,8 @@ describe('toClassDto', () => {
       id: CLASS_ID.toString(),
       title: 'Тайцзицюань',
       groupLabel: 'средняя группа',
-      groupIds: [GROUP_ID.toString()],
+      groupId: GROUP_ID.toString(),
+      forAllGroups: false,
       format: 'online',
       location: 'зал школы',
       zoomLink: 'https://us02web.zoom.us/j/123',
@@ -54,7 +60,6 @@ describe('toClassDto', () => {
       leaderId: LEADER_ID.toString(),
       rules: [{ id: RULE_ID.toString(), weekday: 1, time: '19:00', durationMin: 60 }],
       tz: 'Asia/Jerusalem',
-      channelIds: [CHANNEL_ID.toString()],
       leadMinutes: 30,
       active: true,
       tags: ['начинающие'],
@@ -102,15 +107,14 @@ describe('toClassDto', () => {
     expect(JSON.parse(JSON.stringify(weekly))).not.toHaveProperty('everyWeeks');
   });
 
-  it('пустой список правил и каналов — пустые массивы', () => {
+  it('пустой список правил — пустой массив, каналов в ответе нет (ADR-0195)', () => {
     const doc = fullClass();
     doc.rules = [];
-    doc.channelIds = [];
 
     const dto = toClassDto(doc);
 
     expect(dto.rules).toEqual([]);
-    expect(dto.channelIds).toEqual([]);
+    expect(dto).not.toHaveProperty('channelIds');
   });
 
   // Занятия, заведённые до ADR-0072, не имеют поля в документе — `.lean()`

@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ChannelDto } from '@xuanxue/shared';
 import { ChannelCard } from './ChannelCard';
+import type { ChannelGroupLine } from './channelGroupText';
 
 function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
   return {
@@ -13,20 +14,28 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
 }
 
-function renderCard(overrides: Partial<ChannelDto> = {}) {
+function renderCard(
+  overrides: Partial<ChannelDto> = {},
+  groupLine?: ChannelGroupLine | null,
+) {
   const onSelect = vi.fn();
-  render(
+  const view = render(
     <ul>
-      <ChannelCard channel={makeChannel(overrides)} onSelect={onSelect} />
+      <ChannelCard
+        channel={makeChannel(overrides)}
+        onSelect={onSelect}
+        groupLine={groupLine}
+      />
     </ul>,
   );
-  return { onSelect };
+  return { onSelect, unmount: view.unmount };
 }
 
 describe('ChannelCard', () => {
@@ -50,6 +59,34 @@ describe('ChannelCard', () => {
     renderCard({});
     expect(screen.getByText('777')).toBeInTheDocument();
     expect(screen.queryByText(/Выключен/)).not.toBeInTheDocument();
+  });
+
+  it('строка группы: название выделено, предупреждение — цветом опасности (ADR-0195)', () => {
+    const { unmount } = renderCard(
+      { groupId: 'g1' },
+      { text: 'Группа: **Начинающие** · 5 занятий', isWarning: false },
+    );
+    expect(screen.getByText('Начинающие').tagName).toBe('STRONG');
+    expect(screen.getByText(/5 занятий/)).not.toHaveStyle({ color: 'var(--danger)' });
+    unmount();
+
+    renderCard({}, { text: 'Группа не выбрана — посты сюда не уходят', isWarning: true });
+    expect(screen.getByText('Группа не выбрана — посты сюда не уходят')).toHaveStyle({
+      color: 'var(--danger)',
+    });
+  });
+
+  it('группа ещё грузится (null) — скелетон; не передана — строки нет', () => {
+    const { container, unmount } = render(
+      <ul>
+        <ChannelCard channel={makeChannel()} onSelect={vi.fn()} groupLine={null} />
+      </ul>,
+    );
+    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    unmount();
+
+    renderCard();
+    expect(screen.queryByText(/Группа/)).not.toBeInTheDocument();
   });
 
   // Список каналов — одна карточка (docs/adr/0043): волосяную линию между

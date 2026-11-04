@@ -1,10 +1,8 @@
-// Общая обвязка для broadcast-planner.service.spec.ts (базовое поведение
-// тика) и broadcast-planner.window.spec.ts (расширенное окно предпросмотра,
-// read-after-write с DeliveryRunnerService) — один файл был больше
-// спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая, чтобы не
-// дублировать её (jscpd).
+// Общая обвязка для broadcast-planner.service.spec.ts (базовое поведение тика)
+// и broadcast-planner.window.spec.ts (окно предпросмотра): один файл был больше
+// спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая (jscpd).
 import { DateTime } from 'luxon';
-import type { Connection, Model, Types } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord } from '../channels/channel.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from '../classes/class.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
@@ -43,10 +41,8 @@ export interface TestModels {
   usersService: UsersService;
 }
 
-/** Резолв моделей + `UsersService` из соединения `openMemoryMongo()` — общий
- * шаг для setupPlannerTest() ниже и send-now.service.test-support.ts
- * (SendNowService поднимает те же модели ради своего сервиса, CLAUDE.md
- * «Одна механика — один компонент», jscpd). */
+/** Модели + `UsersService` из соединения `openMemoryMongo()` — общий шаг для
+ * setupPlannerTest() ниже и send-now.service.test-support.ts (jscpd). */
 export function openTestModels(connection: Connection): TestModels {
   const classModel = connection.model<ClassRecord>(ClassRecord.name);
   const lessonModel = connection.model<LessonRecord>(LessonRecord.name);
@@ -123,8 +119,7 @@ type ChannelFixtureContext = Pick<PlannerTestContext, 'channelModel'>;
 type ClassFixtureContext = Pick<PlannerTestContext, 'classModel' | 'channelModel'>;
 type LessonFixtureContext = Pick<PlannerTestContext, 'lessonModel'>;
 
-/** Активный telegram-канал — по
- * умолчанию у класса есть хотя бы один такой, иначе рассылка не создаётся. */
+/** Активный telegram-канал; `groupId` в `overrides` — его группа (ADR-0195). */
 export async function createChannel(
   ctx: ChannelFixtureContext,
   overrides: Partial<ChannelRecord> = {},
@@ -143,7 +138,11 @@ export async function createClass(
   ctx: ClassFixtureContext,
   overrides: Partial<ClassRecord> = {},
 ) {
-  const channelIds = overrides.channelIds ?? [(await createChannel(ctx))._id];
+  // Маршрут задаёт только группа (ADR-0195): без явного `groupId` (даже
+  // `undefined` — «без группы») занятию достаётся своя группа и канал в ней.
+  const explicit = 'groupId' in overrides || overrides.forAllGroups === true;
+  const groupId = explicit ? overrides.groupId : new Types.ObjectId();
+  if (!explicit) await createChannel(ctx, { groupId });
   // Как в проде: ссылка класса лежит шифротекстом — планировщик её расшифровывает.
   return ctx.classModel.create(
     encryptRecord(
@@ -156,7 +155,7 @@ export async function createClass(
         leadMinutes: 30,
         active: true,
         ...overrides,
-        channelIds,
+        groupId,
       },
       CLASS_ENCRYPT_SCHEMA,
     ),

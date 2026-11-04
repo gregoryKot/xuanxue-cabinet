@@ -8,6 +8,7 @@
 import {
   EVERY_TWO_WEEKS,
   WEEKDAYS,
+  type ChannelDto,
   type ClassDto,
   type ScheduleRuleDto,
   type Weekday,
@@ -41,8 +42,8 @@ export interface ScheduleSlot {
    * останется за дверью. SlotRow показывает «без ссылки» прямо в сетке
    * (отзыв владельца 2026-09-12). У офлайна ссылки и не должно быть. */
   linkMissing: boolean;
-  /** Куда уходят ссылка и записи (ADR-0191): названия активных каналов или
-   * предупреждение, что ссылку некому разослать. `null` — каналы ещё
+  /** Куда уходят ссылка и записи (ADR-0191, ADR-0195): названия каналов
+   * группы занятия или предупреждение, что ссылку некому разослать. `null` — каналы ещё
    * грузятся или говорить нечего. */
   destination: ClassDestinationLine | null;
   /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotRow печатает их
@@ -93,11 +94,11 @@ function emptyGrid(): ScheduleGrid {
  * пропускается — показать его в сетке нечем, а падать из-за одной плохой
  * записи не должен весь экран. `activeChannels` — активные каналы
  * кабинета (ScheduleScreen грузит их один раз через useChannels()), `null`
- * пока грузятся: выключенный канал в channelIds занятия рассылку не получит
- * (ревью п.4). */
+ * пока грузятся: занятие уходит в каналы своей группы, канал без группы
+ * рассылку не получит (ADR-0195). */
 export function buildScheduleGrid(
   classes: ClassDto[],
-  activeChannels: readonly { id: string; title: string }[] | null = null,
+  activeChannels: readonly Pick<ChannelDto, 'title' | 'groupId'>[] | null = null,
 ): ScheduleGrid {
   const grid = emptyGrid();
   for (const cls of classes) {

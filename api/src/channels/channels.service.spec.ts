@@ -1,6 +1,6 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): шифрование config, target как производное, дубль (type, target),
-// запрет удаления подключённого канала. upsertTelegramChat и readConfig —
+// группа канала (ADR-0195). upsertTelegramChat и readConfig —
 // в channel-config.service.spec.ts (ChannelConfigService).
 import { randomBytes } from 'crypto';
 import { Types } from 'mongoose';
@@ -12,7 +12,7 @@ import { ChannelConfigService } from './channel-config.service';
 import { ChannelRecord, ChannelSchema } from './channel.schema';
 import { ChannelsService } from './channels.service';
 import { ManualAdapter } from './manual.adapter';
-import { ClassRecord, ClassSchema } from '../classes/class.schema';
+import { GroupRecord, GroupSchema } from '../groups/group.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 // Литерал секрета в тесте — находка gitleaks, даже фейкового: тот же приём,
@@ -37,7 +37,7 @@ describe('ChannelsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<ChannelRecord>;
-  let classModel: Model<ClassRecord>;
+  let groupModel: Model<GroupRecord>;
   let channelConfig: ChannelConfigService;
   let service: ChannelsService;
 
@@ -45,15 +45,15 @@ describe('ChannelsService', () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     model = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
+    groupModel = connection.model<GroupRecord>(GroupRecord.name, GroupSchema);
     // Уникальный индекс (type, target) строится в фоне — без явного ожидания
     // тест на дубль иногда бежал бы без него (мигающий тест, тот же урок,
     // что в users.service.spec.ts).
     await model.syncIndexes();
-    channelConfig = new ChannelConfigService(model, classModel);
+    channelConfig = new ChannelConfigService(model);
     service = new ChannelsService(
       model,
-      classModel,
+      groupModel,
       fakeConfig(),
       registryWith({ status: 'manual' }),
       channelConfig,
@@ -66,7 +66,7 @@ describe('ChannelsService', () => {
 
   afterEach(async () => {
     await model.deleteMany({});
-    await classModel.deleteMany({});
+    await groupModel.deleteMany({});
   });
 
   it('list: без фильтра — все каналы, отсортированы по алфавиту', async () => {
@@ -234,22 +234,74 @@ describe('ChannelsService', () => {
     await expect(service.remove(unknownId)).rejects.toThrow('не найден');
   });
 
-  it('remove: канал в classes.channelIds — ConflictError, канал остаётся', async () => {
+  it('remove: канал с группой удаляется — рычаг только в канале, держать нечему', async () => {
+    const group = await groupModel.create({ name: 'Начинающие', nameKey: 'начинающие' });
     const created = await service.create({
       type: 'manual',
       title: 'Facebook',
       config: {},
-    });
-    await classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      channelIds: [created.id],
+      groupId: group._id.toString(),
     });
 
-    await expect(service.remove(created.id)).rejects.toThrow('Сначала отключите');
-    await expect(service.getById(created.id)).resolves.toMatchObject({
-      title: 'Facebook',
+    await service.remove(created.id);
+
+    await expect(service.getById(created.id)).rejects.toThrow('не найден');
+  });
+
+  it('groupId: создание с группой → читается; без группы — null', async () => {
+    const group = await groupModel.create({ name: 'Средние', nameKey: 'средние' });
+
+    const withGroup = await service.create({
+      type: 'manual',
+      title: 'A',
+      config: {},
+      groupId: group._id.toString(),
     });
+    const without = await service.create({ type: 'manual', title: 'B', config: {} });
+
+    expect(withGroup.groupId).toBe(group._id.toString());
+    expect((await service.getById(withGroup.id)).groupId).toBe(group._id.toString());
+    expect(without.groupId).toBeNull();
+  });
+
+  it('groupId: неизвестная группа — InvalidInputError, канал не создан', async () => {
+    await expect(
+      service.create({
+        type: 'manual',
+        title: 'A',
+        config: {},
+        groupId: new Types.ObjectId().toString(),
+      }),
+    ).rejects.toThrow('Такой группы нет');
+    await expect(service.list({})).resolves.toEqual([]);
+  });
+
+  it('update: группу меняют, потом снимают null — поле удаляется', async () => {
+    const first = await groupModel.create({ name: 'Старшие', nameKey: 'старшие' });
+    const created = await service.create({ type: 'manual', title: 'A', config: {} });
+
+    const set = await service.update(created.id, { groupId: first._id.toString() });
+    const cleared = await service.update(created.id, { groupId: null });
+
+    expect(set.groupId).toBe(first._id.toString());
+    expect(cleared.groupId).toBeNull();
+    await expect(model.findById(created.id).lean()).resolves.not.toHaveProperty(
+      'groupId',
+    );
+  });
+
+  it('update: тело без groupId не трогает группу', async () => {
+    const group = await groupModel.create({ name: 'Средние', nameKey: 'средние' });
+    const created = await service.create({
+      type: 'manual',
+      title: 'A',
+      config: {},
+      groupId: group._id.toString(),
+    });
+
+    const renamed = await service.update(created.id, { title: 'Новое имя' });
+
+    expect(renamed.groupId).toBe(group._id.toString());
   });
 
   it('test(): manual — { status: "manual" }', async () => {
@@ -265,7 +317,7 @@ describe('ChannelsService', () => {
   it('test(): ошибка адаптера — error проходит scrub перед возвратом', async () => {
     const failingService = new ChannelsService(
       model,
-      classModel,
+      groupModel,
       fakeConfig(FAKE_BOT_TOKEN),
       registryWith({
         status: 'failed',

@@ -21,7 +21,7 @@ export interface CancelledBroadcastContext {
    * но входит в контекст для симметрии с FailedDeliveryContext.deliveryId. */
   lessonId?: string;
   /** Причина из broadcast.text (insertCancelledPlaceholder,
-   * broadcast.inserts.ts) — например CANCEL_REASON.noChannels
+   * broadcast.inserts.ts) — например CANCEL_REASON.noGroup
    * (broadcast-cancel-reasons.ts). */
   reason: string;
 }

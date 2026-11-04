@@ -26,8 +26,9 @@ const fakeTelegram = createFakeTelegramClient(TEST_BOT_TOKEN, FAILING_CHAT_ID);
 
 describe('Channels (e2e)', () => {
   let testApp: TestApp;
-  const { server, postChannel, channelModel, classModel, sessionFor } =
-    createChannelTestHelpers(() => testApp);
+  const { server, postChannel, channelModel, sessionFor } = createChannelTestHelpers(
+    () => testApp,
+  );
 
   beforeAll(async () => {
     testApp = await createTestApp((builder) => {
@@ -255,29 +256,6 @@ describe('Channels (e2e)', () => {
         cookie,
       );
       expect(res.status).toBe(204);
-    });
-
-    it('DELETE канала, подключённого к занятию, — 409, канал остаётся', async () => {
-      const cookie = await sessionFor(['teacher']);
-      const created = await postChannel(cookie, MANUAL_BODY);
-      const dto = created.body as ChannelDto;
-
-      await classModel().create({
-        title: 'Тайцзицюань',
-        format: 'online',
-        channelIds: [dto.id],
-      });
-
-      const res = await withCsrf(request(server()).delete(`/api/channels/${dto.id}`)).set(
-        'Cookie',
-        cookie,
-      );
-      expect(res.status).toBe(409);
-
-      const stillThere = await request(server())
-        .get(`/api/channels/${dto.id}`)
-        .set('Cookie', cookie);
-      expect(stillThere.status).toBe(200);
     });
   });
 

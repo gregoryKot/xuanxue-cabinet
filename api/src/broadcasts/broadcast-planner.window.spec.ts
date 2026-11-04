@@ -37,7 +37,7 @@ function fakeNotifier(): TeacherNotifier {
 }
 
 function buildRunner(ctx: PlannerTestContext, send: jest.Mock): DeliveryRunnerService {
-  const channelConfig = new ChannelConfigService(ctx.channelModel, ctx.classModel);
+  const channelConfig = new ChannelConfigService(ctx.channelModel);
   const registry = new ChannelAdapterRegistry([
     { type: 'telegram', send },
     new ManualAdapter(),

@@ -3,7 +3,7 @@
 // общий components/CheckboxListField.tsx (материалы, слой 3.2, привязывают
 // занятия ровно тем же приёмом, MaterialClassesField.tsx): здесь только свой
 // вид подписи «тип · название» и своя карточка пропсов, знакомая остальному
-// кабинету (ClassChannelsField.tsx, broadcasts/BroadcastFormFields.tsx).
+// кабинету (broadcasts/BroadcastFormFields.tsx).
 import { forwardRef, type ReactNode } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
 import { CheckboxListField } from '../components/CheckboxListField';

@@ -60,7 +60,7 @@ describe('handleTelegramLinkDeepLink — подключение канала (р
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     await channelModel.syncIndexes();
-    channelConfig = new ChannelConfigService(channelModel, classModel);
+    channelConfig = new ChannelConfigService(channelModel);
   }, 60_000);
 
   afterAll(async () => {

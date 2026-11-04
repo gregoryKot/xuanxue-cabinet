@@ -8,7 +8,7 @@ import type { ApiErrorBody, ClassDto, GroupDto } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
-const CLASS_BODY = { title: 'Тайцзицюань', format: 'online' as const, channelIds: [] };
+const CLASS_BODY = { title: 'Тайцзицюань', format: 'online' as const };
 
 describe('Группы школы (e2e)', () => {
   let testApp: TestApp;
@@ -85,7 +85,7 @@ describe('Группы школы (e2e)', () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
 
       const dto = await createGroup(cookie);
-      expect(dto.classCount).toBe(0);
+      expect(dto).toMatchObject({ classCount: 0, channelCount: 0 });
       // Документ Mongoose наружу не возвращается (CLAUDE.md, раздел «API»).
       expect(dto).not.toHaveProperty('_id');
       expect(dto).not.toHaveProperty('nameKey');
@@ -172,38 +172,65 @@ describe('Группы школы (e2e)', () => {
     });
   });
 
-  describe('группы у занятия', () => {
-    it('создание и правка с groupIds: подпись выводится, classCount растёт и падает', async () => {
+  describe('группа у занятия и у канала (ADR-0195)', () => {
+    function postChannel(cookie: string, body: Record<string, unknown>): request.Test {
+      return withCsrf(request(server()).post('/api/channels'))
+        .set('Cookie', cookie)
+        .send({ type: 'manual', title: 'Канал группы', config: {}, ...body });
+    }
+
+    async function listGroups(cookie: string): Promise<GroupDto[]> {
+      const res = await request(server()).get('/api/groups').set('Cookie', cookie);
+      return res.body as GroupDto[];
+    }
+
+    it('создание и правка с groupId: подпись — название группы, classCount растёт и падает', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const first = await createGroup(cookie, 'Утренние');
       const second = await createGroup(cookie, 'Вечерние');
 
-      const created = await postClass(cookie, { groupIds: [second.id, first.id] });
+      const created = await postClass(cookie, { groupId: second.id });
       expect(created.status).toBe(201);
       const cls = created.body as ClassDto;
-      // Порядок — по созданию групп, а не по порядку в теле.
-      expect(cls.groupIds).toEqual([first.id, second.id]);
-      expect(cls.groupLabel).toBe('Утренние, Вечерние');
-
-      const counted = (await request(server()).get('/api/groups').set('Cookie', cookie))
-        .body as GroupDto[];
-      expect(counted.find((g) => g.id === first.id)?.classCount).toBe(1);
+      expect(cls.groupId).toBe(second.id);
+      expect(cls.groupLabel).toBe('Вечерние');
+      expect((await listGroups(cookie)).find((g) => g.id === second.id)?.classCount).toBe(
+        1,
+      );
 
       const patched = await withCsrf(request(server()).patch(`/api/classes/${cls.id}`))
         .set('Cookie', cookie)
-        .send({ groupIds: [second.id] });
-      expect((patched.body as ClassDto).groupLabel).toBe('Вечерние');
+        .send({ groupId: first.id });
+      expect((patched.body as ClassDto).groupLabel).toBe('Утренние');
 
-      const after = (await request(server()).get('/api/groups').set('Cookie', cookie))
-        .body as GroupDto[];
-      expect(after.find((g) => g.id === first.id)?.classCount).toBe(0);
-      expect(after.find((g) => g.id === second.id)?.classCount).toBe(1);
+      const after = await listGroups(cookie);
+      expect(after.find((g) => g.id === first.id)?.classCount).toBe(1);
+      expect(after.find((g) => g.id === second.id)?.classCount).toBe(0);
+    });
+
+    it('channelCount: канал с группой считается; снятие группы у канала уменьшает', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const group = await createGroup(cookie);
+
+      const channel = await postChannel(cookie, { groupId: group.id });
+      expect(channel.status).toBe(201);
+      expect(
+        (await listGroups(cookie)).find((g) => g.id === group.id)?.channelCount,
+      ).toBe(1);
+
+      const channelId = (channel.body as { id: string }).id;
+      await withCsrf(request(server()).patch(`/api/channels/${channelId}`))
+        .set('Cookie', cookie)
+        .send({ groupId: null });
+      expect(
+        (await listGroups(cookie)).find((g) => g.id === group.id)?.channelCount,
+      ).toBe(0);
     });
 
     it('переименование меняет groupLabel занятия, которое читается отдельным GET', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const group = await createGroup(cookie);
-      const cls = (await postClass(cookie, { groupIds: [group.id] })).body as ClassDto;
+      const cls = (await postClass(cookie, { groupId: group.id })).body as ClassDto;
 
       await withCsrf(request(server()).patch(`/api/groups/${group.id}`))
         .set('Cookie', cookie)
@@ -215,39 +242,48 @@ describe('Группы школы (e2e)', () => {
       expect((got.body as ClassDto).groupLabel).toBe('Новое имя');
     });
 
-    it('DELETE группы, которую несёт занятие — 409; после снятия — 204', async () => {
+    it('DELETE группы, которую несёт занятие или канал — 409 с названием, что держит; после снятия — 204', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const group = await createGroup(cookie);
-      const cls = (await postClass(cookie, { groupIds: [group.id] })).body as ClassDto;
+      const cls = (await postClass(cookie, { groupId: group.id })).body as ClassDto;
+      const channel = await postChannel(cookie, { groupId: group.id });
+      const channelId = (channel.body as { id: string }).id;
 
       const blocked = await withCsrf(
         request(server()).delete(`/api/groups/${group.id}`),
       ).set('Cookie', cookie);
       expect(blocked.status).toBe(409);
+      expect((blocked.body as ApiErrorBody).message).toContain('занятий: 1 и каналов: 1');
 
       await withCsrf(request(server()).patch(`/api/classes/${cls.id}`))
         .set('Cookie', cookie)
-        .send({ groupIds: [] });
+        .send({ groupId: null });
+      await withCsrf(request(server()).patch(`/api/channels/${channelId}`))
+        .set('Cookie', cookie)
+        .send({ groupId: null });
       const freed = await withCsrf(
         request(server()).delete(`/api/groups/${group.id}`),
       ).set('Cookie', cookie);
       expect(freed.status).toBe(204);
     });
 
-    it('неизвестная группа и не-id в groupIds — 400', async () => {
+    it('неизвестная группа и не-id в groupId занятия и канала — 400', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const missing = new Types.ObjectId().toString();
 
-      const unknown = await postClass(cookie, {
-        groupIds: [new Types.ObjectId().toString()],
-      });
-      const garbage = await postClass(cookie, { groupIds: ['не-id'] });
+      const statuses = [
+        (await postClass(cookie, { groupId: missing })).status,
+        (await postClass(cookie, { groupId: 'не-id' })).status,
+        (await postChannel(cookie, { groupId: missing })).status,
+        (await postChannel(cookie, { groupId: 'не-id' })).status,
+      ];
 
-      expect([unknown.status, garbage.status]).toEqual([400, 400]);
+      expect(statuses).toEqual([400, 400, 400, 400]);
     });
 
     // Подпись больше не пишется клиентом: вкладка со старой сборкой получает
     // 400 и предложение перезагрузиться (ADR-0101), а не молча теряет поле.
-    it('groupLabel в теле — 400: подпись выводится сервером из groupIds', async () => {
+    it('groupLabel в теле — 400: подпись выводится сервером из группы', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
 
       const res = await postClass(cookie, { groupLabel: 'средняя группа' });

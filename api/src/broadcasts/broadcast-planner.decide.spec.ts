@@ -9,7 +9,7 @@ function activeClass(overrides: Partial<DecideClassInput> = {}): DecideClassInpu
   return {
     active: true,
     format: 'online',
-    channelIds: ['c1'],
+    groupId: 'g1',
     zoomLink: 'https://zoom.example/1',
     leadMinutes: 30,
     ...overrides,
@@ -100,14 +100,24 @@ describe('decideBroadcast', () => {
     expect(decision).toEqual({ kind: 'skip', reason: 'класс выключен' });
   });
 
-  it('у класса нет каналов — skip', () => {
+  it('у занятия нет группы — skip', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
-      activeClass({ channelIds: [] }),
+      activeClass({ groupId: undefined }),
       NOW,
       DEFAULT_PREVIEW_MINUTES,
     );
-    expect(decision).toEqual({ kind: 'skip', reason: 'у класса нет каналов рассылки' });
+    expect(decision).toEqual({ kind: 'skip', reason: 'у занятия нет группы' });
+  });
+
+  it('занятие для всех групп без группы — идёт: канал отберёт доставка', () => {
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
+      activeClass({ groupId: undefined, forAllGroups: true }),
+      NOW,
+      DEFAULT_PREVIEW_MINUTES,
+    );
+    expect(decision).toEqual({ kind: 'send' });
   });
 
   it('офлайн-класс без ссылки — skip', () => {

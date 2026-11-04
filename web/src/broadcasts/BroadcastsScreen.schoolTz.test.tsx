@@ -22,6 +22,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '1',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,

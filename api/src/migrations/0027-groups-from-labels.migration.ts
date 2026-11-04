@@ -13,7 +13,7 @@
 // группа с тем же названием, и миграция называет её в отчёте — владелец решит,
 // оставить её или слить с одной из трёх.
 import { Types, type mongo } from 'mongoose';
-import { DEFAULT_GROUP_NAMES, groupNameKey, joinGroupNames } from '@xuanxue/shared';
+import { DEFAULT_GROUP_NAMES, groupNameKey } from '@xuanxue/shared';
 
 type Db = mongo.Db;
 
@@ -102,7 +102,7 @@ export const groupsFromLabels = {
         {
           $set: {
             groupIds: sorted.map((id) => new Types.ObjectId(id)),
-            groupLabel: joinGroupNames(sorted.map((id) => byId.get(id) ?? '')),
+            groupLabel: sorted.map((id) => byId.get(id) ?? '').join(', '),
           },
         },
       );

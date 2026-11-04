@@ -218,8 +218,9 @@ describe('send-now.queries', () => {
 
   describe('applySendNowUpdate', () => {
     async function activeChannelAndClass() {
-      const channel = await createChannel(ctx);
-      const cls = await createClass(ctx, { channelIds: [channel._id] });
+      const groupId = new Types.ObjectId();
+      const channel = await createChannel(ctx, { groupId });
+      const cls = await createClass(ctx, { groupId });
       return { channel, cls };
     }
 

@@ -85,7 +85,6 @@ describe('TopicCommandHandler', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
     const lesson = await lessonModel.create({
       classId: cls._id,
@@ -141,7 +140,6 @@ describe('TopicCommandHandler', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: false,
-      channelIds: [],
     });
     await lessonModel.create({
       classId: cls._id,
@@ -165,7 +163,6 @@ describe('TopicCommandHandler', () => {
       tz: 'Asia/Jerusalem',
       leadMinutes: 30,
       active: true,
-      channelIds: [],
     });
     for (let i = 0; i < 7; i += 1) {
       await lessonModel.create({

@@ -1,12 +1,10 @@
 // Провайдеры адаптеров идут через multi-провайдер CHANNEL_ADAPTERS — в Nest
 // нет декларативного «multi: true», поэтому фабрика собирает массив вручную
-// (ADR-0004). ClassesModule импортируется целиком ради модели ClassRecord
-// (remove() проверяет classes.channelIds) — экспортирует MongooseModule, тот
-// же приём, что LessonsModule ↔ ClassesModule (см. lesson-model.module.ts).
-// ClassesModule каналы не импортирует — цикла нет.
+// (ADR-0004). GroupModelModule — модель групп: create()/update() проверяют
+// `groupId` канала (ADR-0195).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ClassesModule } from '../classes/classes.module';
+import { GroupModelModule } from '../groups/group-model.module';
 import { CHANNEL_ADAPTERS } from './channel-adapter';
 import { ChannelAdapterRegistry } from './channel-adapter.registry';
 import { ChannelConfigService } from './channel-config.service';
@@ -21,7 +19,7 @@ import { VkAdapter } from './vk.adapter';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: ChannelRecord.name, schema: ChannelSchema }]),
-    ClassesModule,
+    GroupModelModule,
   ],
   controllers: [ChannelsController],
   providers: [

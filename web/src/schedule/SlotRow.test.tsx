@@ -157,9 +157,9 @@ describe('SlotRow — пометки', () => {
     unmount();
 
     renderRow({
-      destination: { text: 'Никуда не уходит — выберите канал', isWarning: true },
+      destination: { text: 'Без группы — никуда не уходит', isWarning: true },
     });
-    expect(screen.getByText('Никуда не уходит — выберите канал')).toHaveStyle({
+    expect(screen.getByText('Без группы — никуда не уходит')).toHaveStyle({
       color: 'var(--danger)',
     });
   });
@@ -167,7 +167,7 @@ describe('SlotRow — пометки', () => {
   it('строки назначения нет — ничего лишнего, пометки «без каналов» тоже нет', () => {
     renderRow({ destination: null });
 
-    expect(screen.queryByText(/→|Никуда|без каналов/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/→|никуда|без каналов/)).not.toBeInTheDocument();
   });
 
   it('обе беды сразу — обе пометки, и пустой строки пометок без причины нет', () => {

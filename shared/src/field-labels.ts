@@ -21,7 +21,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
 
   // classes — /classes.
   title: 'Название',
-  groupIds: 'Группы',
+  groupId: 'Группа', // у занятия и у канала (ADR-0195)
+  forAllGroups: 'Для всех групп',
   format: 'Формат занятия',
   location: 'Адрес',
   zoomLink: 'Ссылка Zoom',
@@ -29,7 +30,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   leaderId: 'Ведущий',
   rules: 'Правила расписания',
   tz: 'Часовой пояс',
-  channelIds: 'Каналы',
+  channelIds: 'Каналы', // рассылка вручную (/broadcasts): учитель сам выбирает каналы
   leadMinutes: 'За сколько минут слать',
   active: 'Активность',
   weekday: 'День недели',
@@ -38,8 +39,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   everyWeeks: 'Как часто', // ADR-0168
   startsOn: 'Первое занятие',
 
-  // groups — /groups (ADR-0193); тело то же при создании и переименовании.
-  name: 'Название группы',
+  name: 'Название группы', // groups — /groups (ADR-0193), создание и переименование
 
   // lessons — /lessons.
   classId: 'Занятие',

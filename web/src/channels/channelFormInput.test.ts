@@ -13,6 +13,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     type: 'vk',
     title: 'ВК школы',
     target: '777',
+    groupId: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -124,6 +125,25 @@ describe('validateChannelForm', () => {
   });
 });
 
+describe('группа канала (ADR-0195)', () => {
+  it('правка: группа берётся из канала, у канала без группы — «пока никакой»', () => {
+    expect(initialChannelFormState(makeChannel({ groupId: 'g1' })).groupId).toBe('g1');
+    expect(initialChannelFormState(makeChannel({ groupId: null })).groupId).toBe('');
+    expect(initialChannelFormState(null).groupId).toBe('');
+  });
+
+  it('создание: выбранная группа уходит в тело, невыбранной в теле нет', () => {
+    const base = {
+      ...initialChannelFormState(null),
+      type: 'manual' as const,
+      title: 'FB',
+    };
+
+    expect(toCreateInput({ ...base, groupId: 'g2' }).groupId).toBe('g2');
+    expect(toCreateInput(base)).not.toHaveProperty('groupId');
+  });
+});
+
 describe('toCreateInput', () => {
   it('telegram — config.chatId', () => {
     const state = {
@@ -186,6 +206,7 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'telegram')).toEqual({
       title: 'Канал',
+      groupId: null,
       config: { chatId: '-100123' },
     });
   });
@@ -194,6 +215,7 @@ describe('toUpdateInput', () => {
     const state = { ...initialChannelFormState(null), title: 'ВК', peerIdText: '5' };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
+      groupId: null,
     });
   });
 
@@ -206,6 +228,7 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
+      groupId: null,
       config: { token: 'newsecret', peerId: 5 },
     });
   });
@@ -214,6 +237,15 @@ describe('toUpdateInput', () => {
     const state = { ...initialChannelFormState(null), title: 'FB' };
     expect(toUpdateInput(state, 'manual')).toEqual({
       title: 'FB',
+      groupId: null,
     });
+  });
+
+  it('группа выбрана — groupId уходит; «пока никакой» — явный null, не «не трогать» (ADR-0195)', () => {
+    const chosen = { ...initialChannelFormState(null), title: 'FB', groupId: 'g1' };
+    const none = { ...chosen, groupId: '' };
+
+    expect(toUpdateInput(chosen, 'manual').groupId).toBe('g1');
+    expect(toUpdateInput(none, 'manual').groupId).toBeNull();
   });
 });

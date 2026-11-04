@@ -43,17 +43,26 @@ export class ChannelRecord {
   // у канала школы (группа/канал, личный чат штата — тот получает всё
   // расписание, ADR-0015) поле не задаётся явно, default true — прежнее
   // поведение, миграция не нужна: `{ $ne: false }` матчит и документы без
-  // поля (ChannelsService.list, ClassesService.defaultTelegramChannelIds).
+  // поля (ChannelsService.list, findActiveChannelIds).
   @Prop({ type: Boolean, default: true })
   broadcastEligible!: boolean;
 
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
+
+  // Группа школы (коллекция `groups`), занятия которой идут в этот канал —
+  // единственный рычаг рассылки (ADR-0195): канал получает ссылки и записи
+  // занятий с той же группой. Нет поля — канал ничего не получает. У личного
+  // чата ученика (broadcastEligible: false) группы не бывает никогда.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  groupId?: Types.ObjectId;
 }
 
 export const ChannelSchema = SchemaFactory.createForClass(ChannelRecord);
 ChannelSchema.index({ type: 1 });
+// Каналы группы занятия (findActiveChannelIds, ADR-0195) и счёт каналов группы.
+ChannelSchema.index({ groupId: 1 });
 // Второй канал того же типа с тем же адресом не создаётся дважды —
 // идемпотентность upsertTelegramChat и защита от дубля при ручном создании.
 // Частичный: у ручного канала target === '' и дублей не считает (иначе все
