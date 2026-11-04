@@ -2,7 +2,7 @@
 // без Nest и без Mongo, юнит-тест без обвязки (CLAUDE.md «Тесты»).
 import { plainToInstance } from 'class-transformer';
 import { validateSync, type ValidationError } from 'class-validator';
-import { CreateClassDto } from '../classes/dto/create-class.dto';
+import { SeedClassDto } from './seed-class.dto';
 
 /** Путь до образца формата — в каждом тексте ошибки сида: одна константа,
  * не переписанная строка в четырёх местах (CLAUDE.md «Без магических строк»). */
@@ -26,7 +26,7 @@ export interface SeedValidationResult {
   // Провалидированные И обрезанные экземпляры DTO (whitelist в validateSync
   // мутирует их на месте, вычищая поля вроде "_id" из файла) — именно их, а
   // не сырые записи из JSON, пишет SeedService: та же копия, что проверена.
-  classes: CreateClassDto[];
+  classes: SeedClassDto[];
 }
 
 /**
@@ -90,7 +90,7 @@ export function parseSeedFile(text: string): SeedFile {
  */
 export function validateSeedClasses(seed: SeedFile): SeedValidationResult {
   const errors: SeedValidationError[] = [];
-  const classes: CreateClassDto[] = [];
+  const classes: SeedClassDto[] = [];
   const seenPairs = new Map<string, number>();
 
   seed.classes.forEach((raw, index) => {
@@ -103,7 +103,7 @@ export function validateSeedClasses(seed: SeedFile): SeedValidationResult {
       return;
     }
 
-    const instance = plainToInstance(CreateClassDto, raw);
+    const instance = plainToInstance(SeedClassDto, raw);
     // whitelist: true мутирует instance — стирает поля без декораторов
     // (например, случайный "_id", скопированный из экспорта коллекции).
     const classErrors = validateSync(instance, { whitelist: true });

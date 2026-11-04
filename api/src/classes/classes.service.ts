@@ -4,7 +4,7 @@
 // контроллер только валидирует тело и зовёт эти методы.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, type Types } from 'mongoose';
+import type { Model } from 'mongoose';
 import type {
   ClassDto,
   CreateClassInput,
@@ -19,6 +19,7 @@ import {
 } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ConflictError, NotFoundError } from '../common/errors';
+import { GroupRecord } from '../groups/group.schema';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
@@ -30,6 +31,7 @@ import { UserRecord } from '../users/user.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
 import { mapRules } from './classes.update';
+import { defaultTelegramChannelIds, groupFields } from './class-groups';
 
 const NOT_FOUND_MESSAGE = CLASS_NOT_FOUND_MESSAGE;
 const HAS_LESSONS_MESSAGE =
@@ -44,6 +46,7 @@ export class ClassesService {
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
     @InjectModel(MaterialRecord.name)
     private readonly materialModel: Model<MaterialRecord>,
+    @InjectModel(GroupRecord.name) private readonly groupModel: Model<GroupRecord>,
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
@@ -74,9 +77,10 @@ export class ClassesService {
 
   async create(input: CreateClassInput): Promise<ClassDto> {
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    const { rules, ...rest } = input;
+    const { rules, groupIds, ...rest } = input;
     const payload: Record<string, unknown> = { ...rest };
     if (rules !== undefined) payload.rules = mapRules(rules);
+    Object.assign(payload, await groupFields(this.groupModel, groupIds ?? []));
     // channelIds не передан учителем (undefined, не []) — занятие подписывается
     // на все активные Telegram-каналы по умолчанию. Иначе класс, созданный
     // ПОСЛЕ подключения бота (docs/adr/0015 — «чат сам становится каналом»
@@ -86,7 +90,7 @@ export class ClassesService {
     // подставляем (та же логика — в SeedService.importClasses, который зовёт
     // этот же create()).
     if (payload.channelIds === undefined) {
-      payload.channelIds = await this.defaultTelegramChannelIds();
+      payload.channelIds = await defaultTelegramChannelIds(this.channelModel);
     }
     // Нормализация здесь, не в DTO: тег — фильтр (ADR-0072), опечатка и дубль
     // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
@@ -98,17 +102,6 @@ export class ClassesService {
     return this.getById(created._id.toString());
   }
 
-  private async defaultTelegramChannelIds(): Promise<string[]> {
-    // Личный канал ученика (broadcastEligible: false, ADR-0027) сюда не
-    // попадает: занятие не должно получить получателем рассылки чей-то
-    // личный чат только потому, что он тоже type: telegram.
-    const docs = await this.channelModel
-      .find({ type: 'telegram', active: true, broadcastEligible: { $ne: false } })
-      .select('_id')
-      .lean<{ _id: Types.ObjectId }[]>();
-    return docs.map((doc) => doc._id.toString());
-  }
-
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
@@ -117,9 +110,10 @@ export class ClassesService {
     // «поле не трогать» (тот же приём, что у MaterialsService.update).
     const normalized =
       input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
-    const { rules, ...rest } = normalized;
+    const { rules, groupIds, ...rest } = normalized;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
+    Object.assign($set, await groupFields(this.groupModel, groupIds));
 
     const update: UpdateCommand = { $set: encryptRecord($set, CLASS_ENCRYPT_SCHEMA) };
     if (Object.keys($unset).length > 0) update.$unset = $unset;

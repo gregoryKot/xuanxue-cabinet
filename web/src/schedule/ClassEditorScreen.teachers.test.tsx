@@ -29,6 +29,7 @@ const CLASS: ClassDto = {
   id: 'c1',
   title: 'Тайцзицюань',
   groupLabel: 'средняя группа',
+  groupIds: [],
   format: 'online',
   rules: [{ id: 'r1', weekday: 2, time: '19:00', durationMin: 60 }],
   tz: 'Asia/Jerusalem',
@@ -58,6 +59,7 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
     mockApiByPath({
       '/classes/c1': CLASS,
       '/channels': [],
+      '/groups': [],
       '/users/teachers': new ApiError(TEACHERS_ERROR, 503, 'unknown'),
     });
 
@@ -70,6 +72,7 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
     mockApiByPath({
       '/classes/c1': CLASS,
       '/channels': [],
+      '/groups': [],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
     });
     await user.click(screen.getByRole('button', { name: 'Обновить' }));
@@ -83,6 +86,7 @@ describe('ClassEditorScreen — сбой загрузки учителей (ау
     mockApiByPath({
       '/classes/c1': CLASS,
       '/channels': [],
+      '/groups': [],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
     });
 

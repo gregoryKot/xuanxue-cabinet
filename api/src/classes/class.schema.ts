@@ -61,8 +61,18 @@ export class ClassRecord {
   @Prop({ type: String, required: true })
   title!: string;
 
+  // Подпись группы для постов и экранов — ПРОИЗВОДНАЯ от `groupIds`:
+  // названия групп через запятую, сервер пересобирает её при записи занятия и
+  // при переименовании группы (ADR-0193). Поле осталось, чтобы десятки мест,
+  // читающих подпись (посты, бот, экраны), не менялись.
   @Prop({ type: String, default: '' })
   groupLabel!: string;
+
+  // Группы школы (коллекция `groups`), в порядке создания групп. У занятий,
+  // заведённых до ADR-0193, поля нет, пока его не проставит миграция 0027, —
+  // `.lean()` default не подставляет, маппер отдаёт `[]`.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  groupIds!: Types.ObjectId[];
 
   @Prop({ type: String, enum: CLASS_FORMATS, required: true })
   format!: ClassFormat;

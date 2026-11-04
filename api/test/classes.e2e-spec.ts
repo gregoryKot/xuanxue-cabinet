@@ -110,9 +110,9 @@ describe('Classes (e2e)', () => {
 
       const patched = await withCsrf(request(server()).patch(`/api/classes/${dto.id}`))
         .set('Cookie', cookie)
-        .send({ groupLabel: 'средняя группа' });
+        .send({ active: false });
       expect(patched.status).toBe(200);
-      expect((patched.body as ClassDto).groupLabel).toBe('средняя группа');
+      expect((patched.body as ClassDto).active).toBe(false);
 
       const list = await request(server()).get('/api/classes').set('Cookie', cookie);
       expect(list.status).toBe(200);

@@ -10,6 +10,7 @@ import { MONGO_DUPLICATE_KEY_CODE } from './mongo-error-codes';
 import { CLASS_FIELD_POLICY } from '../classes/class.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
+import { GroupRecord } from '../groups/group.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
@@ -64,6 +65,16 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     await expect(Delivery.create({ broadcastId, channelId })).rejects.toMatchObject({
       code: MONGO_DUPLICATE_KEY_CODE,
     });
+  });
+
+  // ADR-0193: одно название — одна группа; на индексе держится и гонка двух
+  // «Добавить» подряд, и ответ 409 вместо второй «Средние».
+  it('groups: второй insert с тем же nameKey падает', async () => {
+    const Group = connection.model<GroupRecord>(GroupRecord.name);
+    await Group.create({ name: 'Средние', nameKey: 'средние' });
+    await expect(
+      Group.create({ name: 'СРЕДНИЕ', nameKey: 'средние' }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
   });
 
   // ADR-0079: журнал сирот переживает повторную запись того же ключа — на

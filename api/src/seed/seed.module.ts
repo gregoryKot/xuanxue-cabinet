@@ -8,11 +8,12 @@ import { Module } from '@nestjs/common';
 import { ClassesModule } from '../classes/classes.module';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { ExamsModule } from '../exams/exams.module';
+import { GroupsModule } from '../groups/groups.module';
 import { SeedExamService } from './seed-exam.service';
 import { SeedService } from './seed.service';
 
 @Module({
-  imports: [ClassesModule, ExamsModule, ExamImagesModule],
+  imports: [ClassesModule, GroupsModule, ExamsModule, ExamImagesModule],
   providers: [SeedService, SeedExamService],
   exports: [SeedService, SeedExamService],
 })

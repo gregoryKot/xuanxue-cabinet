@@ -9,6 +9,7 @@ export function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань, средняя группа',
     groupLabel: '',
+    groupIds: [],
     format: 'online',
     rules: [],
     tz: 'Asia/Jerusalem',

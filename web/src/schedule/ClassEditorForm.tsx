@@ -5,23 +5,21 @@
 // через ConfirmDialog (раньше в старом листе срабатывало с одного касания).
 import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto, ClassDto } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import { screenTitleStyle } from '../components/screenLayout';
 import {
   backLinkStyle,
-  editorActionsRowStyle,
-  editorDangerButtonStyle,
-  editorDangerRowStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
 } from '../components/editorLayout';
+import type { UseGroupsResult } from '../groups/useGroups';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useTeachers } from '../people/useTeachers';
 import { ClassChannelsField } from './ClassChannelsField';
+import { ClassEditorFooter } from './ClassEditorFooter';
 import { ClassFormFields } from './ClassFormFields';
 import { RuleFields } from './RuleFields';
 import { useClassForm } from './useClassForm';
@@ -31,7 +29,6 @@ const SCHEDULE_PATH = '/schedule';
 const BACK_TEXT = 'К расписанию';
 const EYEBROW = 'Расписание';
 const NEW_CLASS_TITLE = 'Новое занятие в расписании';
-const REMOVE_LABEL = 'Удалить из расписания';
 const REMOVE_TITLE = 'Удалить из расписания?';
 const REMOVE_MESSAGE =
   'Пропадут дни и время, привязка каналов и будущие даты занятий. Отменить нельзя — **занятие придётся завести заново**.';
@@ -42,10 +39,16 @@ interface ClassEditorFormProps {
   /** Активные каналы — грузятся страницей до формы (ClassEditorScreen.tsx):
    * новому занятию Telegram-каналы отмечаются заранее (classFormInput.ts). */
   channels: ChannelDto[];
+  groups: UseGroupsResult;
   editor: UseClassEditorResult;
 }
 
-export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormProps) {
+export function ClassEditorForm({
+  classDto,
+  channels,
+  groups,
+  editor,
+}: ClassEditorFormProps) {
   const navigate = useNavigate();
   // `void` у navigate — он возвращает промис (react-router 7), а вызывающие
   // места ждут обычную функцию без результата.
@@ -90,6 +93,7 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
           teachers={teachersState.teachers ?? []}
           teachersError={teachersState.error}
           onRetryTeachers={() => void teachersState.reload()}
+          groups={groups}
         />
 
         <div style={editorSectionStyle}>
@@ -109,27 +113,11 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
 
         <FormServerError error={form.serverError} />
 
-        <div style={editorSectionStyle}>
-          <div style={editorActionsRowStyle}>
-            <Button type="submit" pending={form.pending} disabled={noRules}>
-              Сохранить
-            </Button>
-          </div>
-
-          {classDto && (
-            <div style={editorDangerRowStyle}>
-              <Button
-                type="button"
-                variant="danger"
-                style={editorDangerButtonStyle}
-                pending={form.pending}
-                onClick={removeConfirm.requestRemove}
-              >
-                {REMOVE_LABEL}
-              </Button>
-            </div>
-          )}
-        </div>
+        <ClassEditorFooter
+          pending={form.pending}
+          saveDisabled={noRules}
+          onRemove={classDto ? removeConfirm.requestRemove : null}
+        />
       </form>
 
       {removeConfirm.confirming && (

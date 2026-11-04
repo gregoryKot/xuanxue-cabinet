@@ -9,6 +9,7 @@
 import { useParams } from 'react-router-dom';
 import { useChannels } from '../channels/useChannels';
 import { LoadedPage } from '../components/LoadedPage';
+import { useGroups } from '../groups/useGroups';
 import { ClassEditorForm } from './ClassEditorForm';
 import { useClassEditor } from './useClassEditor';
 
@@ -17,10 +18,17 @@ export default function ClassEditorScreen() {
   const { classId } = useParams<{ classId: string }>();
   const editor = useClassEditor(classId);
   const channelsState = useChannels(true);
+  const groupsState = useGroups();
 
   return (
     <LoadedPage
-      loading={editor.loading || channelsState.loading}
+      // Группы ждём только в первый раз: «Обновить» после сбоя не должен
+      // прятать форму скелетоном и стирать набранное.
+      loading={
+        editor.loading ||
+        channelsState.loading ||
+        (groupsState.loading && groupsState.groups === null)
+      }
       error={editor.error}
       onRetry={() => void editor.reload()}
       skeletonWidths={['40%', '90%', '70%']}
@@ -29,6 +37,7 @@ export default function ClassEditorScreen() {
         <ClassEditorForm
           classDto={editor.entity}
           channels={channelsState.channels ?? []}
+          groups={groupsState}
           editor={editor}
         />
       )}

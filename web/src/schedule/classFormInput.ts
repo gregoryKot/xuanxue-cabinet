@@ -32,7 +32,8 @@ import {
 
 export interface ClassFormState {
   title: string;
-  groupLabel: string;
+  /** Группы школы (ADR-0193): подпись для постов сервер собирает из них сам. */
+  groupIds: string[];
   format: ClassFormat;
   zoomLink: string;
   zoomPassword: string;
@@ -67,7 +68,7 @@ export function initialClassFormState(
 ): ClassFormState {
   return {
     title: classDto?.title ?? '',
-    groupLabel: classDto?.groupLabel ?? '',
+    groupIds: classDto?.groupIds ?? [],
     format: classDto?.format ?? 'online',
     zoomLink: classDto?.zoomLink ?? '',
     zoomPassword: classDto?.zoomPassword ?? '',
@@ -98,7 +99,7 @@ export function validateClassForm(state: ClassFormState): string | null {
 export function toCreateInput(state: ClassFormState): CreateClassInput {
   return {
     title: state.title.trim(),
-    groupLabel: state.groupLabel.trim() || undefined,
+    groupIds: state.groupIds,
     format: state.format,
     zoomLink: state.zoomLink.trim() || undefined,
     zoomPassword: state.zoomPassword.trim() || undefined,
@@ -115,7 +116,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
 export function toUpdateInput(state: ClassFormState): UpdateClassInput {
   return {
     title: state.title.trim(),
-    groupLabel: state.groupLabel.trim() || undefined,
+    groupIds: state.groupIds,
     format: state.format,
     zoomLink: state.zoomLink.trim() || null,
     zoomPassword: state.zoomPassword.trim() || null,

@@ -26,6 +26,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     id: 'c1',
     title: 'Тайцзицюань',
     groupLabel: 'средняя группа',
+    groupIds: [],
     format: 'online',
     zoomLink: 'https://zoom.example/1',
     zoomPassword: '1234',
@@ -44,7 +45,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
 function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
   return {
     title: 'Занятие',
-    groupLabel: '',
+    groupIds: [],
     format: 'online',
     zoomLink: '',
     zoomPassword: '',
@@ -153,6 +154,15 @@ describe('initialClassFormState', () => {
   it('существующее занятие с тегами — собраны в строку через запятую (ADR-0072)', () => {
     const state = initialClassFormState(makeClass({ tags: ['начинающие', 'медитация'] }));
     expect(state.tagsText).toBe('начинающие, медитация');
+  });
+
+  it('существующее занятие — groupIds переносятся как есть (ADR-0193)', () => {
+    const state = initialClassFormState(makeClass({ groupIds: ['g1', 'g2'] }));
+    expect(state.groupIds).toEqual(['g1', 'g2']);
+  });
+
+  it('создание — групп нет, пока их не отметили', () => {
+    expect(initialClassFormState(null).groupIds).toEqual([]);
   });
 
   it('занятие без тегов — пустая строка, не undefined', () => {
@@ -335,5 +345,20 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     const state = baseState({ tagsText: '' });
     expect(toCreateInput(state).tags).toEqual([]);
     expect(toUpdateInput(state).tags).toEqual([]);
+  });
+});
+
+describe('toCreateInput / toUpdateInput — группы школы (ADR-0193)', () => {
+  it('groupIds уходят в обоих телах, а подписи группы в теле нет — её собирает сервер', () => {
+    const state = baseState({ groupIds: ['g1', 'g2'] });
+
+    expect(toCreateInput(state).groupIds).toEqual(['g1', 'g2']);
+    expect(toUpdateInput(state).groupIds).toEqual(['g1', 'g2']);
+    expect(toCreateInput(state)).not.toHaveProperty('groupLabel');
+    expect(toUpdateInput(state)).not.toHaveProperty('groupLabel');
+  });
+
+  it('все группы сняты — при правке уходит [], а не «не трогать»', () => {
+    expect(toUpdateInput(baseState({ groupIds: [] })).groupIds).toEqual([]);
   });
 });

@@ -22,6 +22,7 @@ import { EXAM_ITEMS_ROUTE_KEYS, type ExamItemsRoutes } from './exam-items-routes
 import { EXAM_VIDEOS_ROUTE_KEYS, type ExamVideosRoutes } from './exam-videos-routes';
 import { EXAMS_ROUTE_KEYS, type ExamsRoutes } from './exams-routes';
 import { GRADING_ROUTE_KEYS, type GradingRoutes } from './grading-routes';
+import { GROUPS_ROUTE_KEYS, type GroupsRoutes } from './groups-routes';
 import { INBOX_ROUTE_KEYS, type InboxRoutes } from './inbox-routes';
 import {
   LESSON_VIDEOS_ROUTE_KEYS,
@@ -63,6 +64,7 @@ export type ApiRouteMap = AnalyticsRoutes &
   ExamVideosRoutes &
   ExamsRoutes &
   GradingRoutes &
+  GroupsRoutes &
   InboxRoutes &
   LessonVideosRoutes &
   LessonsRoutes &
@@ -93,6 +95,7 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...EXAM_VIDEOS_ROUTE_KEYS,
   ...EXAMS_ROUTE_KEYS,
   ...GRADING_ROUTE_KEYS,
+  ...GROUPS_ROUTE_KEYS,
   ...INBOX_ROUTE_KEYS,
   ...LESSON_VIDEOS_ROUTE_KEYS,
   ...LESSONS_ROUTE_KEYS,

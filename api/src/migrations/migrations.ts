@@ -24,6 +24,7 @@ import { ownerDurations } from './0023-owner-durations.migration';
 import { teachersClass } from './0024-teachers-class.migration';
 import { reminderChoicesFromSelectedScope } from './0025-reminder-choices-from-selected-scope.migration';
 import { channelTagsIntoClassLinks } from './0026-channel-tags-into-class-links.migration';
+import { groupsFromLabels } from './0027-groups-from-labels.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -75,4 +76,5 @@ export const MIGRATIONS: Migration[] = [
   teachersClass,
   reminderChoicesFromSelectedScope,
   channelTagsIntoClassLinks,
+  groupsFromLabels,
 ];
