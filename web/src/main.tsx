@@ -11,7 +11,8 @@ import { registerServiceWorker } from './pwa/registerServiceWorker';
 import { captureInstallPrompt } from './pwa/installPromptCapture';
 
 // До первой же строчки остального кода (ADR-0071) — даже сбой прогрева
-// чанка чуть ниже должен долететь до сервера.
+// чанка чуть ниже должен долететь до сервера: в журнал «Сбои» как `chunk`,
+// без Telegram (globalErrorReporting.ts, инцидент 2026-11-05).
 installGlobalErrorReporting();
 
 // Перехват `beforeinstallprompt` (pwa/installPromptCapture.ts, docs/PWA.md) —
