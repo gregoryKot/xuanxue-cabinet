@@ -24,6 +24,12 @@ const SCRIPT_ERROR_MESSAGE = 'Script error.';
 // Имя, с которым браузер отклоняет промис отменённой операции (DOMException).
 const ABORT_ERROR_NAME = 'AbortError';
 
+// Так браузеры описывают провал `import()` — код экрана не догрузился: Chrome
+// «Failed to fetch dynamically imported module: …», Firefox «error loading
+// dynamically imported module: …», Safari «Importing a module script failed.».
+const MODULE_LOAD_ERROR_TEXT =
+  /dynamically imported module|Importing a module script failed/i;
+
 /** Настоящая ошибка выполнения JS, а не шум. Событие неудачной загрузки
  * ресурса (`<img>`, `<link>`, `<script src>`) тоже называется `error`, но
  * летит с `event.target` — самим элементом, а не `window`, и без
@@ -72,10 +78,27 @@ function isCancellation(reason: unknown): boolean {
   return (reason as { name?: unknown }).name === ABORT_ERROR_NAME;
 }
 
+/** Провал загрузки чанка вне рендера — тот же `chunk`, что ловит lazyRoute.ts,
+ * а не «ошибка вне рендера». Инцидент 2026-11-05 (код обращения
+ * 33a8ff2e-daf9-4109-a8e9-fe709682cad0): прогрев чанка главной в main.tsx
+ * (`void …load()`) отклонился на Windows/Chrome в четыре утра — сеть моргнула,
+ * сам файл на сервере был, — и владельца разбудили как настоящим сбоем. Для
+ * человека это ничего не ломает: lazyRoute повторит `import()` при рендере и
+ * сам перезагрузит вкладку, если чанк и правда устарел. Текст читаем утиной
+ * типизацией по той же причине, что стек в errorSource.ts. */
+function isModuleLoadError(reason: unknown): boolean {
+  if (typeof reason !== 'object' || reason === null) return false;
+  const { message } = reason as { message?: unknown };
+  return typeof message === 'string' && MODULE_LOAD_ERROR_TEXT.test(message);
+}
+
 function handleUnhandledRejection(event: PromiseRejectionEvent): void {
   if (isCancellation(event.reason)) return;
   if (isForeignScriptError({ error: event.reason }, window.location)) return;
-  void reportClientError('unhandled', event.reason);
+  void reportClientError(
+    isModuleLoadError(event.reason) ? 'chunk' : 'unhandled',
+    event.reason,
+  );
 }
 
 let installed = false;

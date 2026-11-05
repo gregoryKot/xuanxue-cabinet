@@ -66,6 +66,47 @@ describe('installGlobalErrorReporting', () => {
     expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', reason);
   });
 
+  // Инцидент 2026-11-05 (код обращения 33a8ff2e-daf9-4109-a8e9-fe709682cad0):
+  // прогрев чанка главной в main.tsx отклонился на Windows/Chrome в четыре
+  // утра — файл на сервере был, сеть моргнула, — и владельца разбудили
+  // «ошибкой вне рендера». Провал import() — тот же `chunk`, что в lazyRoute.ts:
+  // в журнал попадает, в Telegram не идёт.
+  it('провал загрузки чанка в отклонённом промисе уходит как kind: chunk, не unhandled', () => {
+    installGlobalErrorReporting();
+    const reason = ownError(
+      'Failed to fetch dynamically imported module: https://xuanxue.su/assets/BoardScreen-C2BLyBWS.js',
+    );
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: reason });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('chunk', reason);
+  });
+
+  it('тот же провал в формулировке Safari («Importing a module script failed.») — тоже chunk', () => {
+    installGlobalErrorReporting();
+    const reason = ownError('Importing a module script failed.');
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: reason });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('chunk', reason);
+  });
+
+  // Отказ не объектом, а строкой (`Promise.reject('упс')`): ни имени отмены,
+  // ни текста провала чанка у него нет — обычный сбой вне рендера.
+  it('отказ промиса строкой уходит как kind: unhandled', () => {
+    installGlobalErrorReporting();
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: 'упс' });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', 'упс');
+  });
+
   it('повторная установка не вешает второй слушатель', () => {
     installGlobalErrorReporting();
     installGlobalErrorReporting();
