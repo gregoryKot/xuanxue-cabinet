@@ -51,11 +51,62 @@ function stubLoad(extra: Record<string, unknown> = {}) {
   });
 }
 
+function lessonsListCalls() {
+  return mockedApiFetch.mock.calls.filter(([path]) => path.split('?')[0] === '/lessons');
+}
+
 function topicCalls() {
   return mockedApiFetch.mock.calls.filter(([path]) => path.startsWith('/lessons/topic'));
 }
 
 describe('WeekTopicScreen', () => {
+  it('подсказки у галочек: отменённое не отмечено и помечено, своя тема — «Сейчас: …», класс не найден — «—»', async () => {
+    stubLoad({
+      '/lessons': [
+        makeLesson({
+          id: 'a',
+          startsAt: '2026-11-10T17:00:00.000Z',
+          status: 'cancelled',
+        }),
+        makeLesson({
+          id: 'b',
+          startsAt: '2026-11-11T17:00:00.000Z',
+          topic: 'Шаги назад',
+        }),
+        makeLesson({
+          id: 'c',
+          startsAt: '2026-11-12T17:00:00.000Z',
+          classId: 'нет-такого',
+        }),
+      ],
+    });
+    renderScreen();
+    const boxes = await screen.findAllByRole('checkbox');
+    expect(boxes).toHaveLength(3);
+    // Тема недели уже есть («Шаги назад» у одного) — отмечено только занятие с ней.
+    expect(boxes.map((box) => (box as HTMLInputElement).checked)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(screen.getByLabelText('Тема')).toHaveValue('Шаги назад');
+    expect(screen.getByText('отменено')).toBeInTheDocument();
+    expect(screen.getByText('Сейчас: Шаги назад')).toBeInTheDocument();
+    expect(screen.getByText(/· —$/)).toBeInTheDocument();
+  });
+
+  it('сбой списка — текст ошибки, «Попробовать ещё раз» повторяет запрос занятий', async () => {
+    const user = userEvent.setup();
+    stubLoad({ '/lessons': new ApiError('Список не пришёл.', 500, 'internal_error') });
+    renderScreen();
+    expect(await screen.findByText('Список не пришёл.')).toBeInTheDocument();
+    const before = lessonsListCalls().length;
+
+    await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
+
+    await waitFor(() => expect(lessonsListCalls().length).toBeGreaterThan(before));
+  });
+
   it('занятия недели отмечены, поле пустое, чужой недели в списке нет', async () => {
     stubLoad();
     renderScreen();

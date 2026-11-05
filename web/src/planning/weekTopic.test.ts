@@ -30,6 +30,14 @@ describe('weekKeyOf', () => {
 });
 
 describe('groupDayGroupsByWeek', () => {
+  it('день без занятий недели не образует', () => {
+    expect(
+      groupDayGroupsByWeek([
+        { key: '2026-11-10', heading: 'Вт, 10 ноября', lessons: [] },
+      ]),
+    ).toEqual([]);
+  });
+
   it('собирает дни в недели, заголовок — по воскресенью', () => {
     const lessons = [
       makeLesson({ id: 'a', startsAt: TUE }),

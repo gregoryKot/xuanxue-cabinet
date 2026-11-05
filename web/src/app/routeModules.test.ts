@@ -126,6 +126,15 @@ describe('matchRoute', () => {
     await expect(ROUTE_MODULES.eventNew.load()).resolves.toHaveProperty('default');
   });
 
+  // ADR-0197: страница темы недели стоит раньше «/planning/:lessonId»
+  // (weekTopicRouteModules.ts) и греет тот же список, что экран «Занятия».
+  it('страница темы недели — свой чанк, prefetch списка занятий и классов', async () => {
+    await expect(ROUTE_MODULES.weekTopic.load()).resolves.toHaveProperty('default');
+    expect(ROUTE_MODULES.weekTopic.prefetch()).toEqual(
+      ROUTE_MODULES.planning.prefetch().slice(0, 2),
+    );
+  });
+
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
     expect(loaderAt('/channels')).toBe(ROUTE_MODULES.channels.load);
     expect(loaderAt('/channels/new')).toBe(ROUTE_MODULES.channelNew.load);

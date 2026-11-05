@@ -42,10 +42,10 @@ export function weekKeyOf(iso: string): string {
   return dateKey(weekStartOf(iso).toISOString());
 }
 
-/** «Неделя с 8 ноября» — по ключу недели, без разбора строки в Date. */
+/** «Неделя с 8 ноября» — по ключу недели («YYYY-MM-DD»). Строка без пояса
+ * читается как местное время — то же воскресенье зрителя, что в ключе. */
 export function weekHeadingOfKey(weekKey: string): string {
-  const [year = 0, month = 1, day = 1] = weekKey.split('-').map(Number);
-  const noon = new Date(year, month - 1, day, NOON_HOUR);
+  const noon = new Date(`${weekKey}T${NOON_HOUR}:00:00`);
   return `Неделя с ${formatDayMonth(noon.toISOString())}`;
 }
 
