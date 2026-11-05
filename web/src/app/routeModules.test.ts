@@ -40,6 +40,9 @@ describe('matchRoute', () => {
     expect(loaderAt('/email/confirm')).toBe(ROUTE_MODULES.emailConfirm.load);
     expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
+    expect(loaderAt('/planning/week-topic/2026-11-08')).toBe(
+      ROUTE_MODULES.weekTopic.load,
+    );
     expect(loaderAt('/planning/652f00000000000000000003')).toBe(
       ROUTE_MODULES.lessonEditor.load,
     );

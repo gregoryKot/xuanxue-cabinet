@@ -20,10 +20,11 @@ import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
-import { LessonDayGroup } from './LessonDayGroup';
+import { LessonWeekGroup } from './LessonWeekGroup';
 import { PlanningToday } from './PlanningToday';
 import { upcomingDayGroups } from './upcomingDayGroups';
 import { useLessons } from './useLessons';
+import { groupDayGroupsByWeek } from './weekTopic';
 import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
 const TITLE = 'Занятия';
@@ -57,7 +58,6 @@ export default function PlanningScreen() {
   const recordingSummary = useLessonRecordingSummary();
   const navigate = useNavigate();
 
-  // Сбой числа не должен ломать экран баннером — хук молчит про ошибку.
   const recordingLine = recordingSummary
     ? formatRecordingSummary(recordingSummary)
     : null;
@@ -66,12 +66,11 @@ export default function PlanningScreen() {
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls])),
     [classesState.classes],
   );
-  const groups = useMemo(
-    () => upcomingDayGroups(lessonsState.lessons ?? []),
+  const weeks = useMemo(
+    () => groupDayGroupsByWeek(upcomingDayGroups(lessonsState.lessons ?? [])),
     [lessonsState.lessons],
   );
-  // Без подписи время читается как время школы — приписка у каждой строки
-  // была частоколом (отзыв владельца 2026-09-12).
+  // Приписка пояса — одна на экран, не у каждой строки (отзыв 2026-09-12).
   const tzNote = useMemo(
     () => planningTzNote((classesState.classes ?? []).map((cls) => cls.tz)),
     [classesState.classes],
@@ -126,7 +125,7 @@ export default function PlanningScreen() {
       {lessonsError && <LoadErrorBanner message={lessonsError} onRetry={retryLessons} />}
       {lessonsState.loading && !lessonsError && <SkeletonList rows={5} h={56} />}
 
-      {!lessonsState.loading && !lessonsError && groups.length === 0 && (
+      {!lessonsState.loading && !lessonsError && weeks.length === 0 && (
         <p style={{ margin: 0 }}>
           <RichText text={EMPTY_GROUPS_MESSAGE} />
         </p>
@@ -134,16 +133,15 @@ export default function PlanningScreen() {
 
       {!lessonsState.loading &&
         !lessonsError &&
-        groups.map((group) => (
-          <LessonDayGroup
-            key={group.key}
-            group={group}
+        weeks.map((week) => (
+          <LessonWeekGroup
+            key={week.key}
+            week={week}
             classesById={classesById}
             onSelectLesson={openLesson}
           />
         ))}
-      {/* Ошибка классов — отдельной строкой, не прячет уже загруженный
-          список занятий (карточки показывают класс с фолбэком «—»). */}
+      {/* Ошибка классов не прячет список занятий (класс — с фолбэком «—»). */}
       {!lessonsState.loading && classesError && (
         <LoadErrorBanner message={classesError} onRetry={retryClasses} />
       )}

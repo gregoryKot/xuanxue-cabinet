@@ -28,6 +28,7 @@ import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsController } from './lessons.controller';
+import { LessonsTopicService } from './lessons-topic.service';
 import { LessonsService } from './lessons.service';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { MyLessonsController } from './my-lessons.controller';
@@ -52,6 +53,7 @@ import { PublicLessonsService } from './public-lessons.service';
   controllers: [LessonsController, MyLessonsController, PublicLessonsController],
   providers: [
     LessonsService,
+    LessonsTopicService,
     MyLessonsService,
     MyLessonsArchiveService,
     PublicLessonsService,

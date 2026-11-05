@@ -3,10 +3,8 @@
 //
 // Пути и загрузчики чанков — из routeModules.ts (React.lazy): оттуда же их
 // берёт предзагрузка (main.tsx, usePrefetchRoutes.ts) — списки не разъезжаются.
-//
 // Фрагмент, а не компонент: `<Routes>` разбирает детей сам и умеет заглянуть
-// внутрь `<React.Fragment>`, а компонент между `<Route>` и его детьми сломал
-// бы разбор.
+// внутрь `<React.Fragment>`, а компонент между `<Route>` и детьми сломал бы разбор.
 import { Navigate, Route } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { RequireDevErrorsAccess } from '../auth/RequireDevErrorsAccess';
@@ -20,6 +18,7 @@ const ScheduleScreen = lazyRoute(ROUTE_MODULES.schedule.load);
 const ClassEditorScreen = lazyRoute(ROUTE_MODULES.classEditor.load);
 const PlanningScreen = lazyRoute(ROUTE_MODULES.planning.load);
 const LessonEditorScreen = lazyRoute(ROUTE_MODULES.lessonEditor.load);
+const WeekTopicScreen = lazyRoute(ROUTE_MODULES.weekTopic.load);
 const ChannelsScreen = lazyRoute(ROUTE_MODULES.channels.load);
 const ChannelEditorScreen = lazyRoute(ROUTE_MODULES.channelEditor.load);
 const MaterialsScreen = lazyRoute(ROUTE_MODULES.materials.load);
@@ -62,9 +61,8 @@ function RootRedirect() {
 
 /* Занятие расписания, дата занятия, канал, рассылка, вопрос и экзамен
    правятся на страницах со своими адресами, а не в листах поверх списка
-   (ADR-0033): на них ссылаются из списка, их открывают по ссылке и закрывают
-   «Назад» браузера. Где есть и создание, и правка, `/…/new` объявлен раньше
-   `/…/:id` — статический кусок пути должен выигрывать у параметра. */
+   (ADR-0033). `/…/new` и `/planning/week-topic/…` объявлены раньше `/…/:id` —
+   статический кусок пути выигрывает у параметра. */
 export const cabinetRoutes = (
   <>
     <Route path={ROUTE_MODULES.schedule.path} element={<ScheduleScreen />} />
@@ -72,6 +70,7 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.classEditor.path} element={<ClassEditorScreen />} />
     <Route path={ROUTE_MODULES.planning.path} element={<PlanningScreen />} />
     <Route path={ROUTE_MODULES.lessonNew.path} element={<LessonEditorScreen />} />
+    <Route path={ROUTE_MODULES.weekTopic.path} element={<WeekTopicScreen />} />
     <Route path={ROUTE_MODULES.lessonEditor.path} element={<LessonEditorScreen />} />
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
