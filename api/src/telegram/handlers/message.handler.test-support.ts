@@ -120,7 +120,6 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
   const topicWaitHandler = new TopicWaitHandler(
     new BotSessionService(botSessionModel),
     lessonsService,
-    lessonLinkRebuild,
   );
   // Видео/текст/оплата — свои ветки диспетчера; саму механику проверяют
   // exam-media-message.handler.spec.ts и соседи фейками, здесь — фейк с

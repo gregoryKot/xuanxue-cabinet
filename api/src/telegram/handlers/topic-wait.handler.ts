@@ -7,7 +7,7 @@ import type { DateTime } from 'luxon';
 import type { Types } from 'mongoose';
 import type { Context } from 'telegraf';
 import { LESSON_LIMITS } from '@xuanxue/shared';
-import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
+import type { LessonUpdateResult } from '../../lessons/lesson-update';
 import { LessonsService } from '../../lessons/lessons.service';
 import { BotSessionService } from '../bot-session.service';
 import { saveOrExplain, type SaveOrExplainTexts } from './message-save';
@@ -22,7 +22,6 @@ export class TopicWaitHandler {
   constructor(
     private readonly botSessions: BotSessionService,
     private readonly lessonsService: LessonsService,
-    private readonly lessonLinkRebuild: LessonLinkRebuildService,
   ) {}
 
   async handle(
@@ -37,12 +36,15 @@ export class TopicWaitHandler {
     if (!text || text.startsWith('/')) return; // не текст темы — ждём дальше, сессия не закрывается
 
     const topic = text.slice(0, LESSON_LIMITS.topic);
+    // Пересборку поста делает сам LessonsService.update; результат нужен только
+    // ради подписи в ответе (ушёл ли пост со старой темой).
+    let result: LessonUpdateResult | undefined;
     const saved = await saveOrExplain(
       ctx,
       this.botSessions,
       chatId,
       async () => {
-        await this.lessonsService.update(lessonId.toString(), { topic }, now);
+        result = await this.lessonsService.update(lessonId.toString(), { topic }, now);
       },
       TEXTS,
       onError,
@@ -50,8 +52,8 @@ export class TopicWaitHandler {
     if (!saved) return;
 
     await this.botSessions.clear(chatId);
-    const rebuilt = await this.lessonLinkRebuild.rebuild(lessonId, now);
-    const suffix = rebuilt ? '' : '. Пост уже ушёл в каналы со старой темой.';
+    const suffix =
+      result?.linkRebuilt === true ? '' : '. Пост уже ушёл в каналы со старой темой.';
     await ctx.reply(`Тема сохранена: ${topic}${suffix}`).catch(() => null);
   }
 }

@@ -3,11 +3,8 @@
 // занятия, сбои сохранения (saveOrExplain), «не понял» без ожидания. Поток
 // темы и доступ — соседние спеки.
 import { Types } from 'mongoose';
-import { SettingsService } from '../../settings/settings.service';
 import type { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
-import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
-import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
@@ -259,26 +256,9 @@ function buildHandlerWithFailingAddRecording(
   return new MessageHandler(
     buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     new BotSessionService(ctx.botSessionModel),
-    new TopicWaitHandler(
-      new BotSessionService(ctx.botSessionModel),
-      { addRecording } as unknown as LessonsService,
-      new LessonLinkRebuildService(
-        new BroadcastModels(
-          ctx.lessonModel,
-          ctx.classModel,
-          ctx.channelModel,
-          ctx.broadcastModel,
-          ctx.deliveryModel,
-        ),
-        new SettingsService(
-          ctx.settingsModel,
-          ctx.lessonModel,
-          ctx.classModel,
-          usersService,
-        ),
-        usersService,
-      ),
-    ),
+    new TopicWaitHandler(new BotSessionService(ctx.botSessionModel), {
+      addRecording,
+    } as unknown as LessonsService),
     new RecordingWaitHandler(
       new BotSessionService(ctx.botSessionModel),
       { addRecording } as unknown as LessonsService,

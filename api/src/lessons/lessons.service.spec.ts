@@ -212,7 +212,11 @@ describe('LessonsService', () => {
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     const link = 'https://us02web.zoom.us/j/999';
 
-    const updated = await service.update(created.id, { zoomLinkOverride: link }, NOW);
+    const { lesson: updated } = await service.update(
+      created.id,
+      { zoomLinkOverride: link },
+      NOW,
+    );
     expect(updated.zoomLinkOverride).toBe(link);
 
     const raw = await lessonModel.findById(created.id).lean();
@@ -224,7 +228,7 @@ describe('LessonsService', () => {
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     await service.update(created.id, { note: 'Перенесли' }, NOW);
 
-    const updated = await service.update(created.id, { note: null }, NOW);
+    const { lesson: updated } = await service.update(created.id, { note: null }, NOW);
 
     expect(updated.note).toBeUndefined();
     expect(JSON.stringify(updated)).not.toContain('note');
@@ -235,7 +239,7 @@ describe('LessonsService', () => {
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     const teacher = await userModel.create({ name: 'Дмитрий', roles: ['teacher'] });
 
-    const updated = await service.update(
+    const { lesson: updated } = await service.update(
       created.id,
       { leaderId: teacher._id.toString() },
       NOW,
@@ -263,7 +267,7 @@ describe('LessonsService', () => {
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     await service.update(created.id, { leaderId: teacher._id.toString() }, NOW);
 
-    const updated = await service.update(created.id, { leaderId: null }, NOW);
+    const { lesson: updated } = await service.update(created.id, { leaderId: null }, NOW);
 
     expect(updated.leaderId).toBeUndefined();
   });
@@ -272,7 +276,7 @@ describe('LessonsService', () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    const updated = await service.update(
+    const { lesson: updated } = await service.update(
       created.id,
       { startsAt: '2026-09-04T10:00:00Z' },
       NOW,
@@ -286,18 +290,39 @@ describe('LessonsService', () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    await service.update(created.id, { startsAt: '2026-09-04T10:00:00Z' }, NOW);
+    const result = await service.update(
+      created.id,
+      { startsAt: '2026-09-04T10:00:00Z' },
+      NOW,
+    );
 
     expect(lessonLinkRebuild.calls).toEqual([{ lessonId: created.id, now: NOW }]);
+    expect(result.linkRebuilt).toBe(true);
   });
 
-  it('PATCH без startsAt (например, только тема) rebuild не зовёт — своя пересборка вызывающего кода остаётся единственной', async () => {
+  it('PATCH topic зовёт rebuild с этим занятием и now — тема с сайта пересобирает пост, как из бота', async () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    await service.update(created.id, { topic: 'Новая тема' }, NOW);
+    const result = await service.update(created.id, { topic: 'Новая тема' }, NOW);
+
+    expect(lessonLinkRebuild.calls).toEqual([{ lessonId: created.id, now: NOW }]);
+    expect(result.linkRebuilt).toBe(true);
+    expect(result.lesson.topic).toBe('Новая тема');
+  });
+
+  it('PATCH только note/tags rebuild не зовёт — linkRebuilt не задан', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+
+    const result = await service.update(
+      created.id,
+      { note: 'Заметка', tags: ['дракон'] },
+      NOW,
+    );
 
     expect(lessonLinkRebuild.calls).toEqual([]);
+    expect(result.linkRebuilt).toBeUndefined();
   });
 
   it('addRecording без url и telegramFileId — InvalidInputError', async () => {
@@ -401,7 +426,11 @@ describe('LessonsService', () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    const updated = await service.update(created.id, { durationMin: 90 }, NOW);
+    const { lesson: updated } = await service.update(
+      created.id,
+      { durationMin: 90 },
+      NOW,
+    );
 
     expect(updated.durationMin).toBe(90);
   });
@@ -492,7 +521,7 @@ describe('LessonsService', () => {
         tags: ['раз'],
       });
 
-      const updated = await service.update(
+      const { lesson: updated } = await service.update(
         created.id,
         { tags: ['Два', 'два', '  Три  '] },
         NOW,
@@ -509,7 +538,11 @@ describe('LessonsService', () => {
         tags: ['дракон'],
       });
 
-      const updated = await service.update(created.id, { topic: 'Новая тема' }, NOW);
+      const { lesson: updated } = await service.update(
+        created.id,
+        { topic: 'Новая тема' },
+        NOW,
+      );
 
       expect(updated.tags).toEqual(['дракон']);
     });

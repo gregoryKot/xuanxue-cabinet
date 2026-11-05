@@ -77,7 +77,7 @@ describe('LessonsController', () => {
   });
 
   it('update() передаёт id, тело и now в сервис', async () => {
-    const update = jest.fn().mockResolvedValue(LESSON_DTO);
+    const update = jest.fn().mockResolvedValue({ lesson: LESSON_DTO });
     const controller = await buildController({ update });
     const body = { note: null };
 

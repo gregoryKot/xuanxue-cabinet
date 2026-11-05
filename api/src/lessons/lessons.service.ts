@@ -23,16 +23,14 @@ import { ClassRecord } from '../classes/class.schema';
 import { LessonVideosService } from '../lesson-videos/lesson-videos.service';
 import { MaterialRecord } from '../materials/material.schema';
 import { detachMaterialReference } from '../materials/materials.queries';
-import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
-import { markCancelledAt } from './lesson-cancel-mark';
+import { updateLesson, type LessonUpdateResult } from './lesson-update';
 import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
-import { toLessonDto, type LeanLesson } from './lesson.mapper';
+import { toLessonDto } from './lesson.mapper';
 import { buildCreatePayload } from './lessons.create';
 import {
   LESSON_NOT_FOUND,
-  assertDurationEditable,
   assertLessonId,
   deleteOneOffLesson,
   findClassTitle,
@@ -46,7 +44,6 @@ import {
   buildRecordingDuplicateConditions,
   buildRecordingPush,
 } from './lessons.recording';
-import { buildUpdateCommand } from './lessons.update';
 
 @Injectable()
 export class LessonsService {
@@ -98,21 +95,21 @@ export class LessonsService {
     return this.getById(created._id.toString());
   }
 
-  async update(id: string, input: UpdateLessonInput, now: DateTime): Promise<LessonDto> {
-    assertLessonId(id);
-    if (input.durationMin !== undefined) await assertDurationEditable(this.model, id);
-    await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    if (input.status === 'cancelled') await markCancelledAt(this.model, id, now);
-    const doc = await this.model
-      .findOneAndUpdate({ _id: id }, buildUpdateCommand(input), {
-        returnDocument: 'after',
-      })
-      .lean<LeanLesson>();
-    if (!doc) throw new NotFoundError(LESSON_NOT_FOUND);
-    // Перенос приводит ещё не ушедшую рассылку в соответствие (ADR-0054);
-    // сбой не откатывает состоявшийся PATCH — rebuild логирует его сам.
-    if (input.startsAt !== undefined) await this.lessonLinkRebuild.rebuild(doc._id, now);
-    return toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
+  update(
+    id: string,
+    input: UpdateLessonInput,
+    now: DateTime,
+  ): Promise<LessonUpdateResult> {
+    return updateLesson(
+      {
+        model: this.model,
+        userModel: this.userModel,
+        lessonLinkRebuild: this.lessonLinkRebuild,
+      },
+      id,
+      input,
+      now,
+    );
   }
 
   // Отвязка от materials.lessonIds после удаления, не до: если удаление

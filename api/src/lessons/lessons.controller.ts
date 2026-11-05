@@ -65,8 +65,11 @@ export class LessonsController {
 
   @Patch(':id')
   @ApiRoute('PATCH /lessons/:id')
-  update(@Param('id') id: string, @Body() body: UpdateLessonDto): Promise<LessonDto> {
-    return this.lessonsService.update(id, body, DateTime.utc());
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateLessonDto,
+  ): Promise<LessonDto> {
+    return (await this.lessonsService.update(id, body, DateTime.utc())).lesson;
   }
 
   @Delete(':id')

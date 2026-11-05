@@ -38,7 +38,10 @@ describe('LessonsService.update — cancelledAt (ADR-0162)', () => {
       lessonModel,
       classModel,
       {} as unknown as RecordingBroadcastService,
-      {} as unknown as LessonLinkRebuildService,
+      // PATCH темы теперь пересобирает пост; здесь важно лишь, что вызов не падает.
+      {
+        rebuild: jest.fn().mockResolvedValue(false),
+      } as unknown as LessonLinkRebuildService,
       connection.model<BroadcastRecord>(BroadcastRecord.name, BroadcastSchema),
       connection.model<UserRecord>(UserRecord.name, UserSchema),
       connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema),
@@ -73,7 +76,11 @@ describe('LessonsService.update — cancelledAt (ADR-0162)', () => {
   it('scheduled → cancelled ставит момент отмены — now вызова', async () => {
     const id = await createLesson();
 
-    const updated = await service.update(id, { status: 'cancelled' }, CANCELLED_AT);
+    const { lesson: updated } = await service.update(
+      id,
+      { status: 'cancelled' },
+      CANCELLED_AT,
+    );
 
     expect(updated.status).toBe('cancelled');
     expect(await cancelledAtOf(id)).toEqual(CANCELLED_AT.toJSDate());
@@ -92,7 +99,11 @@ describe('LessonsService.update — cancelledAt (ADR-0162)', () => {
     const id = await createLesson();
     await service.update(id, { status: 'cancelled' }, CANCELLED_AT);
 
-    const restored = await service.update(id, { status: 'scheduled' }, CANCELLED_AT);
+    const { lesson: restored } = await service.update(
+      id,
+      { status: 'scheduled' },
+      CANCELLED_AT,
+    );
 
     expect(restored.status).toBe('scheduled');
     expect(await cancelledAtOf(id)).toBeUndefined();
@@ -128,7 +139,11 @@ describe('LessonsService.update — cancelledAt (ADR-0162)', () => {
   it('момент отмены наружу не уходит: в DTO его нет', async () => {
     const id = await createLesson();
 
-    const updated = await service.update(id, { status: 'cancelled' }, CANCELLED_AT);
+    const { lesson: updated } = await service.update(
+      id,
+      { status: 'cancelled' },
+      CANCELLED_AT,
+    );
 
     expect(Object.keys(updated)).not.toContain('cancelledAt');
   });
