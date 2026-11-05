@@ -95,6 +95,18 @@ describe('installGlobalErrorReporting', () => {
     expect(reportClientErrorMock).toHaveBeenCalledWith('chunk', reason);
   });
 
+  // Отказ не объектом, а строкой (`Promise.reject('упс')`): ни имени отмены,
+  // ни текста провала чанка у него нет — обычный сбой вне рендера.
+  it('отказ промиса строкой уходит как kind: unhandled', () => {
+    installGlobalErrorReporting();
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: 'упс' });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', 'упс');
+  });
+
   it('повторная установка не вешает второй слушатель', () => {
     installGlobalErrorReporting();
     installGlobalErrorReporting();
