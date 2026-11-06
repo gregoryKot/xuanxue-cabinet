@@ -8,9 +8,9 @@ import { textLinkStyle } from '../components/screenLayout';
 export function LessonNoClassesNotice() {
   return (
     <p style={{ margin: 0 }}>
-      Сначала добавьте занятие в расписании.{' '}
-      <Link to="/schedule" style={textLinkStyle}>
-        Перейти в «Расписание»
+      Сначала добавьте занятие в «Правила недели».{' '}
+      <Link to="/schedule/rules" style={textLinkStyle}>
+        Открыть правила недели
       </Link>
     </p>
   );

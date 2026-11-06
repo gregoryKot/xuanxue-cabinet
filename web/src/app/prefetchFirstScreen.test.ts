@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import {
+  CHANNELS_LIST_PATH,
   CLASSES_LIST_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
@@ -12,6 +13,7 @@ import {
   lessonsListPath,
 } from '../api/apiPaths';
 import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { REMINDER_SYNC_PATH } from '../api/lessonScopePaths';
@@ -69,11 +71,13 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
 }
 
 describe('firstScreenPaths', () => {
-  it('учитель на /planning — занятия на окно, классы и число раздела (слой 3.5)', () => {
-    expect(firstScreenPaths('/planning', makeMe())).toEqual([
+  it('учитель на /schedule — занятия, классы, число раздела, каналы и группы', () => {
+    expect(firstScreenPaths('/schedule', makeMe())).toEqual([
       lessonsListPath(),
       CLASSES_LIST_PATH,
       LESSON_RECORDING_SUMMARY_PATH,
+      CHANNELS_LIST_PATH,
+      apiRoutePath('GET /groups'),
     ]);
   });
 
@@ -125,8 +129,8 @@ describe('firstScreenPaths', () => {
   // Маршрут штата ученику не открыт (screenAccess.ts, canSeeRoute) — редирект
   // уводит на rootPathFor(me), греем данные экрана-назначения («Главная»),
   // а не расписание учителя.
-  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Главная»', () => {
-    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
+  it('ученик на /schedule (маршрут штата) — данные экрана-назначения «Главная»', () => {
+    expect(firstScreenPaths('/schedule', makeMe({ roles: [] }))).toEqual(BOARD_PATHS);
   });
 
   it('ученик на своей «/board» — экзамены, занятия, оплата, объявление и события', () => {
@@ -260,11 +264,13 @@ describe('prefetchFirstScreen', () => {
   it('кладёт промис apiFetch на каждый путь', () => {
     mockedApiFetch.mockResolvedValue([]);
 
-    prefetchFirstScreen('/planning', makeMe());
+    prefetchFirstScreen('/schedule', makeMe());
 
-    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
+    expect(mockedApiFetch).toHaveBeenCalledTimes(5);
     expect(mockedApiFetch).toHaveBeenCalledWith(lessonsListPath());
     expect(mockedApiFetch).toHaveBeenCalledWith(CLASSES_LIST_PATH);
     expect(mockedApiFetch).toHaveBeenCalledWith(LESSON_RECORDING_SUMMARY_PATH);
+    expect(mockedApiFetch).toHaveBeenCalledWith(CHANNELS_LIST_PATH);
+    expect(mockedApiFetch).toHaveBeenCalledWith(apiRoutePath('GET /groups'));
   });
 });

@@ -14,7 +14,7 @@ import { textLinkStyle } from '../components/screenLayout';
 import { formatDayHeading, formatTime } from '../lib/formatDate';
 import { useWeekTopic } from './useWeekTopic';
 
-const PLANNING_PATH = '/planning';
+const SCHEDULE_PATH = '/schedule';
 const EMPTY_LESSONS_MESSAGE = 'На этой неделе занятий нет.';
 const EMPTY_TOPIC_HINT = 'Пустая тема снимет тему у отмеченных занятий.';
 const NO_CLASS_NAME = '—';
@@ -56,7 +56,7 @@ export function WeekTopicForm({ lessons, classesById }: WeekTopicFormProps) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (await form.submit()) void navigate(PLANNING_PATH);
+    if (await form.submit()) void navigate(SCHEDULE_PATH);
   }
 
   return (
@@ -83,7 +83,7 @@ export function WeekTopicForm({ lessons, classesById }: WeekTopicFormProps) {
         <Button type="submit" pending={form.pending}>
           Сохранить
         </Button>
-        <Link to={PLANNING_PATH} style={textLinkStyle}>
+        <Link to={SCHEDULE_PATH} style={textLinkStyle}>
           Назад
         </Link>
       </div>

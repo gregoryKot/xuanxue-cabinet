@@ -33,8 +33,8 @@ export function MaterialClassesField({
       emptyMessage={
         <>
           Занятий пока нет. Добавьте их в{' '}
-          <Link to="/schedule" style={textLinkStyle}>
-            «Расписании»
+          <Link to="/schedule/rules" style={textLinkStyle}>
+            «Правилах недели»
           </Link>{' '}
           — потом привяжите материал здесь.
         </>

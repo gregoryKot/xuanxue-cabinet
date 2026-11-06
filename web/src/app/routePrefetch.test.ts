@@ -23,6 +23,7 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import {
   GRADED_ATTEMPTS_PATH,
   GRADING_QUEUE_PATH,
@@ -54,16 +55,21 @@ afterEach(() => {
 });
 
 describe('RouteModule.prefetch — маршруты без параметра', () => {
-  it('/planning — занятия на окно, классы и число раздела (слой 3.5)', () => {
-    expect(prefetchAt('/planning')).toEqual([
+  it('/schedule — занятия на окно, классы, число раздела, каналы и группы (ADR-0198)', () => {
+    expect(prefetchAt('/schedule')).toEqual([
       lessonsListPath(),
       CLASSES_LIST_PATH,
       LESSON_RECORDING_SUMMARY_PATH,
+      CHANNELS_LIST_PATH,
+      apiRoutePath('GET /groups'),
     ]);
   });
 
-  it('/schedule — классы и активные каналы (оба грузит ScheduleScreen.tsx)', () => {
-    expect(prefetchAt('/schedule')).toEqual([CLASSES_LIST_PATH, CHANNELS_LIST_PATH]);
+  it('/schedule/rules — классы и активные каналы (оба грузит WeekRulesScreen.tsx)', () => {
+    expect(prefetchAt('/schedule/rules')).toEqual([
+      CLASSES_LIST_PATH,
+      CHANNELS_LIST_PATH,
+    ]);
   });
 
   it('/channels — список всех каналов', () => {
@@ -293,8 +299,8 @@ describe('RouteModule.prefetch — у входа и у «Рассылок» pref
 describe('RouteModule.prefetch — форма путей', () => {
   it('все пути из prefetch — адрес API без префикса /api, начинаются с /', () => {
     const samplePathnames = [
-      '/planning',
       '/schedule',
+      '/schedule/rules',
       '/schedule/new',
       '/schedule/652f00000000000000000001',
       '/planning/new',

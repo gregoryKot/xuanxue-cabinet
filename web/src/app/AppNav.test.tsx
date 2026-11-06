@@ -60,7 +60,7 @@ const ACCOUNTANT: MeDto = { ...TEACHER, id: 'b1', name: 'Оля', roles: ['accou
 function renderNav(
   isMobile: boolean,
   me: MeDto | null = TEACHER,
-  path = '/planning',
+  path = '/schedule',
   personProps: {
     profileLink?: ReactNode;
     logoutButton?: ReactNode;
@@ -296,7 +296,7 @@ describe('AppNav — подсветка раздела', () => {
 // pillBaseStyle (people/PersonRoleBadge.tsx) сделан тем же приёмом.
 describe('AppNav — цель нажатия и плашка нижней панели разведены', () => {
   it('плашка — внутренний <span> без своей минимальной высоты, у <Link> нет фона', () => {
-    renderNav(true, TEACHER, '/planning');
+    renderNav(true, TEACHER, '/schedule');
 
     const active = screen.getByRole('link', { name: 'Главная' });
     expect(active.style.minHeight).toBe('44px');
@@ -360,7 +360,7 @@ describe('AppNav — блок человека (боковая колонка, A
   // Ровно то, чего боялся владелец при переносе подвала в колонку: имя,
   // «Профиль» и «Выйти» должны остаться доступны, просто в другом месте.
   it('на широком экране — переданные «Профиль» и «Выйти» видны внизу колонки', () => {
-    renderNav(false, TEACHER, '/planning', {
+    renderNav(false, TEACHER, '/schedule', {
       profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
@@ -382,7 +382,7 @@ describe('AppNav — блок человека (боковая колонка, A
   // Мокап телефона такой блок не рисует вовсе — эту роль на телефоне играет
   // подвал AppShell.tsx, а не эта колонка (её на телефоне и не видно).
   it('на телефоне блок человека не рисуется, даже если узлы переданы', () => {
-    renderNav(true, TEACHER, '/planning', {
+    renderNav(true, TEACHER, '/schedule', {
       profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
@@ -397,7 +397,7 @@ describe('AppNav — блок человека (боковая колонка, A
 // угол содержимого (AppShell.test.tsx), колонка про него больше не знает.
 describe('AppNav — колокольчика в колонке нет (ADR-0063)', () => {
   it('в колонке только разделы, знак школы и блок человека', () => {
-    renderNav(false, TEACHER, '/planning', {
+    renderNav(false, TEACHER, '/schedule', {
       profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
@@ -474,7 +474,7 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
 // пункта — на тихой подложке `--panel`, у неактивного пункта заливки нет.
 describe('AppNav — нижняя панель на бумаге страницы, не на белой карточке (ADR-0110)', () => {
   it('фон панели — бумага, плашка активного пункта — тихая подложка, у неактивного — прозрачная', () => {
-    renderNav(true, TEACHER, '/planning');
+    renderNav(true, TEACHER, '/schedule');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     expect(nav.style.background).toBe('var(--paper)');
@@ -499,7 +499,7 @@ describe('AppNav — нижняя панель на бумаге страниц�
 // число, а саму строку стиля — она и есть источник правды для браузера.
 describe('AppNav — нижний отступ панели ограничивает безопасную зону потолком (ADR-0110, доп. 2026-09-22)', () => {
   it('paddingBottom складывает отступ панели и min() безопасной зоны с потолком', () => {
-    renderNav(true, TEACHER, '/planning');
+    renderNav(true, TEACHER, '/schedule');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     // Строка, а не отдельные числа: calc()/env()/min() в jsdom не считаются,

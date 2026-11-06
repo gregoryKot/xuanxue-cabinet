@@ -12,7 +12,7 @@ import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { mockApiByPath } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
-import ScheduleScreen from './ScheduleScreen';
+import WeekRulesScreen from './WeekRulesScreen';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -55,18 +55,18 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
 const NEW_MARKER = 'Здесь страница нового занятия';
 const CHANNELS_MARKER = 'Здесь каналы';
 const TEMPLATES_MARKER = 'Здесь шаблоны';
-const JOURNAL_MARKER = 'Здесь журнал отправок';
+const SCHEDULE_MARKER = 'Здесь экран недель';
 const EDITOR_MARKER = 'Здесь страница занятия расписания';
 
 function renderScreen() {
   return render(
-    <MemoryRouter initialEntries={['/schedule']}>
+    <MemoryRouter initialEntries={['/schedule/rules']}>
       <Routes>
-        <Route path="/schedule" element={<ScheduleScreen />} />
+        <Route path="/schedule/rules" element={<WeekRulesScreen />} />
+        <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
         <Route path="/schedule/new" element={<p>{NEW_MARKER}</p>} />
         <Route path="/channels" element={<p>{CHANNELS_MARKER}</p>} />
         <Route path="/templates" element={<p>{TEMPLATES_MARKER}</p>} />
-        <Route path="/broadcasts" element={<p>{JOURNAL_MARKER}</p>} />
         <Route path="/schedule/:classId" element={<p>{EDITOR_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
@@ -82,7 +82,7 @@ afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
-describe('ScheduleScreen — сбой загрузки', () => {
+describe('WeekRulesScreen — сбой загрузки', () => {
   it('ApiError — текст ошибки и «Обновить», клик повторяет запрос', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
@@ -103,7 +103,7 @@ describe('ScheduleScreen — сбой загрузки', () => {
   });
 });
 
-describe('ScheduleScreen — загрузка', () => {
+describe('WeekRulesScreen — загрузка', () => {
   it('показывает скелетон, пока список не пришёл', () => {
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
 
@@ -113,22 +113,24 @@ describe('ScheduleScreen — загрузка', () => {
   });
 });
 
-describe('ScheduleScreen — пустая база', () => {
+describe('WeekRulesScreen — пустая база', () => {
   it('заголовок раздела, объяснение и кнопка «Добавить занятие»', async () => {
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
 
-    expect(await screen.findByText(/Пока в расписании нет занятий/)).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Расписание и рассылки' }),
+      await screen.findByText(/Пока в правилах недели нет занятий/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Постоянные занятия недели/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Правила недели' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Что идёт каждую неделю/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Добавить занятие' })).toBeInTheDocument();
   });
 });
 
-describe('ScheduleScreen — неделя днями', () => {
+describe('WeekRulesScreen — неделя днями', () => {
   it('занятие — строкой в карточке своего дня, пустые дни не показаны', async () => {
     mockedApiFetch.mockResolvedValue([makeClass()]);
 
@@ -178,7 +180,7 @@ describe('ScheduleScreen — неделя днями', () => {
 // телефоне — список (useIsMobile, ревью п.15), и каждая ветка прятала свои
 // поломки. Ширину теперь делит CSS (columns), а не JS: экран не спрашивает
 // matchMedia, поэтому тест на «телефон» и «монитор» видит одно и то же.
-describe('ScheduleScreen — одна раскладка на любой ширине', () => {
+describe('WeekRulesScreen — одна раскладка на любой ширине', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -204,7 +206,7 @@ describe('ScheduleScreen — одна раскладка на любой шир�
   );
 });
 
-describe('ScheduleScreen — переход на страницу занятия', () => {
+describe('WeekRulesScreen — переход на страницу занятия', () => {
   it('строка занятия ведёт на `/schedule/:classId`', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([makeClass()]);
@@ -226,7 +228,7 @@ describe('ScheduleScreen — переход на страницу занятия
   });
 });
 
-describe('ScheduleScreen — пояс и ссылки (отзыв владельца 2026-09-12)', () => {
+describe('WeekRulesScreen — пояс и ссылки (отзыв владельца 2026-09-12)', () => {
   it('два занятия в поясе школы — подпись про часы школы одна на экран', async () => {
     mockedApiFetch.mockResolvedValue([
       makeClass(),
@@ -280,7 +282,7 @@ const SCHEDULE_GROUPS = [
   { id: 'g2', name: 'Старшие' },
 ];
 
-describe('ScheduleScreen — куда уходит занятие (ADR-0196)', () => {
+describe('WeekRulesScreen — куда уходит занятие (ADR-0196)', () => {
   it('у занятия две группы — по группе «название · каналы», чужие не попадают', async () => {
     mockApiByPath({
       '/classes': [makeClass({ groupIds: ['g1', 'g2'], groupLabel: 'Средние, Старшие' })],
@@ -376,8 +378,18 @@ describe('ScheduleScreen — куда уходит занятие (ADR-0196)', (
   });
 });
 
-describe('ScheduleScreen — вход в подэкраны раздела (ADR-0191)', () => {
-  it('в шапке «Каналы», «Шаблоны», «Журнал отправок» и главная «Добавить занятие»', async () => {
+describe('WeekRulesScreen — вход в подэкраны раздела (ADR-0191)', () => {
+  it('«К расписанию» ведёт на /schedule', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/classes': [], '/channels': [] });
+
+    renderScreen();
+    await user.click(await screen.findByRole('link', { name: 'К расписанию' }));
+
+    expect(screen.getByText(SCHEDULE_MARKER)).toBeInTheDocument();
+  });
+
+  it('в шапке «Каналы», «Шаблоны» и главная «Добавить занятие»', async () => {
     mockApiByPath({ '/classes': [], '/channels': [] });
 
     renderScreen();
@@ -387,7 +399,7 @@ describe('ScheduleScreen — вход в подэкраны раздела (ADR-
     const labels = within(heading.parentElement?.parentElement as HTMLElement)
       .getAllByRole('button')
       .map((button) => button.textContent);
-    expect(labels).toEqual(['Каналы', 'Шаблоны', 'Журнал отправок', 'Добавить занятие']);
+    expect(labels).toEqual(['Каналы', 'Шаблоны', 'Добавить занятие']);
   });
 
   it('входы видны, пока занятия грузятся; «Добавить занятие» — после', () => {
@@ -395,7 +407,7 @@ describe('ScheduleScreen — вход в подэкраны раздела (ADR-
 
     renderScreen();
 
-    for (const name of ['Каналы', 'Шаблоны', 'Журнал отправок']) {
+    for (const name of ['Каналы', 'Шаблоны']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
     expect(screen.queryByRole('button', { name: 'Добавить занятие' })).toBeNull();
@@ -404,7 +416,6 @@ describe('ScheduleScreen — вход в подэкраны раздела (ADR-
   it.each([
     ['Каналы', CHANNELS_MARKER],
     ['Шаблоны', TEMPLATES_MARKER],
-    ['Журнал отправок', JOURNAL_MARKER],
   ])('«%s» ведёт на свой экран', async (name, marker) => {
     const user = userEvent.setup();
     mockApiByPath({ '/classes': [], '/channels': [] });

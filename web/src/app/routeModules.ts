@@ -26,7 +26,6 @@ import {
   EXAM_EDITOR_ITEMS_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   INVITE_LINK_PATH,
-  LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
@@ -35,7 +34,6 @@ import {
   CHANNELS_LIST_PATH,
   examItemsListPath,
   examsListPath,
-  lessonsListPath,
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
@@ -54,6 +52,7 @@ import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { EVENT_ROUTE_MODULES } from './eventRouteModules';
+import { SCHEDULE_ROUTE_MODULES } from './scheduleRouteModules';
 import { WEEK_TOPIC_ROUTE_MODULES } from './weekTopicRouteModules';
 import { PROVIDER_LOGIN_ROUTE_MODULES } from './providerLoginRouteModules';
 import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
@@ -150,13 +149,7 @@ export const ROUTE_MODULES = {
     load: () => import('../welcome/WelcomeScreen'),
     warm: false,
   },
-  schedule: {
-    path: '/schedule',
-    load: () => import('../schedule/ScheduleScreen'),
-    warm: true,
-    // ScheduleScreen.tsx грузит и классы, и активные каналы сразу на монтировании.
-    prefetch: () => [CLASSES_LIST_PATH, CHANNELS_LIST_PATH],
-  },
+  ...SCHEDULE_ROUTE_MODULES, // раньше classNew/classEditor, см. файл
   classNew: {
     path: '/schedule/new',
     load: loadClassEditor,
@@ -176,14 +169,6 @@ export const ROUTE_MODULES = {
       CHANNELS_LIST_PATH,
       TEACHERS_PATH,
     ],
-  },
-  planning: {
-    path: '/planning',
-    load: () => import('../planning/PlanningScreen'),
-    warm: true,
-    // Число раздела (ТЗ docs/PLAN.md §14, слой 3.5) — отдельный маленький
-    // запрос экрана, как EXAM_ITEM_STATS_SUMMARY_PATH у `/exams` ниже.
-    prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
   // Учителей, как у classNew, LessonEditorForm.tsx спрашивает после записи.
   lessonNew: {

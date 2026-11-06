@@ -28,8 +28,8 @@ import { SendNowButton } from './SendNowButton';
 import { useLessonForm } from './useLessonForm';
 import type { UseLessonEditorResult } from './useLessonEditor';
 
-const PLANNING_PATH = '/planning';
-const BACK_TEXT = 'К занятиям';
+const SCHEDULE_PATH = '/schedule';
+const BACK_TEXT = 'К расписанию';
 const EYEBROW = 'Занятие';
 const NEW_LESSON_TITLE = 'Разовое занятие';
 const CANCEL_MESSAGE = 'Ученики не получат ссылку на это занятие, **рассылка не уйдёт**.';
@@ -47,7 +47,7 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
   const navigate = useNavigate();
   // `void` — navigate возвращает промис (react-router 7), а зовущим его
   // местам нужна обычная функция без результата.
-  const goToList = () => void navigate(PLANNING_PATH);
+  const goToList = () => void navigate(SCHEDULE_PATH);
   const form = useLessonForm(lesson, classes, editor.create, editor.update);
   const teachersState = useTeachers();
   const cancelConfirm = useConfirmedRemove(form.cancelLesson, goToList);
@@ -75,7 +75,7 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
   return (
     <>
       <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={PLANNING_PATH} style={backLinkStyle}>
+        <Link to={SCHEDULE_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

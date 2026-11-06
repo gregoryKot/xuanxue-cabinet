@@ -66,7 +66,7 @@ function renderEditor() {
   return render(
     <MemoryRouter initialEntries={['/schedule/c1']}>
       <Routes>
-        <Route path="/schedule" element={<p>Здесь сетка расписания</p>} />
+        <Route path="/schedule/rules" element={<p>Здесь правила недели</p>} />
         <Route path="/schedule/:classId" element={<ClassEditorScreen />} />
       </Routes>
     </MemoryRouter>,

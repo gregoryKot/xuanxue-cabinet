@@ -29,7 +29,7 @@ function renderGuarded() {
       <AuthProvider>
         <Routes>
           <Route element={<RequireAuth />}>
-            <Route path="/planning" element={<p>Занятия</p>} />
+            <Route path="/schedule" element={<p>Расписание</p>} />
             <Route element={<RequirePeopleAccess />}>
               <Route path="/people" element={<p>Люди</p>} />
             </Route>
@@ -41,7 +41,7 @@ function renderGuarded() {
 }
 
 describe('RequirePeopleAccess', () => {
-  it('ученик без роли — редирект на /planning', async () => {
+  it('ученик без роли — редирект на /schedule', async () => {
     const me: MeDto = {
       id: 'u1',
       name: 'Ваня',
@@ -63,10 +63,10 @@ describe('RequirePeopleAccess', () => {
 
     renderGuarded();
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
-  it('бухгалтер — редирект на /planning (не учитель и не admin)', async () => {
+  it('бухгалтер — редирект на /schedule (не учитель и не admin)', async () => {
     const me: MeDto = {
       id: 'u3',
       name: 'Оля',
@@ -88,18 +88,18 @@ describe('RequirePeopleAccess', () => {
 
     renderGuarded();
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
   // Без RequireAuth в дереве `me` при первом рендере ещё null — гвард обязан
-  // уводить на /planning, а не падать на чтении roles.
-  it('без сессии (me = null) — редирект на /planning, без падения', async () => {
+  // уводить на /schedule, а не падать на чтении roles.
+  it('без сессии (me = null) — редирект на /schedule, без падения', async () => {
     mockedApiFetch.mockRejectedValue(new Error('нет сессии'));
     render(
       <MemoryRouter initialEntries={['/people']}>
         <AuthProvider>
           <Routes>
-            <Route path="/planning" element={<p>Занятия</p>} />
+            <Route path="/schedule" element={<p>Расписание</p>} />
             <Route element={<RequirePeopleAccess />}>
               <Route path="/people" element={<p>Люди</p>} />
             </Route>
@@ -108,7 +108,7 @@ describe('RequirePeopleAccess', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
   it('admin — рендерит вложенный маршрут', async () => {

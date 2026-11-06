@@ -94,7 +94,7 @@ function emptyGrid(): ScheduleGrid {
  * Правило с нечисловым временем (`timeToMinutes` вернул NaN) тоже
  * пропускается — показать его в сетке нечем, а падать из-за одной плохой
  * записи не должен весь экран. `activeChannels` — активные каналы
- * кабинета (ScheduleScreen грузит их один раз через useChannels()), `null`
+ * кабинета (WeekRulesScreen грузит их один раз через useChannels()), `null`
  * пока грузятся: занятие уходит в каналы своей группы, канал без группы
  * рассылку не получит (ADR-0195); `groups` — названия групп для строки (ADR-0196). */
 export function buildScheduleGrid(

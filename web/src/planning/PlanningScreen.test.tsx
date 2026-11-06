@@ -1,5 +1,5 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts»), по образцу
-// schedule/ScheduleScreen.test.tsx. Занятие открывается своей страницей
+// schedule/WeekRulesScreen.test.tsx. Занятие открывается своей страницей
 // (LessonEditorScreen.tsx, ADR-0033) — вместо неё в маршрутах стоит метка:
 // здесь проверяется переход по адресу, сама страница — в своём тесте.
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -22,17 +22,19 @@ const mockedApiFetch = vi.mocked(apiFetch);
 
 const NEW_MARKER = 'Здесь страница разового занятия';
 const EDITOR_MARKER = 'Здесь страница занятия';
-const SCHEDULE_MARKER = 'Здесь сетка расписания';
+const RULES_MARKER = 'Здесь правила недели';
+const JOURNAL_MARKER = 'Здесь журнал отправок';
 const WEEK_TOPIC_MARKER = 'Здесь страница темы недели';
 
 function renderScreen() {
   return render(
-    <MemoryRouter initialEntries={['/planning']}>
+    <MemoryRouter initialEntries={['/schedule']}>
       <Routes>
-        <Route path="/planning" element={<PlanningScreen />} />
+        <Route path="/schedule" element={<PlanningScreen />} />
         <Route path="/planning/new" element={<p>{NEW_MARKER}</p>} />
         <Route path="/planning/:lessonId" element={<p>{EDITOR_MARKER}</p>} />
-        <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
+        <Route path="/schedule/rules" element={<p>{RULES_MARKER}</p>} />
+        <Route path="/broadcasts" element={<p>{JOURNAL_MARKER}</p>} />
         <Route
           path="/planning/week-topic/:weekKey"
           element={<p>{WEEK_TOPIC_MARKER}</p>}
@@ -109,12 +111,9 @@ describe('PlanningScreen — пустое окно', () => {
 
     // «Сегодня занятий нет.» тоже на экране (PlanningToday.tsx) — regex
     // ловит именно объяснение под списком дней.
-    // Проверяем текст именно этого абзаца (не через общий getByText):
-    // объяснение шапки тоже упоминает «Расписании» (EXPLANATION), и запрос
-    // без привязки к элементу упал бы на два совпадения.
     const emptyMessage = await screen.findByText(/Пока ничего не запланировано/);
     expect(emptyMessage).toBeInTheDocument();
-    expect(emptyMessage).toHaveTextContent(/Расписании/);
+    expect(emptyMessage).toHaveTextContent(/Правила недели/);
     expect(screen.getByRole('button', { name: 'Разовое занятие' })).toBeInTheDocument();
   });
 });
@@ -214,16 +213,27 @@ describe('PlanningScreen — список занятий', () => {
     expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
   });
 
-  it('«Расписание и рассылки» в шапке ведёт в сетку расписания', async () => {
+  it('заголовок экрана — «Расписание»', async () => {
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
+
+    renderScreen();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Расписание' }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['Правила недели', RULES_MARKER],
+    ['Журнал отправок', JOURNAL_MARKER],
+  ])('«%s» в шапке ведёт на свой экран', async (name, marker) => {
     const user = userEvent.setup();
     mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
 
     renderScreen();
-    await user.click(
-      await screen.findByRole('button', { name: 'Расписание и рассылки' }),
-    );
+    await user.click(await screen.findByRole('button', { name }));
 
-    expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
+    expect(await screen.findByText(marker)).toBeInTheDocument();
   });
 
   // Тема недели (ADR-0197): строка под заголовком недели и переход на её страницу.
@@ -411,5 +421,66 @@ describe('PlanningScreen — число раздела (ТЗ §14, слой 3.5)
 
     expect(await screen.findByText(/Пока ничего не запланировано/)).toBeInTheDocument();
     expect(screen.queryByText(/прошло \d+ занят/)).not.toBeInTheDocument();
+  });
+});
+
+// ADR-0198: предупреждения «никуда не уходит» нарисованы на «Правилах недели»;
+// на главном экране о них говорит одна строка, иначе отказ рассылки тихий.
+describe('PlanningScreen — строка про правила, которые никуда не доходят', () => {
+  const UNDELIVERED_TEXT = 'У 1 занятия из правил недели ссылка дойдёт не до всех групп.';
+
+  it('онлайн-занятие без групп — красная строка и вход в правила недели', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/lessons': [],
+      '/classes': [makeClass()],
+      '/channels': [],
+      '/groups': [],
+    });
+
+    renderScreen();
+
+    const notice = await screen.findByText(
+      (_, el) => el?.tagName === 'SPAN' && el.textContent === UNDELIVERED_TEXT,
+    );
+    expect(notice).toHaveStyle({ color: 'var(--danger)' });
+    await user.click(screen.getByRole('button', { name: 'Открыть правила недели' }));
+    expect(await screen.findByText(RULES_MARKER)).toBeInTheDocument();
+  });
+
+  it('у группы занятия есть канал — строки нет', async () => {
+    mockApiByPath({
+      '/lessons': [],
+      '/classes': [makeClass({ groupIds: ['g1'], groupLabel: 'Средние' })],
+      '/channels': [
+        {
+          id: 'ch1',
+          type: 'telegram',
+          title: 'Канал школы',
+          target: '@xuanxue',
+          groupIds: ['g1'],
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+      '/groups': [
+        {
+          id: 'g1',
+          name: 'Средние',
+          classCount: 1,
+          channelCount: 1,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+    });
+
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'Разовое занятие' });
+    expect(screen.queryByText(/ссылка дойдёт не до всех/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Открыть правила недели' }),
+    ).not.toBeInTheDocument();
   });
 });

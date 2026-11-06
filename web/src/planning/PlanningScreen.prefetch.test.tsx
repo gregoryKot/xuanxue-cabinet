@@ -7,10 +7,12 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CHANNELS_LIST_PATH,
   CLASSES_LIST_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   lessonsListPath,
 } from '../api/apiPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import { putPrefetched } from '../api/prefetchCache';
 import { makeClass, makeLesson } from '../test-support/planningFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
@@ -36,7 +38,7 @@ afterEach(() => {
 
 function renderScreen() {
   return render(
-    <MemoryRouter initialEntries={['/planning']}>
+    <MemoryRouter initialEntries={['/schedule']}>
       <PlanningScreen />
     </MemoryRouter>,
   );
@@ -50,6 +52,8 @@ describe('PlanningScreen — данные из prefetchCache', () => {
     const cls = makeClass();
     putPrefetched(lessonsListPath(), Promise.resolve([lesson]));
     putPrefetched(CLASSES_LIST_PATH, Promise.resolve([cls]));
+    putPrefetched(CHANNELS_LIST_PATH, Promise.resolve([]));
+    putPrefetched(apiRoutePath('GET /groups'), Promise.resolve([]));
     putPrefetched(
       LESSON_RECORDING_SUMMARY_PATH,
       Promise.resolve({ periodDays: 30, lessonsPast: 0, lessonsWithRecording: 0 }),
