@@ -15,6 +15,6 @@ export function RequirePeopleAccess() {
   const { me } = useAuth();
   const canAccess = hasRole(me, 'admin') || hasRole(me, 'teacher');
 
-  if (!canAccess) return <Navigate to="/planning" replace />;
+  if (!canAccess) return <Navigate to="/schedule" replace />;
   return <Outlet />;
 }

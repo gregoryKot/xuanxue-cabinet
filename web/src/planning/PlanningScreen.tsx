@@ -1,10 +1,9 @@
-// «Занятия» — второй пункт меню штата, было первым до ADR-0138 (docs/PLAN.md
-// §6): сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
-// Вход в сетку расписания — тихая кнопка в шапке (components/ScreenActions.tsx,
-// docs/adr/0025, дополнение 2026-09-18): карточку внизу списка на телефоне
-// было не долистать. Материалы — свой раздел меню (ADR-0055).
-// Облик — направление «Тёплая школа» (docs/adr/0043, макет 1c-planning.html):
-// заголовок антиквой, строка объяснения, день — карточка со строками занятий.
+// Главный экран раздела «Расписание», `/schedule` (ADR-0198). Был «Занятия»
+// на `/planning`; имя файла осталось, как `BoardScreen` у «Главной»
+// (ADR-0178). Сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на
+// 4 недели с темой недели. Правила недели, журнал отправок — тихие кнопки в
+// шапке (components/ScreenActions.tsx, docs/adr/0025): карточку внизу списка
+// на телефоне было не долистать. Облик — «Тёплая школа» (docs/adr/0043).
 // Правка и создание занятия — своя страница `/planning/new` и
 // `/planning/:lessonId` (LessonEditorScreen.tsx, ADR-0033): отсюда только
 // переход.
@@ -13,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatRecordingSummary, PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { RichText } from '../components/RichText';
-import { ScreenActions } from '../components/ScreenActions';
+import { ScreenActions, type ScreenAction } from '../components/ScreenActions';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -22,21 +21,22 @@ import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { LessonWeekGroup } from './LessonWeekGroup';
 import { PlanningToday } from './PlanningToday';
+import { RulesDeliveryNotice } from './RulesDeliveryNotice';
 import { upcomingDayGroups } from './upcomingDayGroups';
 import { useLessons } from './useLessons';
 import { groupDayGroupsByWeek } from './weekTopic';
 import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
-const TITLE = 'Занятия';
+const TITLE = 'Расписание';
 const EXPLANATION = `Занятия на **${PLANNING_HORIZON_WEEKS} недели** вперёд. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Блок текста шапки уже макета (1c-planning.html, docs/adr/0043): рядом пара
 // действий, и на 880px столбец 620 (по умолчанию) сталкивал бы их на вторую
 // строку раньше нужного — у 540 запас остаётся (отзыв владельца 2026-09-18).
 const TITLE_MAX_WIDTH_PX = 540;
-// Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
-// отличается от строчки расписания (отзыв владельца 2026-09-12).
+// По названию кнопки непонятно, чем разовое занятие отличается от правила
+// недели (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
-  'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него **не меняется**.';
+  'Разовое занятие — то, чего нет в правилах недели: семинар, перенос, замена. Правила от него **не меняются**.';
 // Тихие строки шапки — приписка к кнопке и число раздела (ТЗ §14, слой 3.5;
 // строкой, не StatNumber: крупный кегль спорил бы с блоком «сегодня»). Мера
 // как у текста шапки, иначе строка тянется на все 880 и спорит с колонкой
@@ -48,9 +48,10 @@ const headerNoteStyle = {
   maxWidth: TITLE_MAX_WIDTH_PX,
 };
 const LESSON_PATH = '/planning';
-const SCHEDULE_PATH = '/schedule';
+const RULES_PATH = '/schedule/rules';
+const JOURNAL_PATH = '/broadcasts';
 const EMPTY_GROUPS_MESSAGE =
-  'Пока ничего не запланировано. Добавьте правило в «Расписании» или создайте **разовое занятие**.';
+  'Пока ничего не запланировано. Добавьте занятие в «Правила недели» или создайте **разовое занятие**.';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -84,8 +85,16 @@ export default function PlanningScreen() {
   // Занятие открывается своей страницей с адресом, а не листом поверх списка
   // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
   const openCreate = () => void navigate(`${LESSON_PATH}/new`);
-  const openSchedule = () => void navigate(SCHEDULE_PATH);
+  const openRules = () => void navigate(RULES_PATH);
   const openLesson = (lessonId: string) => void navigate(`${LESSON_PATH}/${lessonId}`);
+
+  const actions: ScreenAction[] = [
+    { label: 'Правила недели', onClick: openRules },
+    { label: 'Журнал отправок', onClick: () => void navigate(JOURNAL_PATH) },
+  ];
+  if (!lessonsState.loading) {
+    actions.push({ label: 'Разовое занятие', onClick: openCreate, variant: 'primary' });
+  }
 
   // Прокрутка к `#lesson-{id}` — на случай внешней ссылки (бот, уведомление).
   useScrollToHash(!lessonsState.loading && !lessonsError);
@@ -97,16 +106,7 @@ export default function PlanningScreen() {
         explanation={EXPLANATION}
         hint={tzNote}
         titleMaxWidth={TITLE_MAX_WIDTH_PX}
-        action={
-          !lessonsState.loading && (
-            <ScreenActions
-              actions={[
-                { label: 'Расписание и рассылки', onClick: openSchedule },
-                { label: 'Разовое занятие', onClick: openCreate, variant: 'primary' },
-              ]}
-            />
-          )
-        }
+        action={<ScreenActions actions={actions} />}
       />
       {!lessonsState.loading && (
         <p style={headerNoteStyle}>
@@ -114,6 +114,7 @@ export default function PlanningScreen() {
         </p>
       )}
       {recordingLine && <p style={headerNoteStyle}>{recordingLine}</p>}
+      <RulesDeliveryNotice classes={classesState.classes} onOpenRules={openRules} />
       {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
       {!lessonsError && (
         <PlanningToday

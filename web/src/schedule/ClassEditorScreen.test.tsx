@@ -23,7 +23,7 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const SCHEDULE_MARKER = 'Здесь сетка расписания';
+const SCHEDULE_MARKER = 'Здесь правила недели';
 const GROUPS: GroupDto[] = ['Начинающие', 'Средние', 'Старшие'].map((name, index) => ({
   id: `g${index + 1}`,
   name,
@@ -57,7 +57,7 @@ function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
+        <Route path="/schedule/rules" element={<p>{SCHEDULE_MARKER}</p>} />
         <Route path="/schedule/new" element={<ClassEditorScreen />} />
         <Route path="/schedule/:classId" element={<ClassEditorScreen />} />
       </Routes>
@@ -264,12 +264,12 @@ describe('ClassEditorScreen — сохранение', () => {
     expect(screen.queryByText(SCHEDULE_MARKER)).not.toBeInTheDocument();
   });
 
-  it('«К расписанию» — ссылка наверху страницы', async () => {
+  it('«К правилам недели» — ссылка наверху страницы', async () => {
     const user = userEvent.setup();
     mockClass(makeClass());
 
     renderAt('/schedule/c1');
-    await user.click(await screen.findByRole('link', { name: 'К расписанию' }));
+    await user.click(await screen.findByRole('link', { name: 'К правилам недели' }));
 
     expect(screen.getByText(SCHEDULE_MARKER)).toBeInTheDocument();
   });

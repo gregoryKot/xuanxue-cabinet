@@ -38,7 +38,8 @@ describe('matchRoute', () => {
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
     expect(loaderAt('/library')).toBe(ROUTE_MODULES.library.load);
     expect(loaderAt('/email/confirm')).toBe(ROUTE_MODULES.emailConfirm.load);
-    expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
+    // Старый адрес — редирект в cabinetRoutes, своего экрана нет (ADR-0198).
+    expect(loaderAt('/planning')).toBeNull();
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
     expect(loaderAt('/planning/week-topic/2026-11-08')).toBe(
       ROUTE_MODULES.weekTopic.load,
@@ -47,6 +48,7 @@ describe('matchRoute', () => {
       ROUTE_MODULES.lessonEditor.load,
     );
     expect(loaderAt('/schedule')).toBe(ROUTE_MODULES.schedule.load);
+    expect(loaderAt('/schedule/rules')).toBe(ROUTE_MODULES.weekRules.load);
     expect(loaderAt('/schedule/new')).toBe(ROUTE_MODULES.classNew.load);
     expect(loaderAt('/schedule/652f00000000000000000004')).toBe(
       ROUTE_MODULES.classEditor.load,
@@ -127,11 +129,11 @@ describe('matchRoute', () => {
   });
 
   // ADR-0197: страница темы недели стоит раньше «/planning/:lessonId»
-  // (weekTopicRouteModules.ts) и греет тот же список, что экран «Занятия».
+  // (weekTopicRouteModules.ts) и греет тот же список, что экран «Расписание».
   it('страница темы недели — свой чанк, prefetch списка занятий и классов', async () => {
     await expect(ROUTE_MODULES.weekTopic.load()).resolves.toHaveProperty('default');
     expect(ROUTE_MODULES.weekTopic.prefetch()).toEqual(
-      ROUTE_MODULES.planning.prefetch().slice(0, 2),
+      ROUTE_MODULES.schedule.prefetch().slice(0, 2),
     );
   });
 

@@ -95,10 +95,10 @@ describe('activeSectionPath — список штата', () => {
     expect(activeSectionPath('/board', STAFF_NAV_ITEMS)).toBe('/board');
   });
 
-  it('/planning, /schedule, /broadcasts, /channels, /templates — подэкраны «Главной»', () => {
+  it('/schedule, /schedule/rules, /broadcasts, /channels, /templates — подэкраны «Главной»', () => {
     for (const path of [
-      '/planning',
       '/schedule',
+      '/schedule/rules',
       '/broadcasts',
       '/channels',
       '/templates',
@@ -199,6 +199,6 @@ describe('activeSectionPath — список ученика', () => {
   });
 
   it('маршрут штата — вне списка ученика, null', () => {
-    expect(activeSectionPath('/planning', STUDENT_NAV_ITEMS)).toBeNull();
+    expect(activeSectionPath('/schedule', STUDENT_NAV_ITEMS)).toBeNull();
   });
 });

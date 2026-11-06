@@ -1,7 +1,7 @@
 // Экран ученика — состояния загрузки списка (ТЗ student-screen.md,
 // «Тесты»): ошибка — баннер с повтором, пусто — своя фраза, есть данные —
 // карточки. Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts»), по
-// образцу schedule/ScheduleScreen.test.tsx.
+// образцу schedule/WeekRulesScreen.test.tsx.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';

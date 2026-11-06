@@ -24,9 +24,9 @@ import { RuleFields } from './RuleFields';
 import { useClassForm } from './useClassForm';
 import type { UseClassEditorResult } from './useClassEditor';
 
-const SCHEDULE_PATH = '/schedule';
-const BACK_TEXT = 'К расписанию';
-const EYEBROW = 'Расписание';
+const RULES_PATH = '/schedule/rules';
+const BACK_TEXT = 'К правилам недели';
+const EYEBROW = 'Правила недели';
 const NEW_CLASS_TITLE = 'Новое занятие в расписании';
 const REMOVE_TITLE = 'Удалить из расписания?';
 const REMOVE_MESSAGE =
@@ -43,7 +43,7 @@ export function ClassEditorForm({ classDto, groups, editor }: ClassEditorFormPro
   const navigate = useNavigate();
   // `void` у navigate — он возвращает промис (react-router 7), а вызывающие
   // места ждут обычную функцию без результата.
-  const goToSchedule = () => void navigate(SCHEDULE_PATH);
+  const goToRules = () => void navigate(RULES_PATH);
   const form = useClassForm(classDto, editor.create, editor.update, editor.remove);
   // Провал сохранения прокручивает к первой ошибке: «Сохранить» стоит внизу, а
   // ошибка правила («Впишите дату первого занятия», ADR-0168) — у названия
@@ -52,7 +52,7 @@ export function ClassEditorForm({ classDto, groups, editor }: ClassEditorFormPro
     form.submit,
     form.changeStatus,
     form.remove,
-    goToSchedule,
+    goToRules,
   );
   const teachersState = useTeachers();
   const noRules = form.state.rules.length === 0;
@@ -60,7 +60,7 @@ export function ClassEditorForm({ classDto, groups, editor }: ClassEditorFormPro
   return (
     <>
       <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={SCHEDULE_PATH} style={backLinkStyle}>
+        <Link to={RULES_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

@@ -23,13 +23,13 @@ function renderField(classes: ClassDto[], selectedIds: string[] = []) {
 }
 
 describe('MaterialClassesField', () => {
-  it('нет ни одного занятия — подсказка со ссылкой на «Расписание», чекбоксов нет', () => {
+  it('нет ни одного занятия — подсказка со ссылкой на «Правила недели», чекбоксов нет', () => {
     renderField([]);
 
     expect(screen.getByText(/Занятий пока нет/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '«Расписании»' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '«Правилах недели»' })).toHaveAttribute(
       'href',
-      '/schedule',
+      '/schedule/rules',
     );
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });

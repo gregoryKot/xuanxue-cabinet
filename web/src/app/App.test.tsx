@@ -2,7 +2,7 @@
 // «/» уводит всех на /board: штат — на доску штата (ADR-0174, было /exams —
 // ADR-0138), ученик — на свою доску (ADR-0173, раньше /tasks — ADR-0046),
 // docs/adr/0025-navigation-by-domain.md) — сами экраны и их логика проверены
-// отдельными тестами (LoginScreen, RequireAuth, ScheduleScreen,
+// отдельными тестами (LoginScreen, RequireAuth, WeekRulesScreen,
 // PlanningScreen, ExamsScreen, BoardScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -216,10 +216,23 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: 'Главная' })).not.toBeInTheDocument();
   });
 
-  it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
-    mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
+  it('учитель на /schedule — маршрут «Расписание» открывает экран недель', async () => {
+    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 
     renderAt('/schedule');
+
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /schedule/rules — подэкран «Правила недели» открывает WeekRulesScreen', async () => {
+    mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
+
+    renderAt('/schedule/rules');
 
     expect(
       await screen.findByRole('button', { name: 'Добавить занятие' }),
@@ -285,20 +298,14 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  // «Занятия» — ежедневный экран и один из трёх пунктов навигации
-  // (navItems.ts), смоук на него обязателен.
-  it('учитель на /planning — маршрут «Занятия» открывает PlanningScreen', async () => {
+  // Старый адрес «Занятий» живёт в закладках и ссылках бота (ADR-0198).
+  it('учитель на /planning — старый адрес ведёт на «Расписание»', async () => {
     mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 
     renderAt('/planning');
 
-    // «4 недели» — акцент через RichText (<strong>, ADR-0124): сверяем по
-    // textContent абзаца, а не по прямым текстовым узлам.
     expect(
-      await screen.findByText(
-        (_, el) =>
-          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
-      ),
+      await screen.findByRole('heading', { level: 1, name: 'Расписание' }),
     ).toBeInTheDocument();
   });
 
@@ -478,17 +485,13 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('учитель на /dev/errors — уводит редиректом на «Занятия» (RequireDevErrorsAccess)', async () => {
+  it('учитель на /dev/errors — уводит редиректом на «Расписание» (RequireDevErrorsAccess)', async () => {
     mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 
     renderAt('/dev/errors');
 
-    // «4 недели» — тот же смоук, что у /planning выше (PlanningScreen.tsx).
     expect(
-      await screen.findByText(
-        (_, el) =>
-          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
-      ),
+      await screen.findByRole('heading', { level: 1, name: 'Расписание' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
   });
@@ -533,10 +536,7 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Главная' }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: /Занятия/ })).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: /Расписание и рассылки/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Расписание/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Материалы/ })).toBeInTheDocument();
   });
 

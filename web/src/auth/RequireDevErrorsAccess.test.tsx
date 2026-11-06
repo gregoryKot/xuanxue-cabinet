@@ -49,7 +49,7 @@ function renderGuarded() {
       <AuthProvider>
         <Routes>
           <Route element={<RequireAuth />}>
-            <Route path="/planning" element={<p>Занятия</p>} />
+            <Route path="/schedule" element={<p>Расписание</p>} />
             <Route element={<RequireDevErrorsAccess />}>
               <Route path="/dev/errors" element={<p>Сбои</p>} />
             </Route>
@@ -61,28 +61,28 @@ function renderGuarded() {
 }
 
 describe('RequireDevErrorsAccess', () => {
-  it('учитель — редирект на /planning', async () => {
+  it('учитель — редирект на /schedule', async () => {
     mockedApiFetch.mockResolvedValue(makeMe({ roles: ['teacher'] }));
 
     renderGuarded();
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
-  it('помощник учителя — редирект на /planning', async () => {
+  it('помощник учителя — редирект на /schedule', async () => {
     mockedApiFetch.mockResolvedValue(makeMe({ roles: ['assistant'] }));
 
     renderGuarded();
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
-  it('ученик без роли — редирект на /planning', async () => {
+  it('ученик без роли — редирект на /schedule', async () => {
     mockedApiFetch.mockResolvedValue(makeMe({ roles: [] }));
 
     renderGuarded();
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
   it('admin — рендерит вложенный маршрут', async () => {

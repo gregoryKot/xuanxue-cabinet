@@ -10,13 +10,14 @@ import { useAuth } from '../auth/AuthProvider';
 import { RequireDevErrorsAccess } from '../auth/RequireDevErrorsAccess';
 import { RequirePaymentsAccess } from '../auth/RequirePaymentsAccess';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
+import { LegacyPathRedirect } from './LegacyPathRedirect';
 import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
 import { rootPathFor } from './screenAccess';
 
 const ScheduleScreen = lazyRoute(ROUTE_MODULES.schedule.load);
+const WeekRulesScreen = lazyRoute(ROUTE_MODULES.weekRules.load);
 const ClassEditorScreen = lazyRoute(ROUTE_MODULES.classEditor.load);
-const PlanningScreen = lazyRoute(ROUTE_MODULES.planning.load);
 const LessonEditorScreen = lazyRoute(ROUTE_MODULES.lessonEditor.load);
 const WeekTopicScreen = lazyRoute(ROUTE_MODULES.weekTopic.load);
 const ChannelsScreen = lazyRoute(ROUTE_MODULES.channels.load);
@@ -59,16 +60,16 @@ function RootRedirect() {
   return <Navigate to={rootPathFor(me)} replace />;
 }
 
-/* Занятие расписания, дата занятия, канал, рассылка, вопрос и экзамен
-   правятся на страницах со своими адресами, а не в листах поверх списка
-   (ADR-0033). `/…/new` и `/planning/week-topic/…` объявлены раньше `/…/:id` —
-   статический кусок пути выигрывает у параметра. */
+/* Страницы с адресами (ADR-0033): `/…/new`, `/schedule/rules` и
+   `/planning/week-topic/…` — раньше `/…/:id`. `/planning` — редирект (ADR-0198). */
+const planningRedirect = <LegacyPathRedirect to={ROUTE_MODULES.schedule.path} />;
 export const cabinetRoutes = (
   <>
     <Route path={ROUTE_MODULES.schedule.path} element={<ScheduleScreen />} />
+    <Route path={ROUTE_MODULES.weekRules.path} element={<WeekRulesScreen />} />
     <Route path={ROUTE_MODULES.classNew.path} element={<ClassEditorScreen />} />
     <Route path={ROUTE_MODULES.classEditor.path} element={<ClassEditorScreen />} />
-    <Route path={ROUTE_MODULES.planning.path} element={<PlanningScreen />} />
+    <Route path="/planning" element={planningRedirect} />
     <Route path={ROUTE_MODULES.lessonNew.path} element={<LessonEditorScreen />} />
     <Route path={ROUTE_MODULES.weekTopic.path} element={<WeekTopicScreen />} />
     <Route path={ROUTE_MODULES.lessonEditor.path} element={<LessonEditorScreen />} />

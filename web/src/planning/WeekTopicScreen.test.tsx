@@ -36,7 +36,7 @@ function renderScreen() {
     <MemoryRouter initialEntries={['/planning/week-topic/2026-11-08']}>
       <Routes>
         <Route path="/planning/week-topic/:weekKey" element={<WeekTopicScreen />} />
-        <Route path="/planning" element={<p>{PLANNING_MARKER}</p>} />
+        <Route path="/schedule" element={<p>{PLANNING_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
   );

@@ -59,7 +59,7 @@ describe('FirstScreenPrefetch', () => {
     let refresh: (() => Promise<void>) | undefined;
 
     render(
-      <MemoryRouter initialEntries={['/planning']}>
+      <MemoryRouter initialEntries={['/schedule']}>
         <AuthProvider>
           <FirstScreenPrefetch />
           <RefreshProbe onReady={(fn) => (refresh = fn)} />
@@ -82,7 +82,7 @@ describe('FirstScreenPrefetch', () => {
     mockedApiFetch.mockRejectedValue(new Error('нет сессии'));
 
     render(
-      <MemoryRouter initialEntries={['/planning']}>
+      <MemoryRouter initialEntries={['/schedule']}>
         <AuthProvider>
           <FirstScreenPrefetch />
         </AuthProvider>

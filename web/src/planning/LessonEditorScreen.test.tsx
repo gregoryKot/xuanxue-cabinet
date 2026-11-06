@@ -63,7 +63,7 @@ function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/planning" element={<p>{LIST_MARKER}</p>} />
+        <Route path="/schedule" element={<p>{LIST_MARKER}</p>} />
         <Route path="/planning/new" element={<LessonEditorScreen />} />
         <Route path="/planning/:lessonId" element={<LessonEditorScreen />} />
       </Routes>
@@ -180,11 +180,11 @@ describe('LessonEditorScreen — загрузка', () => {
     renderAt('/planning/new');
 
     expect(
-      await screen.findByText(/Сначала добавьте занятие в расписании/),
+      await screen.findByText(/Сначала добавьте занятие в «Правила недели»/),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Расписание/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Открыть правила недели' })).toHaveAttribute(
       'href',
-      '/schedule',
+      '/schedule/rules',
     );
     expect(screen.queryByRole('button', { name: 'Сохранить' })).not.toBeInTheDocument();
   });
@@ -325,12 +325,12 @@ describe('LessonEditorScreen — сохранение', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('«К занятиям» — ссылка наверху страницы', async () => {
+  it('«К расписанию» — ссылка наверху страницы', async () => {
     const user = userEvent.setup();
     mockLesson(makeLesson());
 
     renderAt('/planning/l1');
-    await user.click(await screen.findByRole('link', { name: 'К занятиям' }));
+    await user.click(await screen.findByRole('link', { name: 'К расписанию' }));
 
     expect(screen.getByText(LIST_MARKER)).toBeInTheDocument();
   });

@@ -252,14 +252,14 @@ describe('«Настроить главную» — штат', () => {
     await vi.waitFor(() =>
       expect(screen.queryByRole('link', { name: /Проверка/ })).not.toBeInTheDocument(),
     );
-    for (const title of ['Занятия', 'Расписание и рассылки', 'Материалы', 'Школа']) {
+    for (const title of ['Расписание', 'Материалы', 'Школа']) {
       expect(screen.getByRole('link', { name: new RegExp(title) })).toBeInTheDocument();
     }
   });
 
   it('скрыты все три плитки: ни настроек, ни очереди, ни событий не запрашивается; входы стоят', async () => {
     renderHome({ ...STAFF_ME, homeHiddenTiles: ['notice', 'grading', 'events'] });
-    await screen.findByRole('link', { name: /Занятия/ });
+    await screen.findByRole('link', { name: /Расписание/ });
 
     for (const path of ['/settings', '/attempts/queue', '/events']) {
       expect(callsTo(path)).toHaveLength(0);
