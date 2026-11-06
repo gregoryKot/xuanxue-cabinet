@@ -133,6 +133,44 @@ describe('useEmailCodeLogin', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
+  // 403 — не поломка, а недостающая ссылка-приглашение или блокировка:
+  // повтор с новым письмом упрётся в тот же отказ, поэтому он уходит в
+  // onRefused, а форма (EmailLoginForm.tsx) уступает место объяснению.
+  it('ApiError 403 с onRefused — текст сервера в onRefused, error пуст, статус idle', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+        403,
+        'forbidden',
+      ),
+    );
+    const onRefused = vi.fn();
+    const { result } = renderHook(() => useEmailCodeLogin(vi.fn(), undefined, onRefused));
+
+    await result.current.submit('a@example.com', '123456');
+
+    await waitFor(() =>
+      expect(onRefused).toHaveBeenCalledWith(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+      ),
+    );
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBeNull();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('ApiError 403 без onRefused — показывается как обычная ошибка', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Доступа нет. Обратитесь к администратору школы.', 403, 'forbidden'),
+    );
+    const { result } = renderHook(() => useEmailCodeLogin(vi.fn()));
+
+    await result.current.submit('a@example.com', '123456');
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('Доступа нет. Обратитесь к администратору школы.');
+  });
+
   it('сетевой сбой (не ApiError) — общий текст «Нет связи…»', async () => {
     mockedApiFetch.mockRejectedValue(new Error('boom'));
     const { result } = renderHook(() => useEmailCodeLogin(vi.fn()));

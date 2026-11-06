@@ -2,7 +2,7 @@
 // логики (useEmailCodeLogin.ts) — в отличие от EmailLinkForm.test.tsx (там
 // applyMe передаётся колбэком), здесь нужны и <AuthProvider>, и
 // <MemoryRouter> (тот же приём, что LoginScreen.test.tsx).
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -34,7 +34,7 @@ function renderForm(props: Partial<Parameters<typeof EmailCodeForm>[0]> = {}) {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <EmailCodeForm email="a@example.com" {...props} />
+        <EmailCodeForm email="a@example.com" onRefused={vi.fn()} {...props} />
       </AuthProvider>
     </MemoryRouter>,
   );
@@ -139,5 +139,37 @@ describe('EmailCodeForm — отправка', () => {
         'Код не подошёл. Сверьте цифры с письмом или запросите новое.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('EmailCodeForm — отказ 403', () => {
+  // Отзыв ученицы 2026-11-06: 403 «откройте ссылку-приглашение» стоял строкой
+  // под живой формой кода, и она вводила код снова и снова. Теперь форма
+  // отдаёт отказ родителю (EmailLoginForm.tsx), а сама ошибку не показывает.
+  it('уходит в onRefused с текстом сервера, под формой ошибки нет', async () => {
+    const user = userEvent.setup();
+    const onRefused = vi.fn();
+    mockRoutes((path) =>
+      path === '/auth/email/code'
+        ? Promise.reject(
+            new ApiError(
+              'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+              403,
+              'forbidden',
+            ),
+          )
+        : undefined,
+    );
+    renderForm({ onRefused });
+
+    await user.type(await screen.findByLabelText('Код из письма'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    await waitFor(() =>
+      expect(onRefused).toHaveBeenCalledWith(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+      ),
+    );
+    expect(screen.queryByText(/ссылку-приглашение/)).not.toBeInTheDocument();
   });
 });

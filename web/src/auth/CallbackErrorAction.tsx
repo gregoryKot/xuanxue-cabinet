@@ -15,6 +15,10 @@ const fullWidthStyle = { width: '100%' };
 
 interface CallbackErrorActionProps {
   errorStatus: number | null;
+  /** Приписка под 403 — где взять ссылку-приглашение (inviteHintMessage.ts).
+   * Email-вход передаёт свою: там рядом лежит письмо с кодом, и ссылку
+   * искали в нём (отзыв ученицы 2026-11-06). */
+  hint?: string;
   /** Подпись кнопки для не-403 ошибок: «Запросить новую» (email — новая
    * ссылка решает и устаревший токен), «На страницу входа» (Google-вход) или
    * «Вернуться» (Google-привязка уже вошедшего, `hasSession` ниже). */
@@ -26,6 +30,7 @@ interface CallbackErrorActionProps {
 
 export function CallbackErrorAction({
   errorStatus,
+  hint = INVITE_HINT_MESSAGE,
   buttonLabel,
   hasSession = false,
 }: CallbackErrorActionProps) {
@@ -34,7 +39,7 @@ export function CallbackErrorAction({
   if (errorStatus === FORBIDDEN_STATUS) {
     return (
       <p style={screenExplanationStyle}>
-        <RichText text={INVITE_HINT_MESSAGE} />
+        <RichText text={hint} />
       </p>
     );
   }

@@ -11,16 +11,30 @@
 // приложение на домашнем экране айфона перезапустилось, а «письмо ушло» в
 // памяти вкладки не пережило перезапуск — без этой двери код в такой
 // ситуации ввести было бы негде.
+//
+// Поверх трёх состояний — отказ 403 (refusal): у незнакомца нет ссылки-
+// приглашения (ADR-0030/0036) или человек заблокирован. Он занимает место
+// формы целиком, как у Telegram-входа (TelegramLoginSection.tsx): ученица
+// 2026-11-06 видела его строкой под живой формой и двадцать минут
+// запрашивала новые письма. Приписка про ссылку — только когда отказ про
+// неё (EMAIL_INVITE_HINT): заблокированному ссылка-приглашение не поможет.
+// «Войти другим способом» возвращает форму — адрес мог быть не тот.
 import { useState, type FormEvent } from 'react';
-import { EMAIL_LOGIN_TOKEN_TTL_MIN, formatDurationRu } from '@xuanxue/shared';
+import {
+  EMAIL_LOGIN_TOKEN_TTL_MIN,
+  NO_INVITE_LINK_MESSAGE,
+  formatDurationRu,
+} from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
-import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
+import { screenExplanationStyle } from '../components/screenLayout';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { EmailCodeForm } from './EmailCodeForm';
-import { buildResendCountdownText } from './emailResendCountdown';
+import { EmailResendControl } from './EmailResendControl';
+import { EMAIL_INVITE_HINT } from './inviteHintMessage';
+import { LoginRefusedNotice } from './LoginRefusedNotice';
 import { useEmailLoginRequest } from './useEmailLoginRequest';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
@@ -41,12 +55,6 @@ const sentTextStyle = { margin: 0 };
  * абзацем выше. */
 const MANUAL_CODE_MESSAGE = 'Введите адрес почты и код из письма.';
 
-/** Под ссылкой повтора, когда окно cooldown прошло (аудит 2026-10-01, F30):
- * сервер заменяет заявку новой, и код из первого письма перестаёт
- * подходить — ученик, дождавшийся первого письма после повтора, иначе
- * получал «Код не подошёл» без объяснения. */
-const RESEND_REPLACES_CODE_MESSAGE = 'Код из прежнего письма перестанет работать.';
-
 interface EmailLoginFormProps {
   /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
    * `/join/:code` — уходит вместе с запросом ссылки на почту и с кодом. */
@@ -59,10 +67,21 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
     useEmailLoginRequest(inviteCode);
   // Дверь в код из состояния покоя (ADR-0104, см. комментарий выше файла).
   const [manualCode, setManualCode] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     await request(email);
+  }
+
+  if (refusal) {
+    return (
+      <LoginRefusedNotice
+        message={refusal}
+        hint={refusal === NO_INVITE_LINK_MESSAGE ? EMAIL_INVITE_HINT : undefined}
+        onRetry={() => setRefusal(null)}
+      />
+    );
   }
 
   // sentOnce, не status === 'sent': после успеха форма не возвращается,
@@ -78,26 +97,12 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
           />
         </p>
         <FormServerError error={error ? { message: error } : null} />
-        <EmailCodeForm email={email} inviteCode={inviteCode} />
-        {/* Пока окно cooldown не прошло, ссылки нет: сервер в нём всё равно
-            не шлёт письма, а отвечает тем же 204 (F30). Текстовая ссылка, а
-            не кнопка: повтор отправки — действие второго плана, контурная
-            кнопка во всю ширину звала бы нажать её первой (docs/adr/0031). */}
-        {resendAvailableInSec > 0 ? (
-          <p style={screenHintStyle}>
-            <RichText text={buildResendCountdownText(resendAvailableInSec)} />
-          </p>
-        ) : (
-          <>
-            <TextLinkButton
-              disabled={status === 'pending'}
-              onClick={() => void request(email)}
-            >
-              Отправить ещё раз
-            </TextLinkButton>
-            <p style={screenHintStyle}>{RESEND_REPLACES_CODE_MESSAGE}</p>
-          </>
-        )}
+        <EmailCodeForm email={email} inviteCode={inviteCode} onRefused={setRefusal} />
+        <EmailResendControl
+          resendAvailableInSec={resendAvailableInSec}
+          pending={status === 'pending'}
+          onResend={() => void request(email)}
+        />
       </div>
     );
   }
@@ -106,7 +111,12 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
     return (
       <div style={formStyle}>
         <p style={screenExplanationStyle}>{MANUAL_CODE_MESSAGE}</p>
-        <EmailCodeForm email={email} onEmailChange={setEmail} inviteCode={inviteCode} />
+        <EmailCodeForm
+          email={email}
+          onEmailChange={setEmail}
+          inviteCode={inviteCode}
+          onRefused={setRefusal}
+        />
         <TextLinkButton onClick={() => setManualCode(false)}>Назад</TextLinkButton>
       </div>
     );

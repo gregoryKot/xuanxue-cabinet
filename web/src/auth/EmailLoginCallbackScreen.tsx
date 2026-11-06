@@ -16,6 +16,7 @@ import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
 import { hasSession, useAuth } from './AuthProvider';
 import { CallbackInProgress } from './CallbackInProgress';
 import { EMAIL_LOGIN_TOKEN_RE } from './email-login-token-format';
+import { EMAIL_INVITE_HINT } from './inviteHintMessage';
 import { postLoginPath } from './returnTo';
 import { TitledDeadEnd } from './TitledDeadEnd';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
@@ -57,6 +58,7 @@ export default function EmailLoginCallbackScreen() {
     <CallbackInProgress
       error={error}
       errorStatus={errorStatus}
+      hint={EMAIL_INVITE_HINT}
       buttonLabel="Запросить новую"
     />
   );

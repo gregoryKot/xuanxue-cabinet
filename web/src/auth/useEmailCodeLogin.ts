@@ -19,6 +19,13 @@ import { postLoginPath } from './returnTo';
 
 type EmailCodeLoginStatus = 'idle' | 'pending' | 'error';
 
+// 403 — не поломка, а недостающая ссылка-приглашение (незнакомец) или
+// блокировка (ACCESS_MESSAGE): повтор с новым письмом упрётся в тот же
+// отказ, поэтому он уходит не в `error` под формой, а наружу — в
+// `onRefused`, и форма уступает место объяснению (LoginRefusedNotice.tsx,
+// тот же приём, что у Telegram-входа в TelegramLoginSection.tsx).
+const FORBIDDEN_STATUS = 403;
+
 export interface UseEmailCodeLoginResult {
   status: EmailCodeLoginStatus;
   error: string | null;
@@ -32,10 +39,13 @@ export interface UseEmailCodeLoginResult {
  * useEmailLoginVerify.ts и useEmailLink.ts): так хук проверяется без
  * <AuthProvider> в дереве, а вызывающий компонент сам решает, откуда его
  * взять. `inviteCode` — код ссылки-приглашения школы (ADR-0030/0036), как и
- * у входа по ссылке: без него новый человек в кабинет не попадает. */
+ * у входа по ссылке: без него новый человек в кабинет не попадает.
+ * `onRefused` получает текст 403 вместо `error` (комментарий у
+ * FORBIDDEN_STATUS); без него отказ показывается как любая ошибка. */
 export function useEmailCodeLogin(
   applyMe: (me: MeDto) => void,
   inviteCode?: string,
+  onRefused?: (message: string) => void,
 ): UseEmailCodeLoginResult {
   const navigate = useNavigate();
   const [status, setStatus] = useState<EmailCodeLoginStatus>('idle');
@@ -53,11 +63,16 @@ export function useEmailCodeLogin(
         applyMe(me);
         void navigate(postLoginPath(), { replace: true });
       } catch (err) {
+        if (err instanceof ApiError && err.status === FORBIDDEN_STATUS && onRefused) {
+          setStatus('idle');
+          onRefused(err.message);
+          return;
+        }
         setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
         setStatus('error');
       }
     },
-    [inviteCode, applyMe, navigate],
+    [inviteCode, applyMe, navigate, onRefused],
   );
 
   return { status, error, submit };

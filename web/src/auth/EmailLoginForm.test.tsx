@@ -261,3 +261,69 @@ describe('EmailLoginForm — дверь в код из состояния пок
     expect(screen.queryByLabelText('Код из письма')).not.toBeInTheDocument();
   });
 });
+
+// Отзыв ученицы 2026-11-06: ввела код — «откройте ссылку-приглашение»;
+// отказ стоял строкой под живой формой кода, и двадцать минут она
+// запрашивала новые письма и вводила код снова — в тот же 403. Теперь отказ
+// занимает место формы, как у Telegram-входа (LoginRefusedNotice.tsx).
+describe('EmailLoginForm — отказ 403 на коде из письма', () => {
+  const NO_INVITE_MESSAGE =
+    'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.';
+
+  async function sendAndEnterCode(
+    refusal: string,
+  ): Promise<ReturnType<typeof userEvent.setup>> {
+    const user = userEvent.setup();
+    mockRoutes((path) => {
+      if (path === '/auth/email/request') return Promise.resolve(undefined);
+      if (path === '/auth/email/code')
+        return Promise.reject(new ApiError(refusal, 403, 'forbidden'));
+      return undefined;
+    });
+    renderForm();
+    await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
+    await user.type(await screen.findByLabelText('Код из письма'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+    return user;
+  }
+
+  it('нет ссылки-приглашения — объяснение вместо формы: ни поля кода, ни «Отправить ещё раз»', async () => {
+    await sendAndEnterCode(NO_INVITE_MESSAGE);
+
+    expect(await screen.findByText('Войти не получилось')).toBeInTheDocument();
+    expect(screen.getByText(NO_INVITE_MESSAGE)).toBeInTheDocument();
+    // Ссылку искали в письме с кодом — приписка говорит, что там её нет и у
+    // кого она есть; акцент на «учитель школы» (ADR-0124).
+    expect(screen.getByText(/В письме с кодом её нет/)).toHaveTextContent(
+      'В письме с кодом её нет: ссылку-приглашение присылает учитель школы. ' +
+        'Попросите её у учителя и войдите по ней ещё раз.',
+    );
+    expect(screen.getByText('учитель школы').tagName).toBe('STRONG');
+    expect(screen.queryByLabelText('Код из письма')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Письмо ушло/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Отправить ещё раз' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('доступ закрыт (ACCESS_MESSAGE) — то же объяснение, но без приписки про ссылку', async () => {
+    await sendAndEnterCode('Доступа нет. Обратитесь к администратору школы.');
+
+    expect(await screen.findByText('Войти не получилось')).toBeInTheDocument();
+    expect(
+      screen.getByText('Доступа нет. Обратитесь к администратору школы.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ссылку-приглашение/)).not.toBeInTheDocument();
+  });
+
+  it('«Войти другим способом» возвращает форму кода — адрес мог быть не тот', async () => {
+    const user = await sendAndEnterCode(NO_INVITE_MESSAGE);
+    await screen.findByText('Войти не получилось');
+
+    await user.click(screen.getByRole('button', { name: 'Войти другим способом' }));
+
+    expect(screen.queryByText('Войти не получилось')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Код из письма')).toBeInTheDocument();
+  });
+});
