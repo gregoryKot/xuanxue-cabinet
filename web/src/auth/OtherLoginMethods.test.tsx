@@ -89,3 +89,31 @@ describe('OtherLoginMethods', () => {
     expect(screen.getByLabelText('Почта')).toBeInTheDocument();
   });
 });
+
+// Отзыв владельца 2026-11-06: человек, вводя почту на странице входа, думал,
+// что так регистрируется, — а письмо с кодом уходит на любой адрес, и отказ
+// без ссылки-приглашения приходит только после кода.
+describe('OtherLoginMethods — для кого форма почты', () => {
+  const HINT_TEXT =
+    'По почте входят те, кто уже в кабинете. Первый раз — только по ' +
+    'ссылке-приглашению от учителя школы: без неё код из письма не впустит.';
+
+  it('без кода приглашения (страница входа) — над полем почты сказано, что регистрация только по ссылке', () => {
+    renderWith({ ...BASE_CONFIG, emailLoginEnabled: true }, 'ok');
+
+    // ADR-0124: кто даёт ссылку — акцентом, RichText рисует его <strong>.
+    expect(screen.getByText(/По почте входят/)).toHaveTextContent(HINT_TEXT);
+    expect(screen.getByText('учителя школы').tagName).toBe('STRONG');
+    expect(screen.getByLabelText('Почта')).toBeInTheDocument();
+  });
+
+  it('с кодом приглашения (страница /join) — подсказки нет: регистрация здесь и происходит', () => {
+    renderWith({ ...BASE_CONFIG, emailLoginEnabled: true }, 'ok', 'a'.repeat(32));
+    expect(screen.queryByText(/По почте входят/)).not.toBeInTheDocument();
+  });
+
+  it('почта выключена — подсказки нет вместе с формой', () => {
+    renderWith({ ...BASE_CONFIG, emailLoginEnabled: false }, 'ok');
+    expect(screen.queryByText(/По почте входят/)).not.toBeInTheDocument();
+  });
+});

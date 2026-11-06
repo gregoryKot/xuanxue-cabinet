@@ -6,8 +6,22 @@
 // ближе по весу к Telegram.
 import type { AuthConfigDto } from '@xuanxue/shared';
 import { LabeledDivider } from '../components/LabeledDivider';
+import { RichText } from '../components/RichText';
+import { screenExplanationStyle } from '../components/screenLayout';
 import { EmailLoginForm } from './EmailLoginForm';
 import { GoogleLoginButton } from './GoogleLoginButton';
+
+// Над полем почты на странице входа — для кого эта форма (отзыв владельца
+// 2026-11-06: «человек, вводя имейл, думает, что он так регистрируется»).
+// Письмо с кодом уходит на любой адрес (SECURITY §2), и о том, что
+// регистрации по почте нет, ученица 2026-11-06 узнала только после кода.
+// Тихой строки «Первый вход — только по ссылке от учителя» наверху экрана
+// (LoginScreen.tsx) для этого не хватило: она стоит над Telegram, а решение
+// «ввести почту» принимается здесь. На странице приглашения (JoinScreen.tsx,
+// inviteCode есть) подсказка не нужна — там регистрация и происходит.
+const EXISTING_ONLY_MESSAGE =
+  'По почте входят те, кто уже в кабинете. Первый раз — только по ' +
+  'ссылке-приглашению от **учителя школы**: без неё код из письма не впустит.';
 
 interface OtherLoginMethodsProps {
   config: AuthConfigDto | null;
@@ -33,6 +47,11 @@ export function OtherLoginMethods({
       {config?.emailLoginEnabled && (
         <>
           <LabeledDivider label="или по почте" />
+          {!inviteCode && (
+            <p style={screenExplanationStyle}>
+              <RichText text={EXISTING_ONLY_MESSAGE} />
+            </p>
+          )}
           <EmailLoginForm inviteCode={inviteCode} />
         </>
       )}
