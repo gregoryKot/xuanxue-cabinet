@@ -52,7 +52,10 @@ function renderScreen() {
 }
 
 describe('JoinScreen — ссылка не действует', () => {
-  it('checkStatus invalid — сообщение и кнопка «На страницу входа» ведёт на /login', async () => {
+  // Текстовая ссылка «для своих», не кнопка во всю ширину: новичку страница
+  // входа не поможет, а кнопка вела его туда как к главному действию
+  // (ученица 2026-11-06, ADR-0199).
+  it('checkStatus invalid — сообщение и ссылка «Уже входили раньше? На страницу входа» ведёт на /login', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
@@ -68,7 +71,9 @@ describe('JoinScreen — ссылка не действует', () => {
       screen.getByText('Ссылка-приглашение не действует. Попросите у учителя новую.'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'На страницу входа' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Уже входили раньше? На страницу входа' }),
+    );
     expect(await screen.findByText('Экран входа')).toBeInTheDocument();
   });
 });

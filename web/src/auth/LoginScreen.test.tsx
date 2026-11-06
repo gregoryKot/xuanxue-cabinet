@@ -9,6 +9,7 @@ import type { MeDto, TelegramLoginInput } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
+import { rememberInviteCode, rememberedInviteCode } from './inviteMemory';
 import LoginScreen from './LoginScreen';
 import { saveReturnTo } from './returnTo';
 import type * as TelegramAuthRedirectModule from './telegramAuthRedirect';
@@ -61,6 +62,7 @@ afterEach(() => {
   redirectToTelegramAuthSpy.mockClear();
   window.location.hash = ''; // мобильный сценарий оставляет фрагмент — чистим между тестами
   sessionStorage.clear();
+  localStorage.clear();
 });
 
 function renderScreen() {
@@ -638,5 +640,99 @@ describe('LoginScreen — уже вошедшего уводит на сохра
     renderScreen();
 
     expect(await screen.findByText('Экзамены')).toBeInTheDocument();
+  });
+});
+
+// ADR-0199: ученица 2026-11-06 открыла живое приглашение, ушла за кодом в
+// почту и вернулась уже на обычный адрес — страница входа кода приглашения
+// не знала. Теперь он запомнен браузером (inviteMemory.ts) и уходит во все
+// способы входа, как со страницы приглашения.
+describe('LoginScreen — запомненное приглашение (ADR-0199)', () => {
+  const CODE = 'c'.repeat(32);
+
+  it('строка над входом говорит, что приглашение есть, а подсказки «только для своих» у почты нет', async () => {
+    rememberInviteCode(CODE);
+    mockRoutes(() => Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: true }));
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        'Приглашение от учителя у вас есть: войдите любым способом.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/только по ссылке от учителя/)).not.toBeInTheDocument();
+    await screen.findByLabelText('Почта');
+    expect(screen.queryByText(/По почте входят/)).not.toBeInTheDocument();
+  });
+
+  it('запрос кода на почту несёт запомненный inviteCode', async () => {
+    rememberInviteCode(CODE);
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: true });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/request') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen();
+
+    await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
+
+    await screen.findByText(/Письмо ушло/);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
+      method: 'POST',
+      body: { email: 'a@example.com', inviteCode: CODE },
+    });
+  });
+
+  it('возврат из Telegram фрагментом адреса — POST /auth/telegram с join, после входа приглашение стёрто', async () => {
+    rememberInviteCode(CODE);
+    window.location.hash = toTgAuthResultHash({
+      id: 700,
+      first_name: 'Новичок',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+    const me: MeDto = {
+      id: 'u700',
+      name: 'Новичок',
+      roles: [],
+      status: 'active',
+      telegramLinked: true,
+      botChatActive: false,
+      noTelegram: false,
+      needsProfile: false,
+      googleLinked: false,
+      hasEmail: false,
+      studentMode: false,
+      teacherMode: false,
+      canUseStudentMode: false,
+      canUseTeacherMode: false,
+      homeHiddenTiles: [],
+    };
+    let loggedIn = false;
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return loggedIn
+          ? Promise.resolve(me)
+          : Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === `/auth/telegram?join=${CODE}`) {
+        loggedIn = true;
+        return Promise.resolve(me);
+      }
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen();
+
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      `/auth/telegram?join=${CODE}`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(rememberedInviteCode()).toBeUndefined();
   });
 });
