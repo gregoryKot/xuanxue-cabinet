@@ -13,6 +13,8 @@ const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 interface CallbackInProgressProps {
   error: string | null;
   errorStatus: number | null;
+  /** См. CallbackErrorAction.tsx — приписка под 403. */
+  hint?: string;
   /** Подпись кнопки не-403 ошибки — см. CallbackErrorAction.tsx. */
   buttonLabel: string;
   /** См. TitledDeadEnd.tsx/CallbackErrorAction.tsx. */
@@ -22,6 +24,7 @@ interface CallbackInProgressProps {
 export function CallbackInProgress({
   error,
   errorStatus,
+  hint,
   buttonLabel,
   hasSession = false,
 }: CallbackInProgressProps) {
@@ -35,6 +38,7 @@ export function CallbackInProgress({
           </p>
           <CallbackErrorAction
             errorStatus={errorStatus}
+            hint={hint}
             buttonLabel={buttonLabel}
             hasSession={hasSession}
           />

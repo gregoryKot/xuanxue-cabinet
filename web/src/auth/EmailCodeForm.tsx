@@ -43,12 +43,21 @@ interface EmailCodeFormProps {
    * что отправленного письма, спрашивать его второй раз незачем. */
   onEmailChange?: (email: string) => void;
   inviteCode?: string;
+  /** Сервер ответил 403 — незнакомец без ссылки-приглашения или
+   * заблокированный: форма кода человеку больше не нужна, родитель
+   * (EmailLoginForm.tsx) показывает вместо неё объяснение. */
+  onRefused: (message: string) => void;
 }
 
-export function EmailCodeForm({ email, onEmailChange, inviteCode }: EmailCodeFormProps) {
+export function EmailCodeForm({
+  email,
+  onEmailChange,
+  inviteCode,
+  onRefused,
+}: EmailCodeFormProps) {
   const { applyMe } = useAuth();
   const [code, setCode] = useState('');
-  const { status, error, submit } = useEmailCodeLogin(applyMe, inviteCode);
+  const { status, error, submit } = useEmailCodeLogin(applyMe, inviteCode, onRefused);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();

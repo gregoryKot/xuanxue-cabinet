@@ -10,10 +10,15 @@
 // цвет остаётся (человек ничего не сломал), но отказ теперь занимает место
 // самой формы: кнопки и почты под ним нет — обе привели бы к тому же 403.
 //
+// Тот же блок — у входа по коду из письма (EmailLoginForm.tsx): там отказ
+// 2026-11-06 стоял строкой под живой формой кода, и ученица двадцать минут
+// запрашивала новые письма и вводила код снова — в тот же 403.
+//
 // Тёплая плашка --panel-warm и #55584e — тот же приём и та же причина, что у
 // StudentExamCard.tsx: на этой подложке --ink-soft держит только ~4.06:1,
 // ниже AA 4.5 (docs/adr/0043).
 import type { CSSProperties } from 'react';
+import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 
 // Одна подпись на обе причины отказа: своей ссылки-приглашения нет и доступ
@@ -40,16 +45,25 @@ const messageStyle: CSSProperties = { margin: 0, color: '#55584e' };
 
 interface LoginRefusedNoticeProps {
   message: string;
+  /** Приписка под сообщением сервера — где взять ссылку-приглашение
+   * (inviteHintMessage.ts); не передаётся, когда отказ не про неё
+   * (заблокированный, ACCESS_MESSAGE). Маркер `**` рисует RichText. */
+  hint?: string;
   /** Возврат к форме входа: человек мог войти не тем аккаунтом Telegram, и
    * тупик без выхода заставил бы его перезагружать страницу руками. */
   onRetry: () => void;
 }
 
-export function LoginRefusedNotice({ message, onRetry }: LoginRefusedNoticeProps) {
+export function LoginRefusedNotice({ message, hint, onRetry }: LoginRefusedNoticeProps) {
   return (
     <div role="alert" style={panelStyle}>
       <h2 style={titleStyle}>{TITLE}</h2>
       <p style={messageStyle}>{message}</p>
+      {hint && (
+        <p style={messageStyle}>
+          <RichText text={hint} />
+        </p>
+      )}
       {/* Текстовая ссылка, не кнопка: главное на экране — объяснение, а
           вторая попытка тем же способом приведёт к тому же отказу
           (docs/adr/0031). */}
