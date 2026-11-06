@@ -14,6 +14,7 @@ import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -25,6 +26,12 @@ import { useJoinByInvite } from './useJoinByInvite';
 const fullWidthStyle: CSSProperties = { width: '100%' };
 const PAGE_TITLE = 'Приглашение';
 const PRIVACY_LINK_LABEL = 'Как мы храним данные';
+// Под «ссылка не действует» — выход только для своих: новичку страница входа
+// не поможет (без приглашения его не заведут), а кнопка «На страницу входа»
+// во всю ширину вела его туда как к главному действию — ученица 2026-11-06
+// так и попала в форму почты (ADR-0199). Текстовая ссылка с вопросом, для
+// кого она, вместо кнопки.
+const EXISTING_USER_LOGIN_LABEL = 'Уже входили раньше? На страницу входа';
 
 export default function JoinScreen() {
   useDocumentTitle(PAGE_TITLE);
@@ -75,16 +82,9 @@ export default function JoinScreen() {
         <p role="alert" style={screenExplanationStyle}>
           {INVITE_LINK_INVALID_MESSAGE}
         </p>
-        {/* Контур, не заливка терракотой: человек шёл в школу по приглашению,
-            а не на страницу входа — это запасной выход, а не главное действие
-            экрана (docs/adr/0031). */}
-        <Button
-          variant="secondary"
-          onClick={() => void navigate('/login')}
-          style={fullWidthStyle}
-        >
-          На страницу входа
-        </Button>
+        <TextLinkButton onClick={() => void navigate('/login')}>
+          {EXISTING_USER_LOGIN_LABEL}
+        </TextLinkButton>
       </EntryColumn>
     );
   }

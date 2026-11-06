@@ -16,6 +16,7 @@ import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
+import { rememberedInviteCode } from './inviteMemory';
 import { adoptLoginReturnTo, hasPendingWikiReturn, postLoginPath } from './returnTo';
 import { useSessionRecheckOnReturn } from './useSessionRecheckOnReturn';
 
@@ -30,6 +31,12 @@ import { useSessionRecheckOnReturn } from './useSessionRecheckOnReturn';
 // подпись в одну строку и тише его (noteStyle): свои читают её один раз,
 // незнакомец видит, что дверь не для него, и никто не уходит в Telegram зря.
 const INVITE_REQUIRED_MESSAGE = 'Первый вход — только по ссылке от учителя.';
+// Код приглашения запомнен браузером при открытии живой ссылки (ADR-0199,
+// inviteMemory.ts): человек потерял вкладку и вернулся на обычный адрес —
+// приглашение всё равно при нём, и строка говорит об этом вместо «только по
+// ссылке», иначе он снова пойдёт искать её.
+const INVITE_REMEMBERED_MESSAGE =
+  'Приглашение от учителя у вас есть: войдите любым способом.';
 const PAGE_TITLE = 'Вход';
 
 export default function LoginScreen() {
@@ -37,6 +44,9 @@ export default function LoginScreen() {
   const { status: authStatus } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
   const { search } = useLocation();
+  // Один раз на монтирование: код приглашения из памяти браузера (ADR-0199)
+  // уходит во все способы входа, как со страницы приглашения.
+  const [inviteCode] = useState(rememberedInviteCode);
 
   // Возврат из wiki (ADR-0183) принимается в первом же рендере, до проверки
   // сессии ниже: уже вошедшего надо вести дальше по этому адресу, а не на
@@ -61,12 +71,23 @@ export default function LoginScreen() {
       <p style={screenExplanationStyle}>
         Расписание, ссылки на занятия, записи и экзамены. Для учеников и учителей.
       </p>
-      <p style={noteStyle}>{INVITE_REQUIRED_MESSAGE}</p>
+      <p style={noteStyle}>
+        {inviteCode ? INVITE_REMEMBERED_MESSAGE : INVITE_REQUIRED_MESSAGE}
+      </p>
 
-      <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
+      <TelegramLoginSection
+        config={config}
+        configStatus={configStatus}
+        onReload={reload}
+        inviteCode={inviteCode}
+      >
         {/* Google и почта — оба за своим флагом конфигурации (ADR-0145,
             ADR-0029): без него кнопка/форма звала бы 503 на каждый вход. */}
-        <OtherLoginMethods config={config} configStatus={configStatus} />
+        <OtherLoginMethods
+          config={config}
+          configStatus={configStatus}
+          inviteCode={inviteCode}
+        />
       </TelegramLoginSection>
 
       {/* Политика конфиденциальности — обязательное поле консоли Google Cloud

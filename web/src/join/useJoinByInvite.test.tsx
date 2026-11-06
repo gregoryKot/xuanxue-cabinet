@@ -5,6 +5,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { rememberInviteCode, rememberedInviteCode } from '../auth/inviteMemory';
 import { useJoinByInvite } from './useJoinByInvite';
 
 vi.mock('../api/http', async () => {
@@ -17,6 +18,7 @@ const CODE = 'a'.repeat(32);
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  localStorage.clear();
 });
 
 describe('useJoinByInvite', () => {
@@ -131,5 +133,40 @@ describe('useJoinByInvite', () => {
 
     expect(result.current.checkStatus).toBe('loading');
     expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ADR-0199: живой код запоминается на случай потерянной вкладки (ученица
+// 2026-11-06 вернулась с письма на обычный адрес без приглашения), мёртвый
+// стирается — страница входа не должна слать отозванную ссылку.
+describe('useJoinByInvite — память о коде (inviteMemory.ts)', () => {
+  it('код действует — запомнен в браузере', async () => {
+    mockedApiFetch.mockResolvedValue({ valid: true });
+
+    const { result } = renderHook(() => useJoinByInvite(CODE));
+
+    await waitFor(() => expect(result.current.checkStatus).toBe('valid'));
+    expect(rememberedInviteCode()).toBe(CODE);
+  });
+
+  it('код не действует и лежал в памяти — стёрт', async () => {
+    rememberInviteCode(CODE);
+    mockedApiFetch.mockResolvedValue({ valid: false });
+
+    const { result } = renderHook(() => useJoinByInvite(CODE));
+
+    await waitFor(() => expect(result.current.checkStatus).toBe('invalid'));
+    expect(rememberedInviteCode()).toBeUndefined();
+  });
+
+  it('код не действует, а в памяти другой, живой — тот остаётся', async () => {
+    const other = 'b'.repeat(32);
+    rememberInviteCode(other);
+    mockedApiFetch.mockResolvedValue({ valid: false });
+
+    const { result } = renderHook(() => useJoinByInvite(CODE));
+
+    await waitFor(() => expect(result.current.checkStatus).toBe('invalid'));
+    expect(rememberedInviteCode()).toBe(other);
   });
 });

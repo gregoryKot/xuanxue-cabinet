@@ -10,6 +10,11 @@ import { useEffect, useState } from 'react';
 import { INVITE_CODE_RE } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import { ApiError } from '../api/http';
+import {
+  forgetInviteCode,
+  rememberInviteCode,
+  rememberedInviteCode,
+} from '../auth/inviteMemory';
 
 type CheckStatus = 'loading' | 'valid' | 'invalid' | 'offline';
 
@@ -45,7 +50,13 @@ export function useJoinByInvite(code: string, enabled = true): UseJoinByInviteRe
     setCheckStatus('loading');
     apiRoute('POST /auth/join/check', { body: { code } })
       .then((res) => {
-        if (!cancelled) setCheckStatus(res.valid ? 'valid' : 'invalid');
+        if (cancelled) return;
+        // Живой код запоминаем на случай потерянной вкладки (ADR-0199,
+        // inviteMemory.ts); мёртвый — стираем, если именно он и лежал:
+        // страница входа не должна слать отозванную ссылку.
+        if (res.valid) rememberInviteCode(code);
+        else if (rememberedInviteCode() === code) forgetInviteCode();
+        setCheckStatus(res.valid ? 'valid' : 'invalid');
       })
       .catch((err: unknown) => {
         if (cancelled) return;

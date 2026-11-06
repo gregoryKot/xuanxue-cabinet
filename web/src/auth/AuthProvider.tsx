@@ -15,6 +15,7 @@ import {
 import type { MeDto } from '@xuanxue/shared';
 import { apiRoute } from '../api/apiRoute';
 import { ApiError, setUnauthorizedListener } from '../api/http';
+import { forgetInviteCode } from './inviteMemory';
 
 /** loading — идёт запрос; guest — 401, сессии нет; offline — сетевой сбой
  * (apiFetch status 0) — это не «вы вышли», отдельный экран с повтором, не
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (requestId.current !== thisRequest) return; // пришёл более новый refresh()
       setMe(dto);
       setStatus('ok');
+      forgetInviteCode(); // вошёл — приглашение больше не нужно (ADR-0199)
     } catch (err) {
       if (requestId.current !== thisRequest) return;
       setMe(null);
@@ -103,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (AuthGuard отверг бы её 403-м, SECURITY §2), так что 'ok' здесь не
     // догадка.
     setStatus('ok');
+    forgetInviteCode(); // ADR-0199, то же, что в refresh()
   }, []);
 
   const clear = useCallback(() => {
