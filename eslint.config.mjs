@@ -335,7 +335,11 @@ export default tseslint.config(
     // nextLessonsWindow.ts: `new Date(now)` — тот же клон момента, чтобы
     // отбросить секунды (setUTCSeconds), ключ предзагрузки первого экрана
     // должен совпасть с ключом хука (api/apiPaths.ts).
+    // weekTopic.ts: тот же поиск местного воскресенья, что в planningWindow.ts
+    // (ключ недели обязан совпасть с окном запроса), плюс `new Date(y, m, d)`
+    // для подписи «Неделя с …» из ключа (weekTopic.test.ts, пояса зрителя).
     files: [
+      'web/src/planning/weekTopic.ts',
       'web/src/planning/planningWindow.ts',
       'web/src/lib/dateWindow.ts',
       'web/src/templates/nextLessonsWindow.ts',

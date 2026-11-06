@@ -8,6 +8,7 @@ import { SendNowService } from '../broadcasts/send-now.service';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
+import { LessonsTopicService } from './lessons-topic.service';
 
 const BROADCAST_DTO: BroadcastDto = {
   id: 'b1',
@@ -37,6 +38,7 @@ async function buildController(
   service: Partial<LessonsService> = {},
   sendNowService: Partial<SendNowService> = {},
   recordingSummaryService: Partial<LessonRecordingSummaryService> = {},
+  topicService: Partial<LessonsTopicService> = {},
 ): Promise<LessonsController> {
   const module = await Test.createTestingModule({
     controllers: [LessonsController],
@@ -44,6 +46,7 @@ async function buildController(
       { provide: LessonsService, useValue: service },
       { provide: SendNowService, useValue: sendNowService },
       { provide: LessonRecordingSummaryService, useValue: recordingSummaryService },
+      { provide: LessonsTopicService, useValue: topicService },
     ],
   }).compile();
   return module.get(LessonsController);
@@ -126,5 +129,14 @@ describe('LessonsController', () => {
 
     await expect(controller.getRecordingSummary()).resolves.toEqual(summary);
     expect(get).toHaveBeenCalledWith(expect.any(DateTime));
+  });
+
+  it('setTopic() зовёт сервис темы с телом и возвращает его ответ', async () => {
+    const setTopic = jest.fn().mockResolvedValue([LESSON_DTO]);
+    const controller = await buildController({}, {}, {}, { setTopic });
+    const body = { topic: 'Шаги назад', lessonIds: ['l1'] };
+
+    await expect(controller.setTopic(body)).resolves.toEqual([LESSON_DTO]);
+    expect(setTopic).toHaveBeenCalledWith(body, expect.anything());
   });
 });

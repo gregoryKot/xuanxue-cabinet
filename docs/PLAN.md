@@ -485,6 +485,12 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
    («Ссылка ушла» / «Ссылка ждёт отправки» / «Ошибка отправки» / «Отменена»,
    у отменённой — ссылка «почему — в «Журнале отправок»» на `/broadcasts`), без
    рассылки — ничего.
+   **Тема недели** (ADR-0197): над днями каждой недели (с воскресенья, по часам
+   зрителя) стоит строка «Тема недели: … · 5 из 12 занятий» и ссылка «Задать тему» /
+   «Изменить» на страницу `/planning/week-topic/:weekKey`. Там вписывают тему и
+   отмечают занятия недели; `POST /lessons/topic` пишет её в `lessons.topic` отмеченных
+   и пересобирает ещё не ушедшие посты. Своей записи у темы недели нет — это самая
+   частая тема среди занятий недели (`web/src/planning/weekTopic.ts`).
 
 4. **Каналы.** Подключение: Telegram-канал (добавить бота админом), ВК (токен
    сообщества и беседа), «Вручную» для Facebook. Проверка «отправить тест».
@@ -1054,6 +1060,7 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 | GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)                            | учитель        |
 | POST                  | `/lessons/:id/recording` (реализовано)                              | учитель        |
 | POST                  | `/lessons/:id/send-now` (реализовано)                               | учитель        |
+| POST                  | `/lessons/topic` (реализовано, ADR-0197)                            | учитель        |
 | GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано)                     | учитель        |
 | GET/POST              | `/broadcasts`, `/broadcasts/:id`,                                   |                |
 |                       | `/broadcasts/:id/deliveries` (реализовано)                          | учитель        |

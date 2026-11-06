@@ -12,6 +12,7 @@ import type {
 } from './lessons';
 import type { LessonRecordingSummaryDto } from './lesson-recording-summary';
 import type { BroadcastDto } from './broadcasts';
+import type { SetLessonsTopicInput, SetLessonsTopicResult } from './week-topic';
 
 export interface LessonsRoutes {
   'GET /lessons': { query: ListLessonsQuery; body: undefined; response: LessonDto[] };
@@ -22,6 +23,12 @@ export interface LessonsRoutes {
   };
   'GET /lessons/:id': { query: undefined; body: undefined; response: LessonDto };
   'POST /lessons': { query: undefined; body: CreateLessonInput; response: LessonDto };
+  /** Тема недели (ADR-0197): литеральный путь, в контроллере — до `:id`. */
+  'POST /lessons/topic': {
+    query: undefined;
+    body: SetLessonsTopicInput;
+    response: SetLessonsTopicResult;
+  };
   'PATCH /lessons/:id': {
     query: undefined;
     body: UpdateLessonInput;
@@ -45,6 +52,7 @@ export const LESSONS_ROUTE_KEYS: Record<keyof LessonsRoutes, true> = {
   'GET /lessons/recording-summary': true,
   'GET /lessons/:id': true,
   'POST /lessons': true,
+  'POST /lessons/topic': true,
   'PATCH /lessons/:id': true,
   'DELETE /lessons/:id': true,
   'POST /lessons/:id/recording': true,

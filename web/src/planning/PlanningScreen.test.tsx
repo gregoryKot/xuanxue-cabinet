@@ -23,6 +23,7 @@ const mockedApiFetch = vi.mocked(apiFetch);
 const NEW_MARKER = 'Здесь страница разового занятия';
 const EDITOR_MARKER = 'Здесь страница занятия';
 const SCHEDULE_MARKER = 'Здесь сетка расписания';
+const WEEK_TOPIC_MARKER = 'Здесь страница темы недели';
 
 function renderScreen() {
   return render(
@@ -32,6 +33,10 @@ function renderScreen() {
         <Route path="/planning/new" element={<p>{NEW_MARKER}</p>} />
         <Route path="/planning/:lessonId" element={<p>{EDITOR_MARKER}</p>} />
         <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
+        <Route
+          path="/planning/week-topic/:weekKey"
+          element={<p>{WEEK_TOPIC_MARKER}</p>}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -219,6 +224,37 @@ describe('PlanningScreen — список занятий', () => {
     );
 
     expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
+  });
+
+  // Тема недели (ADR-0197): строка под заголовком недели и переход на её страницу.
+  it('у недели без темы — «Тема недели не задана» и «Задать тему» ведёт на страницу недели', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/lessons': [makeLesson({ topic: '' })],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+    expect(await screen.findByText('Тема недели не задана')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Задать тему' }));
+
+    expect(await screen.findByText(WEEK_TOPIC_MARKER)).toBeInTheDocument();
+  });
+
+  it('у недели с темой — строка «Тема недели: … · 1 из 2 занятий» и кнопка «Изменить»', async () => {
+    mockApiByPath({
+      '/lessons': [
+        makeLesson({ id: 'a', topic: 'Шаги назад' }),
+        makeLesson({ id: 'b', startsAt: '2026-09-09T16:00:00.000Z', topic: '' }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+    expect(await screen.findByText(/Тема недели:/)).toHaveTextContent(
+      'Тема недели: Шаги назад · 1 из 2 занятий',
+    );
+    expect(screen.getByRole('button', { name: 'Изменить' })).toBeInTheDocument();
   });
 
   it('тема не задана — карточка показывает заглушку, отменённое занятие — серым', async () => {

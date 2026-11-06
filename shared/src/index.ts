@@ -446,6 +446,8 @@ export {
   MY_LESSONS_LIMIT_MAX,
 } from './lessons';
 export { MY_ARCHIVE_LIMIT_DEFAULT, MY_ARCHIVE_LIMIT_MAX } from './my-lessons-archive';
+export { WEEK_TOPIC_MAX_IDS } from './week-topic';
+export type { SetLessonsTopicInput, SetLessonsTopicResult } from './week-topic';
 export {
   PUBLIC_LESSONS_LIMIT_MAX,
   PUBLIC_LESSONS_LIMIT_DEFAULT,

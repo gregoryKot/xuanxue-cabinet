@@ -54,6 +54,7 @@ import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { EVENT_ROUTE_MODULES } from './eventRouteModules';
+import { WEEK_TOPIC_ROUTE_MODULES } from './weekTopicRouteModules';
 import { PROVIDER_LOGIN_ROUTE_MODULES } from './providerLoginRouteModules';
 import { STUDENT_ROUTE_MODULES } from './studentRouteModules';
 import { WIKI_SESSION_ROUTE_MODULES } from './wikiSessionRouteModules';
@@ -100,9 +101,8 @@ const recordOf = (pathname: string, pick = lastSegment) => ({
   params: { id: pick(pathname) },
 });
 
-// Редактор — одна пара адресов на экран: `/x/new` и `/x/:id`, один загрузчик
-// на оба (ADR-0033). `/x/new` всегда объявлен раньше `/x/:id`: matchRoute
-// берёт первое совпадение, а статический сегмент должен выигрывать у параметра.
+// Редактор — пара адресов `/x/new` и `/x/:id`, один загрузчик (ADR-0033);
+// `/x/new` объявлен раньше: matchRoute берёт первое совпадение.
 const loadChannelEditor = () => import('../channels/ChannelEditorScreen');
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
 const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
@@ -181,9 +181,8 @@ export const ROUTE_MODULES = {
     path: '/planning',
     load: () => import('../planning/PlanningScreen'),
     warm: true,
-    // Число раздела (ТЗ docs/PLAN.md §14, слой 3.5) — тем же приёмом, что
-    // EXAM_ITEM_STATS_SUMMARY_PATH у `/exams` ниже: маленький, но отдельный
-    // запрос экрана, который можно погреть параллельно с чанком.
+    // Число раздела (ТЗ docs/PLAN.md §14, слой 3.5) — отдельный маленький
+    // запрос экрана, как EXAM_ITEM_STATS_SUMMARY_PATH у `/exams` ниже.
     prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
   // Учителей, как у classNew, LessonEditorForm.tsx спрашивает после записи.
@@ -193,6 +192,7 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [CLASSES_LIST_PATH, TEACHERS_PATH],
   },
+  ...WEEK_TOPIC_ROUTE_MODULES, // раньше lessonEditor, см. файл
   lessonEditor: {
     path: '/planning/:lessonId',
     load: loadLessonEditor,

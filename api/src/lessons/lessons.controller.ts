@@ -22,9 +22,11 @@ import { ApiRoute } from '../common/api-route.decorator';
 import { AddRecordingDto } from './dto/add-recording.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { ListLessonsDto } from './dto/list-lessons.dto';
+import { SetLessonsTopicDto } from './dto/set-lessons-topic.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsService } from './lessons.service';
+import { LessonsTopicService } from './lessons-topic.service';
 
 @Controller('lessons')
 @Roles('teacher', 'assistant', 'admin')
@@ -33,6 +35,7 @@ export class LessonsController {
     private readonly lessonsService: LessonsService,
     private readonly sendNowService: SendNowService,
     private readonly recordingSummaryService: LessonRecordingSummaryService,
+    private readonly lessonsTopicService: LessonsTopicService,
   ) {}
 
   @Get()
@@ -54,6 +57,15 @@ export class LessonsController {
   @ApiRoute('GET /lessons/:id')
   getById(@Param('id') id: string): Promise<LessonDto> {
     return this.lessonsService.getById(id);
+  }
+
+  // Тема недели (ADR-0197). Литеральный путь ДО параметрических — как
+  // `recording-summary` выше: иначе Nest примет `topic` за id.
+  @Post('topic')
+  @ApiRoute('POST /lessons/topic')
+  @HttpCode(HttpStatus.OK)
+  setTopic(@Body() body: SetLessonsTopicDto): Promise<LessonDto[]> {
+    return this.lessonsTopicService.setTopic(body, DateTime.utc());
   }
 
   @Post()
