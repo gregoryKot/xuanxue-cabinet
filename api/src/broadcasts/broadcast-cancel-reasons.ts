@@ -34,10 +34,11 @@ const ACTION_BY_REASON: ReadonlyMap<string, BroadcastCancelAction> = new Map([
 
 /**
  * `undefined` — DM учителю не нужен: `classDisabled` — его собственное
- * осознанное решение (docs/PLAN.md §6), `noClass`/`offline` и произвольные
- * тексты исключения (recording-broadcast.service.ts) — пока без
- * сформулированного действия, шум хуже молчания. Известное ограничение —
- * RUNBOOK §8.1.
+ * осознанное решение (docs/PLAN.md §6), `offline` — без DM намеренно:
+ * офлайн-занятию ссылка не нужна (владелец 2026-11-06), сообщать нечего.
+ * `noClass` и произвольные тексты исключения (recording-broadcast.service.ts) —
+ * пока без сформулированного действия, шум хуже молчания. Известное
+ * ограничение — RUNBOOK §8.1.
  */
 export function classifyCancelReason(reason: string): BroadcastCancelAction | undefined {
   return ACTION_BY_REASON.get(reason);

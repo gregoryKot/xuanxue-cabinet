@@ -67,10 +67,13 @@ function skipReason(
 ): string | undefined {
   if (!cls) return CANCEL_REASON.noClass;
   if (!cls.active) return CANCEL_REASON.classDisabled;
-  if (!cls.groupIds?.length) return CANCEL_REASON.noGroup;
+  // Офлайн-занятию ссылка не нужна никогда (решение владельца 2026-11-06), поэтому
+  // группа ему не обязательна. При обратном порядке офлайн без группы получал
+  // «нет группы» и DM учителю (прод 2026-11-05/06). Формат `both` группу требует.
   if (cls.format !== 'online' && cls.format !== 'both') {
     return CANCEL_REASON.offline;
   }
+  if (!cls.groupIds?.length) return CANCEL_REASON.noGroup;
   if (!hasLessonLink(lesson, cls)) return CANCEL_REASON.noLink;
   return undefined;
 }
