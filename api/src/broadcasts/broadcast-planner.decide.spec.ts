@@ -120,6 +120,31 @@ describe('decideBroadcast', () => {
     expect(decision).toEqual({ kind: 'send' });
   });
 
+  // Прод 2026-11-06: офлайн «Цигун для глаз» без группы получил «нет группы» и DM
+  // учителю «Выберите группу» — офлайн проверяется раньше группы.
+  it('офлайн-класс без группы — причина «офлайн», не «нет группы»', () => {
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
+      activeClass({ format: 'offline', groupIds: [] }),
+      NOW,
+      DEFAULT_PREVIEW_MINUTES,
+    );
+    expect(decision).toEqual({
+      kind: 'skip',
+      reason: 'офлайн-занятие, ссылка не рассылается',
+    });
+  });
+
+  it('формат «both» без группы — skip: у занятия есть онлайн-часть', () => {
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
+      activeClass({ format: 'both', groupIds: [] }),
+      NOW,
+      DEFAULT_PREVIEW_MINUTES,
+    );
+    expect(decision).toEqual({ kind: 'skip', reason: 'у занятия нет группы' });
+  });
+
   it('офлайн-класс без ссылки — skip', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
