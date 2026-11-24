@@ -20,3 +20,7 @@ api/seed/*.local.json
 # Локальные бэкапы Mongo (scripts/backup-mongo.sh) — даже зашифрованные, в
 # репозиторий не кладём (CLAUDE.md, «Данные (MongoDB)»)
 backups/
+
+# Контрольные кадры и покадровые каталоги генератора роликов (scripts/install-video)
+scripts/install-video/out/still-*.png
+scripts/install-video/out/f-*/
