@@ -39,7 +39,7 @@
     "istanbul-lib-coverage": "^3.2.2",
     "jscpd": "^5.2.1",
     "knip": "^6.36.0",
-    "mongodb": "~7.6",
+    "mongodb": "~7.9",
     "prettier": "^3.9.7",
     "sharp": "^0.35.4",
     "typescript": "^5.9.3",
