@@ -2,6 +2,7 @@
 // же, что у notifications/webPushEnvironment.test.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  detectInstallBrowser,
   detectInstallPlatform,
   isAndroid,
   isIPhone,
@@ -93,6 +94,26 @@ describe('detectInstallPlatform', () => {
     stubNavigator(DESKTOP_UA);
     stubMatchMedia(false);
     expect(detectInstallPlatform()).toBe('desktop');
+  });
+});
+
+describe('detectInstallBrowser', () => {
+  it.each([
+    [IPHONE_UA + ' Version/17.0 Mobile/15E148 Safari/604.1', 'ios-safari'],
+    [IPHONE_UA + ' CriOS/124.0.6367.111 Mobile/15E148 Safari/604.1', 'ios-chrome'],
+    [ANDROID_UA + ' Safari/537.36', 'android-chrome'],
+    [ANDROID_UA + ' YaBrowser/24.4.3.92.00 Safari/537.36', 'android-yandex'],
+    // Незнакомый браузер — главный для своей системы.
+    [IPHONE_UA + ' FxiOS/125.0 Mobile/15E148 Safari/605.1.15', 'ios-safari'],
+    [ANDROID_UA + ' SamsungBrowser/25.0 Safari/537.36', 'android-chrome'],
+  ])('%s → %s', (userAgent, browser) => {
+    stubNavigator(userAgent);
+    expect(detectInstallBrowser()).toBe(browser);
+  });
+
+  it('компьютер — null, ролика для него нет', () => {
+    stubNavigator(DESKTOP_UA);
+    expect(detectInstallBrowser()).toBeNull();
   });
 });
 

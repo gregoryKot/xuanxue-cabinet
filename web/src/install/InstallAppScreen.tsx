@@ -15,10 +15,15 @@ import {
   textLinkHitAreaStyle,
 } from '../components/screenLayout';
 import { Button } from '../components/Button';
-import { detectInstallPlatform, isStandalone } from '../pwa/installEnvironment';
+import {
+  detectInstallBrowser,
+  detectInstallPlatform,
+  isStandalone,
+} from '../pwa/installEnvironment';
 import { useInstallPrompt } from '../pwa/useInstallPrompt';
 import { NOTIFICATION_SETTINGS_PATH } from '../notifications/notificationPaths';
 import { InstallSteps } from './InstallSteps';
+import { InstallVideo } from './InstallVideo';
 import {
   ANDROID_HEADING,
   ANDROID_INSTALL_LABEL,
@@ -85,6 +90,9 @@ function AndroidInstructions({ withPromptButton }: { withPromptButton: boolean }
 export default function InstallAppScreen() {
   const platform = detectInstallPlatform();
   const already = isStandalone();
+  // Ролик — только на телефоне и только пока кабинет не поставлен: на
+  // компьютере смотреть шаги чужого браузера незачем.
+  const videoBrowser = already ? null : detectInstallBrowser();
 
   return (
     <section style={screenSectionStyle}>
@@ -102,6 +110,7 @@ export default function InstallAppScreen() {
       {!already && platform === 'ios' && (
         <>
           <IosInstructions />
+          {videoBrowser && <InstallVideo browser={videoBrowser} />}
           <NotificationsHint />
         </>
       )}
@@ -109,6 +118,7 @@ export default function InstallAppScreen() {
       {!already && platform === 'android' && (
         <>
           <AndroidInstructions withPromptButton />
+          {videoBrowser && <InstallVideo browser={videoBrowser} />}
           <NotificationsHint />
         </>
       )}

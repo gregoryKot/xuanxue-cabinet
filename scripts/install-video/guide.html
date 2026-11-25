@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>install guide</title>
+    <style>
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 400;
+        src: url(../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-normal.woff2);
+      }
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 400;
+        src: url(../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-cyrillic-400-normal.woff2);
+        unicode-range: U+0400-052F, U+2116;
+      }
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 500;
+        src: url(../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2);
+      }
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 500;
+        src: url(../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-cyrillic-500-normal.woff2);
+        unicode-range: U+0400-052F, U+2116;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 200 500;
+        src: url(../../node_modules/@fontsource/golos-text/files/golos-text-latin-500-normal.woff2);
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 200 500;
+        src: url(../../node_modules/@fontsource/golos-text/files/golos-text-cyrillic-500-normal.woff2);
+        unicode-range: U+0400-052F, U+2116;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 600 800;
+        src: url(../../node_modules/@fontsource/golos-text/files/golos-text-latin-600-normal.woff2);
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 600 800;
+        src: url(../../node_modules/@fontsource/golos-text/files/golos-text-cyrillic-600-normal.woff2);
+        unicode-range: U+0400-052F, U+2116;
+      }
+      :root {
+        --bg: #f4f1ea;
+        --text: #24281f;
+        --accent: #b35a38;
+        --muted: #6b6f63;
+        --line: #e0dbd1;
+        --ios: #007aff;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 720px;
+        height: 1280px;
+        overflow: hidden;
+      }
+      body {
+        position: relative;
+        background: radial-gradient(900px 620px at 50% 64%, #fdfcf9 0, var(--bg) 70%);
+        color: var(--text);
+        font-family: 'Golos Text', system-ui, sans-serif;
+      }
+      .chip {
+        position: absolute;
+        top: 56px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 20px 10px 12px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line);
+        font-weight: 700;
+        font-size: 22px;
+        white-space: nowrap;
+      }
+      .chip i {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+      }
+      .cap {
+        position: absolute;
+        top: 128px;
+        left: 40px;
+        right: 40px;
+        text-align: center;
+      }
+      .cap small {
+        display: block;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 12px;
+      }
+      .cap b {
+        display: block;
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-weight: 500;
+        font-size: 50px;
+        line-height: 1.02;
+      }
+      .cap em {
+        display: block;
+        font-style: normal;
+        font-size: 22px;
+        color: var(--muted);
+        margin-top: 10px;
+        font-weight: 600;
+      }
+      .phone {
+        position: absolute;
+        left: 150px;
+        top: 346px;
+        width: 420px;
+        height: 850px;
+        border-radius: 58px;
+        background: #24281f;
+        padding: 10px;
+        box-shadow:
+          0 40px 80px -30px rgba(60, 35, 20, 0.45),
+          0 0 0 2px #3a332c inset;
+      }
+      .screen {
+        position: relative;
+        width: 400px;
+        height: 830px;
+        border-radius: 48px;
+        overflow: hidden;
+        background: #f4f1ea;
+      }
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+      .status {
+        height: 46px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 30px 0;
+        font-weight: 800;
+        font-size: 15px;
+        position: relative;
+      }
+      .status .isl {
+        position: absolute;
+        left: 50%;
+        top: 10px;
+        width: 96px;
+        height: 27px;
+        margin-left: -48px;
+        border-radius: 20px;
+        background: #111;
+      }
+      .status.and .isl {
+        width: 14px;
+        height: 14px;
+        margin-left: -7px;
+        top: 16px;
+      }
+      .status u {
+        text-decoration: none;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .status u s {
+        display: block;
+        width: 22px;
+        height: 11px;
+        border-radius: 3px;
+        border: 1.5px solid currentColor;
+        position: relative;
+      }
+      .status u s:after {
+        content: '';
+        position: absolute;
+        inset: 1.5px 5px 1.5px 1.5px;
+        background: currentColor;
+        border-radius: 1px;
+      }
+      .status u q {
+        width: 14px;
+        height: 10px;
+        background: currentColor;
+        clip-path: polygon(0 100%, 100% 0, 100% 100%);
+      }
+      .page {
+        padding: 18px 22px;
+      }
+      .pgh {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-weight: 500;
+        font-size: 23px;
+      }
+      .pgh img {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+      }
+      .pgt {
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-weight: 400;
+        font-size: 34px;
+        line-height: 1.05;
+        margin: 24px 0 16px;
+      }
+      .bar {
+        height: 11px;
+        border-radius: 6px;
+        background: #e0dbd1;
+        margin: 10px 0;
+      }
+      .card {
+        height: 112px;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(36, 40, 31, 0.07);
+        margin-top: 16px;
+        padding: 16px;
+      }
+      .card .bar {
+        background: #eae4d8;
+      }
+      .btn {
+        margin-top: 20px;
+        height: 46px;
+        border-radius: 10px;
+        background: var(--text);
+        width: 170px;
+      }
+      .ico {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .ico svg {
+        width: 26px;
+        height: 26px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .pill {
+        flex: 1;
+        height: 42px;
+        border-radius: 14px;
+        background: #efeae2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #3b352f;
+      }
+      .bottom {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #f7f4ef;
+        border-top: 1px solid var(--line);
+        padding: 10px 14px 22px;
+      }
+      .tools {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        color: var(--ios);
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: #f7f4ef;
+        border-bottom: 1px solid var(--line);
+      }
+      .tabs {
+        width: 22px;
+        height: 22px;
+        border: 2px solid currentColor;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+      }
+      .dim {
+        background: rgba(20, 14, 10, 0.38);
+      }
+      .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #f2f1f6;
+        border-radius: 24px 24px 0 0;
+        padding: 16px 16px 30px;
+      }
+      .sheet .grab {
+        width: 38px;
+        height: 5px;
+        border-radius: 3px;
+        background: #c9c7ce;
+        margin: 0 auto 14px;
+      }
+      .shead {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .shead img {
+        width: 46px;
+        height: 46px;
+        border-radius: 11px;
+      }
+      .shead b {
+        display: block;
+        font-size: 16px;
+      }
+      .shead span {
+        font-size: 13px;
+        color: #8a8a90;
+      }
+      .apps {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .apps i {
+        width: 58px;
+        height: 58px;
+        border-radius: 15px;
+        background: #dcdbe1;
+      }
+      .group {
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 52px;
+        padding: 0 16px;
+        font-size: 17px;
+        font-weight: 600;
+        border-bottom: 1px solid #ecebf0;
+      }
+      .row:last-child {
+        border: 0;
+      }
+      .row svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 17px;
+        margin-bottom: 22px;
+      }
+      .nav a {
+        color: var(--ios);
+        font-weight: 600;
+        padding: 6px 4px;
+      }
+      .nav a.go {
+        font-weight: 800;
+      }
+      .nav b {
+        font-size: 16px;
+      }
+      .menu {
+        position: absolute;
+        right: 8px;
+        top: 50px;
+        width: 262px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+        padding: 8px 0;
+        transform-origin: 100% 0;
+      }
+      .menu .row {
+        border: 0;
+        height: 50px;
+        justify-content: flex-start;
+        gap: 14px;
+        font-size: 16px;
+      }
+      .menu.up {
+        width: 290px;
+        top: auto;
+        bottom: 74px;
+        transform-origin: 100% 100%;
+      }
+      .dialog {
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        top: 270px;
+        background: #fff;
+        border-radius: 26px;
+        padding: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      }
+      .dialog h4 {
+        font-size: 20px;
+        margin-bottom: 18px;
+      }
+      .dialog .shead {
+        margin-bottom: 22px;
+      }
+      .dialog .acts {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .dialog .acts a {
+        padding: 11px 18px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 15px;
+        color: #0b57d0;
+      }
+      .dialog .acts a.go {
+        background: #0b57d0;
+        color: #fff;
+      }
+      .home {
+        background: linear-gradient(160deg, #7fa390 0, #40614f 55%, #1b2a22 100%);
+        color: #fff;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 26px 0;
+        padding: 34px 14px 0;
+        justify-items: center;
+      }
+      .app {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        width: 92px;
+      }
+      .app i {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.26);
+      }
+      .and-home .app i {
+        border-radius: 50%;
+      }
+      .app span {
+        height: 8px;
+        width: 42px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.4);
+      }
+      .app.me img {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      }
+      .and-home .app.me img {
+        border-radius: 50%;
+      }
+      .app.me {
+        gap: 10px;
+      }
+      .app.me span {
+        height: auto;
+        width: auto;
+        background: none;
+        font-size: 13.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        line-height: 14px;
+      }
+      .dock {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 18px;
+        height: 92px;
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+      }
+      .dock i {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.3);
+      }
+      .and-home .dock {
+        background: none;
+      }
+      .and-home .dock i {
+        border-radius: 50%;
+      }
+      .ring {
+        position: absolute;
+        border: 4px solid var(--accent);
+        box-shadow: 0 0 0 8px rgba(179, 90, 56, 0.2);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .finger {
+        position: absolute;
+        width: 66px;
+        height: 66px;
+        margin: -33px 0 0 -33px;
+        border-radius: 50%;
+        background: rgba(36, 40, 31, 0.3);
+        border: 3px solid rgba(255, 255, 255, 0.95);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+      }
+      .ripple {
+        position: absolute;
+        width: 66px;
+        height: 66px;
+        margin: -33px 0 0 -33px;
+        border-radius: 50%;
+        border: 4px solid var(--accent);
+        opacity: 0;
+      }
+      .dots {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 1222px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+      .dots i {
+        height: 10px;
+        width: 10px;
+        border-radius: 5px;
+        background: #d6cfc2;
+      }
+      .gl {
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        bottom: 6px;
+        background: #f8f7f4;
+        border-radius: 38px;
+        padding: 20px 16px 18px;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+      }
+      .gl.tall {
+        top: 52px;
+      }
+      .gh {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 0 4px;
+      }
+      .gh .th {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        background: #fff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .gh .th img {
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+      }
+      .gh b {
+        font-size: 15px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 215px;
+      }
+      .gh span {
+        font-size: 13px;
+        color: #8a8a8e;
+      }
+      .gh .opt {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 5px 12px;
+        border: 1px solid #e3e1dc;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        background: #fff;
+      }
+      .gh .x {
+        margin-left: auto;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        flex: none;
+      }
+      .rw {
+        display: flex;
+        gap: 16px;
+        padding: 14px 4px;
+        border-top: 1px solid #e6e3dd;
+        margin-top: 14px;
+        overflow: hidden;
+      }
+      .rw i {
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        background: #d9d4cb;
+        flex: none;
+      }
+      .rw.aps {
+        margin-top: 0;
+      }
+      .rw.aps i {
+        border-radius: 16px;
+        background: #b5b5ba;
+      }
+      .acts4 {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid #e6e3dd;
+      }
+      .gl.tall .acts4 {
+        border: 0;
+        margin-top: 8px;
+      }
+      .act {
+        width: 80px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .act i {
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        background: #eceae6;
+        margin: 0 auto 6px;
+      }
+      .act svg {
+        width: 26px;
+        height: 26px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .lg {
+        background: #ebebeb;
+        border-radius: 24px;
+        margin-top: 16px;
+        padding: 0 16px;
+      }
+      .lg .row {
+        justify-content: flex-start;
+        gap: 14px;
+        border-bottom: 1px solid #dadada;
+        height: 50px;
+        padding: 0;
+        font-size: 16px;
+      }
+      .lg .row:last-child {
+        border: 0;
+      }
+      .tg {
+        margin-left: auto;
+        width: 50px;
+        height: 30px;
+        border-radius: 15px;
+        background: #34c759;
+        position: relative;
+        flex: none;
+      }
+      .tg:after {
+        content: '';
+        position: absolute;
+        right: 2px;
+        top: 2px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .fbar {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 20px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .fbar .ico,
+      .fbar .pill {
+        background: #fff;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+        border-radius: 999px;
+        height: 46px;
+      }
+      .fbar .ico {
+        width: 46px;
+      }
+      .menu.cr {
+        top: 48px;
+        right: 6px;
+        width: 318px;
+        background: #f1ecf8;
+        border-radius: 22px;
+        padding: 6px 0;
+      }
+      .menu.cr .row {
+        height: 41px;
+        font-size: 14.5px;
+        font-weight: 500;
+        gap: 16px;
+        padding: 0 18px;
+        white-space: nowrap;
+      }
+      .menu.cr .row svg {
+        width: 21px;
+        height: 21px;
+        flex: none;
+      }
+      .menu.cr .row {
+        font-size: 13.5px;
+      }
+      .menu.cr hr {
+        border: 0;
+        border-top: 1px solid #d6cfe2;
+        margin: 4px 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const q = new URLSearchParams(location.search),
+        B = q.get('b') || 'ios-safari',
+        REC = q.has('rec');
+      const ICONS = '../../web/public/icons/',
+        MARK = ICONS + 'school-mark-64.png';
+      const ICON =
+        ICONS +
+        (B.startsWith('ios') ? 'school-mark-apple-180.png' : 'school-mark-192.png');
+
+      const sv = (d) => `<svg viewBox="0 0 24 24">${d}</svg>`;
+      const I = {
+        share: sv('<path d="M12 15V3M8 7l4-4 4 4M6 11H5v10h14V11h-1"/>'),
+        back: sv('<path d="M15 5l-7 7 7 7"/>'),
+        fwd: sv('<path d="M9 5l7 7-7 7"/>'),
+        book: sv(
+          '<path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1zM12 6v14"/>',
+        ),
+        tabs: sv(
+          '<rect x="8" y="4" width="12" height="12" rx="2"/><path d="M16 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2"/>',
+        ),
+        plus: sv('<path d="M12 5v14M5 12h14"/>'),
+        dots: sv(
+          '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+        ),
+        vdots: sv(
+          '<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
+        ),
+        home: sv('<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>'),
+        addsq: sv(
+          '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
+        ),
+        copy: sv(
+          '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+        ),
+        star: sv(
+          '<path d="M12 4l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/>',
+        ),
+        find: sv('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>'),
+        clock: sv('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'),
+        down: sv('<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>'),
+        gear: sv('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/>'),
+        print: sv(
+          '<rect x="6" y="9" width="12" height="8" rx="2"/><path d="M8 9V5h8v4M9 14h6"/>',
+        ),
+        mark: sv('<path d="M7 4h10v16l-5-4-5 4z"/>'),
+        chev: sv('<path d="M6 9l6 6 6-6"/>'),
+        chevu: sv('<path d="M6 15l6-6 6 6"/>'),
+        glasses: sv(
+          '<circle cx="7" cy="13" r="3"/><circle cx="17" cy="13" r="3"/><path d="M10 13h4"/>',
+        ),
+        note: sv(
+          '<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 14l2-3 2 3 2-3 2 3"/>',
+        ),
+        phone: sv(
+          '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M12 9v6M9 12h6"/>',
+        ),
+      };
+      const status = (and) =>
+        `<div class="status ${and ? 'and' : ''}"><span>9:41</span><span class="isl"></span><u><q></q><s></s></u></div>`;
+      const page = `<div class="page"><div class="pgh"><img src="${MARK}">Сюань-Сюэ</div><div class="pgt">Ближайшее занятие</div><div class="bar" style="width:86%"></div><div class="bar" style="width:64%"></div><div class="card"><div class="bar" style="width:52%"></div><div class="bar" style="width:80%"></div><div class="bar" style="width:38%"></div></div><div class="card"><div class="bar" style="width:70%"></div><div class="bar" style="width:46%"></div></div><div class="btn"></div></div>`;
+      const ic = (k, id, st = '') =>
+        `<div class="ico" ${id ? `id="${id}"` : ''} style="${st}">${I[k]}</div>`;
+      const shead = `<div class="shead"><img src="${ICON}"><div><b>Сюань-Сюэ</b><span>xuanxue.su</span></div></div>`;
+      const gh = (x) =>
+        `<div class="gh"><div class="th"><img src="${ICON}"></div><div><b>Сюань-Сюэ</b><span>xuanxue.su</span><br><span class="opt">Параметры ›</span></div>${x ? '<div class="x">✕</div>' : ''}</div>`;
+      const act = (k, l, id) =>
+        `<div class="act"><i ${id ? `id="${id}"` : ''}>${I[k]}</i>${l}</div>`;
+      const iosMenu = (id) =>
+        `<div class="menu up" style="bottom:78px;right:12px;width:236px;border-radius:22px"><div class="row" id="${id}">${I.share}Поделиться</div><div class="row">${I.book}Закладки</div><div class="row">${I.tabs}Все вкладки</div></div>`;
+      const iosShare = (id) =>
+        `<div class="gl">${gh()}<div class="rw"><i></i><i></i><i></i><i></i><i></i></div><div class="rw aps"><i></i><i></i><i></i><i></i><i></i></div><div class="acts4">${act('copy', 'Скопировать')}${act('print', 'Напечатать')}${act('mark', 'В закладки')}${act('chev', 'Ещё', id)}</div></div>`;
+      const iosMore = (id) =>
+        `<div class="gl tall">${gh(1)}<div class="acts4">${act('copy', 'Скопировать')}${act('print', 'Напечатать')}${act('mark', 'В закладки')}${act('chevu', 'Свернуть')}</div><div class="lg"><div class="row">${I.glasses}В список для чтения</div><div class="row">${I.book}Добавить закладку в…</div><div class="row">${I.star}Добавить в Избранное</div><div class="row">${I.note}В быструю заметку</div><div class="row">${I.find}Найти на странице</div><div class="row" id="${id}">${I.addsq}На экран «Домой»</div></div></div>`;
+      const iosConfirm = (id) =>
+        `<div class="gl tall" style="top:150px"><div class="nav" style="padding:0 4px"><a style="color:#24281f">✕</a><b>На экран «Домой»</b><a class="go" id="${id}">Добавить</a></div><div class="lg" style="padding:14px 16px">${shead.replace('class="shead"', 'class="shead" style="margin:0"')}</div><div class="lg"><div class="row">Открыть как веб-приложение<span class="tg"></span></div></div></div>`;
+      const andMenu = (label, up, k) =>
+        `<div class="menu ${up ? 'up' : ''}"><div class="row">${I.plus}Новая вкладка</div><div class="row">${I.clock}История</div><div class="row">${I.down}Загрузки</div><div class="row">${I.star}Закладки</div><div class="row" id="t2">${I[k]}${label}</div><div class="row">${I.gear}Настройки</div></div>`;
+      const andDialog = (title, go) =>
+        `<div class="dialog"><h4>${title}</h4>${shead}<div class="acts"><a>Отмена</a><a class="go" id="t3">${go}</a></div></div>`;
+      const crMenu = (id) =>
+        `<div class="menu cr">` +
+        [
+          ['clock', 'История'],
+          ['copy', 'Удалить данные о работе в браузере'],
+          ['gear', 'Настройки сайта'],
+          0,
+          ['down', 'Скачанные файлы'],
+          ['star', 'Закладки'],
+          ['tabs', 'Недавние вкладки'],
+          0,
+          ['share', 'Поделиться…'],
+          ['find', 'Найти на странице'],
+          ['note', 'Перевести…'],
+          ['fwd', 'Озвучить эту страницу'],
+          ['book', 'Перейти в Режим чтения'],
+          ['down', 'Установить и создать ярлык', id],
+          ['phone', 'Версия для ПК'],
+          0,
+          ['gear', 'Настройки'],
+          ['find', 'Справка/отзыв'],
+        ]
+          .map((r) =>
+            r
+              ? `<div class="row" ${r[2] ? `id="${r[2]}"` : ''}>${I[r[0]]}${r[1]}</div>`
+              : '<hr>',
+          )
+          .join('') +
+        `</div>`;
+      const crChoice = (id) =>
+        `<div class="dialog" style="top:250px"><h4>Добавить на главный экран</h4>${shead}<div class="group" style="border:1px solid #e3e0ea"><div class="row" id="${id}" style="justify-content:flex-start;gap:14px">${I.down}Установить</div><div class="row" style="justify-content:flex-start;gap:14px">${I.addsq}Создать ярлык</div></div></div>`;
+      const C = {
+        'ios-safari': {
+          name: 'Safari на iPhone',
+          badge: '#1a8cff',
+          os: 'ios',
+          chrome:
+            status() +
+            page +
+            `<div class="fbar">${ic('back')}<div class="pill">xuanxue.su</div>${ic('dots', 't1')}</div>`,
+          ov: [iosMenu('t2'), iosShare('t3'), iosMore('t4'), iosConfirm('t5')],
+          steps: [
+            ['Кнопка «⋯» рядом с адресом', ''],
+            ['В меню — «Поделиться»', ''],
+            ['Круглая кнопка со стрелкой вниз', 'Она раскрывает полный список'],
+            ['В списке — «На экран „Домой“»', ''],
+            ['«Добавить» справа вверху', ''],
+          ],
+        },
+        'ios-chrome': {
+          name: 'Chrome на iPhone',
+          badge: '#e8a100',
+          os: 'ios',
+          chrome:
+            status() +
+            `<div class="topbar"><div class="pill" style="justify-content:space-between;padding-left:40px">xuanxue.su${ic('share', 't1', 'color:#007aff')}</div></div>` +
+            page +
+            `<div class="bottom"><div class="tools" style="margin:0;color:#5f6368">${ic('back')}${ic('fwd', '', 'opacity:.35')}${ic('plus')}<div class="ico"><div class="tabs">1</div></div>${ic('dots')}</div></div>`,
+          ov: [iosShare('t2'), iosMore('t3'), iosConfirm('t4')],
+          steps: [
+            ['«Поделиться» — справа в адресной строке', 'Квадрат со стрелкой вверх'],
+            ['Круглая кнопка со стрелкой вниз', 'Она раскрывает полный список'],
+            ['В списке — «На экран „Домой“»', ''],
+            ['«Добавить» справа вверху', ''],
+          ],
+        },
+        'android-chrome': {
+          name: 'Chrome на Android',
+          badge: '#1e9e52',
+          os: 'and',
+          chrome:
+            status(1) +
+            `<div class="topbar">${ic('home')}<div class="pill" style="justify-content:flex-start;padding-left:14px;border-radius:21px">xuanxue.su</div>${ic('plus')}<div class="ico"><div class="tabs">1</div></div>${ic('vdots', 't1')}</div>` +
+            page,
+          ov: [
+            crMenu('t2'),
+            crChoice('t3'),
+            andDialog('Установить приложение', 'Установить').replace(
+              'id="t3"',
+              'id="t4"',
+            ),
+          ],
+          steps: [
+            ['Меню ⋮ справа вверху', ''],
+            ['«Установить и создать ярлык»', 'Меню длинное — пролистать вниз'],
+            ['Выбрать «Установить»', '«Создать ярлык» тоже подойдёт'],
+            ['Подтвердить — «Установить»', ''],
+          ],
+        },
+        'android-yandex': {
+          name: 'Яндекс Браузер на Android',
+          badge: '#fc3f1d',
+          os: 'and',
+          chrome:
+            status(1) +
+            page +
+            `<div class="bottom" style="display:flex;align-items:center;gap:6px;padding:10px 10px 16px"><div class="pill"><b style="color:#fc3f1d">Я</b>xuanxue.su</div><div class="ico"><div class="tabs">1</div></div>${ic('vdots', 't1')}</div>`,
+          ov: [
+            andMenu('Добавить ярлык на телефон', 1, 'phone'),
+            andDialog('Добавить на главный экран', 'Добавить'),
+          ],
+          steps: [
+            ['Меню ⋮ рядом с адресной строкой', ''],
+            ['В меню — «Добавить ярлык на телефон»', ''],
+            ['Подтвердить — «Добавить»', ''],
+          ],
+        },
+      }[B];
+      const N = C.steps.length,
+        S0 = 1500,
+        SD = 2600,
+        st = C.steps.map((_, i) => S0 + i * SD),
+        tap = st.map((t) => t + 2050),
+        done = S0 + N * SD,
+        T = { total: done + 2900 };
+      const seq = (p, n = N) =>
+        Array.from(
+          { length: n },
+          (_, i) =>
+            `<div class="${p === 'r' ? 'ring' : p === 'p' ? 'ripple' : ''}" id="${p}${i + 1}"></div>`,
+        ).join('');
+      const tiles = (n) =>
+        Array.from(
+          { length: n },
+          () => '<div class="app"><i></i><span></span></div>',
+        ).join('');
+      const cap = (k, s, b, e) =>
+        `<div class="cap" id="c${k}"><small>${s}</small><b>${b}</b>${e ? `<em>${e}</em>` : ''}</div>`;
+      document.body.innerHTML = `
+<div class="chip"><i style="background:${C.badge}"></i>${C.name}</div>
+${cap(0, 'Значок на экран', 'Сайт открывается как приложение', 'Меньше минуты — и значок на экране')}
+${C.steps.map((x, i) => cap(i + 1, `Шаг ${i + 1} из ${N}`, x[0], x[1])).join('')}
+${cap(N + 1, 'Готово', 'Значок рядом с приложениями', 'Открывается в одно касание')}
+<div class="phone" id="phone"><div class="screen">
+ <div class="layer">${C.chrome}</div>
+ <div class="layer dim" id="dim"></div>
+ ${C.ov.map((h, i) => `<div class="layer" id="o${i + 1}">${h}</div>`).join('')}
+ <div class="layer home ${C.os === 'and' ? 'and-home' : ''}" id="home">${status(C.os === 'and')}<div class="grid">${tiles(9)}<div class="app me" id="me"><img src="${ICON}"><span>Сюань-Сюэ</span></div></div><div class="dock"><i></i><i></i><i></i><i></i></div></div>
+</div></div>
+${seq('r')}<div class="ring" id="rH"></div>${seq('p')}
+<div class="finger" id="finger"></div>
+<div class="dots">${Array.from({ length: N }, (_, i) => `<i id="d${i + 1}"></i>`).join('')}</div>`;
+      const $ = (id) => document.getElementById(id);
+      const E = 'cubic-bezier(.2,.8,.2,1)';
+      function A(el, fr) {
+        const k = fr.map(([t, p, e]) => ({
+          offset: Math.min(t, T.total) / T.total,
+          ...p,
+          easing: e || E,
+        }));
+        if (k[0].offset > 0) k.unshift({ ...k[0], offset: 0 });
+        if (k.at(-1).offset < 1) k.push({ ...k.at(-1), offset: 1 });
+        el.animate(k, {
+          duration: T.total,
+          fill: 'both',
+          iterations: REC ? 1 : Infinity,
+        });
+      }
+      function build() {
+        const tg = st.map((_, i) => $('t' + (i + 1)).getBoundingClientRect()),
+          me = $('me').querySelector('img').getBoundingClientRect();
+        const on = { opacity: 1, transform: 'none' };
+        [[0, S0], ...st.map((t) => [t, t + SD]), [done, T.total + 400]].forEach(
+          ([a, b], k) =>
+            A($('c' + k), [
+              [
+                Math.max(a - 1, 0),
+                { opacity: k ? 0 : 1, transform: k ? 'translateY(14px)' : 'none' },
+              ],
+              [a + 320, on],
+              [b - 220, on],
+              [b, { opacity: b > T.total ? 1 : 0, transform: 'none' }],
+            ]),
+        );
+        A($('phone'), [
+          [0, { opacity: 0, transform: 'translateY(50px) scale(.96)' }],
+          [700, on],
+        ]);
+        const sh = (e) => e.matches('.sheet,.gl');
+        C.ov.forEach((_, i) => {
+          const el = $('o' + (i + 1)).firstElementChild,
+            pv = i && $('o' + i).firstElementChild,
+            out = tap[i + 1] + 150;
+          const k = sh(el)
+            ? pv && sh(pv)
+              ? { opacity: 0, transform: 'translateY(40px)' }
+              : { opacity: 1, transform: 'translateY(105%)' }
+            : { opacity: 0, transform: 'scale(.86)' };
+          A(el, [
+            [tap[i] + 150, k],
+            [st[i + 1], on],
+            [out, on],
+            [out + 250, { opacity: 0, transform: 'none' }],
+          ]);
+        });
+        A($('dim'), [
+          [tap[0] + 150, { opacity: 0 }],
+          [st[1], { opacity: 1 }],
+          [tap[N - 1] + 150, { opacity: 1 }],
+          [tap[N - 1] + 450, { opacity: 0 }],
+        ]);
+        A($('home'), [
+          [tap[N - 1] + 200, { opacity: 0, transform: 'scale(1.06)' }],
+          [done, on],
+        ]);
+        A($('me'), [
+          [done + 150, { opacity: 0, transform: 'scale(.2)' }],
+          [done + 520, { opacity: 1, transform: 'scale(1.18)' }],
+          [done + 800, { opacity: 1, transform: 'scale(1)' }],
+        ]);
+        const ring = (el, r, a, b, p = 7) => {
+          Object.assign(el.style, {
+            left: r.left - p + 'px',
+            top: r.top - p + 'px',
+            width: r.width + 2 * p + 'px',
+            height: r.height + 2 * p + 'px',
+            borderRadius: (r.width < 80 ? 999 : 16) + 'px',
+          });
+          const f = [
+            [a, { opacity: 0, transform: 'scale(1.25)' }],
+            [a + 350, { opacity: 1, transform: 'scale(1)' }],
+          ];
+          for (let t = a + 350, i = 0; t + 450 < b; t += 450, i++)
+            f.push([
+              t + 450,
+              { opacity: 1, transform: i % 2 ? 'scale(1)' : 'scale(1.06)' },
+              'ease-in-out',
+            ]);
+          f.push(
+            [b, { opacity: 1, transform: 'scale(1)' }],
+            [b + 200, { opacity: 0, transform: 'scale(1)' }],
+          );
+          A(el, f);
+        };
+        tg.forEach((r, i) => ring($('r' + (i + 1)), r, st[i] + 550, tap[i]));
+        const rH = $('rH');
+        ring(rH, me, done + 900, T.total - 500, 4);
+        rH.style.borderRadius = C.os === 'and' ? '999px' : '22px';
+        rH.style.borderColor = '#fff';
+        rH.style.boxShadow = '0 0 0 8px rgba(255,255,255,.25)';
+        const P = tg.map((r) => [r.left + r.width / 2, r.top + r.height / 2]),
+          tr = (p, s = 1) => ({
+            transform: `translate(${p[0]}px,${p[1] + 34}px) scale(${s})`,
+          });
+        const start = [600, 1180],
+          f = [[S0 + 500, { opacity: 0, ...tr(start) }]];
+        P.forEach((p, i) => {
+          f.push(
+            [st[i] + 800, { opacity: i ? 1 : 0, ...tr(i ? P[i - 1] : start) }],
+            [tap[i] - 380, { opacity: 1, ...tr(p) }],
+            [tap[i] - 120, { opacity: 1, ...tr(p) }],
+            [tap[i], { opacity: 1, ...tr(p, 0.8) }],
+            [tap[i] + 180, { opacity: 1, ...tr(p) }],
+          );
+        });
+        f.push([tap[N - 1] + 500, { opacity: 0, ...tr(P[N - 1]) }]);
+        f.splice(2, 0, [
+          S0 + 1150,
+          { opacity: 1, ...tr([(start[0] + P[0][0]) / 2, (start[1] + P[0][1]) / 2]) },
+        ]);
+        A($('finger'), f);
+        P.forEach((p, i) => {
+          const el = $('p' + (i + 1));
+          el.style.left = p[0] + 'px';
+          el.style.top = p[1] + 'px';
+          A(el, [
+            [0, { opacity: 0, transform: 'scale(.5)' }],
+            [tap[i] - 1, { opacity: 0, transform: 'scale(.5)' }],
+            [tap[i], { opacity: 0.9, transform: 'scale(.5)' }],
+            [tap[i] + 520, { opacity: 0, transform: 'scale(2.3)' }],
+          ]);
+        });
+        st.forEach((t, i) =>
+          A($('d' + (i + 1)), [
+            [t, { width: '10px', background: '#d6cfc2' }],
+            [t + 300, { width: '34px', background: '#b35a38' }],
+            [t + SD, { width: '34px', background: '#b35a38' }],
+            [t + SD + 300, { width: '10px', background: '#b35a38' }],
+          ]),
+        );
+        window.seek = (t) => {
+          document.getAnimations().forEach((a) => {
+            a.pause();
+            a.currentTime = t;
+          });
+          return new Promise((r) =>
+            requestAnimationFrame(() => requestAnimationFrame(r)),
+          );
+        };
+        window.TIMES = { total: T.total, done, taps: tap };
+        window.TOTAL = T.total;
+        window.ready = true;
+      }
+      Promise.all([
+        ...['400 34px', '500 50px'].map((f) =>
+          document.fonts.load(f + ' "Cormorant Garamond"', 'Шаг a'),
+        ),
+        ...['500 20px', '700 20px'].map((f) =>
+          document.fonts.load(f + ' "Golos Text"', 'Шаг a'),
+        ),
+        ...[...document.images].map((i) => i.decode().catch(() => {})),
+      ]).then(build);
+    </script>
+  </body>
+</html>

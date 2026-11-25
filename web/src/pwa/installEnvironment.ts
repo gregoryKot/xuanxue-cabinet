@@ -39,6 +39,23 @@ export function detectInstallPlatform(): InstallPlatform {
   return 'desktop';
 }
 
+/** Браузер телефона, у которого свой путь к значку на экране — и свой ролик
+ * на экране `/install` (install/installVideos.ts). */
+export type InstallBrowser =
+  'ios-safari' | 'ios-chrome' | 'android-chrome' | 'android-yandex';
+
+/** Браузер для ролика установки. Chrome на iPhone называет себя `CriOS`,
+ * Яндекс Браузер — `YaBrowser`; незнакомый браузер получает главный для своей
+ * системы (iPhone — Safari, Android — Chrome). Компьютер — null: ролика для
+ * него нет, ставить там некуда. */
+export function detectInstallBrowser(): InstallBrowser | null {
+  const platform = detectInstallPlatform();
+  if (platform === 'desktop') return null;
+  const agent = navigator.userAgent;
+  if (platform === 'ios') return /CriOS\//.test(agent) ? 'ios-chrome' : 'ios-safari';
+  return /YaBrowser\//.test(agent) ? 'android-yandex' : 'android-chrome';
+}
+
 /** Предлагать ли установку: телефон (iPhone или Android), не установлен уже
  * (standalone). Десктоп подсказку не получает — там ставить некуда. */
 export function shouldOfferInstall(): boolean {

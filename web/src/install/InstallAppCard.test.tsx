@@ -73,18 +73,46 @@ describe('InstallAppCard', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('iPhone, не standalone — карточка со ссылкой «Как поставить»', () => {
-    stubEnvironment(IPHONE_UA, false);
+  it('iPhone, не standalone — «Как поставить» открывает окно с роликом своего браузера', async () => {
+    stubEnvironment(IPHONE_UA + ' CriOS/124.0 Safari/604.1', false);
     captureInstallPrompt();
+    const user = userEvent.setup();
 
     renderCard();
 
     expect(screen.getByText('Поставьте кабинет на телефон')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Как поставить' })).toHaveAttribute(
+    expect(screen.queryByRole('button', { name: 'Установить' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Как поставить' }));
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Как поставить кабинет на телефон',
+    });
+    expect(dialog.querySelector('video')?.src).toContain('install-ios-chrome');
+    expect(screen.getByRole('link', { name: 'Шаги текстом' })).toHaveAttribute(
       'href',
       '/install',
     );
-    expect(screen.queryByRole('button', { name: 'Установить' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Поставьте кабинет на телефон')).toBeInTheDocument();
+  });
+
+  it('«Шаги текстом» закрывает окно — по возвращении оно не открывается само', async () => {
+    stubEnvironment(IPHONE_UA, false);
+    captureInstallPrompt();
+    const user = userEvent.setup();
+
+    renderCard();
+    await user.click(screen.getByRole('button', { name: 'Как поставить' }));
+    await user.click(screen.getByRole('link', { name: 'Шаги текстом' }));
+
+    // Ушли на `/install`: карточка там не рисуется, окна нет.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Поставьте кабинет на телефон')).not.toBeInTheDocument();
   });
 
   it('на «/install» карточки нет — она же там, дублировать некуда', () => {
@@ -105,7 +133,9 @@ describe('InstallAppCard', () => {
 
     const button = screen.getByRole('button', { name: 'Установить' });
     expect(button).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Как поставить' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Как поставить' }),
+    ).not.toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(button);
