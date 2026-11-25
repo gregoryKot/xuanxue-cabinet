@@ -40,6 +40,19 @@ export const NOTIFICATIONS_HINT =
   'о занятии, даже когда кабинет закрыт.';
 export const NOTIFICATIONS_SETTINGS_LINK_LABEL = 'Открыть настройки уведомлений';
 
+// Ролик под шагами (InstallVideo.tsx): подпись называет браузер, потому что
+// шаги в ролике — именно его, а текст выше описывает главный браузер системы.
+export function videoCaption(browserName: string): string {
+  return `Видео: как поставить кабинет из **${browserName}**.`;
+}
+export const VIDEO_LABEL = 'Видео: шаги установки на экране телефона';
+export const VIDEO_SOUND_ON = 'Включить звук';
+export const VIDEO_SOUND_OFF = 'Выключить звук';
+// Окно с роликом поверх экрана (InstallVideoDialog.tsx).
+export const VIDEO_DIALOG_TITLE = 'Как поставить кабинет на телефон';
+export const VIDEO_DIALOG_STEPS_LINK = 'Шаги текстом';
+export const VIDEO_DIALOG_CLOSE = 'Закрыть';
+
 export const INSTALL_ALREADY = 'Кабинет уже стоит на этом телефоне.';
 
 export function desktopHint(host: string): string {

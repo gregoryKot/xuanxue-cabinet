@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { captureInstallPrompt } from '../pwa/installPromptCapture';
 import InstallAppScreen from './InstallAppScreen';
+import { VIDEO_LABEL } from './installAppCopy';
 
 const IPHONE_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
@@ -109,5 +110,36 @@ describe('InstallAppScreen', () => {
     await user.click(button);
 
     expect(event.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  // Ролик — по браузеру посетителя; на компьютере и в уже поставленном
+  // кабинете его нет.
+  it.each([
+    [IPHONE_UA + ' Version/17.0 Safari/604.1', 'install-ios-safari'],
+    [IPHONE_UA + ' CriOS/124.0 Safari/604.1', 'install-ios-chrome'],
+    [ANDROID_UA + ' Safari/537.36', 'install-android-chrome'],
+    [ANDROID_UA + ' YaBrowser/24.4 Safari/537.36', 'install-android-yandex'],
+  ])('телефон %s — ролик %s', (userAgent, file) => {
+    stubEnvironment(userAgent, false);
+
+    renderScreen();
+
+    expect(screen.getByLabelText<HTMLVideoElement>(VIDEO_LABEL).src).toContain(file);
+  });
+
+  it('компьютер — ролика нет', () => {
+    stubEnvironment(DESKTOP_UA, false);
+
+    renderScreen();
+
+    expect(screen.queryByLabelText(VIDEO_LABEL)).not.toBeInTheDocument();
+  });
+
+  it('кабинет уже стоит — ролика нет', () => {
+    stubEnvironment(IPHONE_UA, true);
+
+    renderScreen();
+
+    expect(screen.queryByLabelText(VIDEO_LABEL)).not.toBeInTheDocument();
   });
 });

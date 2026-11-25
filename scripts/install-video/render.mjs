@@ -2,18 +2,22 @@
 // Playwright снимает guide.html покадрово, music.py пишет мелодию под длину
 // ролика, ffmpeg склеивает. Запуск: `node scripts/install-video/render.mjs`
 // (все четыре), `… ios-safari` (один), `… all stills` (только контрольные
-// кадры перед каждым касанием). Нужны playwright с chromium, python3 с numpy
+// кадры перед каждым касанием — в scripts/install-video/out, в git не идут).
+// Готовые ролики ложатся в web/src/install/videos: оттуда их берёт экран
+// «Приложение на телефоне» (web/src/install/installVideos.ts). Нужны playwright с chromium, python3 с numpy
 // и ffmpeg — в зависимости проекта они не входят: ролики собираются руками,
 // когда меняется значок или интерфейс браузера, а не в CI.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 
 // Playwright стоит глобально (NODE_PATH), а ESM-`import` глобальные каталоги
 // не смотрит — поэтому через require.
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const DIR = import.meta.dirname;
+const VIDEOS = join(DIR, '../../web/src/install/videos');
 const OUT = `${DIR}/out`;
 const FPS = 30;
 const BROWSERS = ['ios-safari', 'ios-chrome', 'android-chrome', 'android-yandex'];
@@ -61,7 +65,7 @@ for (const b of BROWSERS) {
     '-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', `${frames}/%04d.png`,
     '-i', `${frames}/m.wav`, '-c:a', 'aac', '-b:a', '96k', '-shortest',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-preset', 'slow',
-    '-movflags', '+faststart', `${OUT}/install-${b}.mp4`,
+    '-movflags', '+faststart', `${VIDEOS}/install-${b}.mp4`,
   ]);
   rmSync(frames, { recursive: true, force: true });
   console.log('ok', b);
